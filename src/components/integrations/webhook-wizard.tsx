@@ -14,6 +14,10 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { StepIndicator } from "@/components/ui/step-indicator"
 import { SecretRevealStep } from "@/components/ui/secret-reveal-step"
+import { Switch } from "@/components/ui/switch"
+import { Textarea } from "@/components/ui/textarea"
+import { WebhookEventSelector } from "@/components/integrations/webhook-event-selector"
+import { WhatsappInboundHelp } from "@/components/integrations/whatsapp-inbound-help"
 import {
   createWebhook,
   type CreateWebhookInput,
@@ -25,11 +29,6 @@ import {
 
 /** Métodos HTTP disponíveis para seleção. */
 const HTTP_METHODS: WebhookMethod[] = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"]
-
-/** Eventos emissíveis por um webhook de saída (hoje só a resposta do agente). */
-const OUTBOUND_EVENTS: Array<{ value: WebhookEventName; label: string }> = [
-  { value: "agent_reply", label: "Resposta do agente (agent.reply)" },
-]
 
 /** Slug seguro: mesma regra do schema da Server Action. */
 const PATH_RE = /^[a-z0-9][a-z0-9-/]*$/
@@ -67,10 +66,13 @@ export function WebhookWizard({
   const [step, setStep] = React.useState<Step>(1)
   const [direction, setDirection] = React.useState<WebhookDirection | null>(null)
   const [name, setName] = React.useState("")
+  const [description, setDescription] = React.useState("")
   const [path, setPath] = React.useState("")
   const [targetUrl, setTargetUrl] = React.useState("")
   const [methods, setMethods] = React.useState<WebhookMethod[]>(["POST"])
   const [events, setEvents] = React.useState<WebhookEventName[]>(["agent_reply"])
+  const [isWhatsapp, setIsWhatsapp] = React.useState(false)
+  const [businessId, setBusinessId] = React.useState("")
   const [submitting, setSubmitting] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [created, setCreated] = React.useState<CreatedWebhook | null>(null)
@@ -78,12 +80,6 @@ export function WebhookWizard({
   function toggleMethod(m: WebhookMethod) {
     setMethods((prev) =>
       prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m],
-    )
-  }
-
-  function toggleEvent(ev: WebhookEventName) {
-    setEvents((prev) =>
-      prev.includes(ev) ? prev.filter((x) => x !== ev) : [...prev, ev],
     )
   }
 
@@ -98,7 +94,7 @@ export function WebhookWizard({
     name.trim().length > 0 &&
     methods.length > 0 &&
     (direction === "inbound"
-      ? PATH_RE.test(path.trim())
+      ? PATH_RE.test(path.trim()) && (!isWhatsapp || businessId.trim().length > 0)
       : isValidUrl(targetUrl.trim()))
 
   async function handleCreate() {
@@ -108,10 +104,13 @@ export function WebhookWizard({
     const input: CreateWebhookInput = {
       direction,
       name: name.trim(),
+      description: description.trim() || null,
       path: direction === "inbound" ? path.trim() : null,
       targetUrl: direction === "outbound" ? targetUrl.trim() : null,
       methods,
       events: direction === "outbound" ? events : undefined,
+      isWhatsappReceiver: direction === "inbound" ? isWhatsapp : undefined,
+      businessId: direction === "inbound" && isWhatsapp ? businessId.trim() : undefined,
     }
     const res = await createWebhook(input)
     setSubmitting(false)
@@ -191,7 +190,19 @@ export function WebhookWizard({
             />
           </div>
 
+          <div className="space-y-1.5">
+            <Label htmlFor="wh-desc">Descrição</Label>
+            <Textarea
+              id="wh-desc"
+              value={description}
+              onChange={(e) => setDescription(e.currentTarget.value)}
+              placeholder="O que este webhook faz (opcional)."
+              rows={2}
+            />
+          </div>
+
           {direction === "inbound" ? (
+            <>
             <div className="space-y-1.5">
               <Label htmlFor="wh-path">Caminho</Label>
               <div className="flex items-stretch">
@@ -202,15 +213,49 @@ export function WebhookWizard({
                   id="wh-path"
                   value={path}
                   onChange={(e) => setPath(e.currentTarget.value)}
-                  placeholder="whatsapp/inbound"
+                  placeholder="whatsapp/loja-matriz"
                   className="rounded-l-none"
                   aria-invalid={path.length > 0 && !PATH_RE.test(path.trim())}
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                Apenas letras minúsculas, números, hífen e barra.
+                Apenas letras minúsculas, números, hífen e barra. Precisa ser único.
               </p>
             </div>
+
+            <div className="rounded-lg border border-border/60 bg-background/40 p-3">
+              <label className="flex cursor-pointer items-start justify-between gap-3">
+                <span className="min-w-0">
+                  <span className="text-sm font-medium text-foreground">
+                    Recebe dados do WhatsApp
+                  </span>
+                  <span className="mt-0.5 block text-xs text-muted-foreground">
+                    Este webhook recebe mensagens do WhatsApp (via n8n) e alimenta o Agente Nex.
+                  </span>
+                </span>
+                <Switch checked={isWhatsapp} onCheckedChange={setIsWhatsapp} />
+              </label>
+
+              {isWhatsapp && (
+                <div className="mt-3 space-y-3 border-t border-border/40 pt-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="wh-business">Número da empresa</Label>
+                    <Input
+                      id="wh-business"
+                      value={businessId}
+                      onChange={(e) => setBusinessId(e.currentTarget.value)}
+                      placeholder="Ex.: 556195630029"
+                      inputMode="numeric"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Número do WhatsApp da empresa que recebe as mensagens. Único por webhook.
+                    </p>
+                  </div>
+                  <WhatsappInboundHelp />
+                </div>
+              )}
+            </div>
+            </>
           ) : (
             <div className="space-y-1.5">
               <Label htmlFor="wh-target">URL de destino</Label>
@@ -250,20 +295,7 @@ export function WebhookWizard({
               <p className="text-xs text-muted-foreground">
                 Quais eventos da plataforma disparam este webhook.
               </p>
-              <div className="flex flex-col gap-2">
-                {OUTBOUND_EVENTS.map((ev) => (
-                  <label
-                    key={ev.value}
-                    className="flex cursor-pointer items-center gap-2 text-sm"
-                  >
-                    <Checkbox
-                      checked={events.includes(ev.value)}
-                      onCheckedChange={() => toggleEvent(ev.value)}
-                    />
-                    {ev.label}
-                  </label>
-                ))}
-              </div>
+              <WebhookEventSelector value={events} onChange={setEvents} />
               {events.length === 0 && (
                 <p className="text-xs text-amber-600 dark:text-amber-400">
                   Sem nenhum evento marcado, este webhook não receberá nada.

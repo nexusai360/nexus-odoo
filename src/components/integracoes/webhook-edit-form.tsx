@@ -1,0 +1,253 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Check, Loader2, Plus, RotateCcw } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { SecretRevealStep } from "@/components/ui/secret-reveal-step";
+import { WebhookEventSelector } from "@/components/integrations/webhook-event-selector";
+import { WhatsappInboundHelp } from "@/components/integrations/whatsapp-inbound-help";
+import { cn } from "@/lib/utils";
+import {
+  updateWebhook,
+  rotateWebhookSecret,
+  type WebhookListItem,
+  type WebhookEventName,
+  type WebhookMethod,
+} from "@/lib/actions/webhooks";
+
+const HTTP_METHODS: WebhookMethod[] = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"];
+const PATH_RE = /^[a-z0-9][a-z0-9-/]*$/;
+
+/** Form full-page de edição de webhook (F5.1). Inclui descrição, recebe-WhatsApp,
+ *  número da empresa, eventos e a ajuda do JSON. */
+export function WebhookEditForm({ webhook }: { webhook: WebhookListItem }) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const isInbound = webhook.direction === "inbound";
+
+  const [name, setName] = useState(webhook.name ?? "");
+  const [description, setDescription] = useState(webhook.description ?? "");
+  const [path, setPath] = useState(webhook.path ?? "");
+  const [targetUrl, setTargetUrl] = useState(webhook.targetUrl ?? "");
+  const [methods, setMethods] = useState<WebhookMethod[]>(webhook.methods as WebhookMethod[]);
+  const [events, setEvents] = useState<WebhookEventName[]>(webhook.events ?? []);
+  const [isWhatsapp, setIsWhatsapp] = useState(webhook.isWhatsappReceiver);
+  const [businessId, setBusinessId] = useState(webhook.businessId ?? "");
+  const [revealedSecret, setRevealedSecret] = useState<string | null>(null);
+
+  function toggleMethod(m: WebhookMethod) {
+    setMethods((prev) => (prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m]));
+  }
+
+  function back() {
+    router.push("/integracoes/webhooks");
+    router.refresh();
+  }
+
+  function handleRotate() {
+    startTransition(async () => {
+      const r = await rotateWebhookSecret(webhook.id);
+      if (r.success) setRevealedSecret(r.data.secretPlain);
+      else toast.error(r.error ?? "Erro ao rotacionar token");
+    });
+  }
+
+  const valid =
+    name.trim().length > 0 &&
+    methods.length > 0 &&
+    (isInbound
+      ? PATH_RE.test(path.trim()) && (!isWhatsapp || businessId.trim().length > 0)
+      : isValidUrl(targetUrl.trim()));
+
+  function handleSave() {
+    startTransition(async () => {
+      const r = await updateWebhook(webhook.id, {
+        name: name.trim(),
+        description: description.trim() || null,
+        path: isInbound ? path.trim() : null,
+        targetUrl: isInbound ? null : targetUrl.trim(),
+        methods,
+        events: isInbound ? undefined : events,
+        isWhatsappReceiver: isInbound ? isWhatsapp : undefined,
+        businessId: isInbound && isWhatsapp ? businessId.trim() : undefined,
+      });
+      if (r.success) {
+        toast.success("Webhook atualizado");
+        back();
+      } else {
+        toast.error(r.error ?? "Erro ao atualizar webhook");
+      }
+    });
+  }
+
+  if (revealedSecret) {
+    return (
+      <div className="space-y-4 rounded-xl border border-border p-6">
+        <SecretRevealStep
+          secret={revealedSecret}
+          label="Token do webhook"
+          onAcknowledge={() => setRevealedSecret(null)}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-5 rounded-xl border border-border p-6">
+      <div className="space-y-1.5">
+        <Label htmlFor="wh-name">Nome</Label>
+        <Input id="wh-name" value={name} onChange={(e) => setName(e.target.value)} />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="wh-desc">Descrição</Label>
+        <Textarea
+          id="wh-desc"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="O que este webhook faz (opcional)."
+          rows={2}
+        />
+      </div>
+
+      {isInbound ? (
+        <>
+          <div className="space-y-1.5">
+            <Label htmlFor="wh-path">Caminho</Label>
+            <Input
+              id="wh-path"
+              value={path}
+              onChange={(e) => setPath(e.target.value)}
+              placeholder="whatsapp/loja-matriz"
+              aria-invalid={path.length > 0 && !PATH_RE.test(path.trim())}
+            />
+            <p className="text-xs text-muted-foreground">
+              Apenas letras minúsculas, números, hífen e barra. Precisa ser único.
+            </p>
+          </div>
+
+          <div className="rounded-lg border border-border/60 bg-background/40 p-3">
+            <label className="flex cursor-pointer items-start justify-between gap-3">
+              <span className="min-w-0">
+                <span className="text-sm font-medium text-foreground">
+                  Recebe dados do WhatsApp
+                </span>
+                <span className="mt-0.5 block text-xs text-muted-foreground">
+                  Recebe mensagens do WhatsApp (via n8n) e alimenta o Agente Nex.
+                </span>
+              </span>
+              <Switch checked={isWhatsapp} onCheckedChange={setIsWhatsapp} />
+            </label>
+            {isWhatsapp && (
+              <div className="mt-3 space-y-3 border-t border-border/40 pt-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="wh-business">Número da empresa</Label>
+                  <Input
+                    id="wh-business"
+                    value={businessId}
+                    onChange={(e) => setBusinessId(e.target.value)}
+                    placeholder="Ex.: 556195630029"
+                    inputMode="numeric"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Número do WhatsApp da empresa que recebe as mensagens. Único por webhook.
+                  </p>
+                </div>
+                <WhatsappInboundHelp />
+              </div>
+            )}
+          </div>
+        </>
+      ) : (
+        <div className="space-y-1.5">
+          <Label htmlFor="wh-url">URL de destino</Label>
+          <Input
+            id="wh-url"
+            value={targetUrl}
+            onChange={(e) => setTargetUrl(e.target.value)}
+            placeholder="https://exemplo.com/webhook/abc"
+            aria-invalid={targetUrl.length > 0 && !isValidUrl(targetUrl.trim())}
+          />
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <Label>Métodos HTTP</Label>
+        <div className="flex flex-wrap gap-1.5">
+          {HTTP_METHODS.map((m) => {
+            const on = methods.includes(m);
+            return (
+              <button
+                key={m}
+                type="button"
+                onClick={() => toggleMethod(m)}
+                aria-pressed={on}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors",
+                  on
+                    ? "border-violet-500/50 bg-violet-500/10 text-violet-600 dark:text-violet-400"
+                    : "border-border text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {on ? <Check className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+                {m}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {!isInbound && (
+        <div className="space-y-2">
+          <Label>Eventos</Label>
+          <WebhookEventSelector value={events} onChange={setEvents} />
+        </div>
+      )}
+
+      <div className="rounded-lg border border-border bg-muted/30 p-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium">Token de assinatura</p>
+            <p className="text-xs text-muted-foreground">Gere um novo token e invalide o anterior.</p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="shrink-0 gap-1.5"
+            disabled={isPending}
+            onClick={handleRotate}
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            Rotacionar
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-end gap-2 border-t border-border/60 pt-4">
+        <Button type="button" variant="ghost" onClick={back} disabled={isPending}>
+          Cancelar
+        </Button>
+        <Button type="button" onClick={handleSave} disabled={isPending || !valid} className="gap-1.5">
+          {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+          Salvar alterações
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function isValidUrl(value: string): boolean {
+  try {
+    const u = new URL(value);
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+}

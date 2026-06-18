@@ -425,6 +425,38 @@ export async function listWebhooks(): Promise<DataResult<WebhookListItem[]>> {
   }
 }
 
+/** Retorna um webhook por id (sem o secret). Gate: super_admin. */
+export async function getWebhook(id: string): Promise<DataResult<WebhookListItem>> {
+  const me = await getCurrentUser();
+  if (!me) return { success: false, error: "Não autenticado" };
+  if (!isSuperAdmin(me.platformRole)) return { success: false, error: "Acesso negado" };
+
+  try {
+    const r = await prisma.whatsappWebhook.findUnique({ where: { id } });
+    if (!r) return { success: false, error: "Webhook não encontrado" };
+    return {
+      success: true,
+      data: {
+        id: r.id,
+        direction: r.direction as WebhookDirection,
+        name: r.name,
+        description: r.description ?? null,
+        path: r.path,
+        targetUrl: r.targetUrl ?? r.url,
+        methods: r.methods,
+        events: (r.events as WebhookEventName[] | undefined) ?? [],
+        isWhatsappReceiver: r.isWhatsappReceiver ?? false,
+        businessId: r.businessId ?? null,
+        enabled: r.enabled,
+        createdAt: r.createdAt,
+      },
+    };
+  } catch (err) {
+    console.error("[webhooks] getWebhook error:", err);
+    return { success: false, error: "Erro ao buscar webhook" };
+  }
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // rotateWebhookSecret
 // ──────────────────────────────────────────────────────────────────────────────

@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
+  MessageCircle,
   Pencil,
   Plus,
   Trash2,
@@ -11,18 +13,7 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useTour } from "@/components/tour/tour-provider";
-import { webhookTour } from "@/lib/tours/webhook-tour";
-import { WebhookWizard } from "@/components/integrations/webhook-wizard";
-import { WebhookEditDialog } from "@/components/integracoes/webhook-edit-dialog";
 import {
   deleteWebhook,
   listWebhooks,
@@ -51,22 +42,10 @@ function formatDate(date: Date) {
   }).format(new Date(date));
 }
 
-export function WebhooksContent({ initial, inboundBaseUrl }: Props) {
+export function WebhooksContent({ initial }: Props) {
+  const router = useRouter();
   const [webhooks, setWebhooks] = useState<WebhookListItem[]>(initial);
   const [isPending, startTransition] = useTransition();
-
-  // O assistente de criação é um modal. Durante o tour ele abre só no passo do
-  // assistente (índice 1); nos passos do botão e da lista fica fechado.
-  const { active, currentStepIndex } = useTour();
-  const tourWizardOpen =
-    active?.id === webhookTour.id && currentStepIndex === 1;
-
-  // Assistente de criação
-  const [showForm, setShowForm] = useState(false);
-  const formVisible = showForm || tourWizardOpen;
-
-  // Edição de webhook
-  const [editTarget, setEditTarget] = useState<WebhookListItem | null>(null);
 
   async function refresh() {
     const result = await listWebhooks();
@@ -98,7 +77,7 @@ export function WebhooksContent({ initial, inboundBaseUrl }: Props) {
 
   return (
     <div className="space-y-6 ">
-      {/* Cabeçalho com botão de criação */}
+      {/* Cabeçalho com botão de criação (navega para a tela cheia) */}
       <div data-tour="webhooks-novo" className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
           {webhooks.length === 0
@@ -108,35 +87,13 @@ export function WebhooksContent({ initial, inboundBaseUrl }: Props) {
         <Button
           type="button"
           size="sm"
-          onClick={() => setShowForm((v) => !v)}
           className="h-9"
+          onClick={() => router.push("/integracoes/webhooks/novo")}
         >
           <Plus className="mr-1.5 h-4 w-4" />
           Novo webhook
         </Button>
       </div>
-
-      {/* Assistente de criação, em modal */}
-      <WebhookCreateDialog
-        open={formVisible}
-        onOpenChange={(o) => {
-          setShowForm(o);
-          // Fechar pelo X também atualiza a lista, mostrando o webhook novo.
-          if (!o) {
-            startTransition(async () => {
-              await refresh();
-            });
-          }
-        }}
-        inboundBaseUrl={inboundBaseUrl}
-        onCreated={() => {
-          setShowForm(false);
-          startTransition(async () => {
-            await refresh();
-          });
-          toast.success("Webhook criado");
-        }}
-      />
 
       {/* Lista de webhooks */}
       <div data-tour="webhooks-lista" className="space-y-3">
@@ -155,57 +112,12 @@ export function WebhooksContent({ initial, inboundBaseUrl }: Props) {
               webhook={wh}
               isPending={isPending}
               onToggle={handleToggle}
-              onEdit={() => setEditTarget(wh)}
               onDelete={handleDelete}
             />
           ))
         )}
       </div>
-
-      <WebhookEditDialog
-        webhook={editTarget}
-        open={editTarget != null}
-        onOpenChange={(o) => {
-          if (!o) setEditTarget(null);
-        }}
-        onSaved={() => {
-          setEditTarget(null);
-          startTransition(async () => {
-            await refresh();
-          });
-        }}
-      />
     </div>
-  );
-}
-
-// ──────────────────────────────────────────────────────────────────────────────
-// WebhookCreateDialog, assistente de criação em modal
-// ──────────────────────────────────────────────────────────────────────────────
-
-function WebhookCreateDialog({
-  open,
-  onOpenChange,
-  inboundBaseUrl,
-  onCreated,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  inboundBaseUrl: string;
-  onCreated: () => void;
-}) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent data-tour="webhook-wizard-modal" className="sm:max-w-xl">
-        <DialogHeader>
-          <DialogTitle>Novo webhook</DialogTitle>
-          <DialogDescription>
-            Configure um webhook para receber ou enviar eventos de outros sistemas.
-          </DialogDescription>
-        </DialogHeader>
-        <WebhookWizard embedded inboundBaseUrl={inboundBaseUrl} onCreated={onCreated} />
-      </DialogContent>
-    </Dialog>
   );
 }
 
@@ -217,11 +129,11 @@ interface WebhookRowProps {
   webhook: WebhookListItem;
   isPending: boolean;
   onToggle: (id: string, enabled: boolean) => void;
-  onEdit: () => void;
   onDelete: (id: string) => void;
 }
 
-function WebhookRow({ webhook, isPending, onToggle, onEdit, onDelete }: WebhookRowProps) {
+function WebhookRow({ webhook, isPending, onToggle, onDelete }: WebhookRowProps) {
+  const router = useRouter();
   const isInbound = webhook.direction === "inbound";
   const DirIcon = isInbound ? ArrowDownToLine : ArrowUpFromLine;
   const endpoint = isInbound
@@ -248,7 +160,16 @@ function WebhookRow({ webhook, isPending, onToggle, onEdit, onDelete }: WebhookR
               <span className="text-[11px] text-muted-foreground">
                 {DIRECTION_LABELS[webhook.direction] ?? webhook.direction}
               </span>
+              {webhook.isWhatsappReceiver && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-green-500/15 px-1.5 py-0.5 text-[10px] font-medium text-green-600 dark:text-green-400">
+                  <MessageCircle className="h-2.5 w-2.5" aria-hidden />
+                  WhatsApp{webhook.businessId ? ` · ${webhook.businessId}` : ""}
+                </span>
+              )}
             </div>
+            {webhook.description && (
+              <p className="text-[11px] text-muted-foreground">{webhook.description}</p>
+            )}
             <div className="flex items-center gap-1.5 flex-wrap">
               {endpoint && (
                 <code className="max-w-full truncate rounded-md border border-border bg-muted px-1.5 py-0.5 text-[11px] font-mono text-foreground">
@@ -292,9 +213,8 @@ function WebhookRow({ webhook, isPending, onToggle, onEdit, onDelete }: WebhookR
                   variant="ghost"
                   size="sm"
                   className="h-8 w-8 p-0"
-                  disabled={isPending}
-                  onClick={onEdit}
                   aria-label="Editar webhook"
+                  onClick={() => router.push(`/integracoes/webhooks/${webhook.id}/editar`)}
                 />
               }
             >
