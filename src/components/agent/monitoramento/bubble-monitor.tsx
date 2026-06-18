@@ -14,12 +14,16 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Download,
   Gauge,
+  Loader2,
   MessageCircle,
   Scale,
   Smartphone,
 } from "lucide-react";
+import { toast } from "sonner";
 import { motion, useReducedMotion } from "framer-motion";
+import { exportConversationReport } from "@/lib/actions/agent-conversation-export";
 import {
   listBubbleCollaborators,
   listBubbleSessions,
@@ -185,6 +189,74 @@ function ChannelBadge({ channel }: { channel: string }) {
 // interna. Colaboradores e Sessões têm a MESMA largura; Conversa fica com o resto.
 const PANEL =
   "flex h-[72vh] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm lg:flex-row";
+/**
+ * Botão de download da conversa em .txt (mesmo relatório da bubble:
+ * exportConversationReport, agora com a avaliação do usuário por resposta).
+ * Reutilizado na coluna Sessões (1 por sessão) e no cabeçalho da Conversa.
+ * Tem estado de carregando próprio e para a propagação do clique (não seleciona
+ * a sessão ao baixar).
+ */
+function DownloadConvButton({
+  conversationId,
+  className,
+  title = "Baixar conversa (.txt)",
+  size = "md",
+}: {
+  conversationId: string;
+  className?: string;
+  title?: string;
+  size?: "sm" | "md";
+}) {
+  const [loading, setLoading] = React.useState(false);
+  const box = size === "sm" ? "h-5 w-5" : "h-6 w-6";
+  const glyph = size === "sm" ? "h-3 w-3" : "h-3.5 w-3.5";
+  const onClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (loading) return;
+    setLoading(true);
+    try {
+      const r = await exportConversationReport(conversationId);
+      if (!r.ok) {
+        toast.error(r.error || "Não foi possível baixar a conversa.");
+        return;
+      }
+      const blob = new Blob([r.content], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = r.filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("Falha ao baixar a conversa.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={loading}
+      title={title}
+      aria-label={title}
+      className={cn(
+        "inline-flex shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-muted hover:text-violet-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 disabled:cursor-not-allowed disabled:opacity-60",
+        box,
+        className,
+      )}
+    >
+      {loading ? (
+        <Loader2 className={cn(glyph, "animate-spin")} aria-hidden />
+      ) : (
+        <Download className={glyph} aria-hidden />
+      )}
+    </button>
+  );
+}
+
 const SECTION = "flex min-h-0 min-w-0 flex-1 flex-col";
 const DIVIDER = "border-b border-border lg:border-b-0 lg:border-r";
 const SIDE_COL = "lg:w-[330px] lg:flex-none";
@@ -562,11 +634,11 @@ export function BubbleMonitor() {
             <Empty>Sem sessão ativa.</Empty>
           ) : (
             sessions.map((s) => (
+              <div key={s.conversationId} className="relative">
               <button
-                key={s.conversationId}
                 onClick={() => setSessionId(s.conversationId)}
                 className={cn(
-                  "mb-1 w-full rounded-md p-2 text-left transition-colors",
+                  "mb-1 w-full rounded-md p-2 pr-9 text-left transition-colors",
                   sessionId === s.conversationId ? "bg-muted" : "hover:bg-muted/60",
                 )}
               >
@@ -592,6 +664,12 @@ export function BubbleMonitor() {
                   />
                 </div>
               </button>
+                <DownloadConvButton
+                  conversationId={s.conversationId}
+                  className="absolute right-2 top-2"
+                  title={`Baixar conversa da Sessão ${s.index} (.txt)`}
+                />
+              </div>
             ))
           )}
         </div>
@@ -599,11 +677,20 @@ export function BubbleMonitor() {
 
       {/* Coluna 3: conversa */}
       <div className={cn(SECTION, "relative")}>
-        <div className={cn(HEAD, "flex items-center")}>
+        <div className={cn(HEAD, "flex items-center justify-between gap-2")}>
           <span>Conversa</span>
-          {/* Espaçador invisível com a mesma altura do chevron (h-5) das
+          {/* Download da conversa selecionada; mesma altura (h-5) do chevron das
               colunas laterais, pra borda inferior alinhar exatamente. */}
-          <span aria-hidden className="h-5" />
+          {sessionId ? (
+            <DownloadConvButton
+              conversationId={sessionId}
+              size="sm"
+              className="-mr-1"
+              title="Baixar esta conversa (.txt)"
+            />
+          ) : (
+            <span aria-hidden className="h-5" />
+          )}
         </div>
         <div
           ref={convScrollRef}
