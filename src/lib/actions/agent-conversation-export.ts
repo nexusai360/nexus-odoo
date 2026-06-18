@@ -61,6 +61,25 @@ export async function exportConversationReport(
   });
   if (!conv) return { ok: false, error: "Conversa não encontrada" };
 
+  // Avaliação do usuário (voto + comentário) por mensagem da IA. Mapeia o
+  // feedback pela mensagem do assistant para imprimir junto da resposta.
+  const feedbacks = await prisma.messageFeedback.findMany({
+    where: { conversationId },
+    select: {
+      assistantMessageId: true,
+      rating: true,
+      comment: true,
+      user: { select: { name: true } },
+    },
+  });
+  const feedbackByMessage = new Map(feedbacks.map((f) => [f.assistantMessageId, f]));
+  const RATING_LABELS: Record<string, string> = {
+    CORRETO: "Correto",
+    PARCIAL: "Parcial",
+    ERRADO: "Errado",
+    ALUCINOU: "Alucinou",
+  };
+
   const lines: string[] = [];
   lines.push("==================================================");
   lines.push("RELATÓRIO COMPLETO DA CONVERSA, AGENTE NEX");
@@ -132,6 +151,23 @@ export async function exportConversationReport(
         sug.forEach((s, i) => lines.push(`  ${i + 1}. ${s}`));
       } else {
         lines.push("Sugestoes apresentadas: (nao registradas)");
+      }
+
+      // Avaliação do usuário sobre esta resposta (voto + comentário).
+      const fb = feedbackByMessage.get(msg.id);
+      if (fb) {
+        const ratingLabel = RATING_LABELS[fb.rating] ?? fb.rating;
+        const autor = fb.user?.name ? ` (por ${fb.user.name})` : "";
+        lines.push("");
+        lines.push(`Avaliacao do usuario${autor}: ${ratingLabel}`);
+        lines.push(
+          fb.comment && fb.comment.trim().length > 0
+            ? `Comentario do usuario: ${fb.comment.trim()}`
+            : "Comentario do usuario: (sem comentario)",
+        );
+      } else {
+        lines.push("");
+        lines.push("Avaliacao do usuario: (sem avaliacao)");
       }
     }
     lines.push("");
