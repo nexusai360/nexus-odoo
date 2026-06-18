@@ -6,13 +6,13 @@ import { Webhook } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/page-header";
 import { Breadcrumb } from "@/components/integracoes/breadcrumb";
+import { WebhookWizard } from "@/components/integrations/webhook-wizard";
 import {
-  WebhookWizard,
   webhookKindBadgeClass,
   webhookKindLabel,
   webhookKindSubtitle,
   type WebhookKind,
-} from "@/components/integrations/webhook-wizard";
+} from "@/lib/integrations/webhook-kind";
 import { cn } from "@/lib/utils";
 
 /** Tela cheia de criação de webhook. Dona do tipo escolhido, para refletir na

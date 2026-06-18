@@ -9,7 +9,7 @@ import {
   webhookKindBadgeClass,
   webhookKindLabel,
   type WebhookKind,
-} from "@/components/integrations/webhook-wizard";
+} from "@/lib/integrations/webhook-kind";
 import { getWebhook } from "@/lib/actions/webhooks";
 import { resolveWebhookInboundBase } from "@/lib/mcp-public-url";
 

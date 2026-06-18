@@ -11,6 +11,12 @@ import {
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import {
+  webhookKindBadgeClass,
+  webhookKindLabel,
+  webhookKindSubtitle,
+  type WebhookKind,
+} from "@/lib/integrations/webhook-kind"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -34,77 +40,53 @@ const HTTP_METHODS: WebhookMethod[] = ["GET", "POST", "PUT", "PATCH", "DELETE", 
 /** Slug seguro: mesma regra do schema da Server Action. */
 const PATH_RE = /^[a-z0-9][a-z0-9-/]*$/
 
-/** Tipo de webhook escolhido no passo 1 (cada um com experiência própria). */
-export type WebhookKind = "whatsapp" | "inbound_generic" | "outbound"
+// Re-exporta os helpers de tipo (rótulo/cor/subtítulo) para quem já importa
+// daqui. A fonte é o módulo server-safe `@/lib/integrations/webhook-kind`.
+export { webhookKindBadgeClass, webhookKindLabel, webhookKindSubtitle, type WebhookKind }
 
 interface KindMeta {
   id: WebhookKind
   icon: LucideIcon
-  title: string
   description: string
-  /** Cores do tipo. `badge` = classes da tag/pílula (cabeçalho/navegação). */
-  accent: { icon: string; ring: string; bg: string; badge: string }
+  /** Cores do tipo para ícone/anel/fundo (a tag usa `webhookKindBadgeClass`). */
+  accent: { icon: string; ring: string; bg: string }
 }
 
 const KINDS: KindMeta[] = [
   {
     id: "whatsapp",
     icon: MessageCircle,
-    title: "Receber mensagens do WhatsApp",
     description:
       "Recebe as mensagens do WhatsApp e alimenta o Agente Nex. A plataforma cuida da validação e da resposta.",
     accent: {
       icon: "text-green-500",
       ring: "ring-green-500/50 border-green-500/40",
       bg: "bg-green-500/5",
-      badge: "bg-green-500/15 text-green-700 dark:text-green-400",
     },
   },
   {
     id: "inbound_generic",
     icon: ArrowDownToLine,
-    title: "Receber eventos",
     description:
       "Endpoint genérico: outro sistema chama este endereço quando algo acontece e a plataforma escuta.",
     accent: {
       icon: "text-sky-500",
       ring: "ring-sky-500/50 border-sky-500/40",
       bg: "bg-sky-500/5",
-      badge: "bg-sky-500/15 text-sky-700 dark:text-sky-400",
     },
   },
   {
     id: "outbound",
     icon: ArrowUpFromLine,
-    title: "Enviar eventos",
     description:
       "A plataforma dispara uma chamada para um endereço externo quando um evento ocorre aqui dentro.",
     accent: {
       icon: "text-violet-500",
       ring: "ring-violet-500/50 border-violet-500/40",
       bg: "bg-violet-500/5",
-      badge: "bg-violet-500/15 text-violet-700 dark:text-violet-400",
     },
   },
 ]
-
-/** Rótulo curto do tipo (para navegação/cabeçalho). */
-export function webhookKindLabel(kind: WebhookKind): string {
-  return kindMeta(kind).title
-}
-
-/** Classes da tag/pílula do tipo (segue a cor do tipo: verde/azul/roxo). */
-export function webhookKindBadgeClass(kind: WebhookKind): string {
-  return kindMeta(kind).accent.badge
-}
-
-/** Subtítulo personalizado por tipo (cabeçalho da tela). */
-export function webhookKindSubtitle(kind: WebhookKind | null): string {
-  if (kind === "whatsapp") return "Configure um webhook para receber mensagens do WhatsApp."
-  if (kind === "inbound_generic") return "Configure um webhook para receber eventos de outros sistemas."
-  if (kind === "outbound") return "Configure um webhook para enviar eventos para outros sistemas."
-  return "Escolha o tipo de webhook que você quer criar."
-}
 
 function kindMeta(kind: WebhookKind): KindMeta {
   return KINDS.find((k) => k.id === kind) ?? KINDS[0]
@@ -414,7 +396,7 @@ export function KindBanner({ kind }: { kind: WebhookKind }) {
         <Icon className={cn("h-5 w-5", meta.accent.icon)} aria-hidden />
       </span>
       <div className="min-w-0">
-        <p className="text-sm font-semibold text-foreground">{meta.title}</p>
+        <p className="text-sm font-semibold text-foreground">{webhookKindLabel(meta.id)}</p>
         <p className="truncate text-xs text-muted-foreground">{meta.description}</p>
       </div>
     </div>
@@ -447,7 +429,7 @@ function KindCard({
         <Icon className={cn("h-5 w-5", selected ? meta.accent.icon : "text-muted-foreground")} aria-hidden />
       </span>
       <span className="min-w-0">
-        <span className="block font-medium text-foreground">{meta.title}</span>
+        <span className="block font-medium text-foreground">{webhookKindLabel(meta.id)}</span>
         <span className="mt-0.5 block text-xs text-muted-foreground">{meta.description}</span>
       </span>
     </button>
