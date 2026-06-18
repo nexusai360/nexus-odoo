@@ -57,6 +57,8 @@ export function AgentAvailabilityCard({ initial, isConfigured }: Props) {
       setPending(null);
       if (!result.success) {
         toast.error(result.error ?? "Erro ao atualizar disponibilidade.");
+      } else {
+        toast.success("Disponibilidade do Agente Nex atualizada.");
       }
       router.refresh();
     });
@@ -101,7 +103,15 @@ export function AgentAvailabilityCard({ initial, isConfigured }: Props) {
 
       <div className="grid gap-3 sm:grid-cols-2">
         <ChannelRow
-          icon={<MessageCircle className="h-4 w-4" aria-hidden />}
+          icon={
+            <MessageCircle
+              className={cn(
+                "h-4 w-4",
+                bubble !== "off" ? "text-violet-500" : "text-muted-foreground/60",
+              )}
+              aria-hidden
+            />
+          }
           title="Bubble no app"
           helper="Quem ve a bolha flutuante nas paginas autenticadas."
           value={bubble}
@@ -110,7 +120,15 @@ export function AgentAvailabilityCard({ initial, isConfigured }: Props) {
           disabled={!isConfigured}
         />
         <ChannelRow
-          icon={<Smartphone className="h-4 w-4" aria-hidden />}
+          icon={
+            <Smartphone
+              className={cn(
+                "h-4 w-4",
+                whatsapp !== "off" ? "text-violet-500" : "text-muted-foreground/60",
+              )}
+              aria-hidden
+            />
+          }
           title="WhatsApp"
           helper="Quem pode falar com o agente pelo WhatsApp (via webhook)."
           value={whatsapp}
@@ -165,6 +183,7 @@ function ChannelRow({
           onChange={onChange}
           options={LEVEL_OPTIONS}
           disabled={disabled || loading}
+          mutedValue="off"
           aria-label={`Nivel de acesso , ${title}`}
         />
       </div>
