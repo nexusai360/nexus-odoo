@@ -34,6 +34,8 @@ export interface UserListItem {
   isOwner: boolean;
   isActive: boolean;
   createdAt: Date;
+  /** Último login (null = nunca acessou). */
+  lastLoginAt: Date | null;
 }
 
 const ROLE_VALUES = ["super_admin", "admin", "manager", "viewer"] as const;
@@ -57,6 +59,7 @@ export async function listUsers(): Promise<ActionResult<UserListItem[]>> {
         isOwner: true,
         isActive: true,
         createdAt: true,
+        lastLoginAt: true,
       },
       orderBy: { createdAt: "asc" },
     });

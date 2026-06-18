@@ -301,6 +301,9 @@ export function UsersContent({ currentUser }: UsersContentProps) {
                   Criado em
                 </TableHead>
                 <TableHead className="text-center text-muted-foreground">
+                  Último acesso
+                </TableHead>
+                <TableHead className="text-center text-muted-foreground">
                   Ações
                 </TableHead>
               </TableRow>
@@ -404,6 +407,18 @@ export function UsersContent({ currentUser }: UsersContentProps) {
                       {format(new Date(u.createdAt), "dd MMM yyyy HH:mm", {
                         locale: ptBR,
                       })}
+                    </TableCell>
+
+                    <TableCell className="text-center text-sm">
+                      {u.lastLoginAt ? (
+                        <span className="text-muted-foreground">
+                          {format(new Date(u.lastLoginAt), "dd MMM yyyy HH:mm", {
+                            locale: ptBR,
+                          })}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground/50">Nunca</span>
+                      )}
                     </TableCell>
 
                     {/* Ações */}
