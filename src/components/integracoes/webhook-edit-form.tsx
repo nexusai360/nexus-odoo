@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Loader2, Lock, Plus, RotateCcw } from "lucide-react";
+import { Check, Loader2, Lock, Minus, Plus, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,15 +46,15 @@ function arrKey(arr: string[]): string {
 export function WebhookEditForm({
   webhook,
   inboundBaseUrl,
-  existingPaths,
-  existingBusinessIds,
+  existingPaths = [],
+  existingBusinessIds = [],
 }: {
   webhook: WebhookListItem;
   inboundBaseUrl: string;
   /** Slugs de OUTROS webhooks (exclui o atual), para unicidade em tempo real. */
-  existingPaths: string[];
+  existingPaths?: string[];
   /** business_id de OUTROS webhooks (exclui o atual), para unicidade. */
-  existingBusinessIds: string[];
+  existingBusinessIds?: string[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -378,13 +378,21 @@ export function WebhookEditForm({
                   onClick={() => toggleMethod(m)}
                   aria-pressed={on}
                   className={cn(
-                    "inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors",
+                    "group inline-flex cursor-pointer items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors",
                     on
-                      ? "border-violet-500/50 bg-violet-500/10 text-violet-600 dark:text-violet-400"
-                      : "border-border text-muted-foreground hover:text-foreground",
+                      ? "border-violet-500/50 bg-violet-500/10 text-violet-600 hover:border-violet-500/70 hover:bg-violet-500/20 dark:text-violet-400"
+                      : "border-border text-foreground hover:bg-accent",
                   )}
                 >
-                  {on ? <Check className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+                  {on ? (
+                    <>
+                      {/* Ativo: ✓ vira − ao passar o mouse (indica que vai desativar). */}
+                      <Check className="h-3 w-3 group-hover:hidden" />
+                      <Minus className="hidden h-3 w-3 group-hover:block" />
+                    </>
+                  ) : (
+                    <Plus className="h-3 w-3" />
+                  )}
                   {m}
                 </button>
               );

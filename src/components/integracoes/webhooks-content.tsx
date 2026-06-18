@@ -46,17 +46,23 @@ interface Props {
   inboundBaseUrl: string;
 }
 
+// Timezone fixo (Brasil) para o texto bater entre servidor (UTC) e cliente e não
+// quebrar a hidratação.
+const TZ = "America/Sao_Paulo";
+
 function formatDateTime(date: Date) {
   const dt = new Date(date);
   const d = new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",
     month: "long",
     year: "numeric",
+    timeZone: TZ,
   }).format(dt);
   const t = new Intl.DateTimeFormat("pt-BR", {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
+    timeZone: TZ,
   }).format(dt);
   return `${d} às ${t}`;
 }
