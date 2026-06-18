@@ -237,7 +237,8 @@ export function UserFormDialog({
     else if (form.name.trim().length < 2)
       next.name = "Mínimo de 2 caracteres";
 
-    if (!isEdit) {
+    {
+      // E-mail é validado em criação E em edição (agora editável).
       const e = form.email.trim();
       if (!e) next.email = "E-mail obrigatório";
       else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e))
@@ -263,13 +264,15 @@ export function UserFormDialog({
       toast.error("Verifique os campos da etapa Identidade.");
       return;
     }
-    // Modo create: verifica duplicidade de e-mail antes de avançar.
-    if (!isEdit) {
+    // Verifica duplicidade de e-mail antes de avançar: na criação sempre; na
+    // edição só quando o e-mail mudou (manter o atual é permitido).
+    const normalizedEmail = form.email.trim().toLowerCase();
+    const emailChanged =
+      isEdit && user ? normalizedEmail !== user.email.toLowerCase() : false;
+    if (!isEdit || emailChanged) {
       setCheckingEmail(true);
       try {
-        const { available } = await checkEmailAvailable(
-          form.email.trim().toLowerCase(),
-        );
+        const { available } = await checkEmailAvailable(normalizedEmail);
         if (!available) {
           setErrors((e) => ({
             ...e,
@@ -362,6 +365,7 @@ export function UserFormDialog({
       const result = await updateUser({
         id: user.id,
         name: form.name.trim(),
+        email: form.email.trim().toLowerCase(),
         platformRole: lockRole ? undefined : form.role,
         password: form.password.length > 0 ? form.password : undefined,
         isActive: showActiveToggle ? form.isActive : undefined,
@@ -695,12 +699,10 @@ function StepIdentity({
           aria-invalid={!!errors.email || undefined}
           aria-describedby={errors.email ? ids.emailError : undefined}
           autoComplete="email"
-          disabled={isEdit}
-          readOnly={isEdit}
         />
         {isEdit ? (
           <p className="text-[11px] text-muted-foreground">
-            O e-mail não pode ser alterado.
+            Este é o login do usuário. Alterá-lo muda o e-mail de acesso.
           </p>
         ) : null}
         {errors.email ? (

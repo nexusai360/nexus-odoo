@@ -222,6 +222,9 @@ export async function checkEmailAvailable(
 const UpdateUserInput = z.object({
   id: z.string().uuid(),
   name: z.string().min(2).max(120).optional(),
+  // E-mail editável por quem tem permissão de editar o usuário (canEditUser).
+  // Independente da senha: trocar um não obriga trocar o outro.
+  email: z.string().email().max(254).optional(),
   platformRole: z.enum(ROLE_VALUES).optional(),
   password: z.string().min(8).max(72).optional(),
   isActive: z.boolean().optional(),
@@ -238,6 +241,7 @@ export async function updateUser(rawInput: unknown): Promise<ActionResult> {
 
     if (
       input.name === undefined &&
+      input.email === undefined &&
       input.platformRole === undefined &&
       input.password === undefined &&
       input.isActive === undefined
@@ -247,13 +251,33 @@ export async function updateUser(rawInput: unknown): Promise<ActionResult> {
 
     const target = await prisma.user.findUnique({
       where: { id: input.id },
-      select: { id: true, platformRole: true, isOwner: true },
+      select: { id: true, email: true, platformRole: true, isOwner: true },
     });
     if (!target) return { success: false, error: "Usuário não encontrado" };
 
     const editCheck = canEditUser(me, target);
     if (!editCheck.allowed) {
       return { success: false, error: editCheck.reason ?? "Sem permissão" };
+    }
+
+    // E-mail: normaliza e checa unicidade só quando muda de fato. Quem chega
+    // aqui já passou pelo canEditUser, então tem o poder de alterar o login.
+    let nextEmail: string | undefined;
+    if (input.email !== undefined) {
+      const normalized = input.email.trim().toLowerCase();
+      if (normalized !== target.email) {
+        const taken = await prisma.user.findFirst({
+          where: { email: normalized, id: { not: input.id } },
+          select: { id: true },
+        });
+        if (taken) {
+          return {
+            success: false,
+            error: "Este e-mail já está em uso por outro usuário.",
+          };
+        }
+        nextEmail = normalized;
+      }
     }
 
     if (input.platformRole && input.platformRole !== target.platformRole) {
@@ -281,6 +305,7 @@ export async function updateUser(rawInput: unknown): Promise<ActionResult> {
       where: { id: input.id },
       data: {
         ...(input.name ? { name: input.name } : {}),
+        ...(nextEmail ? { email: nextEmail } : {}),
         ...(input.platformRole ? { platformRole: input.platformRole } : {}),
         ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
         ...(passwordHash
@@ -298,6 +323,8 @@ export async function updateUser(rawInput: unknown): Promise<ActionResult> {
         name: input.name,
         platformRole: input.platformRole,
         passwordChanged: !!passwordHash,
+        emailChanged: !!nextEmail,
+        ...(nextEmail ? { email: nextEmail } : {}),
         isActive: input.isActive,
       },
     });
