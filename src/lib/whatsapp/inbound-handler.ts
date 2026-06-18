@@ -6,16 +6,17 @@
  *    URL e marca o webhook como "recebe WhatsApp";
  *  - a rota fixa legada `/api/integrations/whatsapp/inbound`.
  *
- * Recebe o webhook receptor já resolvido (secret + business_id) e executa: HMAC,
- * validação do payload, idempotência, resolução do usuário, barreiras L1/L2,
- * teto diário, enfileiramento do job (anexando o business_id para rotear a resposta).
+ * Recebe o webhook receptor já resolvido (secret + business_id) e executa:
+ * validação do token (Authorization: Bearer), validação do payload, idempotência,
+ * resolução do usuário, barreiras L1/L2, teto diário, enfileiramento do job
+ * (anexando o business_id para rotear a resposta).
  */
 
 import { type NextRequest, NextResponse } from "next/server";
 import { Queue } from "bullmq";
 import IORedis from "ioredis";
 import { prisma } from "@/lib/prisma";
-import { verifySignature } from "@/lib/whatsapp/hmac";
+import { verifyToken } from "@/lib/whatsapp/hmac";
 import { decrypt } from "@/lib/encryption";
 import { inboundSchema } from "@/lib/whatsapp/inbound-payload";
 import { resolveWhatsappUser } from "@/lib/whatsapp/resolve";
@@ -97,7 +98,7 @@ async function fireBlocked(
 
 /**
  * Processa uma requisição de entrada para um webhook receptor já resolvido.
- * Faz HMAC, validação, idempotência, barreiras e enfileira o job.
+ * Valida o token, o payload, idempotência, barreiras e enfileira o job.
  */
 export async function handleWhatsappInbound(
   req: NextRequest,
@@ -124,11 +125,13 @@ export async function handleWhatsappInbound(
     return NextResponse.json({ error: "Payload muito grande" }, { status: 413 });
   }
 
-  // HMAC (fail-closed) com o secret DESTE webhook.
-  const signature = req.headers.get("x-signature") ?? "";
-  const timestamp = req.headers.get("x-timestamp") ?? "";
-  if (!verifySignature(bodyText, webhook.secret, signature, timestamp)) {
-    return NextResponse.json({ error: "Assinatura inválida" }, { status: 401 });
+  // Token fixo (fail-closed): Authorization: Bearer <token do webhook>.
+  const authHeader = req.headers.get("authorization") ?? "";
+  const providedToken = authHeader.slice(0, 7).toLowerCase() === "bearer "
+    ? authHeader.slice(7).trim()
+    : "";
+  if (!verifyToken(providedToken, webhook.secret)) {
+    return NextResponse.json({ error: "Token inválido" }, { status: 401 });
   }
 
   // Parse + validação.

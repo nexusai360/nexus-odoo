@@ -1,4 +1,4 @@
-import { signPayload, verifySignature } from "./hmac";
+import { signPayload, verifyToken } from "./hmac";
 
 const SECRET = "test-secret-key-abcdef";
 const BODY = JSON.stringify({ messageId: "wamid.123", from: "+5511999999999" });
@@ -30,37 +30,24 @@ describe("signPayload", () => {
   });
 });
 
-describe("verifySignature", () => {
-  it("aceita assinatura válida dentro da janela", () => {
-    const sig = signPayload(BODY, SECRET, TS);
-    expect(verifySignature(BODY, SECRET, sig, TS, NOW)).toBe(true);
+describe("verifyToken", () => {
+  it("aceita token igual ao secret", () => {
+    expect(verifyToken(SECRET, SECRET)).toBe(true);
   });
 
-  it("rejeita assinatura inválida", () => {
-    expect(verifySignature(BODY, SECRET, "deadbeef".repeat(8), TS, NOW)).toBe(false);
+  it("rejeita token diferente", () => {
+    expect(verifyToken("outro-token", SECRET)).toBe(false);
   });
 
-  it("rejeita timestamp mais de 5 min no passado", () => {
-    const oldTs = String(NOW - 5 * 60 * 1000 - 1);
-    const sig = signPayload(BODY, SECRET, oldTs);
-    expect(verifySignature(BODY, SECRET, sig, oldTs, NOW)).toBe(false);
+  it("rejeita token vazio", () => {
+    expect(verifyToken("", SECRET)).toBe(false);
   });
 
-  it("rejeita timestamp mais de 5 min no futuro", () => {
-    const futureTs = String(NOW + 5 * 60 * 1000 + 1);
-    const sig = signPayload(BODY, SECRET, futureTs);
-    expect(verifySignature(BODY, SECRET, sig, futureTs, NOW)).toBe(false);
+  it("rejeita secret esperado vazio", () => {
+    expect(verifyToken(SECRET, "")).toBe(false);
   });
 
-  it("aceita timestamp exatamente no limite (±5 min)", () => {
-    const tsExactLimit = String(NOW - 5 * 60 * 1000);
-    const sig = signPayload(BODY, SECRET, tsExactLimit);
-    expect(verifySignature(BODY, SECRET, sig, tsExactLimit, NOW)).toBe(true);
-  });
-
-  it("rejeita quando body foi adulterado", () => {
-    const sig = signPayload(BODY, SECRET, TS);
-    const tamperedBody = BODY + "x";
-    expect(verifySignature(tamperedBody, SECRET, sig, TS, NOW)).toBe(false);
+  it("rejeita quando o comprimento difere (prefixo do secret)", () => {
+    expect(verifyToken(SECRET.slice(0, -1), SECRET)).toBe(false);
   });
 });

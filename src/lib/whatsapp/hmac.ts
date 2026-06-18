@@ -1,31 +1,28 @@
 /**
- * HMAC-SHA256 para autenticação do webhook receptor.
+ * Autenticação dos webhooks de WhatsApp.
  *
- * O n8n assina o corpo cru da requisição com um shared secret
- * (WhatsappWebhook.secret descifrado) e envia:
- *   X-Signature: <hex de 64 chars>
- *   X-Timestamp:  <epoch ms como string>
+ * ENTRADA (n8n → plataforma): autenticação por TOKEN FIXO. Quem envia coloca o
+ * token do webhook (WhatsappWebhook.secret descifrado) no header
+ * `Authorization: Bearer <token>`; o endpoint compara em tempo constante com o
+ * secret salvo (`verifyToken`). Simples de configurar; sobre HTTPS e com dedup
+ * por messageId é seguro para o hop interno.
  *
- * O endpoint valida a assinatura e rejeita timestamps fora da janela de ±5 min
- * (anti-replay). Combinado com dedup por messageId, cobre reentrega legítima
- * do n8n sem risco de replay mal-intencionado.
+ * SAÍDA (plataforma → n8n): a resposta do agente é assinada com HMAC-SHA256
+ * (`signPayload`), calculada automaticamente pela plataforma. Mantido para os
+ * webhooks de saída (`emit-reply`).
  */
 
 import { createHmac, timingSafeEqual } from "crypto";
 
-/** Janela de tolerância de timestamp: 5 minutos em ms. */
-const TIMESTAMP_TOLERANCE_MS = 5 * 60 * 1000;
-
 /**
- * Calcula a assinatura HMAC-SHA256 do par `body + timestamp`.
+ * Calcula a assinatura HMAC-SHA256 do par `body + timestamp` (usado na SAÍDA).
  *
- * A mensagem assinada é `${timestamp}.${body}` , o timestamp é parte da
- * mensagem assinada para evitar replay (o mesmo corpo com timestamp diferente
- * produz assinatura diferente).
+ * A mensagem assinada é `${timestamp}.${body}` , o timestamp entra na mensagem
+ * para evitar replay (o mesmo corpo com timestamp diferente muda a assinatura).
  *
  * @param body      Corpo cru da requisição (string UTF-8).
  * @param secret    Segredo compartilhado (em claro, já descifrado).
- * @param timestamp Epoch ms como string (valor de X-Timestamp).
+ * @param timestamp Epoch ms como string.
  * @returns         Hex de 64 caracteres.
  */
 export function signPayload(body: string, secret: string, timestamp: string): string {
@@ -34,35 +31,20 @@ export function signPayload(body: string, secret: string, timestamp: string): st
 }
 
 /**
- * Verifica a assinatura HMAC e o timestamp (anti-replay).
+ * Compara, em tempo constante, o token recebido com o secret esperado do webhook
+ * (autenticação da ENTRADA). Vazio ou comprimento diferente → falso.
  *
- * @param body      Corpo cru da requisição.
- * @param secret    Segredo compartilhado.
- * @param signature Valor do header X-Signature.
- * @param timestamp Valor do header X-Timestamp (epoch ms como string).
- * @param now       Epoch ms atual (injetável para teste; default = Date.now()).
- * @returns         true se válido; false caso contrário.
+ * @param provided Token recebido (valor após "Bearer " no header Authorization).
+ * @param expected Secret do webhook em claro (já descifrado).
+ * @returns        true se iguais; false caso contrário.
  */
-export function verifySignature(
-  body: string,
-  secret: string,
-  signature: string,
-  timestamp: string,
-  now: number = Date.now(),
-): boolean {
-  // Validação de timestamp (anti-replay)
-  const ts = Number(timestamp);
-  if (!Number.isFinite(ts)) return false;
-  if (Math.abs(now - ts) > TIMESTAMP_TOLERANCE_MS) return false;
-
-  // Comparação timing-safe da assinatura
-  const expected = signPayload(body, secret, timestamp);
-
-  // Normalizar comprimentos antes da comparação timing-safe
-  if (signature.length !== expected.length) return false;
-
+export function verifyToken(provided: string, expected: string): boolean {
+  if (!provided || !expected) return false;
+  const a = Buffer.from(provided, "utf8");
+  const b = Buffer.from(expected, "utf8");
+  if (a.length !== b.length) return false;
   try {
-    return timingSafeEqual(Buffer.from(signature, "utf8"), Buffer.from(expected, "utf8"));
+    return timingSafeEqual(a, b);
   } catch {
     return false;
   }

@@ -4,8 +4,8 @@
  * Recebimento de mensagens WhatsApp por webhook com SLUG definido pelo usuário
  * (F5.1, opção B). O usuário cria um webhook de entrada, marca "Recebe dados do
  * WhatsApp" e define o slug; este endpoint resolve o webhook por esse slug,
- * valida a HMAC com o secret DELE e alimenta o agente, anexando o business_id
- * (número da empresa) para rotear a resposta.
+ * valida o token (Authorization: Bearer) contra o secret DELE e alimenta o
+ * agente, anexando o business_id (número da empresa) para rotear a resposta.
  *
  * Pode haver vários WhatsApps (vários webhooks com slugs/numeros distintos).
  */

@@ -1,7 +1,7 @@
 /**
  * Testes do endpoint POST /api/integrations/whatsapp/inbound.
  *
- * Cobre: autenticação HMAC, validação de payload, idempotência,
+ * Cobre: autenticação por token (Bearer), validação de payload, idempotência,
  * resolução de usuário, teto diário e enfileiramento do job.
  */
 
@@ -9,7 +9,7 @@
 // Mocks , DEVEM vir antes de qualquer import
 // ──────────────────────────────────────────────
 
-const mockVerifySignature = jest.fn();
+const mockVerifyToken = jest.fn();
 const mockResolveWhatsappUser = jest.fn();
 const mockProcessedFindUnique = jest.fn();
 const mockProcessedCreate = jest.fn();
@@ -25,7 +25,7 @@ const mockQueueAdd = jest.fn();
 const mockEmitAgentReply = jest.fn();
 const mockDecrypt = jest.fn((s: string) => s.replace("enc:", ""));
 
-jest.mock("@/lib/whatsapp/hmac", () => ({ verifySignature: mockVerifySignature }));
+jest.mock("@/lib/whatsapp/hmac", () => ({ verifyToken: mockVerifyToken }));
 jest.mock("@/lib/whatsapp/resolve", () => ({ resolveWhatsappUser: mockResolveWhatsappUser }));
 jest.mock("@/lib/whatsapp/emit-reply", () => ({ emitAgentReply: mockEmitAgentReply }));
 jest.mock("@/lib/audit", () => ({ logAudit: mockLogAudit }));
@@ -91,8 +91,7 @@ function makeRequest(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-Signature": "valid-sig",
-      "X-Timestamp": String(Date.now()),
+      Authorization: "Bearer valid-token",
       ...overrideHeaders,
     },
     body: bodyStr,
@@ -115,8 +114,8 @@ const VALID_PAYLOAD = {
 beforeEach(() => {
   jest.clearAllMocks();
 
-  // Por padrão: HMAC válido
-  mockVerifySignature.mockReturnValue(true);
+  // Por padrão: token válido
+  mockVerifyToken.mockReturnValue(true);
   // Por padrão: webhook inbound habilitado (fail-closed exige um webhook configurado)
   mockWebhookFindFirst.mockResolvedValue({
     id: "wh-1",
@@ -157,8 +156,8 @@ beforeEach(() => {
 // ──────────────────────────────────────────────
 
 describe("POST /api/integrations/whatsapp/inbound", () => {
-  it("retorna 401 quando HMAC é inválido", async () => {
-    mockVerifySignature.mockReturnValue(false);
+  it("retorna 401 quando o token é inválido", async () => {
+    mockVerifyToken.mockReturnValue(false);
     // Precisa de webhook configurado para que a validação ocorra
     mockWebhookFindFirst.mockResolvedValueOnce({
       id: "wh-1",
@@ -183,8 +182,7 @@ describe("POST /api/integrations/whatsapp/inbound", () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Signature": "x",
-        "X-Timestamp": "1",
+        Authorization: "Bearer valid-token",
       },
       body: "não é json",
     });

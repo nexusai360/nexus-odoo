@@ -20,13 +20,11 @@ import {
   Check,
   ChevronDown,
   Circle,
-  Clock,
   Copy,
   FileJson,
   KeyRound,
   Link2,
   Minus,
-  ShieldCheck,
   Table2,
   Terminal,
 } from "lucide-react";
@@ -119,20 +117,6 @@ const BODY_MEDIA: CodeLine[] = [
   { text: "}" },
 ];
 
-/** Exemplo (genérico, JavaScript) de como gerar a X-Signature a partir do token. */
-const SIGN_EXAMPLE: CodeLine[] = [
-  { text: 'const crypto = require("crypto");' },
-  { text: "" },
-  { text: 'const token = "TOKEN_DO_WEBHOOK";        // segredo mostrado ao criar' },
-  { text: "const timestamp = Date.now().toString(); // vai no header X-Timestamp" },
-  { text: "const body = JSON.stringify(payload);    // o corpo da requisição" },
-  { text: "" },
-  { text: "const signature = crypto" },
-  { text: '  .createHmac("sha256", token)           // token = chave' },
-  { text: "  .update(`${timestamp}.${body}`)        // texto assinado" },
-  { text: '  .digest("hex");                        // resultado vai no X-Signature' },
-];
-
 /** Monta as linhas de um cURL COMPLETO (URL + headers + body) a partir do body. */
 function curlLines(url: string, body: CodeLine[]): CodeLine[] {
   const open = body[0];
@@ -141,8 +125,7 @@ function curlLines(url: string, body: CodeLine[]): CodeLine[] {
   return [
     { text: `curl -X POST '${url}' \\` },
     { text: `  -H 'Content-Type: application/json' \\` },
-    { text: `  -H 'X-Timestamp: 1781727884000' \\` },
-    { text: `  -H 'X-Signature: <assinatura gerada com o token>' \\` },
+    { text: `  -H 'Authorization: Bearer SEU_TOKEN_DO_WEBHOOK' \\` },
     { text: `  -d '${open.text}` },
     ...middle.map((l) => ({ text: l.text, optional: l.optional })),
     { text: `${close.text}'` },
@@ -365,53 +348,35 @@ export function WhatsappInboundHelp({
 
           {/* Passo 2 , Headers (explicação para leigo) */}
           <Step icon={KeyRound} n={2} title="Headers">
-            <p className="text-xs text-muted-foreground">A requisição leva três cabeçalhos:</p>
+            <p className="text-xs text-muted-foreground">A requisição leva dois cabeçalhos:</p>
             <div className="space-y-4">
               <HeaderHelp icon={FileJson} name="Content-Type" required={false}>
                 Sempre <code className="rounded bg-muted px-1 font-mono text-foreground">application/json</code>.
               </HeaderHelp>
-              <HeaderHelp icon={Clock} name="X-Timestamp" required>
-                O horário do envio, em milissegundos (ex.: 1781727884000). A requisição precisa chegar em até
-                5 minutos desse horário, senão é recusada (proteção contra reenvio de mensagens antigas).
-              </HeaderHelp>
-              <HeaderHelp icon={ShieldCheck} name="X-Signature" required>
-                A prova de que a mensagem é autêntica.{" "}
-                <span className="font-medium text-foreground">Aqui não vai o token</span>: vai o resultado do
-                cálculo abaixo (feito com o token). Muda a cada mensagem.
+              <HeaderHelp icon={KeyRound} name="Authorization" required>
+                <code className="rounded bg-muted px-1 font-mono text-foreground">Bearer</code> seguido do{" "}
+                <span className="font-medium text-foreground">token do webhook</span> (o mesmo valor para
+                todas as mensagens). Ex.:{" "}
+                <code className="rounded bg-muted px-1 font-mono text-foreground">Bearer abc123...</code>
               </HeaderHelp>
             </div>
-
-            {/* O token é a CHAVE; a assinatura calculada é que vai no header. */}
-            <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
-              <p className="text-xs font-semibold text-foreground">Como gerar a X-Signature</p>
-              <ol className="ml-4 list-decimal space-y-1 text-xs text-muted-foreground">
-                <li>
-                  Monte o texto{" "}
-                  <code className="rounded bg-muted px-1 font-mono text-foreground">{"${X-Timestamp}.${body}"}</code>{" "}
-                  (o mesmo valor do X-Timestamp, um ponto, e o corpo JSON exatamente como enviado).
-                </li>
-                <li>
-                  Gere o <span className="font-medium text-foreground">HMAC-SHA256</span> desse texto usando o{" "}
-                  <span className="font-medium text-foreground">token do webhook</span> como chave, com saída
-                  em hexadecimal.
-                </li>
-                <li>
-                  Coloque esse resultado no header{" "}
-                  <code className="rounded bg-muted px-1 font-mono text-foreground">X-Signature</code>.
-                </li>
-              </ol>
-            </div>
-
-            <CodeBlock label="Exemplo: gerar a assinatura (JavaScript)" lines={SIGN_EXAMPLE} />
 
             <div className="flex gap-2 rounded-lg border border-border bg-muted/30 p-2.5">
               <KeyRound className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
               <p className="text-xs text-muted-foreground">
-                O <span className="font-medium text-foreground">token</span> é o segredo do webhook, mostrado
-                ao criar (e no botão Rotacionar). Ele é só a chave do cálculo: nunca vai dentro de um header.
-                Guarde-o com segurança.
+                O <span className="font-medium text-foreground">token</span> é o segredo gerado ao criar o
+                webhook (e no botão Rotacionar). Copie ele e use no header Authorization. Guarde com
+                segurança; se vazar, gere um novo em Rotacionar.
               </p>
             </div>
+
+            <CodeBlock
+              label="Exemplo dos headers"
+              lines={[
+                { text: "Content-Type: application/json" },
+                { text: "Authorization: Bearer SEU_TOKEN_DO_WEBHOOK" },
+              ]}
+            />
           </Step>
 
           {/* Passo 3 , Campos do body */}
