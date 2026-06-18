@@ -77,8 +77,27 @@ function actionLabel(action: AuditAction): string {
 }
 
 function getActionBadgeClasses(action: AuditAction): string {
+  // Falhas / recusas , único vermelho (erro de verdade).
+  if (
+    action === "login_failed" ||
+    action === "agent_permission_denied" ||
+    action === "whatsapp_inbound_rejected"
+  ) {
+    return "bg-red-500/10 text-red-400 border-red-500/20";
+  }
+  // Remoções/desativações/revogações , vinho (rose).
+  if (
+    action === "session_revoked" ||
+    action === "user_deactivated" ||
+    action === "user_deleted" ||
+    action === "user_whatsapp_removed" ||
+    action === "api_key_revoked" ||
+    action === "llm_credential_deleted"
+  ) {
+    return "bg-rose-500/10 text-rose-400 border-rose-500/20";
+  }
   if (action.startsWith("login_")) {
-    return "bg-blue-500/10 text-blue-400 border-blue-500/20";
+    return "bg-sky-500/10 text-sky-400 border-sky-500/20";
   }
   if (action.startsWith("password_") || action === "profile_password_changed") {
     return "bg-amber-500/10 text-amber-400 border-amber-500/20";
@@ -86,18 +105,26 @@ function getActionBadgeClasses(action: AuditAction): string {
   if (action.startsWith("setting_") || action === "agent_settings_updated") {
     return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
   }
-  if (action === "agent_permission_denied" || action === "login_failed") {
-    return "bg-red-500/10 text-red-400 border-red-500/20";
+  if (action.startsWith("llm_credential_")) {
+    return "bg-orange-500/10 text-orange-400 border-orange-500/20";
   }
-  if (
-    action.startsWith("user_") ||
-    action.startsWith("profile_") ||
-    action.startsWith("email_") ||
-    action === "session_revoked"
-  ) {
+  if (action.startsWith("api_key_")) {
+    return "bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/20";
+  }
+  if (action.startsWith("user_whatsapp_") || action === "whatsapp_channel_updated") {
+    return "bg-teal-500/10 text-teal-400 border-teal-500/20";
+  }
+  if (action === "user_domains_changed") {
+    return "bg-indigo-500/10 text-indigo-400 border-indigo-500/20";
+  }
+  if (action.startsWith("email_")) {
+    return "bg-cyan-500/10 text-cyan-400 border-cyan-500/20";
+  }
+  if (action.startsWith("user_") || action.startsWith("profile_")) {
     return "bg-violet-500/10 text-violet-400 border-violet-500/20";
   }
-  return "bg-muted text-muted-foreground border-border";
+  // Default colorido (nunca cinza).
+  return "bg-pink-500/10 text-pink-400 border-pink-500/20";
 }
 
 const dateTimeFmt = new Intl.DateTimeFormat("pt-BR", {
