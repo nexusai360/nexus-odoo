@@ -213,9 +213,9 @@ function WebhookRow({ webhook, isPending, onToggle, onDelete }: WebhookRowProps)
               ))}
             </div>
             {isWhatsapp && webhook.businessId && (
-              <p className="text-[11px] text-muted-foreground">
-                WhatsApp:{" "}
-                <span className="font-medium tabular-nums text-foreground">
+              <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                WhatsApp:
+                <span className="rounded-md border border-border bg-muted px-1.5 py-0.5 font-mono tabular-nums text-foreground">
                   {formatE164ForDisplay(webhook.businessId)}
                 </span>
               </p>

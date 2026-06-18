@@ -468,8 +468,8 @@ export function WebhookWizard({
             <div className="space-y-1.5">
               <Label>Método HTTP</Label>
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-xs font-semibold text-primary ring-1 ring-primary/20">
-                  <Lock className="h-3 w-3 text-primary" aria-hidden />
+                <span className="inline-flex items-center gap-1 rounded-lg border border-violet-500/50 bg-violet-500/10 px-2.5 py-1 text-xs font-medium text-violet-600 dark:text-violet-400">
+                  <Lock className="h-3 w-3" strokeWidth={1.5} aria-hidden />
                   POST
                 </span>
                 <span className="text-xs text-muted-foreground">
