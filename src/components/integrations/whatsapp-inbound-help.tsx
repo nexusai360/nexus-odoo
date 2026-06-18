@@ -1,14 +1,15 @@
 "use client";
 
 /**
- * Ajuda na tela do webhook receptor de WhatsApp (F5.1): mostra os campos que
- * devem ser enviados e o JSON padrão (texto e mídia) com botão de copiar.
- * Derivado do contrato real (`inbound-payload.ts`). Sem mencionar ferramenta
- * específica , vale para qualquer forma de envio.
+ * Ajuda na tela do webhook receptor de WhatsApp (F5.1): seção colapsável (aberta
+ * por padrão) detalhando a requisição , URL, headers e body (o JSON) , com os
+ * campos, a obrigatoriedade (com ícones) e exemplos copiáveis (texto e mídia).
+ * Derivado do contrato real (`inbound-payload.ts`). Não cita ferramenta
+ * específica: vale para qualquer forma de envio.
  */
 
 import * as React from "react";
-import { Check, Copy, Minus, Circle } from "lucide-react";
+import { Check, ChevronDown, Copy, Minus, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Req = "sim" | "nao" | "cond" | "midia";
@@ -23,7 +24,7 @@ const FIELDS: FieldRow[] = [
   { field: "wa_id", req: "sim", note: "Número do WhatsApp do usuário" },
   { field: "user_id", req: "sim", note: "Identificador do usuário (ex.: BR.0000...)" },
   { field: "type", req: "sim", note: "text, audio, image, document, video ou sticker" },
-  { field: "text", req: "cond", note: "Obrigatório em texto e áudio; legenda em mídia" },
+  { field: "text", req: "cond", note: "Obrigatório em texto e áudio; opcional para legenda em mídia" },
   { field: "message_id", req: "sim", note: "Identificador único da mensagem (evita duplicar)" },
   { field: "timestamp", req: "sim", note: "Data/hora em milissegundos" },
   { field: "contact_name", req: "nao", note: "Nome do contato" },
@@ -81,11 +82,13 @@ const JSON_MEDIA = `{
   "media": {
     "url": "https://.../arquivo.jpg",
     "mime_type": "image/jpeg",
-    "filename": "tabela.pdf"
+    "filename": "tabela.pdf",
+    "id": "3657728954379391",
+    "sha256": "r2HIFOaG...gXc="
   }
 }`;
 
-function CopyBlock({ label, json }: { label: string; json: string }) {
+function CopyBlock({ label, json, hint }: { label: string; json: string; hint?: string }) {
   const [copied, setCopied] = React.useState(false);
   function copy() {
     navigator.clipboard?.writeText(json).then(
@@ -117,51 +120,97 @@ function CopyBlock({ label, json }: { label: string; json: string }) {
       <pre className="max-h-72 overflow-auto bg-background p-3 text-[11px] leading-relaxed text-foreground">
         <code>{json}</code>
       </pre>
+      {hint && <p className="border-t border-border/60 px-3 py-2 text-[11px] text-muted-foreground">{hint}</p>}
     </div>
   );
 }
 
 export function WhatsappInboundHelp() {
+  const [open, setOpen] = React.useState(true);
+
   return (
-    <div className="space-y-4 rounded-xl border border-border bg-muted/20 p-4">
-      <div className="space-y-1">
-        <p className="text-sm font-semibold text-foreground">Como enviar os dados</p>
-        <p className="text-xs text-muted-foreground">
-          Monte o JSON abaixo e assine com HMAC-SHA256 de{" "}
-          <code className="rounded bg-muted px-1 font-mono">{"${timestamp}.${corpo}"}</code>, nos
-          headers <code className="rounded bg-muted px-1 font-mono">X-Signature</code> e{" "}
-          <code className="rounded bg-muted px-1 font-mono">X-Timestamp</code>. Copie o modelo e
-          preencha os valores.
-        </p>
-      </div>
+    <div className="rounded-xl border border-border bg-muted/20">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
+      >
+        <span>
+          <span className="block text-sm font-semibold text-foreground">Como enviar os dados</span>
+          <span className="block text-xs text-muted-foreground">
+            URL, headers e corpo da requisição , com exemplos prontos.
+          </span>
+        </span>
+        <ChevronDown
+          className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")}
+          aria-hidden
+        />
+      </button>
 
-      <div className="overflow-hidden rounded-lg border border-border">
-        <table className="w-full text-left text-xs">
-          <thead>
-            <tr className="border-b border-border bg-muted/40 text-muted-foreground">
-              <th className="px-3 py-2 font-medium">Campo</th>
-              <th className="w-28 px-3 py-2 font-medium">Obrigatório</th>
-              <th className="px-3 py-2 font-medium">O que é</th>
-            </tr>
-          </thead>
-          <tbody>
-            {FIELDS.map((f) => (
-              <tr key={f.field} className="border-b border-border/40 last:border-0 hover:bg-muted/30">
-                <td className="px-3 py-1.5 font-mono text-foreground">{f.field}</td>
-                <td className="px-3 py-1.5">
-                  <ReqBadge req={f.req} />
-                </td>
-                <td className="px-3 py-1.5 text-muted-foreground">{f.note}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {open && (
+        <div className="space-y-4 border-t border-border/60 p-4">
+          {/* Detalhes da requisição: URL, headers, body */}
+          <div className="grid gap-2 text-xs sm:grid-cols-3">
+            <div className="rounded-lg border border-border bg-background p-3">
+              <p className="font-medium text-foreground">1. Endereço (URL)</p>
+              <p className="mt-1 text-muted-foreground">
+                Faça um <code className="rounded bg-muted px-1 font-mono">POST</code> no endereço que
+                você definiu acima (campo <span className="font-medium">Endereço</span>).
+              </p>
+            </div>
+            <div className="rounded-lg border border-border bg-background p-3">
+              <p className="font-medium text-foreground">2. Headers</p>
+              <p className="mt-1 text-muted-foreground">
+                <code className="rounded bg-muted px-1 font-mono">X-Timestamp</code>: agora em ms.{" "}
+                <code className="rounded bg-muted px-1 font-mono">X-Signature</code>: HMAC-SHA256 de{" "}
+                <code className="rounded bg-muted px-1 font-mono">{"${timestamp}.${corpo}"}</code> com o
+                token do webhook.
+              </p>
+            </div>
+            <div className="rounded-lg border border-border bg-background p-3">
+              <p className="font-medium text-foreground">3. Corpo (body)</p>
+              <p className="mt-1 text-muted-foreground">
+                O JSON com os campos abaixo. Use os modelos prontos e preencha os valores.
+              </p>
+            </div>
+          </div>
 
-      <div className="grid gap-3 lg:grid-cols-2">
-        <CopyBlock label="Exemplo , mensagem de texto" json={JSON_TEXT} />
-        <CopyBlock label="Exemplo , mensagem com arquivo (imagem/PDF)" json={JSON_MEDIA} />
-      </div>
+          {/* Tabela de campos */}
+          <div className="overflow-hidden rounded-lg border border-border">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-border bg-muted/40 text-muted-foreground">
+                  <th className="px-3 py-2 font-medium">Campo</th>
+                  <th className="w-28 px-3 py-2 font-medium">Obrigatório</th>
+                  <th className="px-3 py-2 font-medium">Descrição</th>
+                </tr>
+              </thead>
+              <tbody>
+                {FIELDS.map((f) => (
+                  <tr key={f.field} className="border-b border-border/40 last:border-0 hover:bg-muted/30">
+                    <td className="px-3 py-1.5 font-mono text-foreground">{f.field}</td>
+                    <td className="px-3 py-1.5">
+                      <ReqBadge req={f.req} />
+                    </td>
+                    <td className="px-3 py-1.5 text-muted-foreground">{f.note}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Exemplos */}
+          <div className="grid gap-3 lg:grid-cols-2">
+            <CopyBlock label="Exemplo , mensagem de texto" json={JSON_TEXT} />
+            <CopyBlock
+              label="Exemplo , mensagem de mídia"
+              json={JSON_MEDIA}
+              hint="media.filename, media.id e media.sha256 são opcionais , envie quando tiver."
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
