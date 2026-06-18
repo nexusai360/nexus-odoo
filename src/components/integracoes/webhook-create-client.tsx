@@ -8,22 +8,31 @@ import { PageHeader } from "@/components/page-header";
 import { Breadcrumb } from "@/components/integracoes/breadcrumb";
 import {
   WebhookWizard,
+  webhookKindBadgeClass,
   webhookKindLabel,
   webhookKindSubtitle,
   type WebhookKind,
 } from "@/components/integrations/webhook-wizard";
+import { cn } from "@/lib/utils";
 
 /** Tela cheia de criação de webhook. Dona do tipo escolhido, para refletir na
  *  navegação (breadcrumb) e no cabeçalho, e navega de volta ao fim. */
 export function WebhookCreateClient({ inboundBaseUrl }: { inboundBaseUrl: string }) {
   const router = useRouter();
   const [kind, setKind] = React.useState<WebhookKind | null>(null);
+  // Bump remonta o wizard (reset para o passo 1 de seleção de tipo).
+  const [resetKey, setResetKey] = React.useState(0);
+
+  function resetToType() {
+    setKind(null);
+    setResetKey((k) => k + 1);
+  }
 
   const items = [
     { label: "Integrações", href: "/integracoes" },
     { label: "Webhooks", href: "/integracoes/webhooks" },
     kind
-      ? { label: "Tipo de webhook", href: "/integracoes/webhooks/novo" }
+      ? { label: "Tipo de webhook", onClick: resetToType }
       : { label: "Tipo de webhook" },
     ...(kind ? [{ label: webhookKindLabel(kind) }] : []),
   ];
@@ -37,7 +46,12 @@ export function WebhookCreateClient({ inboundBaseUrl }: { inboundBaseUrl: string
         subtitle={webhookKindSubtitle(kind)}
         titleAccessory={
           kind ? (
-            <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-xs font-medium text-violet-600 dark:text-violet-400">
+            <span
+              className={cn(
+                "rounded-full px-2 py-0.5 text-xs font-medium",
+                webhookKindBadgeClass(kind),
+              )}
+            >
               {webhookKindLabel(kind)}
             </span>
           ) : undefined
@@ -45,6 +59,7 @@ export function WebhookCreateClient({ inboundBaseUrl }: { inboundBaseUrl: string
       />
       <div className="mt-6">
         <WebhookWizard
+          key={resetKey}
           inboundBaseUrl={inboundBaseUrl}
           onKindChange={setKind}
           onCreated={() => {

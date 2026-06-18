@@ -42,7 +42,8 @@ interface KindMeta {
   icon: LucideIcon
   title: string
   description: string
-  accent: { icon: string; ring: string; bg: string }
+  /** Cores do tipo. `badge` = classes da tag/pílula (cabeçalho/navegação). */
+  accent: { icon: string; ring: string; bg: string; badge: string }
 }
 
 const KINDS: KindMeta[] = [
@@ -56,6 +57,7 @@ const KINDS: KindMeta[] = [
       icon: "text-green-500",
       ring: "ring-green-500/50 border-green-500/40",
       bg: "bg-green-500/5",
+      badge: "bg-green-500/15 text-green-700 dark:text-green-400",
     },
   },
   {
@@ -68,6 +70,7 @@ const KINDS: KindMeta[] = [
       icon: "text-sky-500",
       ring: "ring-sky-500/50 border-sky-500/40",
       bg: "bg-sky-500/5",
+      badge: "bg-sky-500/15 text-sky-700 dark:text-sky-400",
     },
   },
   {
@@ -80,6 +83,7 @@ const KINDS: KindMeta[] = [
       icon: "text-violet-500",
       ring: "ring-violet-500/50 border-violet-500/40",
       bg: "bg-violet-500/5",
+      badge: "bg-violet-500/15 text-violet-700 dark:text-violet-400",
     },
   },
 ]
@@ -87,6 +91,11 @@ const KINDS: KindMeta[] = [
 /** Rótulo curto do tipo (para navegação/cabeçalho). */
 export function webhookKindLabel(kind: WebhookKind): string {
   return kindMeta(kind).title
+}
+
+/** Classes da tag/pílula do tipo (segue a cor do tipo: verde/azul/roxo). */
+export function webhookKindBadgeClass(kind: WebhookKind): string {
+  return kindMeta(kind).accent.badge
 }
 
 /** Subtítulo personalizado por tipo (cabeçalho da tela). */
@@ -354,7 +363,7 @@ export function WebhookWizard({
             </div>
           )}
 
-          {isWhatsapp && <WhatsappInboundHelp />}
+          {isWhatsapp && <WhatsappInboundHelp inboundBaseUrl={inboundBaseUrl} path={path} />}
 
           {error && <p className="text-xs text-destructive">{error}</p>}
 

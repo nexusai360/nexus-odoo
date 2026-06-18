@@ -26,7 +26,13 @@ const PATH_RE = /^[a-z0-9][a-z0-9-/]*$/;
 
 /** Form full-page de edição de webhook (F5.1). Inclui descrição, recebe-WhatsApp,
  *  número da empresa, eventos e a ajuda do JSON. */
-export function WebhookEditForm({ webhook }: { webhook: WebhookListItem }) {
+export function WebhookEditForm({
+  webhook,
+  inboundBaseUrl,
+}: {
+  webhook: WebhookListItem;
+  inboundBaseUrl: string;
+}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const isInbound = webhook.direction === "inbound";
@@ -205,7 +211,7 @@ export function WebhookEditForm({ webhook }: { webhook: WebhookListItem }) {
         </div>
       )}
 
-      {isWhatsapp && <WhatsappInboundHelp />}
+      {isWhatsapp && <WhatsappInboundHelp inboundBaseUrl={inboundBaseUrl} path={path} />}
 
       {!isInbound && (
         <div className="space-y-2">
