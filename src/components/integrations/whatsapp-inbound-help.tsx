@@ -2,24 +2,31 @@
 
 /**
  * Ajuda na tela do webhook receptor de WhatsApp (F5.1): seção colapsável (aberta
- * por padrão) que ensina a MONTAR O PAYLOAD em passos , Passo 1 (endereço/URL
- * real = base + slug), Passo 2 (headers), Passo 3 (tabela de campos) e, por fim,
- * o corpo (body) com cURL completo copiável e exemplos de texto e mídia. Os
- * campos opcionais aparecem marcados com "(opcional)" ao lado do valor (a marca
- * é só visual; o JSON copiado continua válido). Derivado do contrato real
- * (`inbound-payload.ts`). Não cita ferramenta específica.
+ * por padrão) que ensina a MONTAR O PAYLOAD em passos, cada um com seu próprio
+ * dropdown (abrir/fechar) para não ocupar a tela inteira:
+ *  - Passo 1: Endereço (URL real = base + slug). Copiar só habilita com a URL
+ *    preenchida; vazio mostra aviso para preencher o campo acima.
+ *  - Passo 2: Headers, explicados em linguagem de leigo (token = secret do
+ *    webhook; X-Timestamp = horário em ms; X-Signature = HMAC calculado pelo n8n).
+ *  - Passo 3: tabela de campos do body.
+ *  - Exemplos de cURL: dois comandos COMPLETOS (texto e mídia), prontos para
+ *    copiar; opcionais marcados com "(opcional)" (só visual, o copiado fica limpo).
+ * Derivado do contrato real (`inbound-payload.ts`) e do esquema HMAC (`hmac.ts`).
  */
 
 import * as React from "react";
 import {
-  Braces,
+  AlertCircle,
   Check,
   ChevronDown,
   Circle,
+  Clock,
   Copy,
+  FileJson,
   KeyRound,
   Link2,
   Minus,
+  ShieldCheck,
   Table2,
   Terminal,
 } from "lucide-react";
@@ -74,14 +81,14 @@ function ReqBadge({ req }: { req: Req }) {
   );
 }
 
-/** Linha de um exemplo de JSON: texto cru + marca visual "(opcional)". A marca
- *  NÃO entra no que é copiado (o copy usa o JSON limpo). */
-interface JsonLine {
+/** Linha de exemplo: texto cru + marca visual "(opcional)". A marca NÃO entra
+ *  no que é copiado (o copy usa o texto limpo). */
+interface CodeLine {
   text: string;
   optional?: boolean;
 }
 
-const JSON_TEXT_LINES: JsonLine[] = [
+const BODY_TEXT: CodeLine[] = [
   { text: "{" },
   { text: '  "wa_id": "5500000000000",' },
   { text: '  "user_id": "BR.0000000000000000",' },
@@ -93,7 +100,7 @@ const JSON_TEXT_LINES: JsonLine[] = [
   { text: "}" },
 ];
 
-const JSON_MEDIA_LINES: JsonLine[] = [
+const BODY_MEDIA: CodeLine[] = [
   { text: "{" },
   { text: '  "wa_id": "5500000000000",' },
   { text: '  "user_id": "BR.0000000000000000",' },
@@ -112,8 +119,24 @@ const JSON_MEDIA_LINES: JsonLine[] = [
   { text: "}" },
 ];
 
-/** Converte as linhas em JSON limpo (válido), sem as marcas "(opcional)". */
-function linesToJson(lines: JsonLine[]): string {
+/** Monta as linhas de um cURL COMPLETO (URL + headers + body) a partir do body. */
+function curlLines(url: string, body: CodeLine[]): CodeLine[] {
+  const open = body[0];
+  const middle = body.slice(1, -1);
+  const close = body[body.length - 1];
+  return [
+    { text: `curl -X POST '${url}' \\` },
+    { text: `  -H 'Content-Type: application/json' \\` },
+    { text: `  -H 'X-Timestamp: 1781727884000' \\` },
+    { text: `  -H 'X-Signature: <assinatura gerada com o token>' \\` },
+    { text: `  -d '${open.text}` },
+    ...middle.map((l) => ({ text: l.text, optional: l.optional })),
+    { text: `${close.text}'` },
+  ];
+}
+
+/** Texto limpo (copiável) de uma lista de linhas, sem as marcas "(opcional)". */
+function linesToText(lines: CodeLine[]): string {
   return lines.map((l) => l.text).join("\n");
 }
 
@@ -131,18 +154,28 @@ function useCopy(): [boolean, (value: string) => void] {
   return [copied, copy];
 }
 
-/** Botão de copiar reutilizável (texto + estado "Copiado"). */
-function CopyButton({ value, label = "Copiar" }: { value: string; label?: string }) {
+function CopyButton({
+  value,
+  label = "Copiar",
+  disabled = false,
+}: {
+  value: string;
+  label?: string;
+  disabled?: boolean;
+}) {
   const [copied, copy] = useCopy();
   return (
     <button
       type="button"
-      onClick={() => copy(value)}
+      disabled={disabled}
+      onClick={() => !disabled && copy(value)}
       className={cn(
-        "inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors",
-        copied
-          ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-          : "border-border bg-background text-foreground hover:bg-accent",
+        "inline-flex shrink-0 items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors",
+        disabled
+          ? "cursor-not-allowed border-border bg-muted/40 text-muted-foreground/40"
+          : copied
+            ? "cursor-pointer border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+            : "cursor-pointer border-border bg-background text-foreground hover:bg-accent",
       )}
     >
       {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
@@ -151,38 +184,22 @@ function CopyButton({ value, label = "Copiar" }: { value: string; label?: string
   );
 }
 
-/** Bloco de código com cabeçalho (rótulo + copiar) e corpo. Aceita string ou
- *  linhas anotáveis; quando recebe linhas, o copy usa o JSON limpo. */
-function CodeBlock({
-  label,
-  code,
-  lines,
-  hint,
-}: {
-  label: string;
-  code?: string;
-  lines?: JsonLine[];
-  hint?: string;
-}) {
-  const copyValue = code ?? (lines ? linesToJson(lines) : "");
+/** Bloco de código com cabeçalho (rótulo + copiar) e corpo com linhas anotáveis. */
+function CodeBlock({ label, lines, hint }: { label: string; lines: CodeLine[]; hint?: string }) {
   return (
     <div className="overflow-hidden rounded-lg border border-border">
       <div className="flex items-center justify-between gap-2 border-b border-border bg-muted/40 px-3 py-2">
         <span className="text-xs font-medium text-foreground">{label}</span>
-        <CopyButton value={copyValue} />
+        <CopyButton value={linesToText(lines)} />
       </div>
       <pre className="max-h-80 overflow-auto bg-background p-3 text-[11px] leading-relaxed text-foreground">
         <code>
-          {lines
-            ? lines.map((l, i) => (
-                <span key={i} className="block">
-                  {l.text}
-                  {l.optional && (
-                    <span className="ml-2 select-none text-muted-foreground/50">(opcional)</span>
-                  )}
-                </span>
-              ))
-            : code}
+          {lines.map((l, i) => (
+            <span key={i} className="block whitespace-pre">
+              {l.text}
+              {l.optional && <span className="ml-2 select-none text-muted-foreground/50">(opcional)</span>}
+            </span>
+          ))}
         </code>
       </pre>
       {hint && (
@@ -192,16 +209,77 @@ function CodeBlock({
   );
 }
 
-/** Cabeçalho de um passo: ícone + "Passo N · título". */
-function StepHeader({ n, icon: Icon, title }: { n: number; icon: React.ElementType; title: string }) {
+/** Passo com dropdown próprio (abrir/fechar). Numerado quando `n` é informado. */
+function Step({
+  icon: Icon,
+  n,
+  title,
+  defaultOpen = true,
+  children,
+}: {
+  icon: React.ElementType;
+  n?: number;
+  title: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = React.useState(defaultOpen);
   return (
-    <div className="flex items-center gap-2.5">
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/20">
-        <Icon className="h-4 w-4" aria-hidden />
-      </span>
-      <h4 className="text-sm font-semibold text-foreground">
-        <span className="text-muted-foreground">Passo {n} ·</span> {title}
-      </h4>
+    <section className="overflow-hidden rounded-lg border border-border/60 bg-background/40">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full cursor-pointer items-center gap-2.5 px-3 py-2.5 text-left"
+      >
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/20">
+          <Icon className="h-4 w-4" aria-hidden />
+        </span>
+        <span className="flex-1 text-sm font-semibold text-foreground">
+          {n != null && <span className="text-muted-foreground">Passo {n} · </span>}
+          {title}
+        </span>
+        <ChevronDown
+          className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")}
+          aria-hidden
+        />
+      </button>
+      {open && <div className="space-y-3 border-t border-border/50 p-3">{children}</div>}
+    </section>
+  );
+}
+
+/** Uma linha de explicação de header (ícone + nome + obrigatoriedade + texto). */
+function HeaderHelp({
+  icon: Icon,
+  name,
+  required,
+  children,
+}: {
+  icon: React.ElementType;
+  name: string;
+  required: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex gap-2.5">
+      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+      <div className="min-w-0 space-y-0.5">
+        <p className="flex items-center gap-2">
+          <code className="rounded bg-muted px-1 font-mono text-xs text-foreground">{name}</code>
+          <span
+            className={cn(
+              "rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+              required
+                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                : "bg-muted text-muted-foreground",
+            )}
+          >
+            {required ? "obrigatório" : "fixo"}
+          </span>
+        </p>
+        <p className="text-xs text-muted-foreground">{children}</p>
+      </div>
     </div>
   );
 }
@@ -217,22 +295,10 @@ export function WhatsappInboundHelp({
 }) {
   const [open, setOpen] = React.useState(true);
 
-  const slug = path.trim() || "seu-endereco";
-  const url = `${inboundBaseUrl}${slug}`;
-
-  const headersText = [
-    "Content-Type: application/json",
-    "X-Timestamp: 1781727884000",
-    "X-Signature: <HMAC-SHA256 de ${timestamp}.${body} com o token>",
-  ].join("\n");
-
-  const curl = [
-    `curl -X POST '${url}' \\`,
-    `  -H 'Content-Type: application/json' \\`,
-    `  -H 'X-Timestamp: 1781727884000' \\`,
-    `  -H 'X-Signature: <assinatura HMAC-SHA256>' \\`,
-    `  -d '${linesToJson(JSON_TEXT_LINES)}'`,
-  ].join("\n");
+  const hasPath = path.trim().length > 0;
+  const url = `${inboundBaseUrl}${path.trim()}`;
+  // Nos exemplos de cURL usamos um marcador quando a URL ainda não foi definida.
+  const urlForExamples = hasPath ? url : `${inboundBaseUrl}<seu-endereco>`;
 
   return (
     <div className="rounded-xl border border-border bg-muted/20">
@@ -245,7 +311,7 @@ export function WhatsappInboundHelp({
         <span>
           <span className="block text-sm font-semibold text-foreground">Como montar o payload</span>
           <span className="block text-xs text-muted-foreground">
-            Endereço, headers e corpo da requisição , com exemplos prontos para copiar.
+            Endereço, headers e corpo da requisição. Abra cada passo conforme precisar.
           </span>
         </span>
         <ChevronDown
@@ -255,106 +321,107 @@ export function WhatsappInboundHelp({
       </button>
 
       {open && (
-        <div className="space-y-6 border-t border-border/60 p-4">
-          {/* Passo 1 , Endereço (URL real = base + slug) */}
-          <section className="space-y-2">
-            <StepHeader n={1} icon={Link2} title="Endereço (URL)" />
-            <div className="space-y-2 pl-9.5">
-              <p className="text-xs text-muted-foreground">
-                Faça um <code className="rounded bg-muted px-1 font-mono text-foreground">POST</code> neste
-                endereço (definido por você no campo acima):
-              </p>
+        <div className="space-y-2.5 border-t border-border/60 p-3">
+          {/* Passo 1 , Endereço (URL real) */}
+          <Step icon={Link2} n={1} title="Endereço (URL)">
+            <p className="text-xs text-muted-foreground">
+              Faça um <code className="rounded bg-muted px-1 font-mono text-foreground">POST</code> neste
+              endereço:
+            </p>
+            {hasPath ? (
               <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-2">
                 <code className="overflow-x-auto whitespace-nowrap font-mono text-xs text-foreground">
                   {url}
                 </code>
                 <CopyButton value={url} label="Copiar URL" />
               </div>
-            </div>
-          </section>
+            ) : (
+              <div className="flex items-center justify-between gap-2 rounded-lg border border-dashed border-amber-500/40 bg-amber-500/5 px-3 py-2">
+                <span className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  Preencha o campo Endereço (URL) acima para gerar o endereço.
+                </span>
+                <CopyButton value="" label="Copiar URL" disabled />
+              </div>
+            )}
+          </Step>
 
-          {/* Passo 2 , Headers */}
-          <section className="space-y-2">
-            <StepHeader n={2} icon={KeyRound} title="Headers" />
-            <div className="space-y-2 pl-9.5">
-              <p className="text-xs text-muted-foreground">
-                <code className="rounded bg-muted px-1 font-mono text-foreground">X-Timestamp</code> é o
-                horário atual em milissegundos.{" "}
-                <code className="rounded bg-muted px-1 font-mono text-foreground">X-Signature</code> é o
-                HMAC-SHA256 de{" "}
+          {/* Passo 2 , Headers (explicação para leigo) */}
+          <Step icon={KeyRound} n={2} title="Headers">
+            <p className="text-xs text-muted-foreground">
+              Toda requisição leva três cabeçalhos (headers):
+            </p>
+            <div className="space-y-2.5">
+              <HeaderHelp icon={FileJson} name="Content-Type" required={false}>
+                Sempre <code className="rounded bg-muted px-1 font-mono text-foreground">application/json</code>.
+              </HeaderHelp>
+              <HeaderHelp icon={Clock} name="X-Timestamp" required>
+                O horário do envio em milissegundos (ex.: 1781727884000). No n8n use{" "}
+                <code className="rounded bg-muted px-1 font-mono text-foreground">{"{{ Date.now() }}"}</code>.
+                Vale por 5 minutos.
+              </HeaderHelp>
+              <HeaderHelp icon={ShieldCheck} name="X-Signature" required>
+                A assinatura de segurança. É o HMAC-SHA256 de{" "}
                 <code className="rounded bg-muted px-1 font-mono text-foreground">{"${timestamp}.${body}"}</code>{" "}
-                assinado com o token do webhook.
-              </p>
-              <CodeBlock label="Headers" code={headersText} />
+                usando o token do webhook como chave. Você não digita um valor fixo: o n8n calcula sozinho
+                (nó Crypto → HMAC → SHA256 → saída em hex) e muda a cada mensagem.
+              </HeaderHelp>
             </div>
-          </section>
-
-          {/* Passo 3 , Campos */}
-          <section className="space-y-2">
-            <StepHeader n={3} icon={Table2} title="Campos do corpo" />
-            <div className="space-y-2 pl-9.5">
+            <div className="flex gap-2 rounded-lg border border-border bg-muted/30 p-2.5">
+              <KeyRound className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
               <p className="text-xs text-muted-foreground">
-                O corpo é um JSON com os campos abaixo.
+                O <span className="font-medium text-foreground">token</span> é o segredo gerado quando você
+                cria o webhook (e pelo botão Rotacionar). É ele que assina as mensagens, guarde-o no n8n.
               </p>
-              <div className="overflow-hidden rounded-lg border border-border">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-border bg-muted/40 text-muted-foreground">
-                      <th className="px-3 py-2 font-medium">Campo</th>
-                      <th className="w-28 px-3 py-2 font-medium">Obrigatório</th>
-                      <th className="px-3 py-2 font-medium">Descrição</th>
+            </div>
+            <CodeBlock
+              label="Exemplo dos headers"
+              lines={[
+                { text: "Content-Type: application/json" },
+                { text: "X-Timestamp: 1781727884000" },
+                { text: "X-Signature: 9f86d081...  (gerado a partir do token)" },
+              ]}
+            />
+          </Step>
+
+          {/* Passo 3 , Campos do body */}
+          <Step icon={Table2} n={3} title="Campos do body">
+            <div className="overflow-hidden rounded-lg border border-border">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-border bg-muted/40 text-muted-foreground">
+                    <th className="px-3 py-2 font-medium">Campo</th>
+                    <th className="w-28 px-3 py-2 font-medium">Obrigatório</th>
+                    <th className="px-3 py-2 font-medium">Descrição</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {FIELDS.map((f) => (
+                    <tr key={f.field} className="border-b border-border/40 last:border-0 hover:bg-muted/30">
+                      <td className="px-3 py-1.5 font-mono text-foreground">{f.field}</td>
+                      <td className="px-3 py-1.5">
+                        <ReqBadge req={f.req} />
+                      </td>
+                      <td className="px-3 py-1.5 text-muted-foreground">{f.note}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {FIELDS.map((f) => (
-                      <tr key={f.field} className="border-b border-border/40 last:border-0 hover:bg-muted/30">
-                        <td className="px-3 py-1.5 font-mono text-foreground">{f.field}</td>
-                        <td className="px-3 py-1.5">
-                          <ReqBadge req={f.req} />
-                        </td>
-                        <td className="px-3 py-1.5 text-muted-foreground">{f.note}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          </section>
+          </Step>
 
-          {/* Corpo (body): cURL completo + exemplos */}
-          <section className="space-y-3 border-t border-border/60 pt-4">
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/20">
-                <Braces className="h-4 w-4" aria-hidden />
-              </span>
-              <h4 className="text-sm font-semibold text-foreground">Corpo (body) e exemplos</h4>
-            </div>
-
-            <div className="space-y-3 pl-9.5">
-              <CodeBlock
-                label={
-                  // Rótulo com ícone de terminal para o comando pronto.
-                  "cURL completo (URL + headers + body)"
-                }
-                code={curl}
-                hint="Substitua o X-Signature pela assinatura HMAC-SHA256 gerada com o token do webhook."
-              />
-
-              <div className="grid gap-3 lg:grid-cols-2">
-                <CodeBlock label="Exemplo , mensagem de texto" lines={JSON_TEXT_LINES} />
-                <CodeBlock
-                  label="Exemplo , mensagem de mídia"
-                  lines={JSON_MEDIA_LINES}
-                  hint="Os campos marcados com (opcional) podem ser omitidos , a marca é só visual e não vai no JSON copiado."
-                />
-              </div>
-
-              <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                <Terminal className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                Use a URL e os headers acima para montar a requisição HTTP no n8n ou em qualquer cliente.
-              </p>
-            </div>
-          </section>
+          {/* Exemplos de cURL (fechado por padrão para não ocupar a tela) */}
+          <Step icon={Terminal} title="Exemplos de cURL" defaultOpen={false}>
+            <p className="text-xs text-muted-foreground">
+              Comandos completos (URL + headers + body), prontos para copiar.
+            </p>
+            <CodeBlock label="cURL · mensagem de texto" lines={curlLines(urlForExamples, BODY_TEXT)} />
+            <CodeBlock
+              label="cURL · mensagem de mídia"
+              lines={curlLines(urlForExamples, BODY_MEDIA)}
+              hint="Os campos marcados com (opcional) podem ser omitidos , a marca é só visual e não vai no comando copiado."
+            />
+          </Step>
         </div>
       )}
     </div>

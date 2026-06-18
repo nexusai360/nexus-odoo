@@ -147,7 +147,7 @@ export function WebhookEditForm({
               <Input
                 id="wh-business"
                 value={businessId}
-                onChange={(e) => setBusinessId(e.target.value)}
+                onChange={(e) => setBusinessId(e.target.value.replace(/\D/g, ""))}
                 placeholder="Ex.: 558881008888"
                 inputMode="numeric"
               />
