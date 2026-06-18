@@ -10,7 +10,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { SecretRevealStep } from "@/components/ui/secret-reveal-step";
 import { PhoneInput } from "@/components/ui/phone-input";
-import { FieldValidateButton } from "@/components/integrations/field-validate-button";
+import {
+  FieldValidateButton,
+  type FieldConfirmVariant,
+} from "@/components/integrations/field-validate-button";
 import { WebhookEventSelector } from "@/components/integrations/webhook-event-selector";
 import { WhatsappInboundHelp } from "@/components/integrations/whatsapp-inbound-help";
 import { KindBanner } from "@/components/integrations/webhook-wizard";
@@ -55,20 +58,61 @@ export function WebhookEditForm({
   const isWhatsapp = webhook.isWhatsappReceiver;
   const kind = !isInbound ? "outbound" : isWhatsapp ? "whatsapp" : "inbound_generic";
   const initBiz = splitE164(webhook.businessId ?? "");
+  const initBizDigits = initBiz.nationalDigits
+    ? composeE164(initBiz.country?.dial ?? DEFAULT_COUNTRY.dial, initBiz.nationalDigits).slice(1)
+    : "";
   const [bizCountry, setBizCountry] = useState<Country>(initBiz.country ?? DEFAULT_COUNTRY);
   const [bizNational, setBizNational] = useState(initBiz.nationalDigits);
   const [bizTouched, setBizTouched] = useState(false);
   const [pathTouched, setPathTouched] = useState(false);
+  // Valores já gravados começam "confirmados"; alterar exige reconfirmar.
+  const [pathConfirmed, setPathConfirmed] = useState((webhook.path ?? "").trim());
+  const [bizConfirmed, setBizConfirmed] = useState(initBizDigits);
   const [revealedSecret, setRevealedSecret] = useState<string | null>(null);
 
   // Validação em tempo real do endereço (slug) e do número da empresa.
-  const pathValid = PATH_RE.test(path.trim());
-  const showPathError = !pathValid && (path.trim().length > 0 || pathTouched);
+  const pathTrim = path.trim();
+  const pathValid = PATH_RE.test(pathTrim);
+  const showPathError = !pathValid && (pathTrim.length > 0 || pathTouched);
   const bizErrorMsg = validateNationalPhone(bizCountry, bizNational);
   const bizValid = bizErrorMsg === null;
   const showBizError = !bizValid && (bizNational.length > 0 || bizTouched);
   // `business_id` gravado: dígitos do número internacional (DDI + nacional), sem o "+".
   const businessIdDigits = bizNational ? composeE164(bizCountry.dial, bizNational).slice(1) : "";
+
+  // Estado visual + confirmação dos campos com botão de confirmar.
+  const pathVariant: FieldConfirmVariant = !pathValid
+    ? pathTrim.length > 0 || pathTouched
+      ? "error"
+      : "idle"
+    : pathTrim === pathConfirmed
+      ? "confirmed"
+      : "pending";
+  const bizVariant: FieldConfirmVariant = !bizValid
+    ? bizNational.length > 0 || bizTouched
+      ? "error"
+      : "idle"
+    : businessIdDigits === bizConfirmed
+      ? "confirmed"
+      : "pending";
+
+  function confirmPath() {
+    if (!pathValid) {
+      setPathTouched(true);
+      return;
+    }
+    setPathConfirmed(pathTrim);
+    toast.success("Endereço atualizado");
+  }
+
+  function confirmBiz() {
+    if (!bizValid) {
+      setBizTouched(true);
+      return;
+    }
+    setBizConfirmed(businessIdDigits);
+    toast.success("Número da empresa atualizado");
+  }
 
   function toggleMethod(m: WebhookMethod) {
     setMethods((prev) => (prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m]));
@@ -91,7 +135,9 @@ export function WebhookEditForm({
     name.trim().length > 0 &&
     methods.length > 0 &&
     (isInbound
-      ? pathValid && (!isWhatsapp || bizValid)
+      ? pathValid &&
+        pathTrim === pathConfirmed &&
+        (!isWhatsapp || (bizValid && businessIdDigits === bizConfirmed))
       : isValidUrl(targetUrl.trim()));
 
   function handleSave() {
@@ -161,9 +207,9 @@ export function WebhookEditForm({
                 aria-invalid={showPathError}
               />
               <FieldValidateButton
-                valid={pathValid}
-                onClick={() => setPathTouched(true)}
-                label="Validar endereço"
+                variant={pathVariant}
+                onClick={confirmPath}
+                label="Confirmar endereço"
               />
             </div>
             {showPathError ? (
@@ -191,9 +237,9 @@ export function WebhookEditForm({
                   inputId="wh-business"
                 />
                 <FieldValidateButton
-                  valid={bizValid}
-                  onClick={() => setBizTouched(true)}
-                  label="Validar número"
+                  variant={bizVariant}
+                  onClick={confirmBiz}
+                  label="Confirmar número"
                 />
               </div>
               {showBizError ? (

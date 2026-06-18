@@ -10,6 +10,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 
+import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import {
   webhookKindBadgeClass,
@@ -25,7 +26,10 @@ import { StepIndicator } from "@/components/ui/step-indicator"
 import { SecretRevealStep } from "@/components/ui/secret-reveal-step"
 import { Textarea } from "@/components/ui/textarea"
 import { PhoneInput } from "@/components/ui/phone-input"
-import { FieldValidateButton } from "@/components/integrations/field-validate-button"
+import {
+  FieldValidateButton,
+  type FieldConfirmVariant,
+} from "@/components/integrations/field-validate-button"
 import {
   type Country,
   DEFAULT_COUNTRY,
@@ -141,6 +145,9 @@ export function WebhookWizard({
   const [bizNational, setBizNational] = React.useState("")
   const [bizTouched, setBizTouched] = React.useState(false)
   const [pathTouched, setPathTouched] = React.useState(false)
+  // Valor "confirmado" (pelo botão de confirmar) de cada campo.
+  const [pathConfirmed, setPathConfirmed] = React.useState("")
+  const [bizConfirmed, setBizConfirmed] = React.useState("")
   const [submitting, setSubmitting] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [created, setCreated] = React.useState<CreatedWebhook | null>(null)
@@ -150,13 +157,50 @@ export function WebhookWizard({
   const direction = isOutbound ? "outbound" : "inbound"
 
   // Validação do endereço (slug) e do número da empresa, com erro em tempo real.
-  const pathValid = PATH_RE.test(path.trim())
-  const showPathError = !pathValid && (path.trim().length > 0 || pathTouched)
+  const pathTrim = path.trim()
+  const pathValid = PATH_RE.test(pathTrim)
+  const showPathError = !pathValid && (pathTrim.length > 0 || pathTouched)
   const bizErrorMsg = validateNationalPhone(bizCountry, bizNational)
   const bizValid = bizErrorMsg === null
   const showBizError = !bizValid && (bizNational.length > 0 || bizTouched)
   // `business_id` gravado: dígitos do número internacional (DDI + nacional), sem o "+".
   const businessIdDigits = bizNational ? composeE164(bizCountry.dial, bizNational).slice(1) : ""
+
+  // Estado visual + confirmação dos campos com botão de confirmar.
+  const pathVariant: FieldConfirmVariant = !pathValid
+    ? pathTrim.length > 0 || pathTouched
+      ? "error"
+      : "idle"
+    : pathTrim === pathConfirmed
+      ? "confirmed"
+      : "pending"
+  const bizVariant: FieldConfirmVariant = !bizValid
+    ? bizNational.length > 0 || bizTouched
+      ? "error"
+      : "idle"
+    : businessIdDigits === bizConfirmed
+      ? "confirmed"
+      : "pending"
+
+  function confirmPath() {
+    if (!pathValid) {
+      setPathTouched(true)
+      return
+    }
+    const wasEmpty = pathConfirmed.length === 0
+    setPathConfirmed(pathTrim)
+    toast.success(wasEmpty ? "Endereço definido" : "Endereço atualizado")
+  }
+
+  function confirmBiz() {
+    if (!bizValid) {
+      setBizTouched(true)
+      return
+    }
+    const wasEmpty = bizConfirmed.length === 0
+    setBizConfirmed(businessIdDigits)
+    toast.success(wasEmpty ? "Número da empresa definido" : "Número da empresa atualizado")
+  }
 
   function toggleMethod(m: WebhookMethod) {
     setMethods((prev) =>
@@ -174,7 +218,8 @@ export function WebhookWizard({
     (isOutbound
       ? isValidUrl(targetUrl.trim()) && methods.length > 0
       : pathValid &&
-        (!isWhatsapp || bizValid) &&
+        pathTrim === pathConfirmed &&
+        (!isWhatsapp || (bizValid && businessIdDigits === bizConfirmed)) &&
         (isWhatsapp || methods.length > 0))
 
   async function handleCreate() {
@@ -288,23 +333,31 @@ export function WebhookWizard({
             <div className="space-y-1.5">
               <Label htmlFor="wh-path">Endereço (URL)</Label>
               <div className="flex items-stretch gap-2">
-                <div className="flex flex-1 items-stretch">
-                  <span className="flex items-center rounded-l-lg border border-r-0 border-input bg-muted px-2.5 text-xs text-muted-foreground">
+                <div
+                  className={cn(
+                    "flex h-9 flex-1 items-stretch overflow-hidden rounded-lg border bg-transparent transition-colors dark:bg-input/30",
+                    showPathError
+                      ? "border-destructive focus-within:ring-2 focus-within:ring-destructive/40"
+                      : "border-input focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/50",
+                  )}
+                >
+                  <span className="flex items-center whitespace-nowrap bg-muted px-2.5 text-xs text-muted-foreground">
                     {inboundBaseUrl}
                   </span>
-                  <Input
+                  <div className="my-1.5 w-px shrink-0 bg-border" aria-hidden />
+                  <input
                     id="wh-path"
                     value={path}
                     onChange={(e) => setPath(e.currentTarget.value)}
                     placeholder={isWhatsapp ? "whatsapp/loja-matriz" : "meu-sistema/eventos"}
-                    className="rounded-l-none"
                     aria-invalid={showPathError}
+                    className="min-w-0 flex-1 bg-transparent px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground"
                   />
                 </div>
                 <FieldValidateButton
-                  valid={pathValid}
-                  onClick={() => setPathTouched(true)}
-                  label="Validar endereço"
+                  variant={pathVariant}
+                  onClick={confirmPath}
+                  label="Confirmar endereço"
                 />
               </div>
               {showPathError ? (
@@ -333,9 +386,9 @@ export function WebhookWizard({
                   inputId="wh-business"
                 />
                 <FieldValidateButton
-                  valid={bizValid}
-                  onClick={() => setBizTouched(true)}
-                  label="Validar número"
+                  variant={bizVariant}
+                  onClick={confirmBiz}
+                  label="Confirmar número"
                 />
               </div>
               {showBizError ? (
