@@ -183,21 +183,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const payload = parsed.data;
 
   // ── Rate limit por número de origem ──────────────────────────────────────
-  const fromRl = await checkRateLimit(`whatsapp_inbound:from:${payload.from}`, RL_FROM_MAX, RL_WINDOW_SEC).catch(() => ({ allowed: true, remaining: 0 }));
+  const fromRl = await checkRateLimit(`whatsapp_inbound:from:${payload.wa_id}`, RL_FROM_MAX, RL_WINDOW_SEC).catch(() => ({ allowed: true, remaining: 0 }));
   if (!fromRl.allowed) {
     return NextResponse.json({ error: "Rate limit excedido para este número" }, { status: 429 });
   }
 
-  // ── Idempotência , dedup por messageId ────────────────────────────────────
+  // ── Idempotência , dedup por message_id ───────────────────────────────────
   const existing = await prisma.processedWhatsappMessage.findUnique({
-    where: { messageId: payload.messageId },
+    where: { messageId: payload.message_id },
   });
   if (existing) {
-    return NextResponse.json({ noOp: true, messageId: payload.messageId }, { status: 200 });
+    return NextResponse.json({ noOp: true, messageId: payload.message_id }, { status: 200 });
   }
 
-  // ── Resolução de usuário ───────────────────────────────────────────────────
-  const resolved = await resolveWhatsappUser(payload.from);
+  // ── Resolução de usuário (pelo wa_id; user_id guardado p/ futuro) ──────────
+  const resolved = await resolveWhatsappUser(payload.wa_id);
 
   // ── L1: número existe e está ativo? (mensagem padrão via webhook) ──────────
   if (resolved.status !== "ok") {
@@ -207,11 +207,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       action: "whatsapp_inbound_rejected",
       details: {
         reason: resolved.status,
-        from: payload.from,
-        messageId: payload.messageId,
+        from: payload.wa_id,
+        messageId: payload.message_id,
       },
     });
-    await fireBlocked(l1Reason, payload.from, payload.phoneNumberId, payload.messageId);
+    await fireBlocked(l1Reason, payload.wa_id, undefined, payload.message_id);
     return NextResponse.json(
       { rejected: true, reason: resolved.status },
       { status: 200 },
@@ -233,7 +233,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!roleMeetsChannelLevel(user.platformRole, whatsappLevel)) {
     const l2Reason: BlockReason =
       whatsappLevel === "off" ? "channel_disabled" : "role_not_allowed";
-    await fireBlocked(l2Reason, payload.from, payload.phoneNumberId, payload.messageId);
+    await fireBlocked(l2Reason, payload.wa_id, undefined, payload.message_id);
     return NextResponse.json(
       { rejected: true, reason: l2Reason },
       { status: 200 },
@@ -295,16 +295,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   // ── Enfileirar job na fila `agent` ────────────────────────────────────────
   const jobData: AgentJobData = {
-    messageId: payload.messageId,
+    messageId: payload.message_id,
     userId: user.id,
     channel: "whatsapp",
     type: payload.type,
     text: payload.text,
-    audioMediaId: payload.audioMediaId,
-    imageMediaId: payload.imageMediaId,
-    replyTo: payload.from,
-    phoneNumberId: payload.phoneNumberId,
-    contactName: payload.contactName,
+    media: payload.media,
+    waUserId: payload.user_id,
+    replyTo: payload.wa_id,
+    contactName: payload.contact_name,
     channelConfig,
   };
 
@@ -321,7 +320,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // Se o create falhar, o job pode ser processado 2× (dedup por messageId no job),
   // que é preferível a perder a mensagem silenciosamente (M4 do review 4-6).
   await prisma.processedWhatsappMessage.create({
-    data: { messageId: payload.messageId, userId: user.id },
+    data: { messageId: payload.message_id, userId: user.id },
   });
 
   return NextResponse.json({ queued: true, jobId: job.id }, { status: 202 });

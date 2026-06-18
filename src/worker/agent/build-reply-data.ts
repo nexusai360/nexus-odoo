@@ -9,7 +9,7 @@ export interface ReplyContext {
   to: string;
   phoneNumberId: string | null;
   conversationId: string | null;
-  messageType: "text" | "audio" | "image";
+  messageType: import("@/lib/whatsapp/inbound-payload").InboundMessageType;
 }
 
 /**

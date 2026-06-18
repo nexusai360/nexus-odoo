@@ -16,7 +16,7 @@ export interface AgentReplyData {
   tools: string[];
   reasoningMs: number;
   usage: { tokensInput: number; tokensOutput: number; costUsd: number };
-  messageType: "text" | "audio" | "image";
+  messageType: import("@/lib/whatsapp/inbound-payload").InboundMessageType;
   /** Só em permission_denied (L3). */
   deniedModule?: string;
   allowedModules?: string[];

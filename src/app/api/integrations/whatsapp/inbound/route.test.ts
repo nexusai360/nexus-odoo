@@ -100,8 +100,9 @@ function makeRequest(
 }
 
 const VALID_PAYLOAD = {
-  messageId: "wamid.abc123",
-  from: "+5511999999999",
+  wa_id: "+5511999999999",
+  user_id: "BR.4377207372590200",
+  message_id: "wamid.abc123",
   timestamp: Date.now(),
   type: "text",
   text: "Olá!",
@@ -126,7 +127,7 @@ beforeEach(() => {
   // Por padrão: mensagem ainda não processada
   mockProcessedFindUnique.mockResolvedValue(null);
   // Por padrão: create bem-sucedido
-  mockProcessedCreate.mockResolvedValue({ messageId: VALID_PAYLOAD.messageId });
+  mockProcessedCreate.mockResolvedValue({ messageId: VALID_PAYLOAD.message_id });
   // Por padrão: usuário resolvido com sucesso (com platformRole para L2)
   mockResolveWhatsappUser.mockResolvedValue({
     status: "ok",
@@ -192,7 +193,7 @@ describe("POST /api/integrations/whatsapp/inbound", () => {
   });
 
   it("retorna 200 (no-op) para messageId já processado", async () => {
-    mockProcessedFindUnique.mockResolvedValue({ messageId: VALID_PAYLOAD.messageId });
+    mockProcessedFindUnique.mockResolvedValue({ messageId: VALID_PAYLOAD.message_id });
 
     const req = makeRequest(VALID_PAYLOAD);
     const res = await POST(req as Parameters<typeof POST>[0]);
@@ -344,7 +345,7 @@ describe("POST /api/integrations/whatsapp/inbound", () => {
     expect(body.queued).toBe(true);
     // processedCreate agora inclui userId
     expect(mockProcessedCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ messageId: VALID_PAYLOAD.messageId }) }),
+      expect.objectContaining({ data: expect.objectContaining({ messageId: VALID_PAYLOAD.message_id }) }),
     );
     expect(mockQueueAdd).toHaveBeenCalled();
     expect(mockEmitAgentReply).not.toHaveBeenCalled();
@@ -356,10 +357,10 @@ describe("POST /api/integrations/whatsapp/inbound", () => {
 
     const [, jobData] = mockQueueAdd.mock.calls[0] as [string, AgentJobData];
     expect(jobData.userId).toBe("user-001");
-    expect(jobData.messageId).toBe(VALID_PAYLOAD.messageId);
+    expect(jobData.messageId).toBe(VALID_PAYLOAD.message_id);
     expect(jobData.type).toBe("text");
     expect(jobData.text).toBe("Olá!");
-    expect(jobData.replyTo).toBe(VALID_PAYLOAD.from);
+    expect(jobData.replyTo).toBe(VALID_PAYLOAD.wa_id);
   });
 });
 
