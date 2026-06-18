@@ -16,7 +16,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
-import { encrypt } from "@/lib/encryption";
+import { encrypt, decrypt } from "@/lib/encryption";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Types
@@ -82,8 +82,21 @@ export interface WebhookListItem {
   isWhatsappReceiver: boolean;
   /** F5.1: número da empresa (receptor de WhatsApp). */
   businessId: string | null;
+  /** Dica do token: pontilhado + últimos caracteres, para o usuário se localizar. */
+  secretHint: string;
   enabled: boolean;
   createdAt: Date;
+}
+
+/** Mascara o secret (cifrado) para exibição: `••••` + últimos 5 caracteres. */
+function maskSecret(encrypted: string): string {
+  try {
+    const plain = decrypt(encrypted);
+    const tail = plain.slice(-5);
+    return `••••${tail}`;
+  } catch {
+    return "••••";
+  }
 }
 
 export interface CreatedWebhook {
@@ -414,6 +427,7 @@ export async function listWebhooks(): Promise<DataResult<WebhookListItem[]>> {
       events: (r.events as WebhookEventName[] | undefined) ?? [],
       isWhatsappReceiver: r.isWhatsappReceiver ?? false,
       businessId: r.businessId ?? null,
+      secretHint: maskSecret(r.secret),
       enabled: r.enabled,
       createdAt: r.createdAt,
     }));
@@ -447,6 +461,7 @@ export async function getWebhook(id: string): Promise<DataResult<WebhookListItem
         events: (r.events as WebhookEventName[] | undefined) ?? [],
         isWhatsappReceiver: r.isWhatsappReceiver ?? false,
         businessId: r.businessId ?? null,
+        secretHint: maskSecret(r.secret),
         enabled: r.enabled,
         createdAt: r.createdAt,
       },

@@ -34,6 +34,7 @@ import {
   type Country,
   DEFAULT_COUNTRY,
   composeE164,
+  splitE164,
   validateNationalPhone,
 } from "@/lib/whatsapp/countries"
 import { WebhookEventSelector } from "@/components/integrations/webhook-event-selector"
@@ -108,6 +109,10 @@ export interface WebhookWizardProps {
   embedded?: boolean
   /** URL base read-only exibida como prefixo dos webhooks de entrada. */
   inboundBaseUrl?: string
+  /** Slugs (path) já cadastrados, para validar unicidade em tempo real. */
+  existingPaths?: string[]
+  /** business_id já cadastrados, para validar unicidade em tempo real. */
+  existingBusinessIds?: string[]
   onCreated: (webhook: CreatedWebhook) => void
   onCancel?: () => void
   /** Notifica o tipo escolhido (para a navegação/cabeçalho da tela). */
@@ -125,6 +130,8 @@ type Step = 1 | 2 | 3
 export function WebhookWizard({
   embedded = false,
   inboundBaseUrl = "https://app.nexus-odoo.com/api/hooks/",
+  existingPaths = [],
+  existingBusinessIds = [],
   onCreated,
   onCancel,
   onKindChange,
@@ -156,15 +163,26 @@ export function WebhookWizard({
   const isOutbound = kind === "outbound"
   const direction = isOutbound ? "outbound" : "inbound"
 
-  // Validação do endereço (slug) e do número da empresa, com erro em tempo real.
+  // Validação do endereço (slug) e do número da empresa, com erro em tempo real
+  // (formato + unicidade contra os webhooks já cadastrados).
   const pathTrim = path.trim()
-  const pathValid = PATH_RE.test(pathTrim)
-  const showPathError = !pathValid && (pathTrim.length > 0 || pathTouched)
-  const bizErrorMsg = validateNationalPhone(bizCountry, bizNational)
-  const bizValid = bizErrorMsg === null
-  const showBizError = !bizValid && (bizNational.length > 0 || bizTouched)
+  const pathFormatOk = PATH_RE.test(pathTrim)
+  const pathDuplicate = pathFormatOk && existingPaths.includes(pathTrim)
+  const pathValid = pathFormatOk && !pathDuplicate
+  const pathErrorMsg = !pathFormatOk
+    ? "Apenas minúsculas, números, hífen e barra. Precisa ser único."
+    : pathDuplicate
+      ? "Já existe um webhook de entrada com esse caminho."
+      : null
+  const showPathError = pathErrorMsg !== null && (pathTrim.length > 0 || pathTouched)
+
   // `business_id` gravado: dígitos do número internacional (DDI + nacional), sem o "+".
   const businessIdDigits = bizNational ? composeE164(bizCountry.dial, bizNational).slice(1) : ""
+  const bizFormatError = validateNationalPhone(bizCountry, bizNational)
+  const bizDuplicate = bizFormatError === null && existingBusinessIds.includes(businessIdDigits)
+  const bizValid = bizFormatError === null && !bizDuplicate
+  const bizErrorMsg = bizFormatError ?? (bizDuplicate ? "Já existe um webhook de WhatsApp com esse número." : null)
+  const showBizError = bizErrorMsg !== null && (bizNational.length > 0 || bizTouched)
 
   // Estado visual + confirmação dos campos com botão de confirmar.
   const pathVariant: FieldConfirmVariant = !pathValid
@@ -207,6 +225,20 @@ export function WebhookWizard({
     if (pathTrim !== pathConfirmed) {
       setPath(pathConfirmed)
       setPathTouched(false)
+    }
+  }
+
+  // Mesmo comportamento no número da empresa (ignora foco que vai para o
+  // seletor de país ou o botão de confirmar , ambos dentro do mesmo bloco).
+  const bizFieldRef = React.useRef<HTMLDivElement>(null)
+  function revertBiz(e: React.FocusEvent) {
+    const next = e.relatedTarget as Node | null
+    if (next && bizFieldRef.current?.contains(next)) return
+    if (businessIdDigits !== bizConfirmed) {
+      const snap = splitE164(bizConfirmed)
+      setBizCountry(snap.country ?? DEFAULT_COUNTRY)
+      setBizNational(snap.nationalDigits)
+      setBizTouched(false)
     }
   }
 
@@ -382,7 +414,7 @@ export function WebhookWizard({
               </div>
               {showPathError ? (
                 <p className="text-xs text-destructive" role="alert">
-                  Apenas minúsculas, números, hífen e barra. Precisa ser único.
+                  {pathErrorMsg}
                 </p>
               ) : (
                 <p className="text-xs text-muted-foreground">
@@ -395,13 +427,14 @@ export function WebhookWizard({
           {isWhatsapp && (
             <div className="space-y-1.5">
               <Label htmlFor="wh-business">Número da empresa</Label>
-              <div className="flex items-stretch gap-2">
+              <div ref={bizFieldRef} className="flex items-stretch">
                 <PhoneInput
                   className="flex-1"
                   country={bizCountry}
                   onCountryChange={setBizCountry}
                   national={bizNational}
                   onNationalChange={setBizNational}
+                  onBlur={revertBiz}
                   invalid={showBizError}
                   inputId="wh-business"
                 />
@@ -435,8 +468,8 @@ export function WebhookWizard({
             <div className="space-y-1.5">
               <Label>Método HTTP</Label>
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1 rounded-md border border-border bg-muted px-2 py-1 text-xs font-semibold text-foreground">
-                  <Lock className="h-3 w-3 text-muted-foreground" aria-hidden />
+                <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-xs font-semibold text-primary ring-1 ring-primary/20">
+                  <Lock className="h-3 w-3 text-primary" aria-hidden />
                   POST
                 </span>
                 <span className="text-xs text-muted-foreground">

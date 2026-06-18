@@ -17,7 +17,15 @@ import { cn } from "@/lib/utils";
 
 /** Tela cheia de criação de webhook. Dona do tipo escolhido, para refletir na
  *  navegação (breadcrumb) e no cabeçalho, e navega de volta ao fim. */
-export function WebhookCreateClient({ inboundBaseUrl }: { inboundBaseUrl: string }) {
+export function WebhookCreateClient({
+  inboundBaseUrl,
+  existingPaths,
+  existingBusinessIds,
+}: {
+  inboundBaseUrl: string;
+  existingPaths: string[];
+  existingBusinessIds: string[];
+}) {
   const router = useRouter();
   const [kind, setKind] = React.useState<WebhookKind | null>(null);
   // Bump remonta o wizard (reset para o passo 1 de seleção de tipo).
@@ -61,6 +69,8 @@ export function WebhookCreateClient({ inboundBaseUrl }: { inboundBaseUrl: string
         <WebhookWizard
           key={resetKey}
           inboundBaseUrl={inboundBaseUrl}
+          existingPaths={existingPaths}
+          existingBusinessIds={existingBusinessIds}
           onKindChange={setKind}
           onCreated={() => {
             toast.success("Webhook criado");

@@ -21,7 +21,24 @@ import {
   type WebhookListItem,
 } from "@/lib/actions/webhooks";
 import { formatE164ForDisplay } from "@/lib/whatsapp/countries";
+import {
+  webhookKindBadgeClass,
+  webhookKindLabel,
+  type WebhookKind,
+} from "@/lib/integrations/webhook-kind";
 import { cn } from "@/lib/utils";
+
+/** Ícone e cores do card por tipo de webhook (mesma identidade da criação). */
+const KIND_META: Record<WebhookKind, { icon: typeof ArrowDownToLine; iconColor: string; iconBg: string }> = {
+  whatsapp: { icon: MessageCircle, iconColor: "text-green-500", iconBg: "bg-green-500/10" },
+  inbound_generic: { icon: ArrowDownToLine, iconColor: "text-sky-500", iconBg: "bg-sky-500/10" },
+  outbound: { icon: ArrowUpFromLine, iconColor: "text-violet-500", iconBg: "bg-violet-500/10" },
+};
+
+function webhookKindOf(webhook: WebhookListItem): WebhookKind {
+  if (webhook.direction !== "inbound") return "outbound";
+  return webhook.isWhatsappReceiver ? "whatsapp" : "inbound_generic";
+}
 
 interface Props {
   initial: WebhookListItem[];
@@ -29,18 +46,19 @@ interface Props {
   inboundBaseUrl: string;
 }
 
-/** Rótulo da direção, em linguagem clara: escutar vs disparar. */
-const DIRECTION_LABELS: Record<string, string> = {
-  inbound: "Recebe eventos",
-  outbound: "Envia eventos",
-};
-
-function formatDate(date: Date) {
-  return new Intl.DateTimeFormat("pt-BR", {
+function formatDateTime(date: Date) {
+  const dt = new Date(date);
+  const d = new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",
-    month: "short",
+    month: "long",
     year: "numeric",
-  }).format(new Date(date));
+  }).format(dt);
+  const t = new Intl.DateTimeFormat("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(dt);
+  return `${d} às ${t}`;
 }
 
 export function WebhooksContent({ initial }: Props) {
@@ -136,7 +154,10 @@ interface WebhookRowProps {
 function WebhookRow({ webhook, isPending, onToggle, onDelete }: WebhookRowProps) {
   const router = useRouter();
   const isInbound = webhook.direction === "inbound";
-  const DirIcon = isInbound ? ArrowDownToLine : ArrowUpFromLine;
+  const kind = webhookKindOf(webhook);
+  const km = KIND_META[kind];
+  const KindIcon = km.icon;
+  const isWhatsapp = kind === "whatsapp";
   const endpoint = isInbound
     ? webhook.path
       ? `/${webhook.path}`
@@ -152,21 +173,20 @@ function WebhookRow({ webhook, isPending, onToggle, onDelete }: WebhookRowProps)
     >
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-start gap-3 min-w-0">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/10">
-            <DirIcon className="h-4 w-4 text-violet-500" />
+          <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg", km.iconBg)}>
+            <KindIcon className={cn("h-4 w-4", km.iconColor)} />
           </span>
           <div className="space-y-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-semibold">{webhook.name ?? "Webhook"}</span>
-              <span className="text-[11px] text-muted-foreground">
-                {DIRECTION_LABELS[webhook.direction] ?? webhook.direction}
+              <span
+                className={cn(
+                  "rounded-full px-2 py-0.5 text-[10px] font-medium",
+                  webhookKindBadgeClass(kind),
+                )}
+              >
+                {webhookKindLabel(kind)}
               </span>
-              {webhook.isWhatsappReceiver && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-green-500/15 px-1.5 py-0.5 text-[10px] font-medium text-green-600 dark:text-green-400">
-                  <MessageCircle className="h-2.5 w-2.5" aria-hidden />
-                  WhatsApp{webhook.businessId ? ` · ${formatE164ForDisplay(webhook.businessId)}` : ""}
-                </span>
-              )}
             </div>
             {webhook.description && (
               <p className="text-[11px] text-muted-foreground">{webhook.description}</p>
@@ -186,8 +206,16 @@ function WebhookRow({ webhook, isPending, onToggle, onDelete }: WebhookRowProps)
                 </span>
               ))}
             </div>
+            {isWhatsapp && webhook.businessId && (
+              <p className="text-[11px] text-muted-foreground">
+                WhatsApp:{" "}
+                <span className="font-medium tabular-nums text-foreground">
+                  {formatE164ForDisplay(webhook.businessId)}
+                </span>
+              </p>
+            )}
             <p className="text-[11px] text-muted-foreground">
-              Criado em {formatDate(webhook.createdAt)}
+              Criado em {formatDateTime(webhook.createdAt)}
             </p>
           </div>
         </div>

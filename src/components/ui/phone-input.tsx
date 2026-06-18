@@ -30,6 +30,8 @@ interface PhoneInputProps {
   onNationalChange: (digits: string) => void;
   /** Disparado ao pressionar Enter no campo de número. */
   onSubmit?: () => void;
+  /** Disparado quando o campo de número perde o foco (para revert/validação). */
+  onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
   disabled?: boolean;
   invalid?: boolean;
   placeholder?: string;
@@ -61,6 +63,7 @@ export function PhoneInput({
   national,
   onNationalChange,
   onSubmit,
+  onBlur,
   disabled,
   invalid,
   placeholder = "61 98123-4567",
@@ -214,6 +217,7 @@ export function PhoneInput({
             onSubmit?.();
           }
         }}
+        onBlur={onBlur}
         placeholder={placeholder}
         disabled={disabled}
         aria-invalid={invalid || undefined}

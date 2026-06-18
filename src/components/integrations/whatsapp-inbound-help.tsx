@@ -284,13 +284,16 @@ function HeaderHelp({
 export function WhatsappInboundHelp({
   inboundBaseUrl = "https://app.nexus-odoo.com/api/hooks/",
   path = "",
+  defaultOpen = true,
 }: {
   /** Base read-only do endpoint de entrada (termina em "/"). */
   inboundBaseUrl?: string;
   /** Slug definido pelo usuário no formulário (o final do endereço). */
   path?: string;
+  /** Estado inicial do dropdown (criar = aberto; editar = fechado). */
+  defaultOpen?: boolean;
 }) {
-  const [open, setOpen] = React.useState(true);
+  const [open, setOpen] = React.useState(defaultOpen);
 
   const hasPath = path.trim().length > 0;
   const url = `${inboundBaseUrl}${path.trim()}`;

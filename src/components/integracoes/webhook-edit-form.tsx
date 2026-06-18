@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Loader2, Lock, Plus, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
@@ -36,14 +36,25 @@ import {
 const HTTP_METHODS: WebhookMethod[] = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"];
 const PATH_RE = /^[a-z0-9][a-z0-9-/]*$/;
 
+/** Chave de comparação de arrays (ordem-insensível). */
+function arrKey(arr: string[]): string {
+  return [...arr].sort().join(",");
+}
+
 /** Form full-page de edição de webhook (F5.1). Inclui descrição, recebe-WhatsApp,
  *  número da empresa, eventos e a ajuda do JSON. */
 export function WebhookEditForm({
   webhook,
   inboundBaseUrl,
+  existingPaths,
+  existingBusinessIds,
 }: {
   webhook: WebhookListItem;
   inboundBaseUrl: string;
+  /** Slugs de OUTROS webhooks (exclui o atual), para unicidade em tempo real. */
+  existingPaths: string[];
+  /** business_id de OUTROS webhooks (exclui o atual), para unicidade. */
+  existingBusinessIds: string[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -70,15 +81,25 @@ export function WebhookEditForm({
   const [bizConfirmed, setBizConfirmed] = useState(initBizDigits);
   const [revealedSecret, setRevealedSecret] = useState<string | null>(null);
 
-  // Validação em tempo real do endereço (slug) e do número da empresa.
+  // Validação em tempo real (formato + unicidade contra os outros webhooks).
   const pathTrim = path.trim();
-  const pathValid = PATH_RE.test(pathTrim);
-  const showPathError = !pathValid && (pathTrim.length > 0 || pathTouched);
-  const bizErrorMsg = validateNationalPhone(bizCountry, bizNational);
-  const bizValid = bizErrorMsg === null;
-  const showBizError = !bizValid && (bizNational.length > 0 || bizTouched);
+  const pathFormatOk = PATH_RE.test(pathTrim);
+  const pathDuplicate = pathFormatOk && existingPaths.includes(pathTrim);
+  const pathValid = pathFormatOk && !pathDuplicate;
+  const pathErrorMsg = !pathFormatOk
+    ? "Apenas minúsculas, números, hífen e barra. Precisa ser único."
+    : pathDuplicate
+      ? "Já existe um webhook de entrada com esse caminho."
+      : null;
+  const showPathError = pathErrorMsg !== null && (pathTrim.length > 0 || pathTouched);
+
   // `business_id` gravado: dígitos do número internacional (DDI + nacional), sem o "+".
   const businessIdDigits = bizNational ? composeE164(bizCountry.dial, bizNational).slice(1) : "";
+  const bizFormatError = validateNationalPhone(bizCountry, bizNational);
+  const bizDuplicate = bizFormatError === null && existingBusinessIds.includes(businessIdDigits);
+  const bizValid = bizFormatError === null && !bizDuplicate;
+  const bizErrorMsg = bizFormatError ?? (bizDuplicate ? "Já existe um webhook de WhatsApp com esse número." : null);
+  const showBizError = bizErrorMsg !== null && (bizNational.length > 0 || bizTouched);
 
   // Estado visual + confirmação dos campos com botão de confirmar.
   const pathVariant: FieldConfirmVariant = !pathValid
@@ -122,6 +143,18 @@ export function WebhookEditForm({
     }
   }
 
+  const bizFieldRef = useRef<HTMLDivElement>(null);
+  function revertBiz(e: React.FocusEvent) {
+    const next = e.relatedTarget as Node | null;
+    if (next && bizFieldRef.current?.contains(next)) return;
+    if (businessIdDigits !== bizConfirmed) {
+      const snap = splitE164(bizConfirmed);
+      setBizCountry(snap.country ?? DEFAULT_COUNTRY);
+      setBizNational(snap.nationalDigits);
+      setBizTouched(false);
+    }
+  }
+
   // O botão de confirmar só aparece quando há algo digitado (some quando vazio).
   const showPathConfirm = pathTrim.length > 0;
   const showBizConfirm = bizNational.length > 0;
@@ -151,6 +184,17 @@ export function WebhookEditForm({
         pathTrim === pathConfirmed &&
         (!isWhatsapp || (bizValid && businessIdDigits === bizConfirmed))
       : isValidUrl(targetUrl.trim()));
+
+  // Salvar só habilita quando houve alteração de fato.
+  const isDirty =
+    name.trim() !== (webhook.name ?? "").trim() ||
+    description.trim() !== (webhook.description ?? "").trim() ||
+    arrKey(methods) !== arrKey(webhook.methods) ||
+    (isInbound
+      ? pathConfirmed !== (webhook.path ?? "").trim() ||
+        (isWhatsapp && bizConfirmed !== initBizDigits)
+      : targetUrl.trim() !== (webhook.targetUrl ?? "").trim() ||
+        arrKey(events) !== arrKey(webhook.events ?? []));
 
   function handleSave() {
     startTransition(async () => {
@@ -210,15 +254,28 @@ export function WebhookEditForm({
           <div className="space-y-1.5">
             <Label htmlFor="wh-path">Endereço (URL)</Label>
             <div className="flex items-stretch">
-              <Input
-                id="wh-path"
-                value={path}
-                onChange={(e) => setPath(e.target.value)}
-                onBlur={revertPath}
-                placeholder="whatsapp/loja-matriz"
-                className="flex-1"
-                aria-invalid={showPathError}
-              />
+              <div
+                className={cn(
+                  "flex h-9 flex-1 items-stretch overflow-hidden rounded-lg border bg-transparent transition-colors dark:bg-input/30",
+                  showPathError
+                    ? "border-destructive focus-within:border-destructive focus-within:ring-2 focus-within:ring-destructive/40"
+                    : "border-input focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/50",
+                )}
+              >
+                <span className="flex items-center whitespace-nowrap bg-muted px-2.5 text-xs text-muted-foreground">
+                  {inboundBaseUrl}
+                </span>
+                <div className="my-1.5 w-px shrink-0 bg-border" aria-hidden />
+                <input
+                  id="wh-path"
+                  value={path}
+                  onChange={(e) => setPath(e.target.value)}
+                  onBlur={revertPath}
+                  placeholder={isWhatsapp ? "whatsapp/loja-matriz" : "meu-sistema/eventos"}
+                  aria-invalid={showPathError}
+                  className="min-w-0 flex-1 bg-transparent px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground"
+                />
+              </div>
               <div
                 className={cn(
                   "flex items-stretch transition-all duration-200",
@@ -234,11 +291,11 @@ export function WebhookEditForm({
             </div>
             {showPathError ? (
               <p className="text-xs text-destructive" role="alert">
-                Apenas minúsculas, números, hífen e barra. Precisa ser único.
+                {pathErrorMsg}
               </p>
             ) : (
               <p className="text-xs text-muted-foreground">
-                Apenas letras minúsculas, números, hífen e barra. Precisa ser único.
+                Você define o final do endereço. Apenas minúsculas, números, hífen e barra. Precisa ser único.
               </p>
             )}
           </div>
@@ -246,13 +303,14 @@ export function WebhookEditForm({
           {isWhatsapp && (
             <div className="space-y-1.5">
               <Label htmlFor="wh-business">Número da empresa</Label>
-              <div className="flex items-stretch">
+              <div ref={bizFieldRef} className="flex items-stretch">
                 <PhoneInput
                   className="flex-1"
                   country={bizCountry}
                   onCountryChange={setBizCountry}
                   national={bizNational}
                   onNationalChange={setBizNational}
+                  onBlur={revertBiz}
                   invalid={showBizError}
                   inputId="wh-business"
                 />
@@ -298,8 +356,8 @@ export function WebhookEditForm({
         <div className="space-y-1.5">
           <Label>Método HTTP</Label>
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1 rounded-md border border-border bg-muted px-2 py-1 text-xs font-semibold text-foreground">
-              <Lock className="h-3 w-3 text-muted-foreground" aria-hidden />
+            <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-xs font-semibold text-primary ring-1 ring-primary/20">
+              <Lock className="h-3 w-3 text-primary" aria-hidden />
               POST
             </span>
             <span className="text-xs text-muted-foreground">
@@ -335,7 +393,9 @@ export function WebhookEditForm({
         </div>
       )}
 
-      {isWhatsapp && <WhatsappInboundHelp inboundBaseUrl={inboundBaseUrl} path={pathConfirmed} />}
+      {isWhatsapp && (
+        <WhatsappInboundHelp inboundBaseUrl={inboundBaseUrl} path={pathConfirmed} defaultOpen={false} />
+      )}
 
       {!isInbound && (
         <div className="space-y-2">
@@ -346,9 +406,15 @@ export function WebhookEditForm({
 
       <div className="rounded-lg border border-border bg-muted/30 p-3">
         <div className="flex items-center justify-between gap-3">
-          <div>
+          <div className="space-y-1">
             <p className="text-sm font-medium">Token de assinatura</p>
             <p className="text-xs text-muted-foreground">Gere um novo token e invalide o anterior.</p>
+            <p className="text-xs text-muted-foreground">
+              Token atual:{" "}
+              <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-foreground">
+                {webhook.secretHint}
+              </code>
+            </p>
           </div>
           <Button
             type="button"
@@ -365,10 +431,15 @@ export function WebhookEditForm({
       </div>
 
       <div className="flex items-center justify-end gap-2 border-t border-border/60 pt-4">
-        <Button type="button" variant="ghost" onClick={back} disabled={isPending}>
+        <Button type="button" variant="outline" onClick={back} disabled={isPending}>
           Cancelar
         </Button>
-        <Button type="button" onClick={handleSave} disabled={isPending || !valid} className="gap-1.5">
+        <Button
+          type="button"
+          onClick={handleSave}
+          disabled={isPending || !valid || !isDirty}
+          className="gap-1.5"
+        >
           {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
           Salvar alterações
         </Button>
