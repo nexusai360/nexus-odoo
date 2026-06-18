@@ -189,7 +189,7 @@ function CodeBlock({ label, lines, hint }: { label: string; lines: CodeLine[]; h
         <span className="text-xs font-medium text-foreground">{label}</span>
         <CopyButton value={linesToText(lines)} />
       </div>
-      <pre className="max-h-80 overflow-auto bg-background p-3 text-[11px] leading-relaxed text-foreground">
+      <pre className="overflow-x-auto bg-background p-3 text-[11px] leading-relaxed text-foreground">
         <code>
           {lines.map((l, i) => (
             <span key={i} className="block whitespace-pre">
@@ -364,9 +364,8 @@ export function WhatsappInboundHelp({
             <div className="flex gap-2 rounded-lg border border-border bg-muted/30 p-2.5">
               <KeyRound className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
               <p className="text-xs text-muted-foreground">
-                O <span className="font-medium text-foreground">token</span> é o segredo gerado ao criar o
-                webhook (e no botão Rotacionar). Copie ele e use no header Authorization. Guarde com
-                segurança; se vazar, gere um novo em Rotacionar.
+                O <span className="font-medium text-foreground">token</span> é o segredo do webhook (veja ao
+                criar ou em Rotacionar). Use-o no header Authorization.
               </p>
             </div>
 

@@ -122,9 +122,9 @@ export function WebhookEditForm({
     }
   }
 
-  // O botão de confirmar só aparece quando há algo a confirmar/aplicado.
-  const showPathConfirm = !(pathTrim === "" && pathConfirmed === "");
-  const showBizConfirm = !(bizNational === "" && bizConfirmed === "");
+  // O botão de confirmar só aparece quando há algo digitado (some quando vazio).
+  const showPathConfirm = pathTrim.length > 0;
+  const showBizConfirm = bizNational.length > 0;
 
   function toggleMethod(m: WebhookMethod) {
     setMethods((prev) => (prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m]));
