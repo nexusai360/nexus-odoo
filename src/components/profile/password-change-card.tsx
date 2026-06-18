@@ -73,7 +73,13 @@ function PasswordField({
   );
 }
 
-export function PasswordChangeCard() {
+export function PasswordChangeCard({
+  redirectOnSuccess,
+}: {
+  /** Quando definido (ex.: tela de troca obrigatória), navega para cá após
+   *  trocar a senha, em vez de só exibir o toast. */
+  redirectOnSuccess?: string;
+} = {}) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -112,6 +118,11 @@ export function PasswordChangeCard() {
         setCurrentPassword("");
         setNewPassword("");
         setConfirmPassword("");
+        if (redirectOnSuccess) {
+          // Navegação completa: o token já foi renovado na action; o middleware
+          // libera o acesso sem precisar de logout.
+          window.location.assign(redirectOnSuccess);
+        }
       } else {
         toast.error(result.error || "Erro ao alterar senha");
       }

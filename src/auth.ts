@@ -13,7 +13,7 @@ const loginSchema = z.object({
 
 // auth.ts roda em Node Runtime , aqui mora o callback `jwt`, que consulta o
 // Prisma para manter o token fresco. O middleware (Edge) usa apenas authConfig.
-export const { handlers, auth, signIn, signOut } = NextAuth({
+export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
   ...authConfig,
   callbacks: {
     ...authConfig.callbacks,
