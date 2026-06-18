@@ -35,7 +35,7 @@ const HTTP_METHODS: WebhookMethod[] = ["GET", "POST", "PUT", "PATCH", "DELETE", 
 const PATH_RE = /^[a-z0-9][a-z0-9-/]*$/
 
 /** Tipo de webhook escolhido no passo 1 (cada um com experiência própria). */
-type WebhookKind = "whatsapp" | "inbound_generic" | "outbound"
+export type WebhookKind = "whatsapp" | "inbound_generic" | "outbound"
 
 interface KindMeta {
   id: WebhookKind
@@ -49,7 +49,7 @@ const KINDS: KindMeta[] = [
   {
     id: "whatsapp",
     icon: MessageCircle,
-    title: "Receber dados do WhatsApp",
+    title: "Receber mensagens do WhatsApp",
     description:
       "Recebe as mensagens do WhatsApp e alimenta o Agente Nex. A plataforma cuida da validação e da resposta.",
     accent: {
@@ -61,7 +61,7 @@ const KINDS: KindMeta[] = [
   {
     id: "inbound_generic",
     icon: ArrowDownToLine,
-    title: "Receber outros dados",
+    title: "Receber eventos",
     description:
       "Endpoint genérico: outro sistema chama este endereço quando algo acontece e a plataforma escuta.",
     accent: {
@@ -84,6 +84,19 @@ const KINDS: KindMeta[] = [
   },
 ]
 
+/** Rótulo curto do tipo (para navegação/cabeçalho). */
+export function webhookKindLabel(kind: WebhookKind): string {
+  return kindMeta(kind).title
+}
+
+/** Subtítulo personalizado por tipo (cabeçalho da tela). */
+export function webhookKindSubtitle(kind: WebhookKind | null): string {
+  if (kind === "whatsapp") return "Configure um webhook para receber mensagens do WhatsApp."
+  if (kind === "inbound_generic") return "Configure um webhook para receber eventos de outros sistemas."
+  if (kind === "outbound") return "Configure um webhook para enviar eventos para outros sistemas."
+  return "Escolha o tipo de webhook que você quer criar."
+}
+
 function kindMeta(kind: WebhookKind): KindMeta {
   return KINDS.find((k) => k.id === kind) ?? KINDS[0]
 }
@@ -94,6 +107,8 @@ export interface WebhookWizardProps {
   inboundBaseUrl?: string
   onCreated: (webhook: CreatedWebhook) => void
   onCancel?: () => void
+  /** Notifica o tipo escolhido (para a navegação/cabeçalho da tela). */
+  onKindChange?: (kind: WebhookKind | null) => void
 }
 
 type Step = 1 | 2 | 3
@@ -109,9 +124,14 @@ export function WebhookWizard({
   inboundBaseUrl = "https://app.nexus-odoo.com/api/hooks/",
   onCreated,
   onCancel,
+  onKindChange,
 }: WebhookWizardProps) {
   const [step, setStep] = React.useState<Step>(1)
-  const [kind, setKind] = React.useState<WebhookKind | null>(null)
+  const [kind, setKindState] = React.useState<WebhookKind | null>(null)
+  const setKind = (k: WebhookKind | null) => {
+    setKindState(k)
+    onKindChange?.(k)
+  }
   const [name, setName] = React.useState("")
   const [description, setDescription] = React.useState("")
   const [path, setPath] = React.useState("")
@@ -301,7 +321,7 @@ export function WebhookWizard({
                   POST
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  Definido automaticamente , as mensagens chegam sempre por POST.
+                  Definido automaticamente.
                 </span>
               </div>
             </div>
@@ -349,7 +369,7 @@ export function WebhookWizard({
               className="cursor-pointer"
             >
               {submitting && <Loader2 className="size-4 animate-spin" />}
-              {isOutbound ? "Criar webhook de saída" : isWhatsapp ? "Criar webhook do WhatsApp" : "Criar webhook"}
+              Criar webhook
             </Button>
           </div>
         </div>

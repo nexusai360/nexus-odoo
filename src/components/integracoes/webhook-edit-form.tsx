@@ -173,7 +173,7 @@ export function WebhookEditForm({ webhook }: { webhook: WebhookListItem }) {
               POST
             </span>
             <span className="text-xs text-muted-foreground">
-              Definido automaticamente , as mensagens chegam sempre por POST.
+              Definido automaticamente.
             </span>
           </div>
         </div>
