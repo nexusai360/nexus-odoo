@@ -404,7 +404,7 @@ export function UsersContent({ currentUser }: UsersContentProps) {
                     </TableCell>
 
                     <TableCell className="text-center text-sm text-muted-foreground">
-                      {format(new Date(u.createdAt), "dd MMM yyyy HH:mm", {
+                      {format(new Date(u.createdAt), "dd MMM yyyy HH:mm:ss", {
                         locale: ptBR,
                       })}
                     </TableCell>
@@ -412,7 +412,7 @@ export function UsersContent({ currentUser }: UsersContentProps) {
                     <TableCell className="text-center text-sm">
                       {u.lastLoginAt ? (
                         <span className="text-muted-foreground">
-                          {format(new Date(u.lastLoginAt), "dd MMM yyyy HH:mm", {
+                          {format(new Date(u.lastLoginAt), "dd MMM yyyy HH:mm:ss", {
                             locale: ptBR,
                           })}
                         </span>
