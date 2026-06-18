@@ -15,6 +15,26 @@ const loginSchema = z.object({
 // Prisma para manter o token fresco. O middleware (Edge) usa apenas authConfig.
 export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
   ...authConfig,
+  events: {
+    // Logout: registra na auditoria quando o usuário encerra a sessão. Na
+    // estratégia JWT o evento recebe o token; usamos o id para o autor do log.
+    async signOut(message) {
+      try {
+        const token = (message as { token?: { id?: string } }).token;
+        const userId = token?.id ?? null;
+        if (!userId) return;
+        const { logAudit } = await import("@/lib/audit");
+        await logAudit({
+          userId,
+          action: "logout",
+          targetType: "User",
+          targetId: userId,
+        });
+      } catch (err) {
+        console.warn("[auth.signOut] falha ao registrar logout:", err);
+      }
+    },
+  },
   callbacks: {
     ...authConfig.callbacks,
     async jwt({ token, user }) {
@@ -41,6 +61,7 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
               theme: true,
               platformRole: true,
               mustChangePassword: true,
+              lastActivityAt: true,
             },
           });
           if (fresh) {
@@ -51,6 +72,15 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
             token.theme = fresh.theme;
             token.mustChangePassword = fresh.mustChangePassword;
             if (!fresh.isActive) return null as any;
+            // Última atividade: este callback roda a cada requisição autenticada
+            // (page load, server action, navegação). Registra no máximo 1x/min,
+            // via SQL cru para não bumpar `updated_at` (@updatedAt).
+            const lastMs = fresh.lastActivityAt?.getTime() ?? 0;
+            if (Date.now() - lastMs > 60_000) {
+              await prisma.$executeRaw`UPDATE users SET last_activity_at = NOW() WHERE id = ${token.id}::uuid`.catch(
+                (e: unknown) => console.warn("[auth.jwt] last_activity_at:", e),
+              );
+            }
           } else {
             // A query foi bem-sucedida mas não há usuário com esse id: a conta
             // foi removida ou a sessão foi emitida contra outra base. Invalida a

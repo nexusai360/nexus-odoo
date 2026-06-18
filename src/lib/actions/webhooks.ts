@@ -17,6 +17,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { encrypt, decrypt } from "@/lib/encryption";
+import { logAudit } from "@/lib/audit";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Types
@@ -257,6 +258,14 @@ export async function createWebhook(
       },
     });
 
+    await logAudit({
+      userId: me.id,
+      action: "webhook_created",
+      targetType: "webhook",
+      targetId: created.id,
+      details: { name: created.name, direction: created.direction },
+    });
+
     revalidatePath("/integracoes/webhooks");
 
     return {
@@ -390,6 +399,13 @@ export async function updateWebhook(
         businessId,
       },
     });
+    await logAudit({
+      userId: me.id,
+      action: "webhook_updated",
+      targetType: "webhook",
+      targetId: id,
+      details: { name: nameOk.data, direction },
+    });
     revalidatePath("/integracoes/webhooks");
     return { success: true, data: undefined };
   } catch (err) {
@@ -496,6 +512,13 @@ export async function rotateWebhookSecret(
       data: { secret: secretEncrypted },
     });
 
+    await logAudit({
+      userId: me.id,
+      action: "webhook_secret_rotated",
+      targetType: "webhook",
+      targetId: id,
+    });
+
     revalidatePath("/integracoes/webhooks");
 
     return { success: true, data: { secretPlain } };
@@ -527,6 +550,14 @@ export async function toggleWebhook(
       data: { enabled },
     });
 
+    await logAudit({
+      userId: me.id,
+      action: "webhook_toggled",
+      targetType: "webhook",
+      targetId: id,
+      details: { enabled },
+    });
+
     revalidatePath("/integracoes/webhooks");
 
     return { success: true, data: undefined };
@@ -550,7 +581,19 @@ export async function deleteWebhook(id: string): Promise<DataResult<void>> {
   if (!isSuperAdmin(me.platformRole)) return { success: false, error: "Acesso negado" };
 
   try {
+    const existing = await prisma.whatsappWebhook.findUnique({
+      where: { id },
+      select: { name: true, direction: true },
+    });
     await prisma.whatsappWebhook.delete({ where: { id } });
+
+    await logAudit({
+      userId: me.id,
+      action: "webhook_deleted",
+      targetType: "webhook",
+      targetId: id,
+      details: { name: existing?.name ?? null, direction: existing?.direction ?? null },
+    });
 
     revalidatePath("/integracoes/webhooks");
 

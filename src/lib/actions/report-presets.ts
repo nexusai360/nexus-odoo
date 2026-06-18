@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 import type { ReportPreset } from "@/generated/prisma/client";
 
 export type ActionResult<T = void> =
@@ -101,6 +102,14 @@ export async function criarPreset(
       },
     });
 
+    await logAudit({
+      userId: user.id,
+      action: "report_preset_created",
+      targetType: "report_preset",
+      targetId: preset.id,
+      details: { nome: preset.nome, reportId },
+    });
+
     revalidatePath(`/relatorios/${reportId}`);
     return { success: true, data: preset };
   } catch {
@@ -119,7 +128,7 @@ export async function excluirPreset(id: string): Promise<ActionResult> {
 
     const preset = await prisma.reportPreset.findUnique({
       where: { id },
-      select: { userId: true, reportId: true },
+      select: { userId: true, reportId: true, nome: true },
     });
 
     if (!preset) return { success: false, error: "Preset não encontrado" };
@@ -127,6 +136,14 @@ export async function excluirPreset(id: string): Promise<ActionResult> {
       return { success: false, error: "Acesso negado" };
 
     await prisma.reportPreset.delete({ where: { id } });
+
+    await logAudit({
+      userId: user.id,
+      action: "report_preset_deleted",
+      targetType: "report_preset",
+      targetId: id,
+      details: { nome: preset.nome, reportId: preset.reportId },
+    });
 
     revalidatePath(`/relatorios/${preset.reportId}`);
     return { success: true };
