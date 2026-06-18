@@ -141,6 +141,7 @@ export function AuditsTable() {
   const [page, setPage] = useState(0); // 0-indexed
   const [pageSize, setPageSize] = useState<number>(50);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [selectedActions, setSelectedActions] = useState<AuditAction[]>([]);
 
   async function load() {
     setLoading(true);
@@ -178,22 +179,44 @@ export function AuditsTable() {
     );
   }, [rows]);
 
-  // Busca (todas as colunas) + filtro por usuário(s) selecionado(s).
+  // Ações presentes nos registros , só essas aparecem no filtro de ação.
+  const auditActions = useMemo(() => {
+    const set = new Set<AuditAction>();
+    for (const r of rows) set.add(r.action);
+    return Array.from(set).sort((a, b) =>
+      actionLabel(a).localeCompare(actionLabel(b), "pt-BR"),
+    );
+  }, [rows]);
+
+  // Busca (todas as colunas) + filtro por ação(ões) + por usuário(s).
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     const userSet =
       selectedUserIds.length > 0 ? new Set(selectedUserIds) : null;
+    const actionSet =
+      selectedActions.length > 0 ? new Set(selectedActions) : null;
     return rows.filter((r) => {
+      if (actionSet && !actionSet.has(r.action)) return false;
       if (userSet && (!r.userId || !userSet.has(r.userId))) return false;
       if (q && !rowSearchText(r).includes(q)) return false;
       return true;
     });
-  }, [rows, search, selectedUserIds]);
+  }, [rows, search, selectedUserIds, selectedActions]);
 
   // Volta para a 1ª página quando busca/filtro mudam (resultado novo).
   useEffect(() => {
     setPage(0);
-  }, [search, selectedUserIds]);
+  }, [search, selectedUserIds, selectedActions]);
+
+  const anyFilter =
+    search.trim().length > 0 ||
+    selectedUserIds.length > 0 ||
+    selectedActions.length > 0;
+  const clearAll = () => {
+    setSearch("");
+    setSelectedUserIds([]);
+    setSelectedActions([]);
+  };
 
   const total = filtered.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -221,27 +244,23 @@ export function AuditsTable() {
           usuários, configurações, credenciais e acessos do Agente Nex.
         </p>
         <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
-          <div className="relative flex-1 sm:max-w-md">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Buscar em toda a tabela…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-8"
-              aria-label="Buscar na auditoria"
-            />
-          </div>
-          <div className="flex items-center gap-2 sm:ml-auto">
-            {/* Limpar à ESQUERDA do filtro: assim aparecer/sumir não empurra o
-                multi-select de usuário, que fica fixo no canto direito. */}
-            {search || selectedUserIds.length > 0 ? (
+          <div className="flex flex-1 items-center gap-2 sm:max-w-md">
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Buscar em toda a tabela…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-8"
+                aria-label="Buscar na auditoria"
+              />
+            </div>
+            {/* Limpar logo após a busca (padrão do Router): só quando há filtro. */}
+            {anyFilter ? (
               <button
                 type="button"
-                onClick={() => {
-                  setSearch("");
-                  setSelectedUserIds([]);
-                }}
+                onClick={clearAll}
                 className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
                 aria-label="Limpar busca e filtros"
               >
@@ -249,6 +268,13 @@ export function AuditsTable() {
                 Limpar
               </button>
             ) : null}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+            <ActionMultiSelect
+              actions={auditActions}
+              selected={selectedActions}
+              onChange={setSelectedActions}
+            />
             <UserMultiSelect
               users={auditUsers}
               selected={selectedUserIds}
@@ -536,6 +562,136 @@ function UserMultiSelect({
                         </span>
                       ) : null}
                     </span>
+                  </button>
+                </li>
+              );
+            })
+          )}
+        </ul>
+        {selected.length > 0 ? (
+          <div className="border-t border-border p-1">
+            <button
+              type="button"
+              onClick={() => onChange([])}
+              className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <X className="h-3 w-3" aria-hidden />
+              Limpar seleção
+            </button>
+          </div>
+        ) : null}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/**
+ * Multi-select de AÇÃO para filtrar a auditoria (mesmo padrão do filtro de
+ * usuário): popover + busca + checkboxes. As tags ficam neutras (apagadas)
+ * quando não selecionadas e acendem na cor da ação ao marcar.
+ */
+function ActionMultiSelect({
+  actions,
+  selected,
+  onChange,
+}: {
+  actions: AuditAction[];
+  selected: AuditAction[];
+  onChange: (next: AuditAction[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+
+  const trigger =
+    selected.length === 0
+      ? "Todas as ações"
+      : selected.length === 1
+        ? actionLabel(selected[0])
+        : `${selected.length} selecionadas`;
+
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return actions;
+    return actions.filter(
+      (a) => actionLabel(a).toLowerCase().includes(q) || a.toLowerCase().includes(q),
+    );
+  }, [actions, query]);
+
+  const toggle = (a: AuditAction) =>
+    onChange(selected.includes(a) ? selected.filter((x) => x !== a) : [...selected, a]);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={
+          <button
+            type="button"
+            aria-label="Filtrar por ação"
+            aria-expanded={open}
+            disabled={actions.length === 0}
+            className="flex h-9 min-w-[180px] cursor-pointer items-center justify-between gap-2 rounded-lg border border-border bg-card px-3 text-sm text-foreground transition-colors hover:border-muted-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <span className="truncate">{trigger}</span>
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                open && "rotate-180",
+              )}
+              aria-hidden
+            />
+          </button>
+        }
+      />
+      <PopoverContent align="end" sideOffset={4} className="w-[280px] overflow-hidden p-0">
+        <div className="border-b border-border p-2">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              autoFocus
+              placeholder="Buscar ação…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="h-8 pl-8 text-sm"
+              aria-label="Buscar ação"
+            />
+          </div>
+        </div>
+        <ul role="listbox" aria-label="Ações" className="max-h-64 overflow-auto p-1">
+          {visible.length === 0 ? (
+            <li className="px-2 py-3 text-center text-xs text-muted-foreground">
+              Nenhuma ação encontrada.
+            </li>
+          ) : (
+            visible.map((a) => {
+              const isOn = selected.includes(a);
+              return (
+                <li key={a} role="presentation">
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={isOn}
+                    onClick={() => toggle(a)}
+                    className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-accent"
+                  >
+                    <span
+                      className={cn(
+                        "flex h-4 w-4 shrink-0 items-center justify-center rounded border border-border bg-background transition-colors",
+                        isOn && "border-violet-500 bg-violet-500 text-white",
+                      )}
+                      aria-hidden
+                    >
+                      {isOn ? <Check className="h-3 w-3" /> : null}
+                    </span>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "text-xs transition-colors",
+                        isOn ? getActionBadgeClasses(a) : "bg-muted text-muted-foreground border-border",
+                      )}
+                    >
+                      {actionLabel(a)}
+                    </Badge>
                   </button>
                 </li>
               );
