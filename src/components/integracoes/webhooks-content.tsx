@@ -20,6 +20,7 @@ import {
   toggleWebhook,
   type WebhookListItem,
 } from "@/lib/actions/webhooks";
+import { formatE164ForDisplay } from "@/lib/whatsapp/countries";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -163,7 +164,7 @@ function WebhookRow({ webhook, isPending, onToggle, onDelete }: WebhookRowProps)
               {webhook.isWhatsappReceiver && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-green-500/15 px-1.5 py-0.5 text-[10px] font-medium text-green-600 dark:text-green-400">
                   <MessageCircle className="h-2.5 w-2.5" aria-hidden />
-                  WhatsApp{webhook.businessId ? ` · ${webhook.businessId}` : ""}
+                  WhatsApp{webhook.businessId ? ` · ${formatE164ForDisplay(webhook.businessId)}` : ""}
                 </span>
               )}
             </div>

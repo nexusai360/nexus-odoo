@@ -324,9 +324,12 @@ export function WhatsappInboundHelp({
         <div className="space-y-2.5 border-t border-border/60 p-3">
           {/* Passo 1 , Endereço (URL real) */}
           <Step icon={Link2} n={1} title="Endereço (URL)">
-            <p className="text-xs text-muted-foreground">
-              Faça um <code className="rounded bg-muted px-1 font-mono text-foreground">POST</code> neste
-              endereço:
+            <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+              Use o método
+              <span className="rounded-md bg-primary/10 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-primary ring-1 ring-primary/20">
+                POST
+              </span>
+              neste endereço:
             </p>
             {hasPath ? (
               <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-2">
@@ -348,30 +351,27 @@ export function WhatsappInboundHelp({
 
           {/* Passo 2 , Headers (explicação para leigo) */}
           <Step icon={KeyRound} n={2} title="Headers">
-            <p className="text-xs text-muted-foreground">
-              Toda requisição leva três cabeçalhos (headers):
-            </p>
-            <div className="space-y-2.5">
+            <p className="text-xs text-muted-foreground">A requisição leva três cabeçalhos:</p>
+            <div className="space-y-4">
               <HeaderHelp icon={FileJson} name="Content-Type" required={false}>
                 Sempre <code className="rounded bg-muted px-1 font-mono text-foreground">application/json</code>.
               </HeaderHelp>
               <HeaderHelp icon={Clock} name="X-Timestamp" required>
-                O horário do envio em milissegundos (ex.: 1781727884000). No n8n use{" "}
-                <code className="rounded bg-muted px-1 font-mono text-foreground">{"{{ Date.now() }}"}</code>.
-                Vale por 5 minutos.
+                O horário do envio, em milissegundos (ex.: 1781727884000). Vale por 5 minutos.
               </HeaderHelp>
               <HeaderHelp icon={ShieldCheck} name="X-Signature" required>
-                A assinatura de segurança. É o HMAC-SHA256 de{" "}
+                A assinatura que prova que a mensagem é autêntica. Calcule um HMAC-SHA256 do texto{" "}
                 <code className="rounded bg-muted px-1 font-mono text-foreground">{"${timestamp}.${body}"}</code>{" "}
-                usando o token do webhook como chave. Você não digita um valor fixo: o n8n calcula sozinho
-                (nó Crypto → HMAC → SHA256 → saída em hex) e muda a cada mensagem.
+                usando o <span className="font-medium text-foreground">token do webhook</span> como chave; o
+                resultado em hexadecimal vai aqui. Muda a cada mensagem.
               </HeaderHelp>
             </div>
             <div className="flex gap-2 rounded-lg border border-border bg-muted/30 p-2.5">
               <KeyRound className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
               <p className="text-xs text-muted-foreground">
-                O <span className="font-medium text-foreground">token</span> é o segredo gerado quando você
-                cria o webhook (e pelo botão Rotacionar). É ele que assina as mensagens, guarde-o no n8n.
+                O <span className="font-medium text-foreground">token</span> é o segredo do webhook, mostrado
+                quando você cria (e no botão Rotacionar). É a chave usada para gerar a X-Signature, guarde-o
+                com segurança.
               </p>
             </div>
             <CodeBlock
@@ -385,7 +385,7 @@ export function WhatsappInboundHelp({
           </Step>
 
           {/* Passo 3 , Campos do body */}
-          <Step icon={Table2} n={3} title="Campos do body">
+          <Step icon={Table2} n={3} title="Body">
             <div className="overflow-hidden rounded-lg border border-border">
               <table className="w-full text-left text-xs">
                 <thead>

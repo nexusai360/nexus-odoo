@@ -63,7 +63,7 @@ export function PhoneInput({
   onSubmit,
   disabled,
   invalid,
-  placeholder = "11 99123-4567",
+  placeholder = "61 8123-4567",
   inputId,
   ariaDescribedBy,
   autoFocus,

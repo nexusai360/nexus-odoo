@@ -24,6 +24,14 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { StepIndicator } from "@/components/ui/step-indicator"
 import { SecretRevealStep } from "@/components/ui/secret-reveal-step"
 import { Textarea } from "@/components/ui/textarea"
+import { PhoneInput } from "@/components/ui/phone-input"
+import { FieldValidateButton } from "@/components/integrations/field-validate-button"
+import {
+  type Country,
+  DEFAULT_COUNTRY,
+  composeE164,
+  validateNationalPhone,
+} from "@/lib/whatsapp/countries"
 import { WebhookEventSelector } from "@/components/integrations/webhook-event-selector"
 import { WhatsappInboundHelp } from "@/components/integrations/whatsapp-inbound-help"
 import {
@@ -129,7 +137,10 @@ export function WebhookWizard({
   const [targetUrl, setTargetUrl] = React.useState("")
   const [methods, setMethods] = React.useState<WebhookMethod[]>(["POST"])
   const [events, setEvents] = React.useState<WebhookEventName[]>(["agent_reply"])
-  const [businessId, setBusinessId] = React.useState("")
+  const [bizCountry, setBizCountry] = React.useState<Country>(DEFAULT_COUNTRY)
+  const [bizNational, setBizNational] = React.useState("")
+  const [bizTouched, setBizTouched] = React.useState(false)
+  const [pathTouched, setPathTouched] = React.useState(false)
   const [submitting, setSubmitting] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [created, setCreated] = React.useState<CreatedWebhook | null>(null)
@@ -137,6 +148,15 @@ export function WebhookWizard({
   const isWhatsapp = kind === "whatsapp"
   const isOutbound = kind === "outbound"
   const direction = isOutbound ? "outbound" : "inbound"
+
+  // Validação do endereço (slug) e do número da empresa, com erro em tempo real.
+  const pathValid = PATH_RE.test(path.trim())
+  const showPathError = !pathValid && (path.trim().length > 0 || pathTouched)
+  const bizErrorMsg = validateNationalPhone(bizCountry, bizNational)
+  const bizValid = bizErrorMsg === null
+  const showBizError = !bizValid && (bizNational.length > 0 || bizTouched)
+  // `business_id` gravado: dígitos do número internacional (DDI + nacional), sem o "+".
+  const businessIdDigits = bizNational ? composeE164(bizCountry.dial, bizNational).slice(1) : ""
 
   function toggleMethod(m: WebhookMethod) {
     setMethods((prev) =>
@@ -153,8 +173,8 @@ export function WebhookWizard({
     name.trim().length > 0 &&
     (isOutbound
       ? isValidUrl(targetUrl.trim()) && methods.length > 0
-      : PATH_RE.test(path.trim()) &&
-        (!isWhatsapp || businessId.trim().length > 0) &&
+      : pathValid &&
+        (!isWhatsapp || bizValid) &&
         (isWhatsapp || methods.length > 0))
 
   async function handleCreate() {
@@ -171,7 +191,7 @@ export function WebhookWizard({
       methods: isWhatsapp ? ["POST"] : methods,
       events: isOutbound ? events : undefined,
       isWhatsappReceiver: direction === "inbound" ? isWhatsapp : undefined,
-      businessId: isWhatsapp ? businessId.trim() : undefined,
+      businessId: isWhatsapp ? businessIdDigits : undefined,
     }
     const res = await createWebhook(input)
     setSubmitting(false)
@@ -267,38 +287,66 @@ export function WebhookWizard({
           ) : (
             <div className="space-y-1.5">
               <Label htmlFor="wh-path">Endereço (URL)</Label>
-              <div className="flex items-stretch">
-                <span className="flex items-center rounded-l-lg border border-r-0 border-input bg-muted px-2.5 text-xs text-muted-foreground">
-                  {inboundBaseUrl}
-                </span>
-                <Input
-                  id="wh-path"
-                  value={path}
-                  onChange={(e) => setPath(e.currentTarget.value)}
-                  placeholder={isWhatsapp ? "whatsapp/loja-matriz" : "meu-sistema/eventos"}
-                  className="rounded-l-none"
-                  aria-invalid={path.length > 0 && !PATH_RE.test(path.trim())}
+              <div className="flex items-stretch gap-2">
+                <div className="flex flex-1 items-stretch">
+                  <span className="flex items-center rounded-l-lg border border-r-0 border-input bg-muted px-2.5 text-xs text-muted-foreground">
+                    {inboundBaseUrl}
+                  </span>
+                  <Input
+                    id="wh-path"
+                    value={path}
+                    onChange={(e) => setPath(e.currentTarget.value)}
+                    placeholder={isWhatsapp ? "whatsapp/loja-matriz" : "meu-sistema/eventos"}
+                    className="rounded-l-none"
+                    aria-invalid={showPathError}
+                  />
+                </div>
+                <FieldValidateButton
+                  valid={pathValid}
+                  onClick={() => setPathTouched(true)}
+                  label="Validar endereço"
                 />
               </div>
-              <p className="text-xs text-muted-foreground">
-                Você define o final do endereço. Apenas minúsculas, números, hífen e barra. Precisa ser único.
-              </p>
+              {showPathError ? (
+                <p className="text-xs text-destructive" role="alert">
+                  Apenas minúsculas, números, hífen e barra. Precisa ser único.
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Você define o final do endereço. Apenas minúsculas, números, hífen e barra. Precisa ser único.
+                </p>
+              )}
             </div>
           )}
 
           {isWhatsapp && (
             <div className="space-y-1.5">
               <Label htmlFor="wh-business">Número da empresa</Label>
-              <Input
-                id="wh-business"
-                value={businessId}
-                onChange={(e) => setBusinessId(e.currentTarget.value.replace(/\D/g, ""))}
-                placeholder="Ex.: 558881008888"
-                inputMode="numeric"
-              />
-              <p className="text-xs text-muted-foreground">
-                Número do WhatsApp da empresa que recebe as mensagens. Identifica este webhook e não pode repetir.
-              </p>
+              <div className="flex items-stretch gap-2">
+                <PhoneInput
+                  className="flex-1"
+                  country={bizCountry}
+                  onCountryChange={setBizCountry}
+                  national={bizNational}
+                  onNationalChange={setBizNational}
+                  invalid={showBizError}
+                  inputId="wh-business"
+                />
+                <FieldValidateButton
+                  valid={bizValid}
+                  onClick={() => setBizTouched(true)}
+                  label="Validar número"
+                />
+              </div>
+              {showBizError ? (
+                <p className="text-xs text-destructive" role="alert">
+                  {bizErrorMsg}
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Número do WhatsApp da empresa que recebe as mensagens. Identifica este webhook e não pode repetir.
+                </p>
+              )}
             </div>
           )}
 

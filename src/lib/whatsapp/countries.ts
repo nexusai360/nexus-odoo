@@ -118,6 +118,24 @@ export function composeE164(dial: string, nationalInput: string): string {
 }
 
 /**
+ * Valida o número nacional (DDD + número, só dígitos) para o país escolhido.
+ * Retorna a mensagem de erro ou `null` quando o número está válido. Mesma regra
+ * usada no campo de WhatsApp do perfil e no número da empresa do webhook.
+ */
+export function validateNationalPhone(
+  country: Country,
+  national: string,
+): string | null {
+  const digits = onlyDigits(national);
+  if (!digits) return "Informe o número.";
+  if (country.iso === "BR" && digits.length !== 10 && digits.length !== 11) {
+    return "Para o Brasil, informe DDD + número (10 ou 11 dígitos).";
+  }
+  if (digits.length < 8) return "Número muito curto.";
+  return null;
+}
+
+/**
  * Formata o número nacional (sem DDI) para leitura. Para o Brasil aplica a
  * máscara local (celular 9XXXX-XXXX, fixo XXXX-XXXX); demais países e números
  * parciais voltam sem máscara forçada.
