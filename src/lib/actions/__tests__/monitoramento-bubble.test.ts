@@ -68,7 +68,11 @@ describe("requireMinRole gateia as actions", () => {
 });
 
 describe("filtro de canal exclui replay/backtest (raiz do dado poluído)", () => {
-  test("listBubbleCollaborators só agrega channel in_app", async () => {
+  // F5 E: o monitoramento de Chat passou a incluir whatsapp, mas continua
+  // EXCLUINDO backtest/playground (a intenção original deste describe).
+  const CHAT = { in: ["in_app", "whatsapp"] };
+
+  test("listBubbleCollaborators agrega in_app + whatsapp (exclui backtest)", async () => {
     (prisma.conversation.groupBy as jest.Mock).mockResolvedValue([]);
     (prisma.conversation.findMany as jest.Mock).mockResolvedValue([]);
     (prisma.user.findMany as jest.Mock).mockResolvedValue([]);
@@ -78,21 +82,21 @@ describe("filtro de canal exclui replay/backtest (raiz do dado poluído)", () =>
     await listBubbleCollaborators();
 
     expect(prisma.conversation.groupBy).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { channel: "in_app" } }),
+      expect.objectContaining({ where: { channel: CHAT } }),
     );
-    // sessão ativa também restrita a in_app (backtest nunca conta como ativa)
+    // sessão ativa restrita aos canais de chat (backtest nunca conta como ativa)
     expect(prisma.conversation.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { channel: "in_app", endedAt: null } }),
+      expect.objectContaining({ where: { channel: CHAT, endedAt: null } }),
     );
-    // votos só de conversas in_app
+    // votos só de conversas de chat (in_app + whatsapp)
     expect(prisma.messageFeedback.groupBy).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { conversation: { channel: "in_app" } },
+        where: { conversation: { channel: CHAT } },
       }),
     );
   });
 
-  test("listBubbleSessions só lista channel in_app do usuário", async () => {
+  test("listBubbleSessions lista in_app + whatsapp do usuário (exclui backtest)", async () => {
     (prisma.conversation.findMany as jest.Mock).mockResolvedValue([]);
     (prisma.message.findMany as jest.Mock).mockResolvedValue([]);
     (prisma.messageFeedback.groupBy as jest.Mock).mockResolvedValue([]);
@@ -101,7 +105,7 @@ describe("filtro de canal exclui replay/backtest (raiz do dado poluído)", () =>
     await listBubbleSessions("u1");
 
     expect(prisma.conversation.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { userId: "u1", channel: "in_app" } }),
+      expect.objectContaining({ where: { userId: "u1", channel: CHAT } }),
     );
   });
 });

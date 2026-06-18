@@ -19,10 +19,14 @@ import {
   updateWebhook,
   rotateWebhookSecret,
   type WebhookListItem,
+  type WebhookEventName,
   type WebhookMethod,
 } from "@/lib/actions/webhooks";
 
 const HTTP_METHODS: WebhookMethod[] = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"];
+const OUTBOUND_EVENTS: Array<{ value: WebhookEventName; label: string }> = [
+  { value: "agent_reply", label: "Resposta do agente (agent.reply)" },
+];
 const PATH_RE = /^[a-z0-9][a-z0-9-/]*$/;
 
 interface Props {
@@ -43,6 +47,7 @@ export function WebhookEditDialog({ webhook, open, onOpenChange, onSaved }: Prop
   const [path, setPath] = useState("");
   const [targetUrl, setTargetUrl] = useState("");
   const [methods, setMethods] = useState<WebhookMethod[]>([]);
+  const [events, setEvents] = useState<WebhookEventName[]>([]);
   const [revealedSecret, setRevealedSecret] = useState<string | null>(null);
   const [hydratedFor, setHydratedFor] = useState<string | null>(null);
 
@@ -52,6 +57,7 @@ export function WebhookEditDialog({ webhook, open, onOpenChange, onSaved }: Prop
     setPath(webhook.path ?? "");
     setTargetUrl(webhook.targetUrl ?? "");
     setMethods(webhook.methods as WebhookMethod[]);
+    setEvents(webhook.events ?? []);
     setRevealedSecret(null);
     setHydratedFor(webhook.id);
   }
@@ -78,6 +84,10 @@ export function WebhookEditDialog({ webhook, open, onOpenChange, onSaved }: Prop
     setMethods((prev) => (prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m]));
   }
 
+  function toggleEvent(ev: WebhookEventName) {
+    setEvents((prev) => (prev.includes(ev) ? prev.filter((x) => x !== ev) : [...prev, ev]));
+  }
+
   const valid =
     name.trim().length > 0 &&
     methods.length > 0 &&
@@ -91,6 +101,7 @@ export function WebhookEditDialog({ webhook, open, onOpenChange, onSaved }: Prop
         path: isInbound ? path.trim() : null,
         targetUrl: isInbound ? null : targetUrl.trim(),
         methods,
+        events: isInbound ? undefined : events,
       });
       if (r.success) {
         onSaved();
@@ -186,6 +197,39 @@ export function WebhookEditDialog({ webhook, open, onOpenChange, onSaved }: Prop
               })}
             </div>
           </div>
+
+          {!isInbound && (
+            <div className="space-y-1.5">
+              <Label>Eventos</Label>
+              <div className="flex flex-col gap-2">
+                {OUTBOUND_EVENTS.map((ev) => {
+                  const on = events.includes(ev.value);
+                  return (
+                    <button
+                      key={ev.value}
+                      type="button"
+                      onClick={() => toggleEvent(ev.value)}
+                      aria-pressed={on}
+                      className={cn(
+                        "inline-flex w-fit items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors",
+                        on
+                          ? "border-violet-500/50 bg-violet-500/10 text-violet-600 dark:text-violet-400"
+                          : "border-border text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {on ? <Check className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+                      {ev.label}
+                    </button>
+                  );
+                })}
+              </div>
+              {events.length === 0 && (
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  Sem nenhum evento marcado, este webhook não receberá nada.
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="rounded-lg border border-border bg-muted/30 p-3">
             <div className="flex items-center justify-between gap-3">

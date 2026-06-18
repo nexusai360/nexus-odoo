@@ -33,7 +33,7 @@ describe("WhatsappNumbersField (rascunho)", () => {
     render(<WhatsappNumbersField onDraftChange={onDraftChange} />);
 
     await user.type(
-      screen.getByPlaceholderText("11 99123-4567"),
+      screen.getByPlaceholderText("61 98123-4567"),
       "11991234567",
     );
     await user.click(screen.getByRole("button", { name: "Adicionar número" }));
@@ -48,7 +48,7 @@ describe("WhatsappNumbersField (rascunho)", () => {
     render(<WhatsappNumbersField onDraftChange={onDraftChange} />);
 
     await user.type(
-      screen.getByPlaceholderText("11 99123-4567"),
+      screen.getByPlaceholderText("61 98123-4567"),
       "61abc98440()9067kkk",
     );
     await user.click(screen.getByRole("button", { name: "Adicionar número" }));
@@ -63,7 +63,7 @@ describe("WhatsappNumbersField (rascunho)", () => {
     render(<WhatsappNumbersField onDraftChange={onDraftChange} />);
 
     await user.type(
-      screen.getByPlaceholderText("11 99123-4567"),
+      screen.getByPlaceholderText("61 98123-4567"),
       "11991234567",
     );
     await user.click(screen.getByRole("button", { name: "Adicionar número" }));
@@ -74,7 +74,7 @@ describe("WhatsappNumbersField (rascunho)", () => {
     );
     // Com a linha em edição há dois campos com o mesmo placeholder (adicionar
     // no topo e a edição na linha); o de edição é o último renderizado.
-    const inputs = screen.getAllByPlaceholderText("11 99123-4567");
+    const inputs = screen.getAllByPlaceholderText("61 98123-4567");
     const editInput = inputs[inputs.length - 1];
     await user.clear(editInput);
     await user.type(editInput, "11988887777");
@@ -87,7 +87,7 @@ describe("WhatsappNumbersField (rascunho)", () => {
   test("bloqueia o mesmo celular sem o nono dígito quando já há o com nono", async () => {
     const user = userEvent.setup();
     render(<WhatsappNumbersField onDraftChange={() => {}} />);
-    const input = screen.getByPlaceholderText("11 99123-4567");
+    const input = screen.getByPlaceholderText("61 98123-4567");
 
     await user.type(input, "61984409067"); // com o 9
     await user.click(screen.getByRole("button", { name: "Adicionar número" }));
@@ -104,7 +104,7 @@ describe("WhatsappNumbersField (rascunho)", () => {
     const user = userEvent.setup();
     render(<WhatsappNumbersField onDraftChange={() => {}} />);
 
-    await user.type(screen.getByPlaceholderText("11 99123-4567"), "119");
+    await user.type(screen.getByPlaceholderText("61 98123-4567"), "119");
     await user.click(screen.getByRole("button", { name: "Adicionar número" }));
 
     expect(screen.getByRole("alert")).toHaveTextContent(

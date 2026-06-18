@@ -10,6 +10,7 @@ import { pickWelcomeByDomains } from "@/lib/agent/welcome-suggestions";
 import { seesAll, REPORT_DOMAINS, type ReportDomainId } from "@/lib/reports/domains";
 import { getUserDomains } from "@/lib/actions/domain-access";
 import { getActiveConversationId } from "@/lib/actions/active-conversation";
+import { roleMeetsChannelLevel } from "@/lib/agent/channel-access";
 
 export default async function ProtectedLayout({
   children,
@@ -30,8 +31,8 @@ export default async function ProtectedLayout({
   // Nex. super_admin/admin veem tudo (short-circuit seesAll, sem query).
   // manager/viewer/operator so veem a bubble se tiverem ao menos um dominio
   // concedido (UserDomainAccess); sem dominio, perguntar ao Nex so geraria
-  // recusa, entao a bubble some. bubbleEnabled (AgentSettings) segue como
-  // kill-switch global mais abaixo.
+  // recusa, entao a bubble some. O nivel minimo do canal in-app
+  // (bubbleAccessLevel, AgentSettings) refina o gate mais abaixo (F5 C).
   // Resolve os dominios permitidos UMA vez: reusados para o gate da bubble, a
   // ancora de sugestoes por dominio e o filtro das personalizadas (RBAC v2).
   const allowedDomains: ReportDomainId[] = seesAll(user.platformRole)
@@ -91,7 +92,10 @@ export default async function ProtectedLayout({
   // Persistencia cross-login: resolve a conversa in_app ativa do usuario para a
   // bubble restaurar o historico ao abrir (mesmo apos F5/logout). So consulta
   // quando a bubble vai aparecer.
-  const bubbleVisible = canUseAgent && flags.bubbleEnabled;
+  // canUseAgent cobre os dominios (RBAC v2); o nivel cobre o canal in-app.
+  // bubbleAccessLevel "off" => roleMeetsChannelLevel false => bubble some.
+  const bubbleVisible =
+    canUseAgent && roleMeetsChannelLevel(user.platformRole, flags.bubbleAccessLevel);
   const active = bubbleVisible ? await getActiveConversationId() : null;
   const initialConversationId =
     active && active.ok ? active.conversationId : null;

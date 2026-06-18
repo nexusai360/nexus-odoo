@@ -195,6 +195,9 @@ describe("runAgent", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.message).toBe("O saldo é 10 unidades.");
+      // F5 B. Campos do envelope agent.reply presentes no retorno ok.
+      expect(Array.isArray(result.toolsCalled)).toBe(true);
+      expect(typeof result.reasoningMs).toBe("number");
     }
     expect(session.close).toHaveBeenCalled();
   });

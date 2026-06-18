@@ -18,6 +18,9 @@ interface SegmentedControlProps<T extends string> {
   onChange: (value: T) => void;
   options: ReadonlyArray<SegmentedOption<T>>;
   disabled?: boolean;
+  /** Valor que, quando ativo, é exibido em CINZA (estado "desligado") em vez do
+   *  destaque colorido. Segue o padrão do sistema (off = apagado). */
+  mutedValue?: T;
   "aria-label"?: string;
 }
 
@@ -26,6 +29,7 @@ export function SegmentedControl<T extends string>({
   onChange,
   options,
   disabled = false,
+  mutedValue,
   "aria-label": ariaLabel,
 }: SegmentedControlProps<T>) {
   return (
@@ -47,9 +51,11 @@ export function SegmentedControl<T extends string>({
             }}
             className={cn(
               "flex h-8 cursor-pointer items-center justify-center rounded-md px-3 text-xs font-medium transition-colors",
-              isActive
-                ? "bg-violet-500/15 text-violet-700 ring-1 ring-violet-500/40 dark:text-violet-300"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              isActive && opt.value === mutedValue
+                ? "bg-zinc-500/15 text-zinc-600 ring-1 ring-zinc-400/40 dark:text-zinc-300"
+                : isActive
+                  ? "bg-violet-500/15 text-violet-700 ring-1 ring-violet-500/40 dark:text-violet-300"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
               "disabled:cursor-not-allowed disabled:opacity-50",
             )}
           >

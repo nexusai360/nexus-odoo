@@ -140,7 +140,15 @@ function rowOrigem(
     const m = title.match(/\[AUDIT-[^\]]*\]/);
     if (m) return m[0];
   }
-  const virtual = channelToOrigem(channel);
+  // F5 E: a view do Router NÃO segmenta por canal (spec §10) , in_app e whatsapp
+  // coalescem na origem única "Agente Nex" (o `channelToOrigem` passou a separar
+  // Bubble vs WhatsApp, usado só no monitoramento de Chat).
+  let virtual: string | null;
+  if (channel === "in_app" || channel === "whatsapp") {
+    virtual = ORIGEM_AGENTE_NEX;
+  } else {
+    virtual = channelToOrigem(channel);
+  }
   if (virtual) return virtual;
   if (!conversationId) return ORIGEM_CALIBRAGEM;
   return null;

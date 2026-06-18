@@ -37,6 +37,8 @@ import {
   getAgentSettings,
   updateAgentSettings,
   activateLlmConfig,
+  getPublicAgentFlags,
+  updateAgentAvailability,
 } from "./agent-config";
 
 const ADMIN_USER = {
@@ -69,7 +71,8 @@ const MOCK_SETTINGS = {
   terminology: { estoque: "inventário" },
   advancedOverride: null,
   suggestionsEnabled: true,
-  bubbleEnabled: true,
+  bubbleAccessLevel: "viewer",
+  whatsappAccessLevel: "viewer",
   audioCheckpoint: "OFF",
   imageCheckpoint: "OFF",
   kbCheckpoint: "PRODUCTION",
@@ -251,6 +254,67 @@ describe("updateAgentSettings", () => {
       guardrails: ["x".repeat(501)],
       terminology: {},
       suggestionsEnabled: true,
+    });
+
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("getPublicAgentFlags , niveis de canal (F5 C.1)", () => {
+  it("retorna bubbleAccessLevel e whatsappAccessLevel lidos do settings", async () => {
+    getCurrentUser.mockResolvedValue(VIEWER_USER);
+    prisma.agentSettings.findUnique.mockResolvedValue({
+      audioCheckpoint: "OFF",
+      imageCheckpoint: "OFF",
+      feedbackCheckpoint: "OFF",
+      kbCheckpoint: "PRODUCTION",
+      suggestionsCheckpoint: "PRODUCTION",
+      bubbleAccessLevel: "manager",
+      whatsappAccessLevel: "off",
+      maxSuggestions: 3,
+    });
+
+    const flags = await getPublicAgentFlags();
+
+    expect(flags.bubbleAccessLevel).toBe("manager");
+    expect(flags.whatsappAccessLevel).toBe("off");
+  });
+
+  it("usa default viewer/viewer quando nao ha settings", async () => {
+    getCurrentUser.mockResolvedValue(VIEWER_USER);
+    prisma.agentSettings.findUnique.mockResolvedValue(null);
+
+    const flags = await getPublicAgentFlags();
+
+    expect(flags.bubbleAccessLevel).toBe("viewer");
+    expect(flags.whatsappAccessLevel).toBe("viewer");
+  });
+});
+
+describe("updateAgentAvailability , niveis por canal (F5 C.2)", () => {
+  it("grava bubbleAccessLevel e whatsappAccessLevel via upsert", async () => {
+    getCurrentUser.mockResolvedValue(ADMIN_USER);
+    prisma.agentSettings.upsert.mockResolvedValue({});
+
+    const result = await updateAgentAvailability({
+      bubbleAccessLevel: "manager",
+      whatsappAccessLevel: "off",
+    });
+
+    expect(result.success).toBe(true);
+    const arg = prisma.agentSettings.upsert.mock.calls[0][0];
+    expect(arg.update.bubbleAccessLevel).toBe("manager");
+    expect(arg.update.whatsappAccessLevel).toBe("off");
+    expect(arg.create.bubbleAccessLevel).toBe("manager");
+    expect(arg.create.whatsappAccessLevel).toBe("off");
+  });
+
+  it("nega acesso a viewer", async () => {
+    getCurrentUser.mockResolvedValue(VIEWER_USER);
+
+    const result = await updateAgentAvailability({
+      bubbleAccessLevel: "viewer",
+      whatsappAccessLevel: "viewer",
     });
 
     expect(result.success).toBe(false);

@@ -4,6 +4,8 @@
  * exportar funções async.
  */
 
+import type { ChannelAccessLevel } from "@/generated/prisma/client";
+
 /** Os 3 estados de checkpoint de um recurso (espelha o enum Prisma). */
 export const CHECKPOINT_VALUES = ["OFF", "PLAYGROUND", "PRODUCTION"] as const;
 export type FeatureCheckpoint = (typeof CHECKPOINT_VALUES)[number];
@@ -20,9 +22,10 @@ export interface AgentSettingsData {
   suggestionsEnabled: boolean;
   /** Checkpoint de 3 estados das sugestões clicáveis (G7). */
   suggestionsCheckpoint: FeatureCheckpoint;
-  bubbleEnabled: boolean;
-  /** Disponibilidade do Agente Nex no canal WhatsApp (F5). */
-  whatsappEnabled: boolean;
+  /** F5: nível mínimo de acesso da bubble in-app (com herança). */
+  bubbleAccessLevel: ChannelAccessLevel;
+  /** F5: nível mínimo de acesso do canal WhatsApp (com herança). */
+  whatsappAccessLevel: ChannelAccessLevel;
   audioCheckpoint: FeatureCheckpoint;
   imageCheckpoint: FeatureCheckpoint;
   feedbackCheckpoint: FeatureCheckpoint;
@@ -72,8 +75,10 @@ export interface PublicAgentFlags {
   suggestionsEnabled: boolean;
   /** true se sugestões clicáveis aparecem ao menos no playground (G7). */
   suggestionsInPlayground: boolean;
-  bubbleEnabled: boolean;
-  whatsappEnabled: boolean;
+  /** F5: nível mínimo de acesso da bubble in-app (com herança). */
+  bubbleAccessLevel: ChannelAccessLevel;
+  /** F5: nível mínimo de acesso do canal WhatsApp (com herança). */
+  whatsappAccessLevel: ChannelAccessLevel;
   /** Máximo de sugestões clicáveis na bubble. Vale tanto para as iniciais
    *  (welcome) quanto para as de continuidade no fim de cada resposta.
    *  Default 3, hard cap em 5. */

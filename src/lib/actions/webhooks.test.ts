@@ -197,6 +197,59 @@ describe("createWebhook", () => {
     const result = await createWebhook({ ...INBOUND_INPUT, methods: [] });
     expect(result.success).toBe(false);
   });
+
+  it("outbound sem events nasce com default agent_reply (F5 D)", async () => {
+    mockPrismaWebhookCreate.mockResolvedValue(WEBHOOK_ROW_OUTBOUND);
+    await createWebhook(OUTBOUND_INPUT);
+    expect(mockPrismaWebhookCreate.mock.calls[0][0].data.events).toEqual([
+      "agent_reply",
+    ]);
+  });
+
+  it("outbound com events:[] grava vazio (F5 D)", async () => {
+    mockPrismaWebhookCreate.mockResolvedValue(WEBHOOK_ROW_OUTBOUND);
+    await createWebhook({ ...OUTBOUND_INPUT, events: [] });
+    expect(mockPrismaWebhookCreate.mock.calls[0][0].data.events).toEqual([]);
+  });
+
+  it("inbound ignora events (sempre vazio) (F5 D)", async () => {
+    await createWebhook({ ...INBOUND_INPUT, events: ["agent_reply"] });
+    expect(mockPrismaWebhookCreate.mock.calls[0][0].data.events).toEqual([]);
+  });
+
+  it("receptor de WhatsApp sem número da empresa falha (F5.1)", async () => {
+    const result = await createWebhook({ ...INBOUND_INPUT, isWhatsappReceiver: true });
+    expect(result.success).toBe(false);
+    expect(mockPrismaWebhookCreate).not.toHaveBeenCalled();
+  });
+
+  it("receptor de WhatsApp persiste flag + business_id e descricao (F5.1)", async () => {
+    const result = await createWebhook({
+      ...INBOUND_INPUT,
+      isWhatsappReceiver: true,
+      businessId: "556195630029",
+      description: "Recebe mensagens da loja matriz",
+    });
+    expect(result.success).toBe(true);
+    const data = mockPrismaWebhookCreate.mock.calls[0][0].data;
+    expect(data.isWhatsappReceiver).toBe(true);
+    expect(data.businessId).toBe("556195630029");
+    expect(data.description).toBe("Recebe mensagens da loja matriz");
+  });
+
+  it("bloqueia business_id duplicado entre receptores (F5.1)", async () => {
+    // 1a chamada de findFirst (path) => null; 2a (businessId) => existe.
+    mockPrismaWebhookFindFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: "wh-existente" });
+    const result = await createWebhook({
+      ...INBOUND_INPUT,
+      isWhatsappReceiver: true,
+      businessId: "556195630029",
+    });
+    expect(result.success).toBe(false);
+    expect(mockPrismaWebhookCreate).not.toHaveBeenCalled();
+  });
 });
 
 // ──────────────────────────────────────────────
@@ -356,5 +409,19 @@ describe("updateWebhook", () => {
     });
     expect(result.success).toBe(false);
     expect(mockPrismaWebhookUpdate).not.toHaveBeenCalled();
+  });
+
+  it("grava events ao atualizar um outbound (F5 D)", async () => {
+    mockPrismaWebhookFindUnique.mockResolvedValue({ id: "wh-2", direction: "outbound" });
+    const result = await updateWebhook("wh-2", {
+      name: "Callback n8n",
+      targetUrl: "https://n8n.example.com/webhook/xyz",
+      methods: ["POST"],
+      events: ["agent_reply"],
+    });
+    expect(result.success).toBe(true);
+    expect(mockPrismaWebhookUpdate.mock.calls[0][0].data.events).toEqual([
+      "agent_reply",
+    ]);
   });
 });

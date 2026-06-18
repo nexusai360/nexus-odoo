@@ -11,9 +11,8 @@ import {
 } from '@/lib/theme';
 
 export async function loginAction(
-  formData: FormData,
-  callbackUrl: string
-): Promise<{ error: string } | undefined> {
+  formData: FormData
+): Promise<{ error?: string; ok?: boolean }> {
   try {
     const email = formData.get('email') as string;
 
@@ -44,11 +43,18 @@ export async function loginAction(
       });
     }
 
+    // IMPORTANTE: `redirect: false`. O `signIn` autentica e SETA o cookie de
+    // sessão, mas NÃO dispara o redirect interno (`NEXT_REDIRECT`). Sob `await`
+    // no client, esse throw vazava para o error boundary global ("Algo deu
+    // errado") e o login não acontecia. Quem navega é o client (full reload),
+    // garantindo que o middleware veja o cookie novo e roteie quem precisa
+    // trocar a senha para /perfil/trocar-senha.
     await signIn('credentials', {
       email,
       password: formData.get('password') as string,
-      redirectTo: callbackUrl,
+      redirect: false,
     });
+    return { ok: true };
   } catch (error) {
     if (error instanceof AuthError) {
       switch (error.type) {
@@ -68,6 +74,7 @@ export async function loginAction(
           return { error: 'Erro ao fazer login. Tente novamente.' };
       }
     }
-    throw error; // NextAuth redirect throws (não é erro real)
+    console.error('[loginAction] erro inesperado:', error);
+    return { error: 'Erro ao fazer login. Tente novamente.' };
   }
 }

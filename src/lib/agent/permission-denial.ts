@@ -137,5 +137,11 @@ export async function respondPermissionDenied(
     messageId: assistantMsg.id,
     suggestions: [],
     usage: { tokensInput: 0, tokensOutput: 0, costUsd: 0 },
+    // F5 B. Recusa não aciona tools nem mede raciocínio do turno.
+    toolsCalled: [],
+    reasoningMs: 0,
+    // F5 B/L3. Estruturado para o n8n: módulo desejado e módulos permitidos.
+    deniedModule: args.deniedDomains[0],
+    allowedModules: args.availableDomains,
   };
 }

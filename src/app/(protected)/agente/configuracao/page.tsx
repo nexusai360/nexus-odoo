@@ -89,8 +89,8 @@ export default async function Page() {
     getEmbeddingCredentialStatus().catch(() => ({ active: null, options: [], needsBootstrap: false })),
   ]);
 
-  const bubbleEnabled = settings ? settings.bubbleEnabled : true;
-  const whatsappEnabled = settings ? settings.whatsappEnabled : true;
+  const bubbleAccessLevel = settings?.bubbleAccessLevel ?? "viewer";
+  const whatsappAccessLevel = settings?.whatsappAccessLevel ?? "viewer";
   const isConfigured = activeConfig != null;
 
   const credentialsByProvider: Record<string, CredentialOption[]> = {};
@@ -172,7 +172,7 @@ export default async function Page() {
           </CardHeader>
           <CardContent className="pb-5">
             <AgentAvailabilityCard
-              initial={{ bubbleEnabled, whatsappEnabled }}
+              initial={{ bubbleAccessLevel, whatsappAccessLevel }}
               isConfigured={isConfigured}
             />
           </CardContent>

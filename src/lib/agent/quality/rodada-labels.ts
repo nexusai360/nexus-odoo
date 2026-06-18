@@ -32,7 +32,14 @@ const R8_ANCHOR_TS = Date.UTC(2026, 4, 26, 17, 21, 31);
 /** Marcadores virtuais (nao-AUDIT) para origens vindas do uso real do
  *  agente. Permitem filtrar conversas in_app/whatsapp/playground na mesma
  *  estrutura do filtro de rodada (uma coluna so de "Origem"). */
+/** @deprecated F5 E: a origem única coalescida. Mantida para compat de
+ *  `buildRodadaNamesFromMarkers`/`labelFor`; `channelToOrigem` não a retorna
+ *  mais (passou a distinguir Bubble vs WhatsApp). */
 export const ORIGEM_AGENTE_NEX = "__origem:agente-nex";
+/** F5 E: origem do Agente Nex no chat in-app (bubble). */
+export const ORIGEM_AGENTE_NEX_BUBBLE = "__origem:agente-nex-bubble";
+/** F5 E: origem do Agente Nex no WhatsApp. */
+export const ORIGEM_AGENTE_NEX_WHATSAPP = "__origem:agente-nex-whatsapp";
 export const ORIGEM_PLAYGROUND = "__origem:playground";
 /** Origem virtual do Router: decisoes da calibragem por anchor-set (sem
  *  conversa associada). So aparece na aba Router. */
@@ -44,22 +51,25 @@ export const ORIGEM_BACKTEST = "__origem:backtest";
 
 export const ORIGEM_LABELS: Record<string, string> = {
   [ORIGEM_AGENTE_NEX]: "Agente Nex",
+  [ORIGEM_AGENTE_NEX_BUBBLE]: "Agente Nex · Bubble",
+  [ORIGEM_AGENTE_NEX_WHATSAPP]: "Agente Nex · WhatsApp",
   [ORIGEM_PLAYGROUND]: "Playground",
   [ORIGEM_CALIBRAGEM]: "Calibragem",
   [ORIGEM_BACKTEST]: "Backtest",
 };
 
 /** Channels do Prisma `AgentChannel` enum que viram cada origem. */
-const AGENTE_NEX_CHANNELS = new Set(["whatsapp", "in_app"]);
 const PLAYGROUND_CHANNELS = new Set(["playground"]);
 const BACKTEST_CHANNELS = new Set(["backtest"]);
 
-/** Dado um channel, devolve a origem virtual canonica. null se desconhecido. */
+/** Dado um channel, devolve a origem virtual canonica. null se desconhecido.
+ *  F5 E: in_app e whatsapp passam a ser origens DISTINTAS (Bubble vs WhatsApp). */
 export function channelToOrigem(
   channel: string | null | undefined,
 ): string | null {
   if (!channel) return null;
-  if (AGENTE_NEX_CHANNELS.has(channel)) return ORIGEM_AGENTE_NEX;
+  if (channel === "in_app") return ORIGEM_AGENTE_NEX_BUBBLE;
+  if (channel === "whatsapp") return ORIGEM_AGENTE_NEX_WHATSAPP;
   if (PLAYGROUND_CHANNELS.has(channel)) return ORIGEM_PLAYGROUND;
   if (BACKTEST_CHANNELS.has(channel)) return ORIGEM_BACKTEST;
   return null;
