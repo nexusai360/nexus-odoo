@@ -2,16 +2,16 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Loader2, Plus, RotateCcw } from "lucide-react";
+import { Check, Loader2, Lock, Plus, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { SecretRevealStep } from "@/components/ui/secret-reveal-step";
 import { WebhookEventSelector } from "@/components/integrations/webhook-event-selector";
 import { WhatsappInboundHelp } from "@/components/integrations/whatsapp-inbound-help";
+import { KindBanner } from "@/components/integrations/webhook-wizard";
 import { cn } from "@/lib/utils";
 import {
   updateWebhook,
@@ -37,7 +37,8 @@ export function WebhookEditForm({ webhook }: { webhook: WebhookListItem }) {
   const [targetUrl, setTargetUrl] = useState(webhook.targetUrl ?? "");
   const [methods, setMethods] = useState<WebhookMethod[]>(webhook.methods as WebhookMethod[]);
   const [events, setEvents] = useState<WebhookEventName[]>(webhook.events ?? []);
-  const [isWhatsapp, setIsWhatsapp] = useState(webhook.isWhatsappReceiver);
+  const isWhatsapp = webhook.isWhatsappReceiver;
+  const kind = !isInbound ? "outbound" : isWhatsapp ? "whatsapp" : "inbound_generic";
   const [businessId, setBusinessId] = useState(webhook.businessId ?? "");
   const [revealedSecret, setRevealedSecret] = useState<string | null>(null);
 
@@ -72,7 +73,7 @@ export function WebhookEditForm({ webhook }: { webhook: WebhookListItem }) {
         description: description.trim() || null,
         path: isInbound ? path.trim() : null,
         targetUrl: isInbound ? null : targetUrl.trim(),
-        methods,
+        methods: isWhatsapp ? ["POST"] : methods,
         events: isInbound ? undefined : events,
         isWhatsappReceiver: isInbound ? isWhatsapp : undefined,
         businessId: isInbound && isWhatsapp ? businessId.trim() : undefined,
@@ -100,6 +101,8 @@ export function WebhookEditForm({ webhook }: { webhook: WebhookListItem }) {
 
   return (
     <div className="space-y-5 rounded-xl border border-border p-6">
+      <KindBanner kind={kind} />
+
       <div className="space-y-1.5">
         <Label htmlFor="wh-name">Nome</Label>
         <Input id="wh-name" value={name} onChange={(e) => setName(e.target.value)} />
@@ -132,37 +135,21 @@ export function WebhookEditForm({ webhook }: { webhook: WebhookListItem }) {
             </p>
           </div>
 
-          <div className="rounded-lg border border-border/60 bg-background/40 p-3">
-            <label className="flex cursor-pointer items-start justify-between gap-3">
-              <span className="min-w-0">
-                <span className="text-sm font-medium text-foreground">
-                  Recebe dados do WhatsApp
-                </span>
-                <span className="mt-0.5 block text-xs text-muted-foreground">
-                  Recebe mensagens do WhatsApp (via n8n) e alimenta o Agente Nex.
-                </span>
-              </span>
-              <Switch checked={isWhatsapp} onCheckedChange={setIsWhatsapp} />
-            </label>
-            {isWhatsapp && (
-              <div className="mt-3 space-y-3 border-t border-border/40 pt-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="wh-business">Número da empresa</Label>
-                  <Input
-                    id="wh-business"
-                    value={businessId}
-                    onChange={(e) => setBusinessId(e.target.value)}
-                    placeholder="Ex.: 556195630029"
-                    inputMode="numeric"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Número do WhatsApp da empresa que recebe as mensagens. Único por webhook.
-                  </p>
-                </div>
-                <WhatsappInboundHelp />
-              </div>
-            )}
-          </div>
+          {isWhatsapp && (
+            <div className="space-y-1.5">
+              <Label htmlFor="wh-business">Número da empresa</Label>
+              <Input
+                id="wh-business"
+                value={businessId}
+                onChange={(e) => setBusinessId(e.target.value)}
+                placeholder="Ex.: 558881008888"
+                inputMode="numeric"
+              />
+              <p className="text-xs text-muted-foreground">
+                Número do WhatsApp da empresa que recebe as mensagens. Identifica este webhook e não pode repetir.
+              </p>
+            </div>
+          )}
         </>
       ) : (
         <div className="space-y-1.5">
@@ -177,31 +164,48 @@ export function WebhookEditForm({ webhook }: { webhook: WebhookListItem }) {
         </div>
       )}
 
-      <div className="space-y-2">
-        <Label>Métodos HTTP</Label>
-        <div className="flex flex-wrap gap-1.5">
-          {HTTP_METHODS.map((m) => {
-            const on = methods.includes(m);
-            return (
-              <button
-                key={m}
-                type="button"
-                onClick={() => toggleMethod(m)}
-                aria-pressed={on}
-                className={cn(
-                  "inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors",
-                  on
-                    ? "border-violet-500/50 bg-violet-500/10 text-violet-600 dark:text-violet-400"
-                    : "border-border text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {on ? <Check className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
-                {m}
-              </button>
-            );
-          })}
+      {isWhatsapp ? (
+        <div className="space-y-1.5">
+          <Label>Método HTTP</Label>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1 rounded-md border border-border bg-muted px-2 py-1 text-xs font-semibold text-foreground">
+              <Lock className="h-3 w-3 text-muted-foreground" aria-hidden />
+              POST
+            </span>
+            <span className="text-xs text-muted-foreground">
+              Definido automaticamente , as mensagens chegam sempre por POST.
+            </span>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="space-y-2">
+          <Label>Métodos HTTP</Label>
+          <div className="flex flex-wrap gap-1.5">
+            {HTTP_METHODS.map((m) => {
+              const on = methods.includes(m);
+              return (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => toggleMethod(m)}
+                  aria-pressed={on}
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors",
+                    on
+                      ? "border-violet-500/50 bg-violet-500/10 text-violet-600 dark:text-violet-400"
+                      : "border-border text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {on ? <Check className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
+                  {m}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {isWhatsapp && <WhatsappInboundHelp />}
 
       {!isInbound && (
         <div className="space-y-2">

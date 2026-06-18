@@ -5,6 +5,9 @@ import {
   ArrowDownToLine,
   ArrowUpFromLine,
   Loader2,
+  Lock,
+  MessageCircle,
+  type LucideIcon,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -14,7 +17,6 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { StepIndicator } from "@/components/ui/step-indicator"
 import { SecretRevealStep } from "@/components/ui/secret-reveal-step"
-import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { WebhookEventSelector } from "@/components/integrations/webhook-event-selector"
 import { WhatsappInboundHelp } from "@/components/integrations/whatsapp-inbound-help"
@@ -22,40 +24,85 @@ import {
   createWebhook,
   type CreateWebhookInput,
   type CreatedWebhook,
-  type WebhookDirection,
   type WebhookEventName,
   type WebhookMethod,
 } from "@/lib/actions/webhooks"
 
-/** Métodos HTTP disponíveis para seleção. */
+/** Métodos HTTP disponíveis para seleção (genérico/saída). */
 const HTTP_METHODS: WebhookMethod[] = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"]
 
 /** Slug seguro: mesma regra do schema da Server Action. */
 const PATH_RE = /^[a-z0-9][a-z0-9-/]*$/
 
+/** Tipo de webhook escolhido no passo 1 (cada um com experiência própria). */
+type WebhookKind = "whatsapp" | "inbound_generic" | "outbound"
+
+interface KindMeta {
+  id: WebhookKind
+  icon: LucideIcon
+  title: string
+  description: string
+  accent: { icon: string; ring: string; bg: string }
+}
+
+const KINDS: KindMeta[] = [
+  {
+    id: "whatsapp",
+    icon: MessageCircle,
+    title: "Receber dados do WhatsApp",
+    description:
+      "Recebe as mensagens do WhatsApp e alimenta o Agente Nex. A plataforma cuida da validação e da resposta.",
+    accent: {
+      icon: "text-green-500",
+      ring: "ring-green-500/50 border-green-500/40",
+      bg: "bg-green-500/5",
+    },
+  },
+  {
+    id: "inbound_generic",
+    icon: ArrowDownToLine,
+    title: "Receber outros dados",
+    description:
+      "Endpoint genérico: outro sistema chama este endereço quando algo acontece e a plataforma escuta.",
+    accent: {
+      icon: "text-sky-500",
+      ring: "ring-sky-500/50 border-sky-500/40",
+      bg: "bg-sky-500/5",
+    },
+  },
+  {
+    id: "outbound",
+    icon: ArrowUpFromLine,
+    title: "Enviar eventos",
+    description:
+      "A plataforma dispara uma chamada para um endereço externo quando um evento ocorre aqui dentro.",
+    accent: {
+      icon: "text-violet-500",
+      ring: "ring-violet-500/50 border-violet-500/40",
+      bg: "bg-violet-500/5",
+    },
+  },
+]
+
+function kindMeta(kind: WebhookKind): KindMeta {
+  return KINDS.find((k) => k.id === kind) ?? KINDS[0]
+}
+
 export interface WebhookWizardProps {
-  /**
-   * Quando `true`, o wizard é renderizado para uso dentro de um `Dialog`
-   * (sem padding/borda própria de página). Default `false`.
-   */
   embedded?: boolean
   /** URL base read-only exibida como prefixo dos webhooks de entrada. */
   inboundBaseUrl?: string
-  /** Disparado quando o webhook é criado e o usuário confirma o secret. */
   onCreated: (webhook: CreatedWebhook) => void
-  /** Disparado quando o usuário cancela o wizard. */
   onCancel?: () => void
 }
 
 type Step = 1 | 2 | 3
 
 /**
- * Wizard de criação de webhook, componente compartilhado entre a tela de
- * Webhooks e o passo embutido do wizard de instância WhatsApp (SPEC §4.5).
- *
- * Passo 1: direção (Entrada/Saída). Passo 2: configuração (path ou targetUrl
- * + métodos + nome). Passo 3: cria o webhook e exibe o secret via
- * `SecretRevealStep`, uma única vez.
+ * Wizard de criação de webhook. Passo 1: escolha do TIPO (WhatsApp / outros
+ * dados / enviar eventos), cada um com experiência própria. Passo 2:
+ * configuração personalizada pelo tipo (com um banner de identificação em
+ * destaque). Passo 3: revela o secret uma única vez.
  */
 export function WebhookWizard({
   embedded = false,
@@ -64,18 +111,21 @@ export function WebhookWizard({
   onCancel,
 }: WebhookWizardProps) {
   const [step, setStep] = React.useState<Step>(1)
-  const [direction, setDirection] = React.useState<WebhookDirection | null>(null)
+  const [kind, setKind] = React.useState<WebhookKind | null>(null)
   const [name, setName] = React.useState("")
   const [description, setDescription] = React.useState("")
   const [path, setPath] = React.useState("")
   const [targetUrl, setTargetUrl] = React.useState("")
   const [methods, setMethods] = React.useState<WebhookMethod[]>(["POST"])
   const [events, setEvents] = React.useState<WebhookEventName[]>(["agent_reply"])
-  const [isWhatsapp, setIsWhatsapp] = React.useState(false)
   const [businessId, setBusinessId] = React.useState("")
   const [submitting, setSubmitting] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [created, setCreated] = React.useState<CreatedWebhook | null>(null)
+
+  const isWhatsapp = kind === "whatsapp"
+  const isOutbound = kind === "outbound"
+  const direction = isOutbound ? "outbound" : "inbound"
 
   function toggleMethod(m: WebhookMethod) {
     setMethods((prev) =>
@@ -83,22 +133,21 @@ export function WebhookWizard({
     )
   }
 
-  // Enter num campo avança o passo 1 para o 2. O passo 2 cria o webhook (ação
-  // final), então não dispara sozinho: criar exige clique.
   function handleEnterAdvance(e: React.FormEvent) {
     e.preventDefault()
-    if (step === 1 && direction) setStep(2)
+    if (step === 1 && kind) setStep(2)
   }
 
   const step2Valid =
     name.trim().length > 0 &&
-    methods.length > 0 &&
-    (direction === "inbound"
-      ? PATH_RE.test(path.trim()) && (!isWhatsapp || businessId.trim().length > 0)
-      : isValidUrl(targetUrl.trim()))
+    (isOutbound
+      ? isValidUrl(targetUrl.trim()) && methods.length > 0
+      : PATH_RE.test(path.trim()) &&
+        (!isWhatsapp || businessId.trim().length > 0) &&
+        (isWhatsapp || methods.length > 0))
 
   async function handleCreate() {
-    if (!direction) return
+    if (!kind) return
     setSubmitting(true)
     setError(null)
     const input: CreateWebhookInput = {
@@ -106,11 +155,12 @@ export function WebhookWizard({
       name: name.trim(),
       description: description.trim() || null,
       path: direction === "inbound" ? path.trim() : null,
-      targetUrl: direction === "outbound" ? targetUrl.trim() : null,
-      methods,
-      events: direction === "outbound" ? events : undefined,
+      targetUrl: isOutbound ? targetUrl.trim() : null,
+      // WhatsApp usa POST fixo; demais usam o que foi escolhido.
+      methods: isWhatsapp ? ["POST"] : methods,
+      events: isOutbound ? events : undefined,
       isWhatsappReceiver: direction === "inbound" ? isWhatsapp : undefined,
-      businessId: direction === "inbound" && isWhatsapp ? businessId.trim() : undefined,
+      businessId: isWhatsapp ? businessId.trim() : undefined,
     }
     const res = await createWebhook(input)
     setSubmitting(false)
@@ -125,49 +175,38 @@ export function WebhookWizard({
   return (
     <form
       onSubmit={handleEnterAdvance}
-      className={cn("space-y-6", !embedded && "rounded-xl border p-6")}
+      className={cn("space-y-6", !embedded && "rounded-xl border border-border p-6")}
     >
       <StepIndicator steps={["Tipo", "Configuração", "Conclusão"]} current={step} />
 
-      {/* Passo 1, Direção */}
+      {/* Passo 1, Tipo */}
       {step === 1 && (
         <div className="space-y-5">
           <div className="space-y-1">
             <h3 className="text-sm font-medium">Tipo do webhook</h3>
             <p className="text-xs text-muted-foreground">
-              Escolha se a plataforma vai receber ou enviar eventos.
+              Escolha o que a plataforma vai fazer. Cada tipo tem a sua configuração.
             </p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2" data-tour="webhook-wizard-tipo">
-            <DirectionCard
-              selected={direction === "inbound"}
-              onSelect={() => setDirection("inbound")}
-              icon={<ArrowDownToLine className="size-5" />}
-              title="Receber eventos"
-              description="A plataforma expõe um endereço e fica escutando. Um sistema externo chama esse endereço quando algo acontece."
-            />
-            <DirectionCard
-              selected={direction === "outbound"}
-              onSelect={() => setDirection("outbound")}
-              icon={<ArrowUpFromLine className="size-5" />}
-              title="Enviar eventos"
-              description="A plataforma dispara uma chamada para um endereço externo quando um evento ocorre aqui dentro."
-            />
+          <div className="grid gap-3" data-tour="webhook-wizard-tipo">
+            {KINDS.map((k) => (
+              <KindCard
+                key={k.id}
+                meta={k}
+                selected={kind === k.id}
+                onSelect={() => setKind(k.id)}
+              />
+            ))}
           </div>
           <div className="flex justify-end gap-2 border-t border-border/60 pt-5">
             {onCancel && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onCancel}
-                className="cursor-pointer"
-              >
+              <Button type="button" variant="outline" onClick={onCancel} className="cursor-pointer">
                 Cancelar
               </Button>
             )}
             <Button
               type="button"
-              disabled={!direction}
+              disabled={!kind}
               onClick={() => setStep(2)}
               className="cursor-pointer"
             >
@@ -177,16 +216,18 @@ export function WebhookWizard({
         </div>
       )}
 
-      {/* Passo 2, Configuração */}
-      {step === 2 && direction && (
+      {/* Passo 2, Configuração (personalizada pelo tipo) */}
+      {step === 2 && kind && (
         <div className="space-y-5">
+          <KindBanner kind={kind} />
+
           <div className="space-y-1.5">
             <Label htmlFor="wh-name">Nome</Label>
             <Input
               id="wh-name"
               value={name}
               onChange={(e) => setName(e.currentTarget.value)}
-              placeholder="Ex.: Receptor do WhatsApp"
+              placeholder={isWhatsapp ? "Ex.: WhatsApp da loja matriz" : "Ex.: Receptor de pedidos"}
             />
           </div>
 
@@ -201,10 +242,20 @@ export function WebhookWizard({
             />
           </div>
 
-          {direction === "inbound" ? (
-            <>
+          {isOutbound ? (
             <div className="space-y-1.5">
-              <Label htmlFor="wh-path">Caminho</Label>
+              <Label htmlFor="wh-target">URL de destino</Label>
+              <Input
+                id="wh-target"
+                value={targetUrl}
+                onChange={(e) => setTargetUrl(e.currentTarget.value)}
+                placeholder="https://exemplo.com/webhook/abc"
+                aria-invalid={targetUrl.length > 0 && !isValidUrl(targetUrl.trim())}
+              />
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <Label htmlFor="wh-path">Endereço (URL)</Label>
               <div className="flex items-stretch">
                 <span className="flex items-center rounded-l-lg border border-r-0 border-input bg-muted px-2.5 text-xs text-muted-foreground">
                   {inboundBaseUrl}
@@ -213,83 +264,62 @@ export function WebhookWizard({
                   id="wh-path"
                   value={path}
                   onChange={(e) => setPath(e.currentTarget.value)}
-                  placeholder="whatsapp/loja-matriz"
+                  placeholder={isWhatsapp ? "whatsapp/loja-matriz" : "meu-sistema/eventos"}
                   className="rounded-l-none"
                   aria-invalid={path.length > 0 && !PATH_RE.test(path.trim())}
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                Apenas letras minúsculas, números, hífen e barra. Precisa ser único.
+                Você define o final do endereço. Apenas minúsculas, números, hífen e barra. Precisa ser único.
               </p>
-            </div>
-
-            <div className="rounded-lg border border-border/60 bg-background/40 p-3">
-              <label className="flex cursor-pointer items-start justify-between gap-3">
-                <span className="min-w-0">
-                  <span className="text-sm font-medium text-foreground">
-                    Recebe dados do WhatsApp
-                  </span>
-                  <span className="mt-0.5 block text-xs text-muted-foreground">
-                    Este webhook recebe mensagens do WhatsApp (via n8n) e alimenta o Agente Nex.
-                  </span>
-                </span>
-                <Switch checked={isWhatsapp} onCheckedChange={setIsWhatsapp} />
-              </label>
-
-              {isWhatsapp && (
-                <div className="mt-3 space-y-3 border-t border-border/40 pt-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="wh-business">Número da empresa</Label>
-                    <Input
-                      id="wh-business"
-                      value={businessId}
-                      onChange={(e) => setBusinessId(e.currentTarget.value)}
-                      placeholder="Ex.: 556195630029"
-                      inputMode="numeric"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Número do WhatsApp da empresa que recebe as mensagens. Único por webhook.
-                    </p>
-                  </div>
-                  <WhatsappInboundHelp />
-                </div>
-              )}
-            </div>
-            </>
-          ) : (
-            <div className="space-y-1.5">
-              <Label htmlFor="wh-target">URL de destino</Label>
-              <Input
-                id="wh-target"
-                value={targetUrl}
-                onChange={(e) => setTargetUrl(e.currentTarget.value)}
-                placeholder="https://n8n.example.com/webhook/abc"
-                aria-invalid={
-                  targetUrl.length > 0 && !isValidUrl(targetUrl.trim())
-                }
-              />
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label>Métodos HTTP</Label>
-            <div className="flex flex-wrap gap-3">
-              {HTTP_METHODS.map((m) => (
-                <label
-                  key={m}
-                  className="flex cursor-pointer items-center gap-2 text-sm"
-                >
-                  <Checkbox
-                    checked={methods.includes(m)}
-                    onCheckedChange={() => toggleMethod(m)}
-                  />
-                  {m}
-                </label>
-              ))}
+          {isWhatsapp && (
+            <div className="space-y-1.5">
+              <Label htmlFor="wh-business">Número da empresa</Label>
+              <Input
+                id="wh-business"
+                value={businessId}
+                onChange={(e) => setBusinessId(e.currentTarget.value)}
+                placeholder="Ex.: 558881008888"
+                inputMode="numeric"
+              />
+              <p className="text-xs text-muted-foreground">
+                Número do WhatsApp da empresa que recebe as mensagens. Identifica este webhook e não pode repetir.
+              </p>
             </div>
-          </div>
+          )}
 
-          {direction === "outbound" && (
+          {/* Métodos: livres no genérico/saída; travado em POST no WhatsApp. */}
+          {isWhatsapp ? (
+            <div className="space-y-1.5">
+              <Label>Método HTTP</Label>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1 rounded-md border border-border bg-muted px-2 py-1 text-xs font-semibold text-foreground">
+                  <Lock className="h-3 w-3 text-muted-foreground" aria-hidden />
+                  POST
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  Definido automaticamente , as mensagens chegam sempre por POST.
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label>Métodos HTTP</Label>
+              <div className="flex flex-wrap gap-3">
+                {HTTP_METHODS.map((m) => (
+                  <label key={m} className="flex cursor-pointer items-center gap-2 text-sm">
+                    <Checkbox checked={methods.includes(m)} onCheckedChange={() => toggleMethod(m)} />
+                    {m}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {isOutbound && (
             <div className="space-y-2">
               <Label>Eventos</Label>
               <p className="text-xs text-muted-foreground">
@@ -304,15 +334,12 @@ export function WebhookWizard({
             </div>
           )}
 
+          {isWhatsapp && <WhatsappInboundHelp />}
+
           {error && <p className="text-xs text-destructive">{error}</p>}
 
           <div className="flex justify-between gap-2 border-t border-border/60 pt-5">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setStep(1)}
-              className="cursor-pointer"
-            >
+            <Button type="button" variant="outline" onClick={() => setStep(1)} className="cursor-pointer">
               Voltar
             </Button>
             <Button
@@ -322,7 +349,7 @@ export function WebhookWizard({
               className="cursor-pointer"
             >
               {submitting && <Loader2 className="size-4 animate-spin" />}
-              Criar webhook
+              {isOutbound ? "Criar webhook de saída" : isWhatsapp ? "Criar webhook do WhatsApp" : "Criar webhook"}
             </Button>
           </div>
         </div>
@@ -348,6 +375,56 @@ export function WebhookWizard({
   )
 }
 
+/** Banner de identificação do tipo escolhido (em destaque no passo 2). */
+export function KindBanner({ kind }: { kind: WebhookKind }) {
+  const meta = kindMeta(kind)
+  const Icon = meta.icon
+  return (
+    <div className={cn("flex items-center gap-3 rounded-lg border p-3", meta.accent.ring, meta.accent.bg)}>
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-background/60">
+        <Icon className={cn("h-5 w-5", meta.accent.icon)} aria-hidden />
+      </span>
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-foreground">{meta.title}</p>
+        <p className="truncate text-xs text-muted-foreground">{meta.description}</p>
+      </div>
+    </div>
+  )
+}
+
+function KindCard({
+  meta,
+  selected,
+  onSelect,
+}: {
+  meta: KindMeta
+  selected: boolean
+  onSelect: () => void
+}) {
+  const Icon = meta.icon
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={selected}
+      className={cn(
+        "flex items-start gap-3 rounded-lg border p-4 text-left transition-colors",
+        selected
+          ? cn("ring-1", meta.accent.ring, meta.accent.bg)
+          : "border-border hover:bg-accent",
+      )}
+    >
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-background/60">
+        <Icon className={cn("h-5 w-5", selected ? meta.accent.icon : "text-muted-foreground")} aria-hidden />
+      </span>
+      <span className="min-w-0">
+        <span className="block font-medium text-foreground">{meta.title}</span>
+        <span className="mt-0.5 block text-xs text-muted-foreground">{meta.description}</span>
+      </span>
+    </button>
+  )
+}
+
 function isValidUrl(value: string): boolean {
   try {
     const u = new URL(value)
@@ -355,38 +432,4 @@ function isValidUrl(value: string): boolean {
   } catch {
     return false
   }
-}
-
-function DirectionCard({
-  selected,
-  onSelect,
-  icon,
-  title,
-  description,
-}: {
-  selected: boolean
-  onSelect: () => void
-  icon: React.ReactNode
-  title: string
-  description: string
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      aria-pressed={selected}
-      className={cn(
-        "flex cursor-pointer flex-col gap-2 rounded-lg border p-4 text-left transition-colors",
-        selected
-          ? "border-primary bg-primary/5 ring-1 ring-primary"
-          : "border-border hover:bg-accent",
-      )}
-    >
-      <span className="flex items-center gap-2 font-medium">
-        {icon}
-        {title}
-      </span>
-      <span className="text-xs text-muted-foreground">{description}</span>
-    </button>
-  )
 }
