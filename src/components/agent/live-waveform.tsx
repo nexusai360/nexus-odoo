@@ -41,6 +41,28 @@ export function LiveWaveform({
   const reduceMotion = useReducedMotion();
   const barsRef = React.useRef<Array<HTMLSpanElement | null>>([]);
   const activeRef = React.useRef(active);
+  const containerRef = React.useRef<HTMLDivElement | null>(null);
+
+  // Quantidade de barras RESPONSIVA à largura: densidade constante (1 barra a
+  // cada ~8px) em qualquer tamanho. Sem isso, um nº fixo de barras com
+  // `justify-between` fica denso na bubble estreita e ESPAÇADO/feio na tela
+  // expandida (larga). `barCount` (prop) vira só o valor inicial/fallback.
+  const [autoBars, setAutoBars] = React.useState(barCount);
+  React.useEffect(() => {
+    const el = containerRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const apply = (w: number) => {
+      if (w <= 0) return;
+      const n = Math.max(12, Math.min(96, Math.floor(w / 8)));
+      setAutoBars((prev) => (prev === n ? prev : n));
+    };
+    apply(el.clientWidth);
+    const ro = new ResizeObserver((entries) => {
+      for (const e of entries) apply(e.contentRect.width);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   React.useEffect(() => {
     activeRef.current = active;
@@ -133,13 +155,14 @@ export function LiveWaveform({
 
   return (
     <div
+      ref={containerRef}
       aria-hidden="true"
       className={cn(
         "flex h-6 w-full items-center justify-between",
         className,
       )}
     >
-      {Array.from({ length: barCount }).map((_, i) => (
+      {Array.from({ length: autoBars }).map((_, i) => (
         <span
           key={i}
           ref={(el) => {
@@ -148,7 +171,7 @@ export function LiveWaveform({
           className="h-full w-[2.5px] shrink-0 origin-center rounded-full bg-violet-500 motion-reduce:bg-violet-500/70"
           style={
             reduceMotion
-              ? { transform: `scaleY(${staticScale(i, barCount)})` }
+              ? { transform: `scaleY(${staticScale(i, autoBars)})` }
               : { transform: `scaleY(${BASELINE})` }
           }
         />
