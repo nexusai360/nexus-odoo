@@ -147,7 +147,7 @@ describe("processAgentJob , type=text, modo n8n_webhook", () => {
   const outboundTargets = [{ url: "https://n8n.example.com/webhook/reply", secret: "my-secret" }];
   const webhookJob: AgentJobData = {
     ...BASE_JOB,
-    phoneNumberId: "5932",
+    businessId: "5932",
     channelConfig: {
       responseMode: "n8n_webhook",
       outboundTargets,
@@ -166,7 +166,7 @@ describe("processAgentJob , type=text, modo n8n_webhook", () => {
     expect(envelope.data.reasoningMs).toBe(1234);
     expect(envelope.data.usage).toEqual({ tokensInput: 100, tokensOutput: 50, costUsd: 0.001 });
     expect(envelope.data.assistantMessageId).toBe("assistant-msg-1");
-    expect(envelope.data.phoneNumberId).toBe("5932");
+    expect(envelope.data.businessId).toBe("5932");
     expect(mockSendText).not.toHaveBeenCalled();
   });
 
@@ -185,7 +185,7 @@ describe("processAgentJob , type=text, modo n8n_webhook", () => {
     const savedPayload = JSON.stringify({
       inboundMessageId: "wamid.123",
       to: BASE_JOB.replyTo,
-      phoneNumberId: "5932",
+      businessId: "5932",
       sessionId: "conv-001",
       assistantMessageId: "assistant-msg-1",
       ok: true,

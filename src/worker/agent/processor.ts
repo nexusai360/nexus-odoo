@@ -54,8 +54,6 @@ export interface AgentJobData {
   replyTo: string;
   /** Número da empresa (business_id) do webhook receptor, para rotear a resposta. */
   businessId?: string;
-  /** ID do número Meta para rotear a resposta (legado/opcional). */
-  phoneNumberId?: string;
   /** Nome de exibição do contato, para monitoramento (opcional). */
   contactName?: string;
   /** Configuração de resposta do canal. */
@@ -228,7 +226,7 @@ export async function processAgentJob(data: AgentJobData): Promise<void> {
     {
       inboundMessageId: data.messageId,
       to: data.replyTo,
-      phoneNumberId: data.phoneNumberId ?? null,
+      businessId: data.businessId ?? null,
       conversationId: conversation.id,
       messageType: data.type,
     },
@@ -297,7 +295,7 @@ async function dispatchNotice(data: AgentJobData, text: string): Promise<void> {
   await dispatchReply(data, {
     inboundMessageId: data.messageId,
     to: data.replyTo,
-    phoneNumberId: data.phoneNumberId ?? null,
+    businessId: data.businessId ?? null,
     sessionId: null,
     assistantMessageId: null,
     ok: false,

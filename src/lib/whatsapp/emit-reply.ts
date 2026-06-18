@@ -5,7 +5,7 @@ import type { BlockReason } from "@/lib/whatsapp/blocked-messages";
 export interface AgentReplyData {
   inboundMessageId: string;
   to: string;
-  phoneNumberId: string | null;
+  businessId: string | null;
   sessionId: string | null;
   assistantMessageId: string | null;
   ok: boolean;
