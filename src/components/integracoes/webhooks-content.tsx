@@ -189,7 +189,7 @@ export function WebhooksContent({ initial }: Props) {
                 type="button"
                 onClick={clearFilters}
                 aria-label="Limpar filtros"
-                className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+                className="inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
               >
                 <X className="h-3.5 w-3.5" aria-hidden />
                 Limpar
@@ -362,7 +362,7 @@ function WebhookRow({ webhook, isPending, onToggle, onDelete }: WebhookRowProps)
     <div
       className={cn(
         "rounded-xl border border-border bg-muted/30 p-3.5 transition-colors hover:border-foreground/20",
-        !webhook.enabled && "opacity-60",
+        !webhook.enabled && "opacity-40",
       )}
     >
       <div className="flex items-center justify-between gap-3">
