@@ -5,7 +5,7 @@ import type { BlockReason } from "@/lib/whatsapp/blocked-messages";
 export interface AgentReplyData {
   inboundMessageId: string;
   to: string;
-  phoneNumberId: string | null;
+  businessId: string | null;
   sessionId: string | null;
   assistantMessageId: string | null;
   ok: boolean;
@@ -16,7 +16,7 @@ export interface AgentReplyData {
   tools: string[];
   reasoningMs: number;
   usage: { tokensInput: number; tokensOutput: number; costUsd: number };
-  messageType: "text" | "audio" | "image";
+  messageType: import("@/lib/whatsapp/inbound-payload").InboundMessageType;
   /** Só em permission_denied (L3). */
   deniedModule?: string;
   allowedModules?: string[];

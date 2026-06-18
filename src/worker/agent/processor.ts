@@ -22,6 +22,7 @@ import { emitAgentReply, type AgentReplyData, type OutboundTarget } from "@/lib/
 import { buildReplyData } from "./build-reply-data";
 import { prisma } from "@/lib/prisma";
 import { acquireUserLock, releaseUserLock } from "./user-lock";
+import { isMediaType, type InboundMedia, type InboundMessageType } from "@/lib/whatsapp/inbound-payload";
 import type { AgentChannel } from "@/generated/prisma/client";
 
 export interface AgentJobChannelConfig {
@@ -37,18 +38,22 @@ export interface AgentJobData {
   userId: string;
   /** Canal do agente , sempre "whatsapp" para jobs desta fila. */
   channel: AgentChannel;
-  /** Tipo da mensagem. */
-  type: "text" | "audio" | "image";
-  /** Texto da mensagem (presente quando type=text). */
+  /** Tipo da mensagem (F5.1: ampliado para mídia). */
+  type: InboundMessageType;
+  /** Texto da mensagem (text/audio; legenda em mídia). */
   text?: string;
-  /** Media ID para download do áudio (presente quando type=audio). */
+  /** Mídia (F5.1): presente quando type é image/document/video/sticker. */
+  media?: InboundMedia;
+  /** ID do usuário Meta (F5.1, user_id), guardado para o futuro. */
+  waUserId?: string;
+  /** Media ID legado para download do áudio via Meta direta (não usado no n8n). */
   audioMediaId?: string;
-  /** Media ID para download da imagem (presente quando type=image). */
+  /** Media ID legado para download da imagem via Meta direta (não usado no n8n). */
   imageMediaId?: string;
   /** Número de destino para a resposta (E.164). */
   replyTo: string;
-  /** ID do número Meta para rotear a resposta (opcional). */
-  phoneNumberId?: string;
+  /** Número da empresa (business_id) do webhook receptor, para rotear a resposta. */
+  businessId?: string;
   /** Nome de exibição do contato, para monitoramento (opcional). */
   contactName?: string;
   /** Configuração de resposta do canal. */
@@ -80,21 +85,16 @@ export async function processAgentJob(data: AgentJobData): Promise<void> {
   // WhatsApp; outros valores indicam que o canal não deve processar mídia.
   const settings = await prisma.agentSettings.findFirst().catch(() => null);
   const audioInProduction = settings?.audioCheckpoint === "PRODUCTION";
-  const imageInProduction = settings?.imageCheckpoint === "PRODUCTION";
 
-  if (data.type === "image") {
-    // G2 , Imagem desativada para WhatsApp: ignorar silenciosamente
-    // (sem resposta). Quando habilitado, ainda não há pipeline de visão
-    // dedicado; responde com aviso provisório.
-    if (!imageInProduction) {
-      console.info(
-        `[agent-processor] Mensagem de imagem ignorada (imageCheckpoint != PRODUCTION) , messageId=${data.messageId}`,
-      );
-      return;
-    }
-    const provisional =
-      "Recebi sua imagem, mas a análise de imagens ainda está em ajustes finais. Em instantes consigo responder a essa modalidade.";
-    await dispatchNotice(data, provisional);
+  // F5.1 , Mídia (image/document/video/sticker): a leitura do arquivo pela IA
+  // (ler PDF/imagem e entender o contexto) é etapa futura. Por ora aceitamos os
+  // campos no contrato, mas respondemos um aviso amigável e não acionamos o
+  // agente. Quando a leitura de mídia entrar, este bloco vira o pipeline de visão.
+  if (isMediaType(data.type)) {
+    const mediaNotice =
+      "Recebi seu arquivo, mas ainda não consigo lê-lo por aqui. " +
+      "Por enquanto, me envie sua pergunta por escrito que eu te ajudo.";
+    await dispatchNotice(data, mediaNotice);
     return;
   }
 
@@ -226,7 +226,7 @@ export async function processAgentJob(data: AgentJobData): Promise<void> {
     {
       inboundMessageId: data.messageId,
       to: data.replyTo,
-      phoneNumberId: data.phoneNumberId ?? null,
+      businessId: data.businessId ?? null,
       conversationId: conversation.id,
       messageType: data.type,
     },
@@ -295,7 +295,7 @@ async function dispatchNotice(data: AgentJobData, text: string): Promise<void> {
   await dispatchReply(data, {
     inboundMessageId: data.messageId,
     to: data.replyTo,
-    phoneNumberId: data.phoneNumberId ?? null,
+    businessId: data.businessId ?? null,
     sessionId: null,
     assistantMessageId: null,
     ok: false,

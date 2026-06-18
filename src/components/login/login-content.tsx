@@ -21,9 +21,15 @@ export function LoginContent() {
   async function handleSubmit(formData: FormData) {
     setError(null);
     startTransition(async () => {
-      const result = await loginAction(formData, callbackUrl);
+      const result = await loginAction(formData);
       if (result?.error) {
         setError(result.error);
+        return;
+      }
+      if (result?.ok) {
+        // Navegação completa: o cookie de sessão recém-setado vai junto, o
+        // middleware roteia (ex.: para /perfil/trocar-senha quem precisa).
+        window.location.assign(callbackUrl);
       }
     });
   }

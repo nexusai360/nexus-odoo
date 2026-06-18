@@ -4,7 +4,7 @@ import type { RunAgentResult } from "@/lib/agent/run-agent";
 const ctx: ReplyContext = {
   inboundMessageId: "wamid.1",
   to: "5534999",
-  phoneNumberId: "5932",
+  businessId: "5932",
   conversationId: "c1",
   messageType: "text",
 };

@@ -5,6 +5,9 @@ import { cn } from "@/lib/utils";
 interface BreadcrumbItem {
   label: string;
   href?: string;
+  /** Quando presente, o item vira um botão que reseta o estado da tela
+   *  (ex.: voltar ao passo 1 do wizard) em vez de só navegar pela rota. */
+  onClick?: () => void;
 }
 
 interface Props {
@@ -22,7 +25,15 @@ export function Breadcrumb({ items }: Props) {
         return (
           <span key={index} className="flex items-center gap-1.5">
             {index > 0 && <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
-            {item.href && !isLast ? (
+            {item.onClick && !isLast ? (
+              <button
+                type="button"
+                onClick={item.onClick}
+                className="cursor-pointer transition-colors duration-150 hover:text-foreground"
+              >
+                {item.label}
+              </button>
+            ) : item.href && !isLast ? (
               <Link
                 href={item.href}
                 className="hover:text-foreground transition-colors duration-150"

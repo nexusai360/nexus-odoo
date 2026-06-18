@@ -1,7 +1,7 @@
 /**
  * Testes do endpoint POST /api/integrations/whatsapp/inbound.
  *
- * Cobre: autenticação HMAC, validação de payload, idempotência,
+ * Cobre: autenticação por token (Bearer), validação de payload, idempotência,
  * resolução de usuário, teto diário e enfileiramento do job.
  */
 
@@ -9,7 +9,7 @@
 // Mocks , DEVEM vir antes de qualquer import
 // ──────────────────────────────────────────────
 
-const mockVerifySignature = jest.fn();
+const mockVerifyToken = jest.fn();
 const mockResolveWhatsappUser = jest.fn();
 const mockProcessedFindUnique = jest.fn();
 const mockProcessedCreate = jest.fn();
@@ -25,7 +25,7 @@ const mockQueueAdd = jest.fn();
 const mockEmitAgentReply = jest.fn();
 const mockDecrypt = jest.fn((s: string) => s.replace("enc:", ""));
 
-jest.mock("@/lib/whatsapp/hmac", () => ({ verifySignature: mockVerifySignature }));
+jest.mock("@/lib/whatsapp/hmac", () => ({ verifyToken: mockVerifyToken }));
 jest.mock("@/lib/whatsapp/resolve", () => ({ resolveWhatsappUser: mockResolveWhatsappUser }));
 jest.mock("@/lib/whatsapp/emit-reply", () => ({ emitAgentReply: mockEmitAgentReply }));
 jest.mock("@/lib/audit", () => ({ logAudit: mockLogAudit }));
@@ -91,8 +91,7 @@ function makeRequest(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-Signature": "valid-sig",
-      "X-Timestamp": String(Date.now()),
+      Authorization: "Bearer valid-token",
       ...overrideHeaders,
     },
     body: bodyStr,
@@ -100,8 +99,9 @@ function makeRequest(
 }
 
 const VALID_PAYLOAD = {
-  messageId: "wamid.abc123",
-  from: "+5511999999999",
+  wa_id: "+5511999999999",
+  user_id: "BR.4377207372590200",
+  message_id: "wamid.abc123",
   timestamp: Date.now(),
   type: "text",
   text: "Olá!",
@@ -114,8 +114,8 @@ const VALID_PAYLOAD = {
 beforeEach(() => {
   jest.clearAllMocks();
 
-  // Por padrão: HMAC válido
-  mockVerifySignature.mockReturnValue(true);
+  // Por padrão: token válido
+  mockVerifyToken.mockReturnValue(true);
   // Por padrão: webhook inbound habilitado (fail-closed exige um webhook configurado)
   mockWebhookFindFirst.mockResolvedValue({
     id: "wh-1",
@@ -126,7 +126,7 @@ beforeEach(() => {
   // Por padrão: mensagem ainda não processada
   mockProcessedFindUnique.mockResolvedValue(null);
   // Por padrão: create bem-sucedido
-  mockProcessedCreate.mockResolvedValue({ messageId: VALID_PAYLOAD.messageId });
+  mockProcessedCreate.mockResolvedValue({ messageId: VALID_PAYLOAD.message_id });
   // Por padrão: usuário resolvido com sucesso (com platformRole para L2)
   mockResolveWhatsappUser.mockResolvedValue({
     status: "ok",
@@ -156,8 +156,8 @@ beforeEach(() => {
 // ──────────────────────────────────────────────
 
 describe("POST /api/integrations/whatsapp/inbound", () => {
-  it("retorna 401 quando HMAC é inválido", async () => {
-    mockVerifySignature.mockReturnValue(false);
+  it("retorna 401 quando o token é inválido", async () => {
+    mockVerifyToken.mockReturnValue(false);
     // Precisa de webhook configurado para que a validação ocorra
     mockWebhookFindFirst.mockResolvedValueOnce({
       id: "wh-1",
@@ -182,8 +182,7 @@ describe("POST /api/integrations/whatsapp/inbound", () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Signature": "x",
-        "X-Timestamp": "1",
+        Authorization: "Bearer valid-token",
       },
       body: "não é json",
     });
@@ -192,7 +191,7 @@ describe("POST /api/integrations/whatsapp/inbound", () => {
   });
 
   it("retorna 200 (no-op) para messageId já processado", async () => {
-    mockProcessedFindUnique.mockResolvedValue({ messageId: VALID_PAYLOAD.messageId });
+    mockProcessedFindUnique.mockResolvedValue({ messageId: VALID_PAYLOAD.message_id });
 
     const req = makeRequest(VALID_PAYLOAD);
     const res = await POST(req as Parameters<typeof POST>[0]);
@@ -344,7 +343,7 @@ describe("POST /api/integrations/whatsapp/inbound", () => {
     expect(body.queued).toBe(true);
     // processedCreate agora inclui userId
     expect(mockProcessedCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ messageId: VALID_PAYLOAD.messageId }) }),
+      expect.objectContaining({ data: expect.objectContaining({ messageId: VALID_PAYLOAD.message_id }) }),
     );
     expect(mockQueueAdd).toHaveBeenCalled();
     expect(mockEmitAgentReply).not.toHaveBeenCalled();
@@ -356,10 +355,10 @@ describe("POST /api/integrations/whatsapp/inbound", () => {
 
     const [, jobData] = mockQueueAdd.mock.calls[0] as [string, AgentJobData];
     expect(jobData.userId).toBe("user-001");
-    expect(jobData.messageId).toBe(VALID_PAYLOAD.messageId);
+    expect(jobData.messageId).toBe(VALID_PAYLOAD.message_id);
     expect(jobData.type).toBe("text");
     expect(jobData.text).toBe("Olá!");
-    expect(jobData.replyTo).toBe(VALID_PAYLOAD.from);
+    expect(jobData.replyTo).toBe(VALID_PAYLOAD.wa_id);
   });
 });
 

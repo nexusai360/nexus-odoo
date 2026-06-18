@@ -7,9 +7,9 @@ import type { RunAgentResult } from "@/lib/agent/run-agent";
 export interface ReplyContext {
   inboundMessageId: string;
   to: string;
-  phoneNumberId: string | null;
+  businessId: string | null;
   conversationId: string | null;
-  messageType: "text" | "audio" | "image";
+  messageType: import("@/lib/whatsapp/inbound-payload").InboundMessageType;
 }
 
 /**
@@ -35,7 +35,7 @@ export function buildReplyData(
     return {
       inboundMessageId: ctx.inboundMessageId,
       to: ctx.to,
-      phoneNumberId: ctx.phoneNumberId,
+      businessId: ctx.businessId,
       sessionId: ctx.conversationId,
       assistantMessageId: null,
       ok: false,
@@ -54,7 +54,7 @@ export function buildReplyData(
   return {
     inboundMessageId: ctx.inboundMessageId,
     to: ctx.to,
-    phoneNumberId: ctx.phoneNumberId,
+    businessId: ctx.businessId,
     sessionId: ctx.conversationId,
     assistantMessageId: result.messageId,
     ok: !isDenied,

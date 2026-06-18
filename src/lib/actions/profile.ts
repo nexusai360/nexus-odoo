@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { unstable_update } from "@/auth";
 import { logAudit } from "@/lib/audit";
 
 type ProfileResult = { success?: boolean; error?: string };
@@ -108,6 +109,17 @@ export async function changePassword(
         mustChangePassword: false,
       },
     });
+
+    // Renova o token JWT na hora (sem logout): o callback `jwt` relê o banco e
+    // grava `mustChangePassword=false` no cookie. Assim o middleware deixa de
+    // forçar a tela de troca já na próxima navegação. A senha antiga já não
+    // vale (o hash foi substituído). Best-effort: se falhar, a página de troca
+    // se auto-resolve no próximo render (relê o banco).
+    try {
+      await unstable_update({});
+    } catch (e) {
+      console.warn("[profile.changePassword] falha ao renovar token:", e);
+    }
 
     logAudit({
       userId: me.id,
