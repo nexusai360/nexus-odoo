@@ -38,9 +38,138 @@ import { cn } from "@/lib/utils";
 import { listAuditLogs, type AuditLogRow } from "@/lib/actions/audit-logs";
 import type { AuditAction } from "@/generated/prisma/client";
 
+// ──────────────────────────────────────────────────────────────────────────
+// Catálogo de ações: categorias, rótulos e cores num só lugar.
+//
+// CRITÉRIO DE COR (fechado e documentado):
+//   1. Severidade primeiro (sobrepõe a categoria):
+//      - vermelho  → falha/recusa (login falhou, pergunta ao Nex negada,
+//        mensagem de WhatsApp rejeitada);
+//      - vinho/rose → ação destrutiva (qualquer `*_deleted`, `*_removed`,
+//        `*_revoked`, mais `user_deactivated` e `session_revoked`).
+//   2. Sem severidade → cor da CATEGORIA da ação (uma cor por grupo).
+// Nunca há cinza para uma ação registrada.
+// ──────────────────────────────────────────────────────────────────────────
+
+interface ActionCategory {
+  key: string;
+  label: string;
+  /** Classe de cor da categoria (badge "aceso"). */
+  badge: string;
+  actions: AuditAction[];
+}
+
+/** Grupos na ordem em que aparecem na lista suspensa (cabeçalhos). */
+const ACTION_CATEGORIES: ActionCategory[] = [
+  {
+    key: "auth",
+    label: "Autenticação & sessão",
+    badge: "bg-sky-500/10 text-sky-400 border-sky-500/20",
+    actions: [
+      "login_succeeded",
+      "login_failed",
+      "logout",
+      "session_revoked",
+      "password_reset_requested",
+      "password_reset_completed",
+    ],
+  },
+  {
+    key: "users",
+    label: "Usuários",
+    badge: "bg-violet-500/10 text-violet-400 border-violet-500/20",
+    actions: [
+      "user_created",
+      "user_updated",
+      "user_deleted",
+      "user_role_changed",
+      "user_activated",
+      "user_deactivated",
+      "user_domains_changed",
+    ],
+  },
+  {
+    key: "profile",
+    label: "Perfil & conta",
+    badge: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
+    actions: [
+      "profile_updated",
+      "profile_password_changed",
+      "email_change_requested",
+      "email_change_completed",
+    ],
+  },
+  {
+    key: "whatsapp",
+    label: "WhatsApp & canais",
+    badge: "bg-teal-500/10 text-teal-400 border-teal-500/20",
+    actions: [
+      "user_whatsapp_added",
+      "user_whatsapp_removed",
+      "whatsapp_channel_updated",
+      "whatsapp_inbound_rejected",
+    ],
+  },
+  {
+    key: "agent",
+    label: "Agente Nex",
+    badge: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+    actions: ["agent_settings_updated", "agent_permission_denied"],
+  },
+  {
+    key: "credentials",
+    label: "Credenciais & API",
+    badge: "bg-orange-500/10 text-orange-400 border-orange-500/20",
+    actions: [
+      "llm_credential_created",
+      "llm_credential_updated",
+      "llm_credential_deleted",
+      "api_key_created",
+      "api_key_updated",
+      "api_key_rotated",
+      "api_key_revoked",
+    ],
+  },
+  {
+    key: "integrations",
+    label: "Integrações",
+    badge: "bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/20",
+    actions: [
+      "webhook_created",
+      "webhook_updated",
+      "webhook_secret_rotated",
+      "webhook_toggled",
+      "webhook_deleted",
+      "external_mcp_server_created",
+      "external_mcp_server_updated",
+      "external_mcp_server_toggled",
+      "external_mcp_server_deleted",
+    ],
+  },
+  {
+    key: "knowledge",
+    label: "Conhecimento (RAG)",
+    badge: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
+    actions: ["kb_document_created", "kb_document_deleted"],
+  },
+  {
+    key: "reports",
+    label: "Relatórios",
+    badge: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+    actions: ["report_preset_created", "report_preset_deleted", "report_exported"],
+  },
+  {
+    key: "settings",
+    label: "Configurações",
+    badge: "bg-pink-500/10 text-pink-400 border-pink-500/20",
+    actions: ["setting_updated"],
+  },
+];
+
 const ACTION_LABELS: Record<AuditAction, string> = {
   login_succeeded: "Login realizado",
   login_failed: "Login falhou",
+  logout: "Logout",
   password_reset_requested: "Reset de senha solicitado",
   password_reset_completed: "Senha redefinida",
   user_created: "Usuário criado",
@@ -65,71 +194,90 @@ const ACTION_LABELS: Record<AuditAction, string> = {
   llm_credential_updated: "Credencial LLM atualizada",
   llm_credential_deleted: "Credencial LLM excluída",
   api_key_created: "API key criada",
+  api_key_updated: "API key atualizada",
+  api_key_rotated: "API key rotacionada",
   api_key_revoked: "API key revogada",
   whatsapp_channel_updated: "Canal WhatsApp atualizado",
-  // RBAC v2 — recusa do Agente Nex por permissão de domínio (fast-path sem LLM).
   agent_permission_denied:
     "Pergunta ao Agente Nex negada (sem acesso ao domínio)",
+  // Overhaul de auditoria (2026-06-18)
+  webhook_created: "Webhook criado",
+  webhook_updated: "Webhook atualizado",
+  webhook_secret_rotated: "Secret do webhook rotacionado",
+  webhook_toggled: "Webhook ligado/desligado",
+  webhook_deleted: "Webhook excluído",
+  external_mcp_server_created: "Servidor MCP externo criado",
+  external_mcp_server_updated: "Servidor MCP externo atualizado",
+  external_mcp_server_toggled: "Servidor MCP externo ligado/desligado",
+  external_mcp_server_deleted: "Servidor MCP externo excluído",
+  kb_document_created: "Documento de conhecimento adicionado",
+  kb_document_deleted: "Documento de conhecimento removido",
+  report_preset_created: "Filtro de relatório salvo",
+  report_preset_deleted: "Filtro de relatório excluído",
+  report_exported: "Relatório exportado",
 };
 
 function actionLabel(action: AuditAction): string {
   return ACTION_LABELS[action] ?? action;
 }
 
-/** Catálogo COMPLETO de ações (todas as do sistema), ordenado por rótulo. */
-const ALL_ACTIONS = (Object.keys(ACTION_LABELS) as AuditAction[]).sort((a, b) =>
-  actionLabel(a).localeCompare(actionLabel(b), "pt-BR"),
+/** Mapa ação → cor da sua categoria (resolvido uma vez). */
+const ACTION_CATEGORY_BADGE = new Map<AuditAction, string>(
+  ACTION_CATEGORIES.flatMap((c) => c.actions.map((a) => [a, c.badge] as const)),
 );
 
+/** Ações de falha/recusa , vermelho. */
+const FAILURE_ACTIONS = new Set<AuditAction>([
+  "login_failed",
+  "agent_permission_denied",
+  "whatsapp_inbound_rejected",
+]);
+
+/** Ação destrutiva (remoção/revogação/desativação) , vinho (rose). */
+function isDestructiveAction(action: AuditAction): boolean {
+  return (
+    /_(deleted|removed|revoked)$/.test(action) ||
+    action === "user_deactivated" ||
+    action === "session_revoked"
+  );
+}
+
 function getActionBadgeClasses(action: AuditAction): string {
-  // Falhas / recusas , único vermelho (erro de verdade).
-  if (
-    action === "login_failed" ||
-    action === "agent_permission_denied" ||
-    action === "whatsapp_inbound_rejected"
-  ) {
+  if (FAILURE_ACTIONS.has(action)) {
     return "bg-red-500/10 text-red-400 border-red-500/20";
   }
-  // Remoções/desativações/revogações , vinho (rose).
-  if (
-    action === "session_revoked" ||
-    action === "user_deactivated" ||
-    action === "user_deleted" ||
-    action === "user_whatsapp_removed" ||
-    action === "api_key_revoked" ||
-    action === "llm_credential_deleted"
-  ) {
+  if (isDestructiveAction(action)) {
     return "bg-rose-500/10 text-rose-400 border-rose-500/20";
   }
-  if (action.startsWith("login_")) {
-    return "bg-sky-500/10 text-sky-400 border-sky-500/20";
-  }
-  if (action.startsWith("password_") || action === "profile_password_changed") {
-    return "bg-amber-500/10 text-amber-400 border-amber-500/20";
-  }
-  if (action.startsWith("setting_") || action === "agent_settings_updated") {
-    return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
-  }
-  if (action.startsWith("llm_credential_")) {
-    return "bg-orange-500/10 text-orange-400 border-orange-500/20";
-  }
-  if (action.startsWith("api_key_")) {
-    return "bg-fuchsia-500/10 text-fuchsia-400 border-fuchsia-500/20";
-  }
-  if (action.startsWith("user_whatsapp_") || action === "whatsapp_channel_updated") {
-    return "bg-teal-500/10 text-teal-400 border-teal-500/20";
-  }
-  if (action === "user_domains_changed") {
-    return "bg-indigo-500/10 text-indigo-400 border-indigo-500/20";
-  }
-  if (action.startsWith("email_")) {
-    return "bg-cyan-500/10 text-cyan-400 border-cyan-500/20";
-  }
-  if (action.startsWith("user_") || action.startsWith("profile_")) {
-    return "bg-violet-500/10 text-violet-400 border-violet-500/20";
-  }
-  // Default colorido (nunca cinza).
-  return "bg-pink-500/10 text-pink-400 border-pink-500/20";
+  // Sem severidade → cor da categoria (nunca cinza).
+  return (
+    ACTION_CATEGORY_BADGE.get(action) ??
+    "bg-pink-500/10 text-pink-400 border-pink-500/20"
+  );
+}
+
+// Tipo de alvo → rótulo amigável (esconde o nome técnico do model/tabela).
+const TARGET_TYPE_LABELS: Record<string, string> = {
+  User: "Usuário",
+  webhook: "Webhook",
+  external_mcp_server: "Servidor MCP externo",
+  kb_document: "Documento de conhecimento",
+  report_preset: "Filtro de relatório",
+  conversation: "Conversa do Nex",
+  agent_conversation: "Conversa do Nex",
+  ApiKey: "Chave de API",
+  WhatsappInstance: "Canal WhatsApp",
+  whatsapp_channel: "Canal WhatsApp",
+  AgentSettings: "Config. do agente",
+  agent_settings: "Config. do agente",
+  LlmConfig: "Credencial LLM",
+  llm_credential: "Credencial LLM",
+  app_setting: "Configuração",
+  sync_config: "Sincronização",
+};
+
+function friendlyTargetType(targetType: string): string {
+  return TARGET_TYPE_LABELS[targetType] ?? targetType;
 }
 
 const dateTimeFmt = new Intl.DateTimeFormat("pt-BR", {
@@ -155,7 +303,9 @@ function rowSearchText(r: AuditLogRow): string {
     r.action,
     r.userName,
     r.userEmail,
+    r.targetType ? friendlyTargetType(r.targetType) : null,
     r.targetType,
+    r.targetLabel,
     r.targetId,
     r.ipAddress,
     formatDateTime(r.createdAt),
@@ -210,10 +360,6 @@ export function AuditsTable() {
       a.name.localeCompare(b.name, "pt-BR"),
     );
   }, [rows]);
-
-  // TODAS as ações do sistema (não só as presentes), para o usuário conhecer
-  // o catálogo completo. Ordenadas por categoria e depois por rótulo.
-  const auditActions = ALL_ACTIONS;
 
   // Busca (todas as colunas) + filtro por ação(ões) + por usuário(s).
   const filtered = useMemo(() => {
@@ -298,7 +444,7 @@ export function AuditsTable() {
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
             <ActionMultiSelect
-              actions={auditActions}
+              categories={ACTION_CATEGORIES}
               selected={selectedActions}
               onChange={setSelectedActions}
             />
@@ -385,17 +531,17 @@ export function AuditsTable() {
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {r.targetType ? (
-                          <span>
-                            <span className="font-medium text-foreground">
-                              {r.targetType}
+                          <span title={r.targetId ?? undefined}>
+                            <span className="text-muted-foreground">
+                              {friendlyTargetType(r.targetType)}
                             </span>
-                            {r.targetId ? (
-                              <span
-                                className="ml-1 break-all text-muted-foreground"
-                                title={r.targetId}
-                              >
-                                {r.targetId}
-                              </span>
+                            {r.targetLabel ? (
+                              <>
+                                {": "}
+                                <span className="font-medium text-foreground">
+                                  {r.targetLabel}
+                                </span>
+                              </>
                             ) : null}
                           </span>
                         ) : (
@@ -618,16 +764,21 @@ function UserMultiSelect({
  * quando não selecionadas e acendem na cor da ação ao marcar.
  */
 function ActionMultiSelect({
-  actions,
+  categories,
   selected,
   onChange,
 }: {
-  actions: AuditAction[];
+  categories: ActionCategory[];
   selected: AuditAction[];
   onChange: (next: AuditAction[]) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+
+  const allActions = useMemo(
+    () => categories.flatMap((c) => c.actions),
+    [categories],
+  );
 
   const trigger =
     selected.length === 0
@@ -636,13 +787,24 @@ function ActionMultiSelect({
         ? actionLabel(selected[0])
         : `${selected.length} selecionadas`;
 
-  const visible = useMemo(() => {
+  // Categorias com suas ações filtradas pela busca; categorias sem nenhuma
+  // ação correspondente somem (junto com o cabeçalho).
+  const visibleGroups = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return actions;
-    return actions.filter(
-      (a) => actionLabel(a).toLowerCase().includes(q) || a.toLowerCase().includes(q),
-    );
-  }, [actions, query]);
+    return categories
+      .map((c) => ({
+        category: c,
+        actions: q
+          ? c.actions.filter(
+              (a) =>
+                actionLabel(a).toLowerCase().includes(q) ||
+                a.toLowerCase().includes(q) ||
+                c.label.toLowerCase().includes(q),
+            )
+          : c.actions,
+      }))
+      .filter((g) => g.actions.length > 0);
+  }, [categories, query]);
 
   const toggle = (a: AuditAction) =>
     onChange(selected.includes(a) ? selected.filter((x) => x !== a) : [...selected, a]);
@@ -655,7 +817,7 @@ function ActionMultiSelect({
             type="button"
             aria-label="Filtrar por ação"
             aria-expanded={open}
-            disabled={actions.length === 0}
+            disabled={allActions.length === 0}
             className="flex h-9 min-w-[180px] cursor-pointer items-center justify-between gap-2 rounded-lg border border-border bg-card px-3 text-sm text-foreground transition-colors hover:border-muted-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <span className="truncate">{trigger}</span>
@@ -669,7 +831,7 @@ function ActionMultiSelect({
           </button>
         }
       />
-      <PopoverContent align="end" sideOffset={4} className="w-[280px] overflow-hidden p-0">
+      <PopoverContent align="end" sideOffset={4} className="w-[300px] overflow-hidden p-0">
         <div className="border-b border-border p-2">
           <div className="relative">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -684,47 +846,58 @@ function ActionMultiSelect({
             />
           </div>
         </div>
-        <ul role="listbox" aria-label="Ações" className="max-h-64 overflow-auto p-1">
-          {visible.length === 0 ? (
-            <li className="px-2 py-3 text-center text-xs text-muted-foreground">
+        <div role="listbox" aria-label="Ações" className="max-h-72 overflow-auto p-1">
+          {visibleGroups.length === 0 ? (
+            <p className="px-2 py-3 text-center text-xs text-muted-foreground">
               Nenhuma ação encontrada.
-            </li>
+            </p>
           ) : (
-            visible.map((a) => {
-              const isOn = selected.includes(a);
-              return (
-                <li key={a} role="presentation">
-                  <button
-                    type="button"
-                    role="option"
-                    aria-selected={isOn}
-                    onClick={() => toggle(a)}
-                    className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-accent"
-                  >
-                    <span
-                      className={cn(
-                        "flex h-4 w-4 shrink-0 items-center justify-center rounded border border-border bg-background transition-colors",
-                        isOn && "border-violet-500 bg-violet-500 text-white",
-                      )}
-                      aria-hidden
-                    >
-                      {isOn ? <Check className="h-3 w-3" /> : null}
-                    </span>
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        "text-xs transition-colors",
-                        isOn ? getActionBadgeClasses(a) : "bg-muted text-muted-foreground border-border",
-                      )}
-                    >
-                      {actionLabel(a)}
-                    </Badge>
-                  </button>
-                </li>
-              );
-            })
+            visibleGroups.map((g) => (
+              <div key={g.category.key} className="mb-1 last:mb-0">
+                <p className="px-2 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70">
+                  {g.category.label}
+                </p>
+                <ul role="group" aria-label={g.category.label}>
+                  {g.actions.map((a) => {
+                    const isOn = selected.includes(a);
+                    return (
+                      <li key={a} role="presentation">
+                        <button
+                          type="button"
+                          role="option"
+                          aria-selected={isOn}
+                          onClick={() => toggle(a)}
+                          className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-accent"
+                        >
+                          <span
+                            className={cn(
+                              "flex h-4 w-4 shrink-0 items-center justify-center rounded border border-border bg-background transition-colors",
+                              isOn && "border-violet-500 bg-violet-500 text-white",
+                            )}
+                            aria-hidden
+                          >
+                            {isOn ? <Check className="h-3 w-3" /> : null}
+                          </span>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "text-xs transition-colors",
+                              isOn
+                                ? getActionBadgeClasses(a)
+                                : "bg-muted text-muted-foreground border-border",
+                            )}
+                          >
+                            {actionLabel(a)}
+                          </Badge>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ))
           )}
-        </ul>
+        </div>
         {selected.length > 0 ? (
           <div className="border-t border-border p-1">
             <button

@@ -126,10 +126,10 @@ export async function createExternalMcpServer(input: {
 
     await logAudit({
       userId: admin.id,
-      action: "setting_updated",
+      action: "external_mcp_server_created",
       targetType: "external_mcp_server",
       targetId: row.id,
-      details: { op: "create", name: row.name, url: row.url },
+      details: { name: row.name, url: row.url },
     });
 
     revalidatePath("/agente/plugar-mcps", "layout");
@@ -178,10 +178,10 @@ export async function updateExternalMcpServer(
 
     await logAudit({
       userId: admin.id,
-      action: "setting_updated",
+      action: "external_mcp_server_updated",
       targetType: "external_mcp_server",
       targetId: row.id,
-      details: { op: "update", name: row.name },
+      details: { name: row.name },
     });
 
     revalidatePath("/agente/plugar-mcps", "layout");
@@ -200,10 +200,17 @@ export async function toggleExternalMcpServer(
   enabled: boolean,
 ): Promise<DataResult<ExternalMcpServerListItem>> {
   try {
-    await requireSuperAdmin();
+    const admin = await requireSuperAdmin();
     const row = await prisma.externalMcpServer.update({
       where: { id },
       data: { enabled },
+    });
+    await logAudit({
+      userId: admin.id,
+      action: "external_mcp_server_toggled",
+      targetType: "external_mcp_server",
+      targetId: row.id,
+      details: { name: row.name, enabled },
     });
     revalidatePath("/agente/plugar-mcps", "layout");
     return { success: true, data: toListItem(row) };
@@ -221,13 +228,17 @@ export async function deleteExternalMcpServer(
 ): Promise<DataResult<{ id: string }>> {
   try {
     const admin = await requireSuperAdmin();
+    const existing = await prisma.externalMcpServer.findUnique({
+      where: { id },
+      select: { name: true },
+    });
     await prisma.externalMcpServer.delete({ where: { id } });
     await logAudit({
       userId: admin.id,
-      action: "setting_updated",
+      action: "external_mcp_server_deleted",
       targetType: "external_mcp_server",
       targetId: id,
-      details: { op: "delete" },
+      details: { name: existing?.name ?? null },
     });
     revalidatePath("/agente/plugar-mcps", "layout");
     return { success: true, data: { id } };

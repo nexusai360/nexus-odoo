@@ -15,6 +15,26 @@ const loginSchema = z.object({
 // Prisma para manter o token fresco. O middleware (Edge) usa apenas authConfig.
 export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
   ...authConfig,
+  events: {
+    // Logout: registra na auditoria quando o usuário encerra a sessão. Na
+    // estratégia JWT o evento recebe o token; usamos o id para o autor do log.
+    async signOut(message) {
+      try {
+        const token = (message as { token?: { id?: string } }).token;
+        const userId = token?.id ?? null;
+        if (!userId) return;
+        const { logAudit } = await import("@/lib/audit");
+        await logAudit({
+          userId,
+          action: "logout",
+          targetType: "User",
+          targetId: userId,
+        });
+      } catch (err) {
+        console.warn("[auth.signOut] falha ao registrar logout:", err);
+      }
+    },
+  },
   callbacks: {
     ...authConfig.callbacks,
     async jwt({ token, user }) {

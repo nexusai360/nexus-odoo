@@ -51,6 +51,24 @@ enum AuditAction {
   whatsapp_channel_updated
   // RBAC v2 — recusa do Agente Nex por permissão de domínio (fast-path sem LLM).
   agent_permission_denied
+  // Overhaul de auditoria (2026-06-18) — instrumentação ampla de eventos.
+  logout
+  api_key_updated
+  api_key_rotated
+  webhook_created
+  webhook_updated
+  webhook_secret_rotated
+  webhook_toggled
+  webhook_deleted
+  external_mcp_server_created
+  external_mcp_server_updated
+  external_mcp_server_toggled
+  external_mcp_server_deleted
+  kb_document_created
+  kb_document_deleted
+  report_preset_created
+  report_preset_deleted
+  report_exported
 }
 
 // F5 — enums do agente e integrações

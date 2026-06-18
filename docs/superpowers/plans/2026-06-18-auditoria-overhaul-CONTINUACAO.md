@@ -34,7 +34,47 @@ Arquivos: `src/components/users/audits-table.tsx`, `src/components/users/users-c
   `whatsapp_inbound_rejected`); rose para remoção/revogação/desativação; e
   sky/amber/emerald/orange/fuchsia/teal/indigo/cyan/violet/pink por grupo.
 
-## PENDENTE , o overhaul que o usuário quer (FAZER NA PRÓXIMA SESSÃO)
+## CONCLUÍDO nesta sessão (2026-06-18, LOCAL, sem PR ainda)
+Itens 1, 2 e 3 do PENDENTE abaixo foram implementados, com tsc/eslint/jest
+verdes (1009 testes) e dev local reiniciado na branch (health 200).
+- **17 novos `AuditAction`** (enum Prisma + migração ADITIVA já aplicada no banco
+  via `prisma db execute` + `agente schema-changed` + `prisma generate`): `logout`,
+  `api_key_updated`, `api_key_rotated`, `webhook_created/updated/secret_rotated/
+  toggled/deleted`, `external_mcp_server_created/updated/toggled/deleted`,
+  `kb_document_created/deleted`, `report_preset_created/deleted`, `report_exported`.
+  Total do enum: 45 valores.
+- **`logAudit` instrumentado** em: `auth.ts` (evento `signOut` → logout),
+  `webhooks.ts` (create/update/rotate/toggle/delete), `external-mcp-servers.ts`
+  (trocou `setting_updated` genérico por ações específicas + toggle), `kb.ts`
+  (ingest/upload/url → created; delete → deleted), `report-presets.ts`
+  (criar/excluir), `agent-conversation-export.ts` (`report_exported`),
+  `mcp-api-keys.ts` (proxies `setting_updated` → `api_key_updated`/`rotated`).
+- **Recategorização + cor fechada** em `audits-table.tsx`: `ACTION_CATEGORIES`
+  (10 grupos) é a fonte única de verdade. Dropdown agrupado com cabeçalhos por
+  categoria + busca. CRITÉRIO DE COR documentado no arquivo: (1) severidade
+  primeiro , vermelho p/ falha/recusa, rose p/ destrutivo (`*_deleted/removed/
+  revoked`, `user_deactivated`, `session_revoked`); (2) senão, cor da categoria.
+- **Alvo dissertativo**: `listAuditLogs` agora resolve `targetLabel` no servidor
+  (batch de `users` p/ `targetType="User"` → "Nome (email)"; demais tipos pegam
+  `details.name/label/nome`). UI mostra "Tipo amigável: Nome", com o id técnico
+  só no `title` (tooltip). `friendlyTargetType` mapeia model→rótulo PT.
+
+### Decisões de escopo (instrumentação) , registradas
+- **NÃO** logamos cada pergunta ao Agente Nex nem cada visualização de relatório:
+  alto volume, já coberto por Monitoramento Bubble + `McpAuditLog` (tool calls) +
+  `last_activity_at`. Auditamos só o `report_exported` (export real). Recusas do
+  Nex continuam em `agent_permission_denied`.
+
+### Validação E2E
+- Inseridos 5 eventos de exemplo (logout/webhook_created/kb_document_created/
+  report_exported/external_mcp_server_toggled) p/ o usuário ver as cores/grupos/
+  alvo na tela. SÃO SINTÉTICOS , remover quando o usuário aprovar (SQL:
+  `DELETE FROM audit_logs WHERE action IN (...) AND user_id = '<joão>'` ou pelo id).
+
+### Próximo passo
+Aguardando o usuário validar no localhost (Usuários → Auditoria) e aprovar p/ PR.
+
+## PENDENTE , o overhaul que o usuário quer (FEITO , ver "CONCLUÍDO" acima)
 1. **Auditar MUITO mais eventos (instrumentação ampla).** Hoje só ~28 ações têm
    `logAudit`. Revisar o código e adicionar auditoria em todos os pontos relevantes:
    - acesso/visualização de relatórios e dashboards; exports;
