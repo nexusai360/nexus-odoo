@@ -36,6 +36,8 @@ export type WebhookEventName = "agent_reply";
 export interface CreateWebhookInput {
   direction: WebhookDirection;
   name: string;
+  /** Descrição livre do que o webhook faz (F5.1). */
+  description?: string | null;
   /** Caminho (slug), somente inbound. */
   path?: string | null;
   /** URL de destino completa, somente outbound. */
@@ -43,10 +45,16 @@ export interface CreateWebhookInput {
   methods: WebhookMethod[];
   /** Eventos emitidos, somente outbound (default ["agent_reply"]). */
   events?: WebhookEventName[];
+  /** F5.1: inbound que recebe dados de WhatsApp e alimenta o agente. */
+  isWhatsappReceiver?: boolean;
+  /** F5.1: número da empresa (obrigatório/único quando isWhatsappReceiver). */
+  businessId?: string | null;
 }
 
 export interface UpdateWebhookInput {
   name: string;
+  /** Descrição livre do que o webhook faz (F5.1). */
+  description?: string | null;
   /** Caminho (slug), somente inbound. */
   path?: string | null;
   /** URL de destino completa, somente outbound. */
@@ -54,17 +62,26 @@ export interface UpdateWebhookInput {
   methods: WebhookMethod[];
   /** Eventos emitidos, somente outbound. */
   events?: WebhookEventName[];
+  /** F5.1: inbound que recebe dados de WhatsApp e alimenta o agente. */
+  isWhatsappReceiver?: boolean;
+  /** F5.1: número da empresa (obrigatório/único quando isWhatsappReceiver). */
+  businessId?: string | null;
 }
 
 export interface WebhookListItem {
   id: string;
   direction: WebhookDirection;
   name: string | null;
+  description: string | null;
   path: string | null;
   targetUrl: string | null;
   methods: string[];
   /** Eventos emitidos (outbound). Vazio em inbound. */
   events: WebhookEventName[];
+  /** F5.1: recebe dados de WhatsApp (inbound). */
+  isWhatsappReceiver: boolean;
+  /** F5.1: número da empresa (receptor de WhatsApp). */
+  businessId: string | null;
   enabled: boolean;
   createdAt: Date;
 }
@@ -112,10 +129,13 @@ const createSchema = z
   .object({
     direction: z.enum(["inbound", "outbound"]),
     name: z.string().trim().min(1, "Nome obrigatório"),
+    description: z.string().trim().max(500, "Descrição muito longa").nullable().optional(),
     path: z.string().nullable().optional(),
     targetUrl: z.string().nullable().optional(),
     methods: z.array(methodSchema).min(1, "Selecione ao menos um método"),
     events: z.array(eventSchema).optional(),
+    isWhatsappReceiver: z.boolean().optional(),
+    businessId: z.string().trim().nullable().optional(),
   })
   .superRefine((val, ctx) => {
     if (val.direction === "inbound") {
@@ -125,6 +145,14 @@ const createSchema = z
           code: z.ZodIssueCode.custom,
           path: ["path"],
           message: "Caminho inválido para webhook de entrada",
+        });
+      }
+      // Receptor de WhatsApp exige o número da empresa (identificador único).
+      if (val.isWhatsappReceiver && !(val.businessId ?? "").trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["businessId"],
+          message: "Informe o número da empresa para o webhook de WhatsApp",
         });
       }
     } else {
@@ -177,6 +205,22 @@ export async function createWebhook(
     }
   }
 
+  // F5.1: número da empresa (business_id) é único entre os receptores de WhatsApp.
+  const isWaReceiver = data.direction === "inbound" && data.isWhatsappReceiver === true;
+  const businessId = isWaReceiver ? (data.businessId ?? "").trim() : null;
+  if (isWaReceiver && businessId) {
+    const taken = await prisma.whatsappWebhook.findFirst({
+      where: { businessId },
+      select: { id: true },
+    });
+    if (taken) {
+      return {
+        success: false,
+        error: "Já existe um webhook de WhatsApp com esse número da empresa.",
+      };
+    }
+  }
+
   const secretPlain = generateSecret();
   const secretEncrypted = encrypt(secretPlain);
 
@@ -185,6 +229,7 @@ export async function createWebhook(
       data: {
         direction: data.direction,
         name: data.name,
+        description: data.description?.trim() || null,
         path: data.direction === "inbound" ? (data.path ?? null) : null,
         targetUrl: data.direction === "outbound" ? (data.targetUrl ?? null) : null,
         url: data.direction === "outbound" ? (data.targetUrl ?? null) : null,
@@ -192,6 +237,8 @@ export async function createWebhook(
         // Outbound novo nasce emitindo agent.reply; inbound nunca emite (F5 D).
         events:
           data.direction === "outbound" ? (data.events ?? ["agent_reply"]) : [],
+        isWhatsappReceiver: isWaReceiver,
+        businessId,
         secret: secretEncrypted,
         enabled: true,
       },
@@ -250,6 +297,8 @@ export async function updateWebhook(
 
   let path: string | null = null;
   let targetUrl: string | null = null;
+  let isWaReceiver = false;
+  let businessId: string | null = null;
 
   if (direction === "inbound") {
     const p = pathSchema.safeParse(input.path ?? "");
@@ -263,6 +312,28 @@ export async function updateWebhook(
     });
     if (taken) {
       return { success: false, error: "Já existe um webhook de entrada com esse caminho." };
+    }
+
+    // F5.1: receptor de WhatsApp exige número da empresa, único (excluindo o próprio).
+    isWaReceiver = input.isWhatsappReceiver === true;
+    if (isWaReceiver) {
+      businessId = (input.businessId ?? "").trim();
+      if (!businessId) {
+        return {
+          success: false,
+          error: "Informe o número da empresa para o webhook de WhatsApp",
+        };
+      }
+      const dup = await prisma.whatsappWebhook.findFirst({
+        where: { businessId, id: { not: id } },
+        select: { id: true },
+      });
+      if (dup) {
+        return {
+          success: false,
+          error: "Já existe um webhook de WhatsApp com esse número da empresa.",
+        };
+      }
     }
   } else {
     const u = z.string().url().safeParse(input.targetUrl ?? "");
@@ -280,16 +351,30 @@ export async function updateWebhook(
           : ["agent_reply"])
       : [];
 
+  const descriptionOk = z
+    .string()
+    .trim()
+    .max(500, "Descrição muito longa")
+    .nullable()
+    .optional()
+    .safeParse(input.description);
+  if (!descriptionOk.success) {
+    return { success: false, error: "Descrição muito longa" };
+  }
+
   try {
     await prisma.whatsappWebhook.update({
       where: { id },
       data: {
         name: nameOk.data,
+        description: (descriptionOk.data ?? "")?.toString().trim() || null,
         methods: methodsOk.data,
         path,
         targetUrl,
         url: direction === "outbound" ? targetUrl : null,
         events,
+        isWhatsappReceiver: isWaReceiver,
+        businessId,
       },
     });
     revalidatePath("/integracoes/webhooks");
@@ -322,10 +407,13 @@ export async function listWebhooks(): Promise<DataResult<WebhookListItem[]>> {
       id: r.id,
       direction: r.direction as WebhookDirection,
       name: r.name,
+      description: r.description ?? null,
       path: r.path,
       targetUrl: r.targetUrl ?? r.url,
       methods: r.methods,
       events: (r.events as WebhookEventName[] | undefined) ?? [],
+      isWhatsappReceiver: r.isWhatsappReceiver ?? false,
+      businessId: r.businessId ?? null,
       enabled: r.enabled,
       createdAt: r.createdAt,
     }));
