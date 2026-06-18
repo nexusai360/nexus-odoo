@@ -267,7 +267,7 @@ function TypeMultiSelect({
             aria-label="Filtrar por tipo"
             aria-haspopup="listbox"
             aria-expanded={open}
-            className="flex h-9 min-w-[180px] cursor-pointer items-center justify-between gap-2 rounded-lg border border-border bg-card px-3 text-sm text-foreground transition-colors hover:border-muted-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            className="flex h-8 min-w-[180px] cursor-pointer items-center justify-between gap-2 rounded-lg border border-border bg-card px-3 text-sm text-foreground transition-colors hover:border-muted-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
           >
             <span className="truncate">{label}</span>
             <ChevronDown
