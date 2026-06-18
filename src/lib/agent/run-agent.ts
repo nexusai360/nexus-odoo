@@ -920,7 +920,13 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         ? undefined
         : cap!.levels.length === 1 && cap!.levels[0] === "auto"
           ? "auto"
-          : agentSettings.reasoningEffort ?? undefined;
+          : // PARIDADE COM A UI: o ReasoningCard mostra o nivel efetivo como o
+            // MAIOR nivel do modelo quando reasoning_effort esta null
+            // (resolveEffectiveLevel -> levels[ultimo]). O runtime caia em
+            // `undefined` (= sem raciocinio): a UI dizia "Alto" e o codigo
+            // mandava nada. Espelhamos: null => maior nivel suportado.
+            ((agentSettings.reasoningEffort as ReasoningEffort | null) ??
+            (cap!.levels[cap!.levels.length - 1] as ReasoningEffort));
 
       const result = await client.chat({
         messages: conversation,
