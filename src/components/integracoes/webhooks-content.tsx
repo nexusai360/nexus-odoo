@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -87,13 +88,20 @@ export function WebhooksContent({ initial }: Props) {
   const filtered = webhooks.filter((w) => {
     if (selectedKinds.length > 0 && !selectedKinds.includes(webhookKindOf(w))) return false;
     if (!term) return true;
+    // Endereço exibido (com a barra do slug) + tudo que aparece no card, para a
+    // busca casar com nome, slug ("/teste"), tipo, método e número do WhatsApp.
+    const endpoint =
+      w.direction === "inbound" ? (w.path ? `/${w.path}` : "") : (w.targetUrl ?? "");
     const haystack = [
       w.name ?? "",
       w.path ?? "",
+      endpoint,
       w.targetUrl ?? "",
       w.businessId ?? "",
       w.businessId ? formatE164ForDisplay(w.businessId) : "",
       w.description ?? "",
+      webhookKindLabel(webhookKindOf(w)),
+      w.methods.join(" "),
     ]
       .join(" ")
       .toLowerCase();
@@ -157,38 +165,39 @@ export function WebhooksContent({ initial }: Props) {
         </Button>
       </div>
 
-      {/* Busca global + filtro por tipo (client-side). */}
+      {/* Busca global + filtro por tipo (client-side), no padrão do router. */}
       {webhooks.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative min-w-[220px] flex-1">
-            <Search
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-              aria-hidden
-            />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.currentTarget.value)}
-              placeholder="Buscar por nome, endereço ou número…"
-              aria-label="Buscar webhooks"
-              className="h-9 w-full rounded-lg border border-border bg-card pl-9 pr-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground hover:border-muted-foreground/30 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50"
-            />
-          </div>
-          <TypeMultiSelect selected={selectedKinds} onToggle={toggleKind} onClear={() => setSelectedKinds([])} />
-          {/* Limpar: aparece (com animação) só quando há tipo selecionado. */}
-          <div
-            className={cn(
-              "overflow-hidden transition-all duration-200",
-              selectedKinds.length > 0 ? "max-w-[140px] opacity-100" : "max-w-0 opacity-0",
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="flex flex-1 items-center gap-2 sm:max-w-md">
+            <div className="relative flex-1">
+              <Search
+                className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden
+              />
+              <Input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.currentTarget.value)}
+                placeholder="Busca avançada…"
+                aria-label="Busca avançada nos webhooks"
+                className="pl-8"
+              />
+            </div>
+            {/* Limpar: logo após o input, só quando há tipo selecionado. */}
+            {selectedKinds.length > 0 && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                aria-label="Limpar filtros"
+                className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+              >
+                <X className="h-3.5 w-3.5" aria-hidden />
+                Limpar
+              </button>
             )}
-          >
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="inline-flex h-9 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-lg border border-border bg-card px-3 text-sm text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <X className="h-3.5 w-3.5" aria-hidden />
-              Limpar
-            </button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+            <TypeMultiSelect selected={selectedKinds} onToggle={toggleKind} onClear={() => setSelectedKinds([])} />
           </div>
         </div>
       )}
@@ -244,7 +253,7 @@ function TypeMultiSelect({
   const [open, setOpen] = useState(false);
   const label =
     selected.length === 0
-      ? "Todos os tipos"
+      ? "Todos os tipos de webhook"
       : selected.length === 1
         ? webhookKindLabel(selected[0])
         : `${selected.length} tipos`;
@@ -295,9 +304,10 @@ function TypeMultiSelect({
                   </span>
                   <span
                     className={cn(
-                      "rounded-full px-2 py-0.5 text-[10px] font-medium transition-opacity",
-                      webhookKindBadgeClass(k),
-                      !isOn && "opacity-50",
+                      "rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors",
+                      // Apagado (neutro) quando não selecionado; acende na cor do
+                      // tipo ao marcar a checkbox.
+                      isOn ? webhookKindBadgeClass(k) : "bg-muted text-muted-foreground",
                     )}
                   >
                     {webhookKindLabel(k)}
@@ -349,10 +359,15 @@ function WebhookRow({ webhook, isPending, onToggle, onDelete }: WebhookRowProps)
     : webhook.targetUrl;
 
   return (
-    <div className="rounded-xl border border-border bg-muted/30 p-3.5 transition-colors hover:border-foreground/20">
+    <div
+      className={cn(
+        "rounded-xl border border-border bg-muted/30 p-3.5 transition-colors hover:border-foreground/20",
+        !webhook.enabled && "opacity-60",
+      )}
+    >
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-start gap-3 min-w-0">
-          {/* Desativado: ícone fica cinza; as tags seguem coloridas. */}
+          {/* Desativado: card fica ofuscado e o ícone vira cinza. */}
           <span
             className={cn(
               "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
