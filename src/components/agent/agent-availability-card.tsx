@@ -19,7 +19,10 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { toast } from "sonner";
 import type { ChannelAccessLevel } from "@/generated/prisma/client";
 import { updateAgentAvailability } from "@/lib/actions/agent-config";
-import { channelLevelOptions } from "@/lib/agent/channel-level-options";
+import {
+  channelLevelOptions,
+  channelLevelDescription,
+} from "@/lib/agent/channel-level-options";
 import { summarizeAvailability } from "./agent-availability-summary";
 import { cn } from "@/lib/utils";
 
@@ -94,8 +97,6 @@ export function AgentAvailabilityCard({ initial, isConfigured }: Props) {
           )}
         />
         <span className="font-medium text-foreground">{summary.title}</span>
-        <span className="text-muted-foreground">·</span>
-        <span className="text-muted-foreground">{summary.helper}</span>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -167,6 +168,14 @@ function ChannelRow({
           aria-label={`Nivel de acesso , ${title}`}
         />
       </div>
+      <p
+        className={cn(
+          "mt-2 text-xs",
+          value === "off" ? "text-muted-foreground/70" : "text-muted-foreground",
+        )}
+      >
+        {channelLevelDescription(value)}
+      </p>
     </div>
   );
 }

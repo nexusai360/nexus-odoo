@@ -3144,6 +3144,8 @@ model WhatsappWebhook {
   direction WebhookDirection
   /// Rótulo amigável do webhook (R6).
   name      String?
+  /// Descrição livre do que este webhook faz (F5.1).
+  description String?
   url       String?
   /// Caminho (slug) para webhooks de entrada — o que vem após a URL base (R6).
   path      String?
@@ -3153,12 +3155,19 @@ model WhatsappWebhook {
   methods   String[]         @default([])
   /// Eventos que este webhook de saída emite (F5). Vazio = nenhum.
   events    WebhookEvent[]   @default([])
+  /// F5.1: webhook de entrada que recebe dados de mensagens do WhatsApp (via
+  /// n8n) e alimenta o Agente Nex. Só vale para direction=inbound.
+  isWhatsappReceiver Boolean @default(false) @map("is_whatsapp_receiver")
+  /// F5.1: número da empresa (WhatsApp Business) que este receptor atende.
+  /// Único entre os receptores de WhatsApp; vira a tag no card.
+  businessId String?         @map("business_id")
   secret    String
   enabled   Boolean          @default(true)
   createdAt DateTime         @default(now()) @map("created_at")
 
   instances WhatsappInstance[]
 
+  @@unique([businessId])
   @@map("whatsapp_webhooks")
 }
 
