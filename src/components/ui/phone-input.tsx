@@ -89,10 +89,9 @@ export function PhoneInput({
     <div
       className={cn(
         "flex h-9 items-stretch overflow-hidden rounded-lg border bg-transparent transition-colors dark:bg-input/30",
-        "focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/50",
         invalid
-          ? "border-destructive dark:border-destructive/60"
-          : "border-input",
+          ? "border-destructive focus-within:border-destructive focus-within:ring-2 focus-within:ring-destructive/40 dark:border-destructive/60"
+          : "border-input focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/50",
         disabled && "pointer-events-none opacity-50",
         className,
       )}

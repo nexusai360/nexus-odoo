@@ -114,6 +114,18 @@ export function WebhookEditForm({
     toast.success("Número da empresa atualizado");
   }
 
+  // Ao sair do campo sem confirmar, volta ao último valor aplicado.
+  function revertPath() {
+    if (pathTrim !== pathConfirmed) {
+      setPath(pathConfirmed);
+      setPathTouched(false);
+    }
+  }
+
+  // O botão de confirmar só aparece quando há algo a confirmar/aplicado.
+  const showPathConfirm = !(pathTrim === "" && pathConfirmed === "");
+  const showBizConfirm = !(bizNational === "" && bizConfirmed === "");
+
   function toggleMethod(m: WebhookMethod) {
     setMethods((prev) => (prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m]));
   }
@@ -197,20 +209,28 @@ export function WebhookEditForm({
         <>
           <div className="space-y-1.5">
             <Label htmlFor="wh-path">Endereço (URL)</Label>
-            <div className="flex items-stretch gap-2">
+            <div className="flex items-stretch">
               <Input
                 id="wh-path"
                 value={path}
                 onChange={(e) => setPath(e.target.value)}
+                onBlur={revertPath}
                 placeholder="whatsapp/loja-matriz"
                 className="flex-1"
                 aria-invalid={showPathError}
               />
-              <FieldValidateButton
-                variant={pathVariant}
-                onClick={confirmPath}
-                label="Confirmar endereço"
-              />
+              <div
+                className={cn(
+                  "flex items-stretch transition-all duration-200",
+                  showPathConfirm ? "ml-2 w-9 opacity-100" : "ml-0 w-0 opacity-0",
+                )}
+              >
+                <FieldValidateButton
+                  variant={pathVariant}
+                  onClick={confirmPath}
+                  label="Confirmar endereço"
+                />
+              </div>
             </div>
             {showPathError ? (
               <p className="text-xs text-destructive" role="alert">
@@ -226,7 +246,7 @@ export function WebhookEditForm({
           {isWhatsapp && (
             <div className="space-y-1.5">
               <Label htmlFor="wh-business">Número da empresa</Label>
-              <div className="flex items-stretch gap-2">
+              <div className="flex items-stretch">
                 <PhoneInput
                   className="flex-1"
                   country={bizCountry}
@@ -236,11 +256,18 @@ export function WebhookEditForm({
                   invalid={showBizError}
                   inputId="wh-business"
                 />
-                <FieldValidateButton
-                  variant={bizVariant}
-                  onClick={confirmBiz}
-                  label="Confirmar número"
-                />
+                <div
+                  className={cn(
+                    "flex items-stretch transition-all duration-200",
+                    showBizConfirm ? "ml-2 w-9 opacity-100" : "ml-0 w-0 opacity-0",
+                  )}
+                >
+                  <FieldValidateButton
+                    variant={bizVariant}
+                    onClick={confirmBiz}
+                    label="Confirmar número"
+                  />
+                </div>
               </div>
               {showBizError ? (
                 <p className="text-xs text-destructive" role="alert">
@@ -308,7 +335,7 @@ export function WebhookEditForm({
         </div>
       )}
 
-      {isWhatsapp && <WhatsappInboundHelp inboundBaseUrl={inboundBaseUrl} path={path} />}
+      {isWhatsapp && <WhatsappInboundHelp inboundBaseUrl={inboundBaseUrl} path={pathConfirmed} />}
 
       {!isInbound && (
         <div className="space-y-2">

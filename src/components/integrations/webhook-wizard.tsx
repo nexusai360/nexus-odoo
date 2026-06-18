@@ -202,6 +202,18 @@ export function WebhookWizard({
     toast.success(wasEmpty ? "Número da empresa definido" : "Número da empresa atualizado")
   }
 
+  // Ao sair do campo sem confirmar, volta ao último valor aplicado.
+  function revertPath() {
+    if (pathTrim !== pathConfirmed) {
+      setPath(pathConfirmed)
+      setPathTouched(false)
+    }
+  }
+
+  // O botão de confirmar só aparece quando há algo a confirmar/aplicado.
+  const showPathConfirm = !(pathTrim === "" && pathConfirmed === "")
+  const showBizConfirm = !(bizNational === "" && bizConfirmed === "")
+
   function toggleMethod(m: WebhookMethod) {
     setMethods((prev) =>
       prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m],
@@ -332,12 +344,12 @@ export function WebhookWizard({
           ) : (
             <div className="space-y-1.5">
               <Label htmlFor="wh-path">Endereço (URL)</Label>
-              <div className="flex items-stretch gap-2">
+              <div className="flex items-stretch">
                 <div
                   className={cn(
                     "flex h-9 flex-1 items-stretch overflow-hidden rounded-lg border bg-transparent transition-colors dark:bg-input/30",
                     showPathError
-                      ? "border-destructive focus-within:ring-2 focus-within:ring-destructive/40"
+                      ? "border-destructive focus-within:border-destructive focus-within:ring-2 focus-within:ring-destructive/40"
                       : "border-input focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/50",
                   )}
                 >
@@ -349,16 +361,24 @@ export function WebhookWizard({
                     id="wh-path"
                     value={path}
                     onChange={(e) => setPath(e.currentTarget.value)}
+                    onBlur={revertPath}
                     placeholder={isWhatsapp ? "whatsapp/loja-matriz" : "meu-sistema/eventos"}
                     aria-invalid={showPathError}
                     className="min-w-0 flex-1 bg-transparent px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground"
                   />
                 </div>
-                <FieldValidateButton
-                  variant={pathVariant}
-                  onClick={confirmPath}
-                  label="Confirmar endereço"
-                />
+                <div
+                  className={cn(
+                    "flex items-stretch transition-all duration-200",
+                    showPathConfirm ? "ml-2 w-9 opacity-100" : "ml-0 w-0 opacity-0",
+                  )}
+                >
+                  <FieldValidateButton
+                    variant={pathVariant}
+                    onClick={confirmPath}
+                    label="Confirmar endereço"
+                  />
+                </div>
               </div>
               {showPathError ? (
                 <p className="text-xs text-destructive" role="alert">
@@ -385,11 +405,18 @@ export function WebhookWizard({
                   invalid={showBizError}
                   inputId="wh-business"
                 />
-                <FieldValidateButton
-                  variant={bizVariant}
-                  onClick={confirmBiz}
-                  label="Confirmar número"
-                />
+                <div
+                  className={cn(
+                    "flex items-stretch transition-all duration-200",
+                    showBizConfirm ? "ml-2 w-9 opacity-100" : "ml-0 w-0 opacity-0",
+                  )}
+                >
+                  <FieldValidateButton
+                    variant={bizVariant}
+                    onClick={confirmBiz}
+                    label="Confirmar número"
+                  />
+                </div>
               </div>
               {showBizError ? (
                 <p className="text-xs text-destructive" role="alert">
@@ -446,7 +473,7 @@ export function WebhookWizard({
             </div>
           )}
 
-          {isWhatsapp && <WhatsappInboundHelp inboundBaseUrl={inboundBaseUrl} path={path} />}
+          {isWhatsapp && <WhatsappInboundHelp inboundBaseUrl={inboundBaseUrl} path={pathConfirmed} />}
 
           {error && <p className="text-xs text-destructive">{error}</p>}
 
