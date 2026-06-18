@@ -76,6 +76,11 @@ function actionLabel(action: AuditAction): string {
   return ACTION_LABELS[action] ?? action;
 }
 
+/** Catálogo COMPLETO de ações (todas as do sistema), ordenado por rótulo. */
+const ALL_ACTIONS = (Object.keys(ACTION_LABELS) as AuditAction[]).sort((a, b) =>
+  actionLabel(a).localeCompare(actionLabel(b), "pt-BR"),
+);
+
 function getActionBadgeClasses(action: AuditAction): string {
   // Falhas / recusas , único vermelho (erro de verdade).
   if (
@@ -206,14 +211,9 @@ export function AuditsTable() {
     );
   }, [rows]);
 
-  // Ações presentes nos registros , só essas aparecem no filtro de ação.
-  const auditActions = useMemo(() => {
-    const set = new Set<AuditAction>();
-    for (const r of rows) set.add(r.action);
-    return Array.from(set).sort((a, b) =>
-      actionLabel(a).localeCompare(actionLabel(b), "pt-BR"),
-    );
-  }, [rows]);
+  // TODAS as ações do sistema (não só as presentes), para o usuário conhecer
+  // o catálogo completo. Ordenadas por categoria e depois por rótulo.
+  const auditActions = ALL_ACTIONS;
 
   // Busca (todas as colunas) + filtro por ação(ões) + por usuário(s).
   const filtered = useMemo(() => {

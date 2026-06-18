@@ -157,6 +157,7 @@ model User {
   theme                  Theme                   @default(system)
   emailVerifiedAt        DateTime?               @map("email_verified_at")
   lastLoginAt            DateTime?               @map("last_login_at")
+  lastActivityAt         DateTime?               @map("last_activity_at")
   lastLoginIp            String?                 @map("last_login_ip")
   createdAt              DateTime                @default(now()) @map("created_at")
   updatedAt              DateTime                @updatedAt @map("updated_at")

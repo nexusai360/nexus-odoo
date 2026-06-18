@@ -301,7 +301,7 @@ export function UsersContent({ currentUser }: UsersContentProps) {
                   Criado em
                 </TableHead>
                 <TableHead className="text-center text-muted-foreground">
-                  Último acesso
+                  Última atividade
                 </TableHead>
                 <TableHead className="text-center text-muted-foreground">
                   Ações
@@ -410,9 +410,9 @@ export function UsersContent({ currentUser }: UsersContentProps) {
                     </TableCell>
 
                     <TableCell className="text-center text-sm">
-                      {u.lastLoginAt ? (
+                      {u.lastActivityAt ? (
                         <span className="text-muted-foreground">
-                          {format(new Date(u.lastLoginAt), "dd MMM yyyy HH:mm:ss", {
+                          {format(new Date(u.lastActivityAt), "dd MMM yyyy HH:mm:ss", {
                             locale: ptBR,
                           })}
                         </span>
