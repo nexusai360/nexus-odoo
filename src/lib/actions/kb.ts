@@ -10,6 +10,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 import { ingestKbDocument } from "@/lib/agent/rag/search";
 import { kindFromFilename } from "@/lib/agent/rag/kb-kinds";
 import type { KbKind } from "@/generated/prisma/client";
@@ -47,7 +48,7 @@ export async function ingestKbDocumentAction(
   sourceUrl?: string,
 ): Promise<ActionResult<{ id: string }>> {
   try {
-    await assertKbAdmin();
+    const adminId = await assertKbAdmin();
 
     if (!name.trim()) {
       return { ok: false, error: "Nome do documento é obrigatório." };
@@ -57,6 +58,13 @@ export async function ingestKbDocumentAction(
     }
 
     const doc = await ingestKbDocument(name.trim(), kind, text, sourceUrl);
+    await logAudit({
+      userId: adminId,
+      action: "kb_document_created",
+      targetType: "kb_document",
+      targetId: doc.id,
+      details: { name: name.trim(), kind, source: "text" },
+    });
     return { ok: true, data: { id: doc.id } };
   } catch (err) {
     console.error("[ingestKbDocumentAction]", err);
@@ -75,7 +83,7 @@ export async function uploadKbFileAction(
   formData: FormData,
 ): Promise<ActionResult<{ id: string }>> {
   try {
-    await assertKbAdmin();
+    const adminId = await assertKbAdmin();
 
     const file = formData.get("file");
     if (!(file instanceof File)) {
@@ -112,6 +120,13 @@ export async function uploadKbFileAction(
     }
 
     const doc = await ingestKbDocument(file.name, kind, text);
+    await logAudit({
+      userId: adminId,
+      action: "kb_document_created",
+      targetType: "kb_document",
+      targetId: doc.id,
+      details: { name: file.name, kind, source: "upload" },
+    });
     return { ok: true, data: { id: doc.id } };
   } catch (err) {
     console.error("[uploadKbFileAction]", err);
@@ -297,7 +312,7 @@ export async function uploadKbUrlAction(
   url: string,
 ): Promise<ActionResult<{ id: string }>> {
   try {
-    await assertKbAdmin();
+    const adminId = await assertKbAdmin();
     const trimmedName = name.trim();
     const trimmedUrl = url.trim();
     if (!trimmedName) return { ok: false, error: "Nome é obrigatório." };
@@ -316,6 +331,13 @@ export async function uploadKbUrlAction(
       return { ok: false, error: "Página vazia ou bloqueada." };
     }
     const doc = await ingestKbDocument(trimmedName, "URL", text, trimmedUrl);
+    await logAudit({
+      userId: adminId,
+      action: "kb_document_created",
+      targetType: "kb_document",
+      targetId: doc.id,
+      details: { name: trimmedName, kind: "URL", source: "url", url: trimmedUrl },
+    });
     return { ok: true, data: { id: doc.id } };
   } catch (err) {
     return {
@@ -391,8 +413,19 @@ export async function listKbDocumentNamesAction(): Promise<
 
 export async function deleteKbDocumentAction(id: string): Promise<ActionResult> {
   try {
-    await assertKbAdmin();
+    const adminId = await assertKbAdmin();
+    const existing = await prisma.kbDocument.findUnique({
+      where: { id },
+      select: { name: true, kind: true },
+    });
     await prisma.kbDocument.delete({ where: { id } });
+    await logAudit({
+      userId: adminId,
+      action: "kb_document_deleted",
+      targetType: "kb_document",
+      targetId: id,
+      details: { name: existing?.name ?? null, kind: existing?.kind ?? null },
+    });
     return { ok: true, data: undefined };
   } catch (err) {
     console.error("[deleteKbDocumentAction]", err);

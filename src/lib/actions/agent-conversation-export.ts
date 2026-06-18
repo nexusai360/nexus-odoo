@@ -14,6 +14,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
 import { formatFullDateTime } from "@/lib/format-datetime-relative";
 
 function fmtDate(d: Date): string {
@@ -143,5 +144,19 @@ export async function exportConversationReport(
   const content = lines.join("\n");
   const filename =
     `nex-conversa-${conv.id.slice(0, 8)}-${conv.createdAt.toISOString().slice(0, 10)}.txt`;
+
+  await logAudit({
+    userId: me.id,
+    action: "report_exported",
+    targetType: "conversation",
+    targetId: conv.id,
+    details: {
+      kind: "agent_conversation",
+      filename,
+      messages: conv.messages.length,
+      channel: conv.channel,
+    },
+  });
+
   return { ok: true, filename, content };
 }

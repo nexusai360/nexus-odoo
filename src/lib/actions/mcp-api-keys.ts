@@ -279,13 +279,12 @@ export async function updateMcpApiKey(
 
     await publishKeyInvalidated(id);
 
-    // Nota: AuditAction não tem api_key_updated ainda , usa setting_updated como proxy
     await logAudit({
       userId: me.id,
-      action: "setting_updated",
+      action: "api_key_updated",
       targetType: "ApiKey",
       targetId: id,
-      details: { ...(updateData as Record<string, unknown>), _event: "mcp_api_key_updated" },
+      details: { ...(updateData as Record<string, unknown>) },
     });
 
     revalidatePath("/integracoes/servidor-mcp");
@@ -326,13 +325,11 @@ export async function rotateMcpApiKey(id: string): Promise<DataResult<CreatedMcp
 
     await publishKeyInvalidated(id);
 
-    // Nota: AuditAction não tem api_key_rotated ainda , usa setting_updated como proxy
     await logAudit({
       userId: me.id,
-      action: "setting_updated",
+      action: "api_key_rotated",
       targetType: "ApiKey",
       targetId: id,
-      details: { _event: "mcp_api_key_rotated" },
     });
 
     revalidatePath("/integracoes/servidor-mcp");
