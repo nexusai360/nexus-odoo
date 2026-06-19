@@ -26,7 +26,10 @@ export interface UserProfileAuditRow {
   topTopics: string[];
   breakdownPrefs: { familia: string; breakdown: string }[];
   recurringLabels: string[];
+  /** Texto destilado pelo LLM (Onda 2). Exibido p/ o super_admin auditar o que foi aprendido. */
+  interactionPrompt: string | null;
   profileBuiltAt: string | null;
+  profileAppliedAt: string | null;
   quarantinedAt: string | null;
   lastLearnedModel: string | null;
 }
@@ -42,7 +45,9 @@ export async function getUserProfilesForAudit(): Promise<UserProfileAuditRow[]> 
       preferredDomains: true,
       presentationPrefs: true,
       recurringQuestions: true,
+      interactionPrompt: true,
       profileBuiltAt: true,
+      profileAppliedAt: true,
       quarantinedAt: true,
       lastLearnedModel: true,
       user: { select: { name: true, email: true } },
@@ -63,7 +68,9 @@ export async function getUserProfilesForAudit(): Promise<UserProfileAuditRow[]> 
       topTopics: ((r.topTopics as unknown as TopTopic[]) ?? []).map((t) => t.topic),
       breakdownPrefs,
       recurringLabels: ((r.recurringQuestions as unknown as RecurringQuestion[]) ?? []).map((q) => q.label),
+      interactionPrompt: r.interactionPrompt ?? null,
       profileBuiltAt: r.profileBuiltAt ? r.profileBuiltAt.toISOString() : null,
+      profileAppliedAt: r.profileAppliedAt ? r.profileAppliedAt.toISOString() : null,
       quarantinedAt: r.quarantinedAt ? r.quarantinedAt.toISOString() : null,
       lastLearnedModel: r.lastLearnedModel ?? null,
     };

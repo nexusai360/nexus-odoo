@@ -165,6 +165,16 @@ function ProfileCard({ row }: { row: UserProfileAuditRow }) {
         <Campo label="Perguntas recorrentes">
           <ChipList items={row.recurringLabels} />
         </Campo>
+        {row.interactionPrompt && (
+          <div className="sm:col-span-2 space-y-1">
+            <p className="text-xs font-medium text-muted-foreground">
+              Aprendido da conversa (destilado por IA)
+            </p>
+            <p className="rounded-md border bg-muted/40 p-2 text-sm leading-relaxed">
+              {row.interactionPrompt}
+            </p>
+          </div>
+        )}
         <div className="text-xs text-muted-foreground sm:col-span-2">
           Atualizado em <span className="tabular-nums">{formatBrt(row.profileBuiltAt)}</span>
           {row.lastLearnedModel ? ` · origem: ${row.lastLearnedModel}` : ""}
