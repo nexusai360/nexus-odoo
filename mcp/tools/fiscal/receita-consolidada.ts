@@ -35,6 +35,7 @@ const dados = z.object({
       }),
     )
     .optional(),
+  ordenadoPor: z.string().optional(),
   escopoEmpresa: z.record(z.string(), z.unknown()),
   aviso: z.string(),
   _RESPOSTA: z.string().optional(),
@@ -79,7 +80,7 @@ export const fiscalReceitaConsolidada: ToolEntry<Input, Output> = {
           });
       return {
         ...r,
-        ...(porEmpresa ? { porEmpresa } : {}),
+        ...(porEmpresa ? { porEmpresa, ordenadoPor: "receita externa (real) desc" } : {}),
         escopoEmpresa: escopo.escopo as unknown as Record<string, unknown>,
         aviso:
           escopo.escopo.aviso +

@@ -91,3 +91,29 @@ endpoint separado). Largar o 5.4-nano de imagem.
 ## REGRA DURÁVEL
 Correção/julgamento NUNCA via API OpenAI (gasta token). Sempre offline, aqui no cloud
 (Claude). Validador fica em `shadow`. Não ligar nada que faça retry/correção via request.
+
+## NOVA LEVA (usuário 2026-06-19, prints) , perícia de consistência/UI PENDENTE
+N1. **Indicador de áudio transcrito inconsistente.** Hoje, em alguns lugares aparece o
+   ÍCONE bonito (print 1) e em outros vem o TEXTO "áudio transcrito" embaixo da mensagem
+   (print 3). Padronizar: SEMPRE o mesmo ícone (estilo print 1) , na bubble E no
+   Monitoramento do Agente (aba Chat / bubble-monitor). Achar o componente que renderiza
+   o indicador de transcrição da mensagem (provável em agent-message.tsx / bubble-monitor-row)
+   e unificar. Hoje deve ter 2 renderizações diferentes.
+N2. **Botão de download no cabeçalho "Conversa" (monitoramento) muito pequeno.** Aumentar
+   (hoje está size="sm"/h-5 em bubble-monitor.tsx , o usuário quer maior). E o efeito de
+   hover (bolinha em volta) NÃO aparece quando a SESSÃO está SELECIONADA (a row tem
+   bg-muted que "come" o hover do botão de download) , só aparece em row não-selecionada.
+   Deixar o hover visível também na selecionada e padronizar tamanhos.
+N3. **Sugestões divergentes bubble x monitoramento.** As 3 sugestões mostradas no
+   Monitoramento (bubble-monitor) NÃO batem com as sugestões da MESMA mensagem na bubble
+   viva. Provável: o monitoramento recomputa/gera sugestões de forma diferente OU lê de
+   outra fonte. Investigar de onde cada um pega as sugestões (a bubble usa as do envelope
+   da resposta; o monitoramento pode estar regenerando). Devem ser a MESMA fonte.
+N4. **Realtime/loading inconsistente (perícia).** (a) Abrir a bubble com sessão ATIVA às
+   vezes mostra "sem sessão" (welcome) até fechar/reabrir ou dar refresh , o restore da
+   conversa (active-conversation) carrega async e mostra welcome no meio. O fix de
+   keep-mounted (agent-bubble) resolveu a perda ao fechar/reabrir, mas o LOAD INICIAL
+   ainda pisca welcome. (b) No Monitoramento, mensagens novas às vezes não aparecem em
+   tempo real (precisa refresh), mesmo com realtime configurado. Investigar o SSE/poll do
+   bubble-monitor (LIVE_POLL_MS) e o restore inicial da bubble (mostrar skeleton/loading
+   em vez de welcome enquanto carrega; só cair no welcome se realmente não houver sessão).
