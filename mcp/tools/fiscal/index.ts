@@ -43,6 +43,8 @@ import { fiscalMargemAproximada } from "./margem-aproximada.js";
 import { fiscalFaturamentoPorRegime } from "./faturamento-por-regime.js";
 // Backlog pos-review item e (faturamento por vendedor via pedido de origem)
 import { fiscalFaturamentoPorVendedor } from "./faturamento-por-vendedor.js";
+// Gap 2026-06-19 (listagem nota a nota sem CFOP)
+import { fiscalNotasSemCfop } from "./notas-sem-cfop.js";
 
 export const fiscalTools: ToolEntry[] = [
   fiscalFaturamentoPeriodo as ToolEntry,
@@ -90,4 +92,6 @@ export const fiscalTools: ToolEntry[] = [
   fiscalFaturamentoPorRegime as ToolEntry,
   // Backlog pos-review item e (faturamento por vendedor via pedido de origem)
   fiscalFaturamentoPorVendedor as ToolEntry,
+  // Gap 2026-06-19 (listagem nota a nota sem CFOP)
+  fiscalNotasSemCfop as ToolEntry,
 ];
