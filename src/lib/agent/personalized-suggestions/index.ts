@@ -12,16 +12,19 @@ import "server-only";
 import type { ReportDomain } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { redis } from "@/lib/redis";
+import { getUserAgentProfile } from "@/lib/agent/user-profile/store";
 import { aggregateToolUsage } from "./aggregate";
 import { pickPersonalizedQuestions } from "./pick";
 
 const RECENT_WINDOW_DAYS = 28;
 const CACHE_TTL_SECONDS = 5 * 60;
+/** Versao da cache key. Bump invalida tudo. v4 (2026-06-19): inclui o perfil de interacao.
+ *  USADA na construcao E na invalidacao , manter as duas em sincronia. */
+export const WELCOME_CACHE_VERSION = "v4";
 
 function cacheKey(userId: string, max: number, domainsTag: string): string {
-  // v3 (2026-06-02): inclui dominios permitidos para o cache respeitar o
-  // filtro por dominio da tool. v2 era so userId+max.
-  return `nex:welcome-suggestions:${userId}:v3:${max}:${domainsTag}`;
+  // inclui dominios permitidos (filtro por dominio) + versao (perfil).
+  return `nex:welcome-suggestions:${userId}:${WELCOME_CACHE_VERSION}:${max}:${domainsTag}`;
 }
 
 export async function getPersonalizedWelcomeSuggestions(
@@ -51,11 +54,14 @@ export async function getPersonalizedWelcomeSuggestions(
   }
 
   try {
-    const [allTime, recent] = await Promise.all([
+    const [allTime, recent, profile] = await Promise.all([
       aggregateToolUsage(prisma, userId, null),
       aggregateToolUsage(prisma, userId, RECENT_WINDOW_DAYS),
+      getUserAgentProfile(userId).catch(() => null),
     ]);
-    const out = pickPersonalizedQuestions(allTime, recent, safeMax, allowedDomains);
+    const out = pickPersonalizedQuestions(allTime, recent, safeMax, allowedDomains, {
+      preferredDomains: profile?.preferredDomains ?? [],
+    });
 
     try {
       await redis.set(key, JSON.stringify(out), "EX", CACHE_TTL_SECONDS);
@@ -80,7 +86,7 @@ export async function invalidatePersonalizedWelcomeCache(
   // Limpa todas as variantes (max e dominios) do usuario sem precisar saber
   // quais estao ativas. Best-effort: keyspace por usuario e pequeno.
   try {
-    const keys = await redis.keys(`nex:welcome-suggestions:${userId}:v3:*`);
+    const keys = await redis.keys(`nex:welcome-suggestions:${userId}:${WELCOME_CACHE_VERSION}:*`);
     if (keys.length > 0) await redis.del(...keys);
   } catch {
     // best-effort

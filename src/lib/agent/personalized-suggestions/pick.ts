@@ -21,13 +21,32 @@ import { questionForTool, TOOL_DOMAIN } from "./templates";
  *                        sugestao personalizada nunca vaze dominio sem acesso
  *                        (filtro por dominio da tool, nao por texto).
  */
+/** Reordena (estavel) colocando tools de dominios preferidos primeiro. Mantem a ordem por
+ *  frequencia dentro de cada grupo. Vies suave de personalizacao (Onda 1). */
+function biasPorDominio(entries: ToolUsageEntry[], preferredDomains?: string[]): ToolUsageEntry[] {
+  if (!preferredDomains || preferredDomains.length === 0) return entries;
+  const pref = new Set(preferredDomains);
+  const preferidos: ToolUsageEntry[] = [];
+  const resto: ToolUsageEntry[] = [];
+  for (const e of entries) {
+    const dom = TOOL_DOMAIN[e.toolName];
+    if (dom && pref.has(dom)) preferidos.push(e);
+    else resto.push(e);
+  }
+  return [...preferidos, ...resto];
+}
+
 export function pickPersonalizedQuestions(
   allTime: ToolUsageEntry[],
   recent: ToolUsageEntry[],
   max: number,
   allowedDomains?: ReportDomain[],
+  profileExtras?: { preferredDomains?: string[] },
 ): string[] {
   const safeMax = Math.min(Math.max(1, max), 5);
+  // Vies de personalizacao: tools dos dominios preferidos do usuario vem primeiro.
+  allTime = biasPorDominio(allTime, profileExtras?.preferredDomains);
+  recent = biasPorDominio(recent, profileExtras?.preferredDomains);
 
   const seenTools = new Set<string>();
   const seenQuestions = new Set<string>();
