@@ -26,6 +26,26 @@ function profileKey(userId: string): string {
   return `${PROFILE_CACHE_PREFIX}${userId}:v1`;
 }
 
+/** Limita uma promise de I/O: se passar de `ms`, resolve no fallback (nunca trava o turno). */
+function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return new Promise<T>((resolve) => {
+    let done = false;
+    const settle = (v: T) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      resolve(v);
+    };
+    const timer = setTimeout(() => settle(fallback), ms);
+    if (typeof timer === "object" && timer && "unref" in timer) {
+      (timer as { unref: () => void }).unref();
+    }
+    p.then(settle, () => settle(fallback));
+  });
+}
+const CACHE_READ_TIMEOUT_MS = 200;
+const DB_READ_TIMEOUT_MS = 600;
+
 /** Mapeia uma linha do prisma (campos Json) para UserProfileData. */
 function rowToProfile(row: {
   topTopics: unknown;
@@ -47,23 +67,27 @@ export async function getUserAgentProfile(userId: string): Promise<UserProfileDa
   if (!userId) return null;
   const key = profileKey(userId);
   try {
-    const cached = await redis.get(key);
+    const cached = await withTimeout(redis.get(key), CACHE_READ_TIMEOUT_MS, null);
     if (cached) return JSON.parse(cached) as UserProfileData;
   } catch {
     // ignore cache error
   }
   let row;
   try {
-    row = await prisma.userAgentProfile.findUnique({
-      where: { userId },
-      select: {
-        topTopics: true,
-        topKeywords: true,
-        preferredDomains: true,
-        recurringQuestions: true,
-        presentationPrefs: true,
-      },
-    });
+    row = await withTimeout(
+      prisma.userAgentProfile.findUnique({
+        where: { userId },
+        select: {
+          topTopics: true,
+          topKeywords: true,
+          preferredDomains: true,
+          recurringQuestions: true,
+          presentationPrefs: true,
+        },
+      }),
+      DB_READ_TIMEOUT_MS,
+      null,
+    );
   } catch {
     return null;
   }
