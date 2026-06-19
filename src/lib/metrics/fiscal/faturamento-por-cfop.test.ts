@@ -17,9 +17,15 @@ function mockPrisma(
     if (sql.includes("5949%")) return Promise.resolve(outrasRows);
     return Promise.resolve([]);
   });
+  // carregarItensVendaComGrupo (split real/intragrupo) consulta as notas e os
+  // parceiros do grupo. Sem grupo no mock => nenhuma nota intragrupo => valorReal
+  // == valorProdutos e receitaIntragrupo == 0 (nao afeta as assercoes de bruto).
+  const notasFindMany = jest.fn().mockResolvedValue([]);
+  const parceiroFindMany = jest.fn().mockResolvedValue([]);
   const prisma = {
     fatoNotaFiscalItem: { groupBy, findMany },
-    fatoNotaFiscal: { aggregate },
+    fatoNotaFiscal: { aggregate, findMany: notasFindMany },
+    fatoParceiro: { findMany: parceiroFindMany },
     $queryRawUnsafe: queryRawUnsafe,
   } as unknown as PrismaClient;
   return { prisma, groupBy, findMany, aggregate, queryRawUnsafe };

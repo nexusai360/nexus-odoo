@@ -688,15 +688,16 @@ export function BubbleMonitor() {
       <div className={cn(SECTION, "relative")}>
         <div className={cn(HEAD, "flex items-center justify-between gap-2")}>
           <span>Conversa</span>
-          {/* Download da conversa selecionada; mesma altura (h-5) do chevron das
-              colunas laterais, pra borda inferior do header ALINHAR exatamente
-              com a de Colaboradores/Sessões (size md crescia o header e
-              desalinhava a linha). O hover violeta segue visível. */}
+          {/* Download da conversa selecionada: MESMO tamanho (md, h-6) do botão
+              por sessão da coluna 2. Pra borda inferior do header continuar
+              ALINHADA com Colaboradores/Sessões (cujo chevron é h-5=20px), o
+              -my-0.5 tira os 4px extras do h-6 da altura da linha , o botão fica
+              maior sem empurrar a borda. Hover violeta mantido. */}
           {sessionId ? (
             <DownloadConvButton
               conversationId={sessionId}
-              size="sm"
-              className="-mr-1"
+              size="md"
+              className="-mr-1 -my-0.5"
               title="Baixar esta conversa (.txt)"
             />
           ) : (

@@ -24,6 +24,9 @@ const linha = z.object({
   ehReceita: z.boolean(),
   totalItens: z.number().int(),
   valorProdutos: z.number(),
+  // Split intragrupo: valorProdutos e BRUTO; valorReal e ex-intragrupo.
+  valorIntragrupo: z.number(),
+  valorReal: z.number(),
 });
 
 const dados = z.object({
@@ -32,6 +35,10 @@ const dados = z.object({
   total: z.number().int(),
   totalProdutos: z.number(),
   totalReceita: z.number(),
+  // Receita REAL (ex-intragrupo) e a parcela intragrupo eliminada. totalReceita
+  // e o BRUTO; totalReceitaReal e o "faturamento verdadeiro" por essas operacoes.
+  totalReceitaReal: z.number(),
+  receitaIntragrupo: z.number(),
   totalNaoReceita: z.number(),
   semCfop: z.object({ totalItens: z.number().int(), valorProdutos: z.number() }),
   // Fase 2.6: transparencia (aditivo).
@@ -76,7 +83,7 @@ export const fiscalFaturamentoPorCfop: ToolEntry<Input, Output> = {
   id: "fiscal_faturamento_por_cfop",
   dominio: "fiscal",
   descricao:
-    "Faturamento de saida autorizado por operacao fiscal: agrupa por categoria gerencial (venda, servico, transferencia, devolucao...) ou por CFOP cru. Separa receita (venda/servico/exportacao) de movimentacao que nao e receita. Base: valor dos produtos no item. Aceita empresa e periodo.",
+    "Faturamento de saida autorizado por operacao fiscal: agrupa por categoria gerencial (venda, servico, transferencia, devolucao...) ou por CFOP cru. Separa receita (venda/servico/exportacao) de movimentacao que nao e receita. Tambem separa BRUTO x REAL: cada linha traz valorProdutos (bruto, inclui venda intragrupo) e valorReal (ex-intragrupo), e o total traz totalReceitaReal (faturamento verdadeiro) alem de totalReceita (bruto). Base: valor dos produtos no item. Aceita empresa e periodo.",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
@@ -99,12 +106,21 @@ export const fiscalFaturamentoPorCfop: ToolEntry<Input, Output> = {
           r.semCfop.valorProdutos > 0
             ? ` Atencao: R$ ${r.semCfop.valorProdutos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} em ${r.semCfop.totalItens} itens sem CFOP (sem classificacao fiscal).`
             : "";
+        // BRUTO x REAL: a quebra por CFOP e BRUTA (inclui venda intragrupo). O
+        // faturamento verdadeiro (ex-intragrupo) e totalReceitaReal. Deixa
+        // explicito pro agente NUNCA chamar a receita bruta por CFOP de "real".
+        const real =
+          r.receitaIntragrupo > 0
+            ? ` IMPORTANTE: estes valores por CFOP sao BRUTOS (incluem venda intragrupo). A receita REAL (verdadeira, sem intragrupo) e R$ ${r.totalReceitaReal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}; a receita bruta e R$ ${r.totalReceita.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}, dos quais R$ ${r.receitaIntragrupo.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} sao venda entre empresas do grupo (eliminada no consolidado). Cada linha tem valorReal (ex-intragrupo) alem do valorProdutos (bruto).`
+            : " Nao ha venda intragrupo neste recorte: a receita bruta por CFOP ja e a real.";
         return {
           agruparPor: r.agruparPor,
           linhas: r.linhas,
           total: r.total,
           totalProdutos: r.totalProdutos,
           totalReceita: r.totalReceita,
+          totalReceitaReal: r.totalReceitaReal,
+          receitaIntragrupo: r.receitaIntragrupo,
           totalNaoReceita: r.totalNaoReceita,
           semCfop: r.semCfop,
           semCfopPorFinalidade: r.semCfopPorFinalidade,
@@ -116,14 +132,16 @@ export const fiscalFaturamentoPorCfop: ToolEntry<Input, Output> = {
             escopo.escopo.aviso +
             ` Periodo: ${per.label}.` +
             (per.assumido ? " (Nenhum periodo foi informado, entao considerei o ano corrente.)" : "") +
-            " " + r.reconciliacao.observacao + gap,
+            " " + r.reconciliacao.observacao + gap + real,
         };
       },
     );
     if (envelope.estado === "preparando") return envelope;
 
     const d = envelope.dados;
-    const topLinhas = d.linhas.slice(0, 8).map((l) => ({ rotulo: l.rotulo, valor: l.valorProdutos, ehReceita: l.ehReceita }));
+    const topLinhas = d.linhas
+      .slice(0, 8)
+      .map((l) => ({ rotulo: l.rotulo, valor: l.valorProdutos, valorReal: l.valorReal, ehReceita: l.ehReceita }));
     const porFin = d.semCfopPorFinalidade ?? [];
     const semCfopVendaValor = porFin.filter((f) => f.finalidade === "1").reduce((s, f) => s + f.valorProdutos, 0);
     const semCfopDevolucaoValor = porFin.filter((f) => f.finalidade === "4").reduce((s, f) => s + f.valorProdutos, 0);
@@ -133,6 +151,8 @@ export const fiscalFaturamentoPorCfop: ToolEntry<Input, Output> = {
         agruparPor: d.agruparPor,
         totalProdutos: d.totalProdutos,
         totalReceita: d.totalReceita,
+        totalReceitaReal: d.totalReceitaReal,
+        receitaIntragrupo: d.receitaIntragrupo,
         totalNaoReceita: d.totalNaoReceita,
         linhasCount: d.total,
         semCfopValor: d.semCfop.valorProdutos,
