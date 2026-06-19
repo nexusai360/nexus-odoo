@@ -636,3 +636,119 @@ export async function queryConcentracao(
 
   return { familiasBruto, marcasBruto };
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * COMPARATIVO DE ESTOQUE ENTRE DATAS (série histórica de snapshots).
+ * Precisão: as somas são feitas no SQL por data_ref (nunca mistura datas). Para
+ * cada data, usa a foto (snapshot) mais recente <= data alvo (exata, valor+qtd).
+ * Para datas anteriores à 1ª foto, reconstrói a QUANTIDADE pelos movimentos
+ * (exata) e NÃO inventa valor (valor exato comparável só a partir da 1ª foto).
+ * ──────────────────────────────────────────────────────────────────────────── */
+export interface EstoqueComparativoPonto {
+  dataAlvo: string;
+  dataUsada: string | null;
+  fonte: "snapshot" | "reconstrucao";
+  valor: number | null; // exato (snapshot); null quando reconstruído (sem foto)
+  quantidade: number; // exato nos dois casos
+  aviso?: string;
+}
+
+function isoDate(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+async function pontoEstoqueNaData(
+  prisma: PrismaClient,
+  dataAlvo: string,
+): Promise<EstoqueComparativoPonto> {
+  const alvo = new Date(`${dataAlvo}T00:00:00.000Z`);
+  // Foto mais recente <= data alvo.
+  const foto = await prisma.fatoEstoqueSaldoSnapshot.findFirst({
+    where: { dataRef: { lte: alvo } },
+    orderBy: { dataRef: "desc" },
+    select: { dataRef: true },
+  });
+  if (foto) {
+    const agg = await prisma.fatoEstoqueSaldoSnapshot.aggregate({
+      where: { dataRef: foto.dataRef },
+      _sum: { vrSaldo: true, quantidade: true },
+    });
+    const dataUsada = isoDate(foto.dataRef);
+    return {
+      dataAlvo,
+      dataUsada,
+      fonte: "snapshot",
+      valor: Number(agg._sum.vrSaldo ?? 0),
+      quantidade: Number(agg._sum.quantidade ?? 0),
+      ...(dataUsada !== dataAlvo
+        ? { aviso: `Sem foto exata de ${dataAlvo}; usei a mais próxima disponível (${dataUsada}).` }
+        : {}),
+    };
+  }
+  // Sem foto <= data alvo: reconstrói a QUANTIDADE pelos movimentos (exata).
+  // quantidade(alvo) = quantidade(hoje) − (entradas − saídas) ocorridas DEPOIS do alvo.
+  const [saldoHoje, entradas, saidas] = await Promise.all([
+    prisma.fatoEstoqueSaldo.aggregate({ _sum: { quantidade: true } }),
+    prisma.fatoEstoqueMovimento.aggregate({
+      where: { sentido: "entrada", data: { gt: alvo } },
+      _sum: { quantidade: true },
+    }),
+    prisma.fatoEstoqueMovimento.aggregate({
+      where: { sentido: "saida", data: { gt: alvo } },
+      _sum: { quantidade: true },
+    }),
+  ]);
+  const qtdHoje = Number(saldoHoje._sum.quantidade ?? 0);
+  const netDepois =
+    Number(entradas._sum.quantidade ?? 0) - Number(saidas._sum.quantidade ?? 0);
+  return {
+    dataAlvo,
+    dataUsada: null,
+    fonte: "reconstrucao",
+    valor: null,
+    quantidade: qtdHoje - netDepois,
+    aviso:
+      `Não há foto de estoque em ${dataAlvo} (anterior ao início do histórico de fotos). ` +
+      `Não há base confiável para um comparativo preciso nessa data; a comparação histórica exata ` +
+      `passa a valer a partir da 1ª foto. (Quantidade reconstruída pelos movimentos é apenas estimativa.)`,
+  };
+}
+
+export async function queryEstoqueComparativo(
+  prisma: PrismaClient,
+  filtros: { dataInicial: string; dataFinal: string },
+): Promise<{
+  inicial: EstoqueComparativoPonto;
+  final: EstoqueComparativoPonto;
+  deltaValor: number | null;
+  deltaValorPct: number | null;
+  deltaQuantidade: number;
+  comparavelEmValor: boolean;
+  primeiraFoto: string | null;
+}> {
+  const [inicial, final, primeira] = await Promise.all([
+    pontoEstoqueNaData(prisma, filtros.dataInicial),
+    pontoEstoqueNaData(prisma, filtros.dataFinal),
+    prisma.fatoEstoqueSaldoSnapshot.findFirst({
+      orderBy: { dataRef: "asc" },
+      select: { dataRef: true },
+    }),
+  ]);
+  const comparavelEmValor = inicial.valor !== null && final.valor !== null;
+  const deltaValor = comparavelEmValor
+    ? (final.valor as number) - (inicial.valor as number)
+    : null;
+  const deltaValorPct =
+    comparavelEmValor && (inicial.valor as number) !== 0
+      ? (deltaValor as number) / (inicial.valor as number)
+      : null;
+  return {
+    inicial,
+    final,
+    deltaValor,
+    deltaValorPct,
+    deltaQuantidade: final.quantidade - inicial.quantidade,
+    comparavelEmValor,
+    primeiraFoto: primeira ? isoDate(primeira.dataRef) : null,
+  };
+}
