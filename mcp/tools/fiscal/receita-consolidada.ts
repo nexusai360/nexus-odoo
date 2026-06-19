@@ -2,7 +2,7 @@
 // Tool MCP: fiscal_receita_consolidada , receita externa real (elimina intercompany, CPC 36)
 import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
-import { receitaConsolidada } from "@/lib/metrics/fiscal/index.js";
+import { receitaConsolidada, receitaConsolidadaPorEmpresa } from "@/lib/metrics/fiscal/index.js";
 import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
 import { montarEscopoEmpresa } from "./_escopo-empresa.js";
@@ -22,6 +22,19 @@ const dados = z.object({
   notasIntragrupo: z.number().int(),
   notasExternas: z.number().int(),
   percentualEliminado: z.number(),
+  // Faturamento real (e o eliminado) JÁ quebrado por empresa, em 1 chamada
+  // (só vem no escopo do grupo todo). Evita o agente chamar a tool N vezes.
+  porEmpresa: z
+    .array(
+      z.object({
+        empresaId: z.number().nullable(),
+        empresaNome: z.string().nullable(),
+        receitaExterna: z.number(),
+        receitaIntragrupoEliminavel: z.number(),
+        receitaIndividualTotal: z.number(),
+      }),
+    )
+    .optional(),
   escopoEmpresa: z.record(z.string(), z.unknown()),
   aviso: z.string(),
   _RESPOSTA: z.string().optional(),
@@ -43,7 +56,7 @@ export const fiscalReceitaConsolidada: ToolEntry<Input, Output> = {
   id: "fiscal_receita_consolidada",
   dominio: "fiscal",
   descricao:
-    "Receita consolidada externa do grupo (o faturamento real): vendas a clientes FORA do grupo, eliminando o intercompany (venda intragrupo, CPC 36). Mostra quanto do faturamento individual e venda entre empresas do grupo e foi eliminado. Aceita empresa e periodo.",
+    "Receita consolidada externa do grupo (o faturamento real): vendas a clientes FORA do grupo, eliminando o intercompany (venda intragrupo, CPC 36). Mostra quanto do faturamento individual e venda entre empresas do grupo e foi eliminado. No escopo do grupo todo (sem empresaRef) JA retorna o campo `porEmpresa` com o faturamento real e o eliminado de CADA empresa numa unica chamada , use para 'faturamento real/verdadeiro por empresa', 'por empresa sem as vendas entre empresas', em vez de chamar a tool varias vezes. Aceita empresa e periodo.",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
@@ -56,8 +69,17 @@ export const fiscalReceitaConsolidada: ToolEntry<Input, Output> = {
         periodoAte: per.periodoAte,
         empresaId: escopo.empresaId,
       });
+      // Quebra por empresa só faz sentido no escopo do grupo todo (sem empresaRef).
+      const porEmpresa = escopo.empresaId
+        ? undefined
+        : await receitaConsolidadaPorEmpresa(ctx.prisma, {
+            periodoDe: per.periodoDe,
+            periodoAte: per.periodoAte,
+            empresaId: escopo.empresaId,
+          });
       return {
         ...r,
+        ...(porEmpresa ? { porEmpresa } : {}),
         escopoEmpresa: escopo.escopo as unknown as Record<string, unknown>,
         aviso:
           escopo.escopo.aviso +
