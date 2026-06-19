@@ -2455,7 +2455,7 @@
       "id": "fiscal_faturamento_por_cfop",
       "operation": "read",
       "module": "fiscal",
-      "descricao": "Faturamento de saida autorizado por operacao fiscal: agrupa por categoria gerencial (venda, servico, transferencia, devolucao...) ou por CFOP cru. Separa receita (venda/servico/exportacao) de movimentacao que nao e receita. Base: valor dos produtos no item. Aceita empresa e periodo.",
+      "descricao": "Faturamento de saida autorizado por operacao fiscal: agrupa por categoria gerencial (venda, servico, transferencia, devolucao...) ou por CFOP cru. Separa receita (venda/servico/exportacao) de movimentacao que nao e receita. Tambem separa BRUTO x REAL: cada linha traz valorProdutos (bruto, inclui venda intragrupo) e valorReal (ex-intragrupo), e o total traz totalReceitaReal (faturamento verdadeiro) alem de totalReceita (bruto). Base: valor dos produtos no item. Aceita empresa e periodo.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
@@ -2796,6 +2796,50 @@
         {
           "name": "vendedor",
           "type": "string",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_notas_sem_cfop",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Lista NOTA A NOTA as notas fiscais de saída autorizadas que têm itens SEM CFOP (sem classificação fiscal), com número, participante, finalidade, quantidade de itens e valor de produtos. Use quando pedirem 'liste/quais as notas sem CFOP'. Aceita empresa e período.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte",
+        "empresaRef",
+        "limit",
+        "offset"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "empresaRef",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
+          "type": "integer",
           "optional": true
         }
       ],
@@ -4259,6 +4303,6 @@
       "examples": []
     }
   ],
-  "count": 121,
-  "generatedAt": "2026-06-19T04:42:56.223Z"
+  "count": 122,
+  "generatedAt": "2026-06-19T12:46:08.202Z"
 }

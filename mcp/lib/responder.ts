@@ -239,6 +239,14 @@ const fmtNotasRecebidasPorFornecedor: FormatadorCanonico = (env) => {
   return `Do fornecedor ${forn}: ${n} notas totalizando ${formatBRL(total)}.`;
 };
 
+const fmtNotasSemCfop: FormatadorCanonico = (env) => {
+  const n = Number(env._DESTAQUE?.totalNotas ?? 0);
+  const itens = Number(env._DESTAQUE?.totalItens ?? 0);
+  const total = Number(env._DESTAQUE?.valorProdutos ?? 0);
+  if (n === 0) return "Nenhuma nota com itens sem CFOP no periodo.";
+  return `${n} nota(s) com itens sem CFOP no periodo (${itens} itens), total ${formatBRL(total)} em produtos. A lista detalha nota a nota.`;
+};
+
 const fmtApuracaoFiscal: FormatadorCanonico = (env) => {
   // T-34 (Ronda 2): formatador agora discrimina PIS/COFINS quando o usuario
   // pediu PIS/COFINS especificamente, ou mostra todos os tributos somados.
@@ -2161,6 +2169,7 @@ const FORMATADORES: Record<string, FormatadorCanonico> = {
   fiscal_notas_emitidas: fmtNotasEmitidas,
   fiscal_notas_recebidas: fmtNotasRecebidas,
   fiscal_notas_recebidas_por_fornecedor: fmtNotasRecebidasPorFornecedor,
+  fiscal_notas_sem_cfop: fmtNotasSemCfop,
   fiscal_apuracao: fmtApuracaoFiscal,
   "fiscal_impostos_periodo": fmtFiscalImpostosPeriodo,
   "fiscal_produtos_faturados": fmtFiscalProdutosFaturados,
