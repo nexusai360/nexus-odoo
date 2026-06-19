@@ -243,7 +243,10 @@ function DownloadConvButton({
       title={title}
       aria-label={title}
       className={cn(
-        "inline-flex shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-muted hover:text-violet-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 disabled:cursor-not-allowed disabled:opacity-60",
+        // Hover em tom violeta translúcido (a "bolinha" em volta): aparece tanto
+        // na row normal quanto na SELECIONADA (que tem bg-muted e antes "comia"
+        // o hover bg-muted, deixando o botão sem realce na sessão aberta).
+        "inline-flex shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground/70 transition-colors hover:bg-violet-500/15 hover:text-violet-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 disabled:cursor-not-allowed disabled:opacity-60",
         box,
         className,
       )}
@@ -344,22 +347,28 @@ function keepVisible<T extends { role: string; content: string; kind?: string }>
 }
 
 // Assinatura barata pra detectar mudança entre dois polls: cobre mensagem nova,
-// conteúdo, sugestões que preencheram, sugestão clicada, status do juiz e voto.
-// Igual → não re-renderiza (evita jump de scroll e flicker da tag de data).
+// conteúdo, sugestões que preencheram OU TROCARAM (baseline → contextual), a
+// sugestão clicada, o status do juiz e o voto. Igual → não re-renderiza (evita
+// jump de scroll e flicker da tag de data).
+// IMPORTANTE (N3): usa o CONTEÚDO das sugestões, não só a contagem. O snapshot
+// "suggestions-shown" troca o set cru pelo contextual mantendo a MESMA
+// quantidade; assinar só por `length` deixava o monitor preso nas sugestões
+// antigas (divergência bubble x monitoramento). Mesma lógica vale pro conteúdo
+// da mensagem (assinar por texto, não por tamanho).
 function messagesSignature(list: MonitorMessage[]): string {
   return list
     .map((m) =>
       [
         m.id,
-        m.content.length,
-        m.suggestions?.length ?? 0,
+        m.content,
+        (m.suggestions ?? []).join("␟"),
         m.clickedSuggestion ?? "",
         m.evaluation?.status ?? "",
         m.feedback?.rating ?? "",
         m.feedback?.comment ?? "",
-      ].join(":"),
+      ].join("␞"),
     )
-    .join("|");
+    .join("┃");
 }
 
 export function BubbleMonitor() {
@@ -679,17 +688,17 @@ export function BubbleMonitor() {
       <div className={cn(SECTION, "relative")}>
         <div className={cn(HEAD, "flex items-center justify-between gap-2")}>
           <span>Conversa</span>
-          {/* Download da conversa selecionada; mesma altura (h-5) do chevron das
-              colunas laterais, pra borda inferior alinhar exatamente. */}
+          {/* Download da conversa selecionada; tamanho padronizado (md, h-6) com
+              o botão por sessão da coluna 2, pra ficar mais clicável no header. */}
           {sessionId ? (
             <DownloadConvButton
               conversationId={sessionId}
-              size="sm"
+              size="md"
               className="-mr-1"
               title="Baixar esta conversa (.txt)"
             />
           ) : (
-            <span aria-hidden className="h-5" />
+            <span aria-hidden className="h-6" />
           )}
         </div>
         <div
