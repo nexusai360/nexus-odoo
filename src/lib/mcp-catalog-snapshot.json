@@ -2603,7 +2603,7 @@
       "id": "fiscal_receita_consolidada",
       "operation": "read",
       "module": "fiscal",
-      "descricao": "Receita consolidada externa do grupo (o faturamento real): vendas a clientes FORA do grupo, eliminando o intercompany (venda intragrupo, CPC 36). Mostra quanto do faturamento individual e venda entre empresas do grupo e foi eliminado. Aceita empresa e periodo.",
+      "descricao": "Receita consolidada externa do grupo (o faturamento real): vendas a clientes FORA do grupo, eliminando o intercompany (venda intragrupo, CPC 36). Mostra quanto do faturamento individual e venda entre empresas do grupo e foi eliminado. No escopo do grupo todo (sem empresaRef) JA retorna o campo `porEmpresa` com o faturamento real e o eliminado de CADA empresa numa unica chamada , use para 'faturamento real/verdadeiro por empresa', 'por empresa sem as vendas entre empresas', em vez de chamar a tool varias vezes. Aceita empresa e periodo.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
@@ -4260,5 +4260,5 @@
     }
   ],
   "count": 121,
-  "generatedAt": "2026-06-16T02:09:32.031Z"
+  "generatedAt": "2026-06-19T04:42:56.223Z"
 }
