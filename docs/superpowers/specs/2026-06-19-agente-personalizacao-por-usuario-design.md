@@ -154,8 +154,12 @@ Acrescentar à `UserAgentProfile` (aditivo; a tabela **já existe em prod**):
 /// Incremento destilado (texto curto ≤ ~900 chars), injetado só p/ este usuário. DERIVADO,
 /// SEM frase original (parse filtra PII/verbatim/verbos de ocultação , §6).
 interactionPrompt   String?  @map("interaction_prompt")
-/// Preferências de apresentação ESTRUTURADAS aplicadas por código como DEFAULTS (nunca
-/// filtros mandatórios). Ex.: {"faturamento":{"breakdown":"empresa"},"pedidos":{"situacao":"aprovados"}}.
+/// Preferências de APRESENTAÇÃO (qual visão/breakdown o usuário prefere), DEFAULTS, nunca
+/// filtros de recorte de dado. Onda 1 detecta SÓ afinidade de breakdown por família de
+/// métrica (qual variante `_por_X` o usuário gravita). Ex.:
+/// {"faturamento":{"breakdownPreferido":"empresa"},"pedidos":{"breakdownPreferido":"etapa"}}.
+/// PROIBIDO armazenar filtro de dado (ex.: "só aprovados", empresa específica) , isso oculta
+/// dado e é vetado pela §6.2; o que o usuário filtra num turno não vira preferência.
 presentationPrefs   Json     @default("{}") @map("presentation_prefs")
 /// [{label, count, lastSeenAt}] , perguntas recorrentes NORMALIZADAS (rótulo derivado, nunca
 /// a frase verbatim , §6.5).
@@ -185,11 +189,13 @@ que o role de runtime lê a tabela. Aplicar via `migrate deploy`.
 
 ## 6. Guardrails (a feature aprende sem gate , trava ESTRUTURAL, não só prompt)
 
-1. **Precedência estrutural:** `presentationPrefs` são **defaults aplicados por código**, nunca
-   filtros mandatórios. **A intenção explícita do turno SEMPRE sobrepõe a preferência salva**
-   (ex.: usuário "sempre por empresa" pergunta "total consolidado?" → vem consolidado; "só
-   aprovados" mas pergunta "quantos reprovados?" → vem reprovados). Regras globais de
-   segurança/correção (RBAC, honestidade, real×bruto, datas) vencem o perfil sempre.
+1. **Precedência estrutural:** `presentationPrefs` são **defaults de visão**, nunca filtros
+   mandatórios. **A intenção explícita do turno SEMPRE sobrepõe a preferência salva** (ex.:
+   usuário que costuma ver faturamento por empresa pergunta "total consolidado?" → vem
+   consolidado). Regras globais de segurança/correção (RBAC, honestidade, real×bruto, datas)
+   vencem o perfil sempre. **Teste de COMPORTAMENTO obrigatório** (não só asserção de texto): um
+   turno real onde a pergunta contraria a preferência de breakdown deve vir no recorte da
+   pergunta, não no da preferência (§12).
 2. **`interactionPrompt` é texto de PREFERÊNCIA, não de comportamento sobre o dado.** O parse
    **rejeita** o item se contiver verbos de ocultação/recorte mandatório ("ignore", "não
    mostre", "esconda", "oculte", "filtre", "só considere", "remova") ou instrução de
@@ -282,11 +288,15 @@ recorrência/sugestões mesmo sem ela. As frentes se encontram quando a tool exi
 ## 13. Plano de ondas (rebalanceado pelos reviews , Onda 1 entrega valor perceptível)
 
 - **Onda 1 (roda em PRODUÇÃO, ao vivo):** schema estendido + `profile-store` + `profile-aggregate`
-  determinístico no worker (`JOB_PROFILE_AGGREGATE`) com **decaimento** + **pelo menos uma
-  preferência de apresentação detectável por SQL** (ex.: `breakdown=empresa`/`situacao=aprovados`
-  recorrentes nas tool calls) + injeção em runtime (`montarConversa` + `enhanceWithChips` +
-  welcome) + UI de auditoria/reset. **Entrega personalização perceptível** (assuntos + ao menos
-  um default de apresentação + recorrência + sugestões), não só welcome chips reembalados.
+  determinístico no worker (`JOB_PROFILE_AGGREGATE`) com **decaimento** + **afinidade de breakdown
+  por família de métrica** (sinal REAL confirmado no dado: o usuário gravita uma variante `_por_X`,
+  ex.: usa `fiscal_faturamento_por_empresa` em vez de `_periodo`; NÃO há arg `porEmpresa` , o
+  breakdown é a escolha da tool + o arg `agruparPor` quando existe) + injeção em runtime
+  (`montarConversa` + `enhanceWithChips` + welcome) + UI de auditoria/reset. **Entrega
+  personalização perceptível** (assuntos + afinidade de breakdown + recorrência + sugestões), não
+  só welcome chips reembalados. **Nota de volume:** a base de uso in-app ainda é pequena, então
+  preferências são esparsas no começo; o valor imediato vem de assuntos/recorrência/sugestões, e a
+  afinidade de breakdown cresce com o uso (limiar calibrado e medido na verificação, §12).
 - **Onda 2 (host-side):** `profile-distill` (LLM, cloud/Claude) + `interactionPrompt` +
   `presentationPrefs` sutis + acordos (Mariane) + **circuit-breaker** completo + seletor por
   usuário para destilação. Sobre a base já validada da Onda 1.
