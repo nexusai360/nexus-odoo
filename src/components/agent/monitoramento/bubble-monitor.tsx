@@ -688,17 +688,19 @@ export function BubbleMonitor() {
       <div className={cn(SECTION, "relative")}>
         <div className={cn(HEAD, "flex items-center justify-between gap-2")}>
           <span>Conversa</span>
-          {/* Download da conversa selecionada; tamanho padronizado (md, h-6) com
-              o botão por sessão da coluna 2, pra ficar mais clicável no header. */}
+          {/* Download da conversa selecionada; mesma altura (h-5) do chevron das
+              colunas laterais, pra borda inferior do header ALINHAR exatamente
+              com a de Colaboradores/Sessões (size md crescia o header e
+              desalinhava a linha). O hover violeta segue visível. */}
           {sessionId ? (
             <DownloadConvButton
               conversationId={sessionId}
-              size="md"
+              size="sm"
               className="-mr-1"
               title="Baixar esta conversa (.txt)"
             />
           ) : (
-            <span aria-hidden className="h-6" />
+            <span aria-hidden className="h-5" />
           )}
         </div>
         <div
