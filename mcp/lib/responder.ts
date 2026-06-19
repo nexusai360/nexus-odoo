@@ -239,6 +239,29 @@ const fmtNotasRecebidasPorFornecedor: FormatadorCanonico = (env) => {
   return `Do fornecedor ${forn}: ${n} notas totalizando ${formatBRL(total)}.`;
 };
 
+const fmtEstoqueComparativo: FormatadorCanonico = (env) => {
+  const di = String(env._DESTAQUE?.dataInicial ?? "");
+  const df = String(env._DESTAQUE?.dataFinal ?? "");
+  const comp = Number(env._DESTAQUE?.comparavelEmValor ?? 0) === 1;
+  const vf = Number(env._DESTAQUE?.valorFinal ?? 0);
+  const dv = Number(env._DESTAQUE?.deltaValor ?? 0);
+  const dq = Number(env._DESTAQUE?.deltaQuantidade ?? 0);
+  const qd = dq.toLocaleString("pt-BR", { maximumFractionDigits: 0 });
+  if (comp) {
+    const sinal = dv >= 0 ? "+" : "−";
+    return `Estoque em ${df}: ${formatBRL(vf)} (${sinal}${formatBRL(Math.abs(dv))} vs ${di}). Variação de quantidade: ${qd} unidades.`;
+  }
+  // Sem foto na data base (anterior ao início do histórico). NÃO apresentamos
+  // uma variação reconstruída como se fosse precisa (a reconstrução total pode
+  // ser imprecisa). Damos o valor ATUAL exato e dizemos a partir de quando a
+  // comparação histórica fica exata.
+  const pf = String(env._DESTAQUE?.primeiraFoto ?? "");
+  const desde = pf
+    ? `A comparação histórica EXATA de estoque passa a valer a partir de ${pf} (início das fotos diárias); ainda não tenho a foto de ${di} para um comparativo preciso.`
+    : "O histórico de fotos diárias acabou de começar; a comparação entre datas fica exata conforme os dias acumulam.";
+  return `Estoque atual: ${formatBRL(vf)} (exato). ${desde}`;
+};
+
 const fmtNotasSemCfop: FormatadorCanonico = (env) => {
   const n = Number(env._DESTAQUE?.totalNotas ?? 0);
   const itens = Number(env._DESTAQUE?.totalItens ?? 0);
@@ -2240,6 +2263,7 @@ const FORMATADORES: Record<string, FormatadorCanonico> = {
   estoque_entradas_saidas: fmtEntradasSaidas,
   estoque_locais_por_produto: fmtLocaisPorProduto,
   estoque_minimo_maximo: fmtMinimoMaximo,
+  estoque_comparativo: fmtEstoqueComparativo,
   // comercial
   comercial_pedidos_periodo: fmtPedidosPeriodo,
   comercial_pedidos_por_etapa: fmtPedidosPorEtapa,

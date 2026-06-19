@@ -1589,5 +1589,12 @@
     "dominio": "fiscal",
     "classe": "prosseguir",
     "toolEsperada": "fiscal_notas_sem_cfop"
+  },
+  {
+    "id": "cov-estoque-comparativo",
+    "pergunta": "Compare o estoque atual com o do mês passado",
+    "dominio": "estoque",
+    "classe": "prosseguir",
+    "toolEsperada": "estoque_comparativo"
   }
 ]

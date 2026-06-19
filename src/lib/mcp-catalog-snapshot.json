@@ -311,6 +311,44 @@
       "examples": []
     },
     {
+      "id": "estoque_comparativo",
+      "operation": "read",
+      "module": "estoque",
+      "descricao": "Compara o estoque (valor e quantidade) entre DUAS datas , ex.: hoje vs fim do mês passado, vs ontem, vs 7 dias atrás, vs ano passado, ou um intervalo de datas que você informar. Use para 'como o estoque variou', 'compare o estoque atual com o mês/semana/ano passado', 'evolução do estoque'. A soma é feita por data; o valor exato vem das fotos diárias (a partir do início do histórico) e, para datas anteriores, a quantidade é reconstruída (exata) sem inventar valor. Aceita dataInicial+dataFinal (YYYY-MM-DD) ou periodo (ontem|semana_anterior|mes_anterior|ano_anterior).",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "dataInicial",
+        "dataFinal",
+        "periodo"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "dataInicial",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "dataFinal",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodo",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "ontem",
+            "semana_anterior",
+            "mes_anterior",
+            "ano_anterior"
+          ]
+        }
+      ],
+      "examples": []
+    },
+    {
       "id": "financeiro_saldo_contas",
       "operation": "read",
       "module": "financeiro",
@@ -4303,6 +4341,6 @@
       "examples": []
     }
   ],
-  "count": 122,
-  "generatedAt": "2026-06-19T12:46:08.202Z"
+  "count": 123,
+  "generatedAt": "2026-06-19T14:04:12.047Z"
 }

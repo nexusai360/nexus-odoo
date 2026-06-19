@@ -12,6 +12,7 @@ import { estoqueConcentracao } from "./concentracao.js";
 import { estoqueProdutosSaldoZero } from "./produtos-saldo-zero.js";
 import { estoqueLocaisPorProduto } from "./locais-por-produto.js";
 import { estoqueMinimoMaximo } from "./minimo-maximo.js";
+import { estoqueComparativo } from "./comparativo.js";
 
 export const estoqueTools: ToolEntry[] = [
   estoqueSaldoProduto as ToolEntry,
@@ -25,4 +26,6 @@ export const estoqueTools: ToolEntry[] = [
   estoqueLocaisPorProduto as ToolEntry,
   // B6 , estoque mín/máx
   estoqueMinimoMaximo as ToolEntry,
+  // 2026-06-19 , comparativo entre datas (série histórica de snapshots)
+  estoqueComparativo as ToolEntry,
 ];
