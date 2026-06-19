@@ -1,5 +1,15 @@
 # STATUS — nexus-odoo
 
+> **2026-06-19 (leva 3) , CORREÇÃO DE VEREDITO + CFOP BRUTO×REAL, EM PRODUÇÃO** (PR #141, health 200).
+> (1) Julgamento do Claude agora grava em `status`+`razoes`+`judge_model` (não `human_status`): some o lápis
+> "Pendente→Correto" e o bloco Ajuste manual volta (o erro anterior setava human_status com status=PENDENTE).
+> 8 avaliações reaplicadas (5 CORRETO + 3 PARCIAL) com diagnóstico. (2) Botão de download da Conversa em size
+> md (igual ao por-sessão) com `-my-0.5` p/ manter a linha alinhada. (3) `fiscal_faturamento_por_cfop` separa
+> BRUTO×REAL: cada linha tem `valorReal` (ex-intragrupo) e o total tem `totalReceitaReal`+`receitaIntragrupo`;
+> regra de prompt 12-cfop proíbe rotular o bruto por CFOP como "verdadeiro". E2E real: totalReceitaReal ==
+> receitaExterna da consolidada (invariante exato). Sobram como gaps: snapshot histórico de estoque e
+> listagem nota-a-nota sem CFOP.
+
 > **2026-06-19 (leva 2) , CORREÇÕES DE UI DA BUBBLE + 8 AVALIAÇÕES JULGADAS, EM PRODUÇÃO** (PR #139,
 > prod `/api/health` `{"ok":true}`, rollout forçado). Bubble RECARREGADA agora bate com a viva e com o
 > monitoramento: getConversationMessages voltou a trazer `kind` e `suggestions` (mesmo snapshot que o
