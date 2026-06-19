@@ -4,6 +4,7 @@ import { buildPeriodoWhere } from "../_shared/periodo";
 import { buildEmpresaWhere } from "../_shared/empresa";
 import { classificarCfop, extrairCfop, ROTULO_CATEGORIA } from "../../fiscal/regras";
 import type { CategoriaGerencial } from "../../fiscal/regras";
+import { carregarItensVendaComGrupo } from "./_itens-venda-grupo";
 
 export interface FaturamentoOperacaoInput extends FaturamentoInput {
   /** 'categoria' (default) agrega por categoria gerencial; 'cfop' lista por CFOP. */
@@ -16,7 +17,11 @@ export interface OperacaoLinha {
   categoria: CategoriaGerencial;
   ehReceita: boolean;
   totalItens: number;
-  valorProdutos: number;
+  valorProdutos: number; // BRUTO (inclui vendas intragrupo)
+  /** Parcela desta linha que e venda INTRAGRUPO (entre empresas do grupo). */
+  valorIntragrupo: number;
+  /** Faturamento REAL desta linha (valorProdutos - valorIntragrupo). */
+  valorReal: number;
 }
 
 export interface Reconciliacao {
@@ -44,7 +49,12 @@ export interface FaturamentoPorCfopResultado {
   linhas: OperacaoLinha[];
   total: number; // numero de linhas (full-set, antes do limit)
   totalProdutos: number;
-  totalReceita: number;
+  totalReceita: number; // BRUTO (inclui receita intragrupo)
+  /** Receita REAL: ex-intragrupo (= totalReceita - receitaIntragrupo). E o
+   *  "faturamento verdadeiro" da empresa por essas operacoes. */
+  totalReceitaReal: number;
+  /** Receita de venda INTRAGRUPO (eliminada no consolidado do grupo). */
+  receitaIntragrupo: number;
   totalNaoReceita: number;
   semCfop: { totalItens: number; valorProdutos: number };
   /** Fase 2.6: decomposicao do balde sem_cfop por finalidade (1=venda candidata, 4=devolucao). */
@@ -55,12 +65,14 @@ export interface FaturamentoPorCfopResultado {
 }
 
 interface GrupoClassificado {
+  cfopId: number | null;
   cfop4: string | null;
   categoria: CategoriaGerencial;
   ehReceita: boolean;
   rotuloCfop: string; // nome limpo do CFOP (ou "Sem CFOP")
   totalItens: number;
   valorProdutos: number;
+  valorIntragrupo: number;
 }
 
 /**
@@ -99,18 +111,35 @@ export async function faturamentoPorCfop(
     : [];
   const nomePorId = new Map(nomeRows.map((r) => [r.cfopId, r.cfopNome]));
 
+  // REAL (ex-intragrupo): usa o MESMO loader/definicao de intragrupo da
+  // receitaConsolidada (whitelist->cadastro->nome), agregando o valor intragrupo
+  // por cfopId. Assim a quebra por CFOP separa o que e venda PARA FORA (real) do
+  // que e venda entre empresas do grupo (eliminada no consolidado). Mesma base
+  // (item.vrProdutos) e mesmo recorte (saida autorizada, periodo, empresa).
+  const { itens } = await carregarItensVendaComGrupo(prisma, input);
+  const intragrupoPorCfopId = new Map<number | null, number>();
+  for (const it of itens) {
+    if (!it.intragrupo) continue;
+    intragrupoPorCfopId.set(
+      it.cfopId,
+      (intragrupoPorCfopId.get(it.cfopId) ?? 0) + it.valorProdutos,
+    );
+  }
+
   // Classifica cada grupo via Tabela de Regras. Number() converte o Decimal do Prisma.
   const classificados: GrupoClassificado[] = grupos.map((g) => {
     const cfopNome = g.cfopId === null ? null : (nomePorId.get(g.cfopId) ?? null);
     const cfop4 = extrairCfop(cfopNome);
     const regra = classificarCfop(cfop4);
     return {
+      cfopId: g.cfopId,
       cfop4,
       categoria: regra.categoria,
       ehReceita: regra.ehReceita,
       rotuloCfop: cfop4 ? (cfopNome ?? cfop4) : "Sem CFOP",
       totalItens: Number(g._count ?? 0),
       valorProdutos: Number(g._sum.vrProdutos ?? 0),
+      valorIntragrupo: intragrupoPorCfopId.get(g.cfopId) ?? 0,
     };
   });
 
@@ -119,6 +148,12 @@ export async function faturamentoPorCfop(
   const totalProdutos = classificados.reduce((s, c) => s + c.valorProdutos, 0);
   const totalReceita = classificados.filter((c) => c.ehReceita).reduce((s, c) => s + c.valorProdutos, 0);
   const totalNaoReceita = totalProdutos - totalReceita;
+  // Receita intragrupo = parcela das linhas de RECEITA que e venda entre empresas
+  // do grupo; o real e a receita bruta menos isso.
+  const receitaIntragrupo = classificados
+    .filter((c) => c.ehReceita)
+    .reduce((s, c) => s + c.valorIntragrupo, 0);
+  const totalReceitaReal = totalReceita - receitaIntragrupo;
 
   const semCfopGrupo = classificados.filter((c) => c.categoria === "sem_cfop");
   const semCfop = {
@@ -176,6 +211,8 @@ export async function faturamentoPorCfop(
       ehReceita: c.ehReceita,
       totalItens: c.totalItens,
       valorProdutos: c.valorProdutos,
+      valorIntragrupo: c.valorIntragrupo,
+      valorReal: c.valorProdutos - c.valorIntragrupo,
     }));
   } else {
     const porCategoria = new Map<CategoriaGerencial, OperacaoLinha>();
@@ -184,6 +221,8 @@ export async function faturamentoPorCfop(
       if (atual) {
         atual.totalItens += c.totalItens;
         atual.valorProdutos += c.valorProdutos;
+        atual.valorIntragrupo += c.valorIntragrupo;
+        atual.valorReal = atual.valorProdutos - atual.valorIntragrupo;
       } else {
         porCategoria.set(c.categoria, {
           chave: c.categoria,
@@ -192,6 +231,8 @@ export async function faturamentoPorCfop(
           ehReceita: c.ehReceita,
           totalItens: c.totalItens,
           valorProdutos: c.valorProdutos,
+          valorIntragrupo: c.valorIntragrupo,
+          valorReal: c.valorProdutos - c.valorIntragrupo,
         });
       }
     }
@@ -230,6 +271,8 @@ export async function faturamentoPorCfop(
     total,
     totalProdutos,
     totalReceita,
+    totalReceitaReal,
+    receitaIntragrupo,
     totalNaoReceita,
     semCfop,
     semCfopPorFinalidade,
