@@ -33,6 +33,26 @@ TABLE fato_estoque_saldo (
   atualizado_em   TIMESTAMPTZ
 );
 
+-- Snapshot DIÁRIO do saldo de estoque (série histórica). Uma linha por
+-- (data_ref, produto, local) por dia. Para comparar estoque entre datas,
+-- SEMPRE agregue por data_ref (ex.: SUM(vr_saldo) WHERE data_ref = '2026-05-31').
+-- NUNCA misture datas numa mesma soma. O saldo de HOJE vive em fato_estoque_saldo.
+TABLE fato_estoque_saldo_snapshot (
+  id            UUID PRIMARY KEY,
+  data_ref      DATE,             -- dia da foto (BRT). Filtre/agrupe SEMPRE por aqui
+  produto_id    INT,
+  produto_nome  TEXT,
+  local_id      INT,
+  local_nome    TEXT,
+  quantidade    NUMERIC(18,4),
+  vr_saldo      NUMERIC(18,2),    -- valor monetário do saldo naquele dia
+  familia_id    INT,
+  familia_nome  TEXT,
+  marca_id      INT,
+  marca_nome    TEXT,
+  capturado_em  TIMESTAMPTZ
+);
+
 -- Movimentos de entrada/saída por produto
 TABLE fato_estoque_movimento (
   odoo_id          INT PRIMARY KEY,

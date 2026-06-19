@@ -1830,6 +1830,32 @@ model FatoEstoqueSaldo {
   @@map("fato_estoque_saldo")
 }
 
+/// Snapshot DIÁRIO do saldo de estoque (série histórica). Uma "foto" por dia, por
+/// produto/local, COM valor , permite comparar o estoque entre datas (diário,
+/// semanal, mensal ou intervalo personalizado) com EXATIDÃO daqui pra frente. O
+/// saldo vivo continua em fato_estoque_saldo; esta tabela acumula a história. O
+/// job diário do worker (capturarSnapshotEstoqueDiario) regrava a foto do dia
+/// (idempotente por data). ~3.8k linhas/dia, custo de disco desprezível.
+model FatoEstoqueSaldoSnapshot {
+  id          String   @id @default(uuid()) @db.Uuid
+  dataRef     DateTime @map("data_ref") @db.Date
+  produtoId   Int?     @map("produto_id")
+  produtoNome String?  @map("produto_nome")
+  localId     Int?     @map("local_id")
+  localNome   String?  @map("local_nome")
+  quantidade  Decimal? @db.Decimal(18, 4)
+  vrSaldo     Decimal? @map("vr_saldo") @db.Decimal(18, 2)
+  familiaId   Int?     @map("familia_id")
+  familiaNome String?  @map("familia_nome")
+  marcaId     Int?     @map("marca_id")
+  marcaNome   String?  @map("marca_nome")
+  capturadoEm DateTime @default(now()) @map("capturado_em")
+
+  @@index([dataRef])
+  @@index([produtoId, dataRef])
+  @@map("fato_estoque_saldo_snapshot")
+}
+
 /// Movimento de estoque (entrada/saída). Derivado de raw_estoque_extrato
 /// por rebuild completo. odooId é PK porque o builder recria a tabela inteira.
 model FatoEstoqueMovimento {

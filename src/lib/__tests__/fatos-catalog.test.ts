@@ -7,11 +7,15 @@ const ROOT = path.resolve(__dirname, "../../..");
 const read = (rel: string) => fs.readFileSync(path.join(ROOT, rel), "utf8");
 
 describe("FATO_CATALOG , drift contra as fontes de verdade", () => {
-  it("cobre exatamente os fatos do schema (menos fato_build_state)", () => {
+  it("cobre exatamente os fatos do schema (menos fato_build_state e fato_estoque_saldo_snapshot)", () => {
     const schema = read("prisma/schema.prisma");
+    // fato_estoque_saldo_snapshot NAO e um fato de sync-rebuild (nao tem builder
+    // no registry); e populado pelo job diario de manutencao do worker
+    // (capturarSnapshotEstoqueDiario). Por isso fica fora do FATO_CATALOG, como
+    // o fato_build_state (que e estado interno, nao um fato de negocio).
     const fatosSchema = [...schema.matchAll(/@@map\("(fato_[a-z_]+)"\)/g)]
       .map((m) => m[1])
-      .filter((f) => f !== "fato_build_state")
+      .filter((f) => f !== "fato_build_state" && f !== "fato_estoque_saldo_snapshot")
       .sort();
     const fatosCatalogo = FATO_CATALOG.map((f) => f.nome).sort();
     expect(fatosCatalogo).toEqual(fatosSchema);

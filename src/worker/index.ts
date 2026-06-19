@@ -36,12 +36,14 @@ import { DIRECTED_SYNC_QUEUE_NAME } from "../../mcp/sync/queue";
 import type { DirectedSyncJob } from "../../mcp/sync/queue";
 import { cleanupExpiredIdempotency } from "./cleanup/idempotency";
 import { cleanupAuditLog } from "./cleanup/audit-log";
+import { capturarSnapshotEstoqueDiario } from "./fatos/snapshot-estoque-diario";
 
 export const MAINTENANCE_QUEUE = "maintenance";
 export const JOB_CLEANUP_IDEMPOTENCY = "cleanup-idempotency";
 export const JOB_CLEANUP_MCP_IDEMPOTENCY = "cleanup-mcp-idempotency";
 export const JOB_CLEANUP_AUDIT_LOG = "cleanup-audit-log";
 export const JOB_REFRESH_USD_BRL = "refresh-usd-brl-ptax";
+export const JOB_SNAPSHOT_ESTOQUE = "snapshot-estoque-diario";
 // Nome do scheduler legado da heurística (ARRANCADA): mantido só como literal
 // pra purgar qualquer job repetível antigo que ainda esteja no Redis.
 const LEGACY_JOB_AUTO_HEURISTIC = "quality-auto-heuristic";
@@ -152,6 +154,18 @@ const maintenanceWorker = new Worker(
           `${result.deleted} deletados`,
       );
       return result;
+    }
+    if (job.name === JOB_SNAPSHOT_ESTOQUE) {
+      try {
+        const r = await capturarSnapshotEstoqueDiario(prisma);
+        console.log(
+          `[maintenance] snapshot estoque ${r.dataRef}: ${r.linhas} linhas capturadas`,
+        );
+        return { ok: true, ...r };
+      } catch (err) {
+        console.error("[maintenance] falha no snapshot de estoque:", err);
+        return { ok: false, error: (err as Error).message };
+      }
     }
     if (job.name === LEGACY_JOB_AUTO_HEURISTIC) {
       // Heurística ARRANCADA: a perícia é exclusivamente do Claude Code headless
@@ -438,6 +452,17 @@ async function bootstrap(): Promise<void> {
     { name: JOB_REFRESH_USD_BRL },
   );
   await maintenanceQueue.add(JOB_REFRESH_USD_BRL, {});
+
+  // Snapshot DIÁRIO do saldo de estoque (série histórica) , 09:00 BRT (12:00 UTC),
+  // hora em que a data UTC e a BRT coincidem. Também dispara no boot para começar
+  // a história imediatamente (cada dia sem captura = um dia exato perdido).
+  await maintenanceQueue.upsertJobScheduler(
+    JOB_SNAPSHOT_ESTOQUE,
+    { pattern: "0 12 * * *" },
+    { name: JOB_SNAPSHOT_ESTOQUE },
+  );
+  await maintenanceQueue.add(JOB_SNAPSHOT_ESTOQUE, {});
+  console.log("[worker] cron de snapshot diário de estoque agendado (09:00 BRT)");
   console.log("[worker] cron de PTAX USD/BRL agendado (diário 18:30 BRT) + refresh inicial");
 
   // Heurística arrancada: purga (uma vez) qualquer scheduler legado no Redis.
