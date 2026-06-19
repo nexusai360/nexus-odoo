@@ -56,15 +56,23 @@ export function compartilhaTrigramaCom(texto: string, originais: string[]): bool
   return false;
 }
 
-/** Palavra capitalizada que NAO esta no allowlist de negocio = provavel nome proprio. */
+/**
+ * Palavra capitalizada FORA do inicio de frase e NAO no allowlist = provavel nome proprio.
+ * Ignora capitalizacao de inicio de frase (ex.: "Usuario prefere...", "Prefere ver...") para
+ * nao gerar falso-positivo em todo destilado , a inicial de frase e maiuscula por gramatica,
+ * nao por ser nome proprio. Ainda pega "Smartfit"/"Johnson" no meio do texto.
+ */
 function temNomeProprioSuspeito(texto: string): boolean {
-  const palavras = texto.split(/\s+/);
-  for (const p of palavras) {
-    const limpa = p.replace(/[^A-Za-zÀ-ÿ]/g, "");
-    if (limpa.length >= 3 && /^[A-ZÀ-Þ]/.test(limpa)) {
-      const base = normalizar(limpa);
-      if (!ALLOWLIST_NEGOCIO.includes(base)) return true;
+  const tokens = texto.split(/\s+/).filter(Boolean);
+  let inicioDeFrase = true; // o 1o token e inicio de frase
+  for (const tok of tokens) {
+    const limpa = tok.replace(/[^A-Za-zÀ-ÿ]/g, "");
+    const capitalizada = limpa.length >= 3 && /^[A-ZÀ-Þ]/.test(limpa);
+    if (capitalizada && !inicioDeFrase && !ALLOWLIST_NEGOCIO.includes(normalizar(limpa))) {
+      return true;
     }
+    // proxima palavra e inicio de frase se este token terminou com pontuacao final.
+    inicioDeFrase = /[.!?;:]$/.test(tok);
   }
   return false;
 }

@@ -48,6 +48,9 @@ describe("violaPrivacidade", () => {
       violaPrivacidade("usuario prefere faturamento por empresa e acompanha estoque", []),
     ).toBe(false);
   });
+  it("NAO acusa capitalizacao de inicio de frase (gramatica, nao nome proprio)", () => {
+    expect(violaPrivacidade("Usuario prefere faturamento por empresa. Gosta de detalhe.", [])).toBe(false);
+  });
   it("allowlist cobre os termos chave", () => {
     expect(ALLOWLIST_NEGOCIO).toEqual(expect.arrayContaining(["faturamento", "empresa", "estoque"]));
   });
