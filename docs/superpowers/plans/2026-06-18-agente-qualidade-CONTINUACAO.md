@@ -92,7 +92,13 @@ endpoint separado). Largar o 5.4-nano de imagem.
 Correção/julgamento NUNCA via API OpenAI (gasta token). Sempre offline, aqui no cloud
 (Claude). Validador fica em `shadow`. Não ligar nada que faça retry/correção via request.
 
-## NOVA LEVA (usuário 2026-06-19, prints) , perícia de consistência/UI PENDENTE
+## NOVA LEVA (usuário 2026-06-19, prints) , ✅ ENTREGUE E EM PROD (PR #138, 2026-06-19)
+
+> N1, N2, N3, N4 (a+b) e P4 abaixo foram TODOS implementados, validados
+> (tsc 0 / eslint 0 erros / jest 3147 passed) e deployados em produção
+> (ship.py -> PR #138 -> main; rollout forçado via deploy-portainer.py;
+> prod /api/health 200). Sem mudança de schema. Detalhes do que foi feito por
+> item no commit correspondente e no docs/agents/HISTORY.md (2026-06-19).
 N1. **Indicador de áudio transcrito inconsistente.** Hoje, em alguns lugares aparece o
    ÍCONE bonito (print 1) e em outros vem o TEXTO "áudio transcrito" embaixo da mensagem
    (print 3). Padronizar: SEMPRE o mesmo ícone (estilo print 1) , na bubble E no

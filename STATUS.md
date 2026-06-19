@@ -1,5 +1,17 @@
 # STATUS — nexus-odoo
 
+> **2026-06-19 , PERÍCIA UI do Agente Nex (N1-N4 + P4) ENTREGUE E EM PRODUÇÃO** (PR #138, prod
+> `/api/health` `{"ok":true}`, rollout forçado app+mcp+worker em `latest`). N1: indicador de áudio
+> unificado (mesmo ícone Mic na bubble e no monitoramento). N2: botão de download da coluna Conversa
+> maior (size md) + hover violeta visível na sessão SELECIONADA. N3+N4b: `messagesSignature` do
+> bubble-monitor passou a assinar pelo CONTEÚDO das sugestões (antes só `.length`), consertando a
+> divergência de sugestões bubble × monitoramento e o realtime. N4a: bubble não pisca mais "sem sessão"
+> no load inicial (estado `restoring` + skeleton durante o restore async). P4: removidos os controles
+> DECORATIVOS de áudio/imagem (provedor/modelo/chave não lidos em runtime , transcrição usa
+> gpt-4o-mini-transcribe fixo + chave OpenAI ativa da conversa; imagem vai pro modelo da conversa com
+> visão); cada card mantém só o checkpoint + nota honesta. Sem mudança de schema. tsc 0, eslint 0 erros,
+> jest 3147 passed.
+>
 > **Ponto de retomada entre sessões.** Atualizado em **2026-06-15** , Milestone **Faturamento Real
 > Consolidado COMPLETO e em produção** (Fases 1, 2, 2.5, 2.6, 3, 4 + fix de CI). Catálogo: **121 tools**
 > (112 de leitura, 9 de escrita), sobre **40 fato_\*** e **126 raw_\***. (Números antigos citados nas seções
