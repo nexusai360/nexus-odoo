@@ -19,7 +19,7 @@ describe("rodarProfileAggregateWith", () => {
       nowMs: NOW,
       queryCandidateStats: async () => [
         stat({ userId: "ok" }),
-        stat({ userId: "novato", conversations: 1 }), // abaixo do piso
+        stat({ userId: "novato", messages: 5 }), // abaixo do piso de mensagens
       ],
       queryUserRows: async (userId) => ({
         topics: [],
