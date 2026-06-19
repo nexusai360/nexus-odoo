@@ -1,5 +1,22 @@
 # STATUS — nexus-odoo
 
+> **2026-06-19 (handoff p/ nova sessão) , ESTOQUE HISTÓRICO COMPLETO + GAPS FECHADOS, EM PROD.**
+> Tudo desta sessão no ar (catálogo 123 tools, `/api/health` 200): notas sem CFOP (#144),
+> snapshot diário de estoque (#146, captura rodando, 1ª foto 19/06) e `estoque_comparativo`
+> (#148, comparação entre datas , precisa, flexível, honesta). Antes: correções de UI da bubble,
+> 16 avaliações julgadas (status, não human_status), CFOP bruto×real (#141), SPEC de
+> personalização por usuário (engatilhada).
+>
+> **PENDENTE / RETOMADA (2 frentes, ambas GATED):**
+> 1. **Tool "demanda em aberta" (comercial) , STANDBY aguardando respostas da Mariane.** Quando
+>    ela responder o mapa de etapas, seguir `docs/superpowers/specs/2026-06-19-demanda-em-aberta-CONTINUACAO.md`
+>    (tem as perguntas, o dado já investigado e o plano de build passo a passo). O usuário aciona.
+> 2. **Personalização adaptativa por usuário , só a comando do usuário.** Spec em
+>    `docs/superpowers/specs/2026-06-19-agente-personalizacao-por-usuario-SPEC-v1-DRAFT.md`.
+>
+> Nota: a comparação EXATA entre datas de estoque fica mais rica conforme as fotos diárias
+> acumulam (1ª = 19/06). Verificar amanhã que o cron diário (09:00 BRT) disparou em prod.
+
 > **2026-06-19 (leva 3) , CORREÇÃO DE VEREDITO + CFOP BRUTO×REAL, EM PRODUÇÃO** (PR #141, health 200).
 > (1) Julgamento do Claude agora grava em `status`+`razoes`+`judge_model` (não `human_status`): some o lápis
 > "Pendente→Correto" e o bloco Ajuste manual volta (o erro anterior setava human_status com status=PENDENTE).
