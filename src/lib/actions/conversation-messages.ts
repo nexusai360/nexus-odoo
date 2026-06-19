@@ -16,9 +16,17 @@ export interface ConversationMessageDto {
   role: "user" | "assistant" | "tool";
   content: string;
   createdAt: string;
+  /** Tipo da mensagem ("text" | "audio"). Restaura o selo "Áudio transcrito" na
+   *  bubble ao reabrir (a bubble viva sabia, o histórico recarregado não). */
+  kind?: string;
   /** Trilha de "Raciocinio" reconstruida do toolResults persistido (labels das
    *  tools consultadas). Vazio quando a mensagem nao consultou tools. */
   steps?: { label: string }[];
+  /** Sugestões EXATAS que a bubble exibiu nesta resposta (snapshot
+   *  suggestions-shown em ConversationQualityEvaluation). Restaura as chips ao
+   *  reabrir o histórico, em vez de cair no HARD_FALLBACK genérico , e bate com
+   *  o que o Monitoramento mostra (mesma fonte). */
+  suggestions?: string[];
   /** B1. Voto vigente do usuario atual sobre esta resposta (null/ausente = sem voto). */
   feedback?: {
     rating: "CORRETO" | "PARCIAL" | "ERRADO" | "ALUCINOU";
@@ -78,6 +86,7 @@ export async function getConversationMessages(
       id: true,
       role: true,
       content: true,
+      kind: true,
       createdAt: true,
       toolCalls: true,
     },
@@ -95,17 +104,36 @@ export async function getConversationMessages(
     ]),
   );
 
+  // Sugestões EXATAS exibidas por resposta (mesma fonte do Monitoramento):
+  // o snapshot suggestions-shown gravado em ConversationQualityEvaluation. Sem
+  // isso, ao reabrir o histórico a bubble caía no HARD_FALLBACK genérico e
+  // divergia do que o usuário viu ao vivo (e do que o monitor mostra).
+  const evals = await prisma.conversationQualityEvaluation.findMany({
+    where: { conversationId, assistantMessageId: { not: null } },
+    select: { assistantMessageId: true, suggestions: true },
+  });
+  const sugByMsg = new Map<string, string[]>();
+  for (const e of evals) {
+    if (!e.assistantMessageId) continue;
+    if (Array.isArray(e.suggestions) && e.suggestions.length > 0) {
+      sugByMsg.set(e.assistantMessageId, e.suggestions as string[]);
+    }
+  }
+
   return {
     ok: true,
     messages: messages.map((m) => {
       const steps = stepsFromToolCalls(m.toolCalls);
       const fb = fbByMsg.get(m.id) ?? null;
+      const suggestions = sugByMsg.get(m.id);
       return {
         id: m.id,
         role: m.role as ConversationMessageDto["role"],
         content: m.content,
+        kind: m.kind,
         createdAt: m.createdAt.toISOString(),
         ...(steps.length > 0 ? { steps } : {}),
+        ...(suggestions && suggestions.length > 0 ? { suggestions } : {}),
         ...(fb ? { feedback: fb } : {}),
       };
     }),

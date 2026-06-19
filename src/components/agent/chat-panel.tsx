@@ -326,6 +326,15 @@ export function ChatPanel({
           role: m.role as AgentMessageRole,
           content: m.content,
           createdAt: m.createdAt,
+          // Restaura o selo "Áudio transcrito" do usuário (kind="audio" no DB):
+          // mostra como texto + header de áudio (mesmo indicador do monitor),
+          // já que o blob de áudio não é persistido pra tocar de novo.
+          ...(m.role === "user" && m.kind === "audio" ? { isAudio: true } : {}),
+          // Restaura as sugestões EXATAS exibidas (snapshot), pra não cair no
+          // HARD_FALLBACK genérico ao reabrir e bater com o Monitoramento.
+          ...(m.suggestions && m.suggestions.length > 0
+            ? { suggestions: m.suggestions }
+            : {}),
           // B1. id real do DB (para o feedback) + voto vigente reexibido.
           dbMessageId: m.id,
           ...(m.feedback ? { feedback: m.feedback } : {}),
