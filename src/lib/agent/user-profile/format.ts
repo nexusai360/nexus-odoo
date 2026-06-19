@@ -44,6 +44,11 @@ export function formatUserProfileBlock(p: UserProfileData | null | undefined): s
       `Costuma perguntar sobre: ${prof.recurringQuestions.slice(0, MAX_RECURRING).map((q) => q.label).join(", ")}.`,
     );
   }
+  // Onda 2: incremento destilado (acordos/nuances). Entra como ultima LINHA, mas a CLAUSULA
+  // de precedencia continua sendo o ULTIMO elemento literal do bloco (posicao forte, recencia).
+  if (prof.interactionPrompt && prof.interactionPrompt.trim().length > 0) {
+    linhas.push(prof.interactionPrompt.trim());
+  }
 
   if (linhas.length === 0) return "";
   return linhas.join(" ") + " " + CLAUSULA_PRECEDENCIA;

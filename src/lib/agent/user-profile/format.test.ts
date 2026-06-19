@@ -29,6 +29,23 @@ describe("formatUserProfileBlock", () => {
   });
 });
 
+describe("formatUserProfileBlock , interactionPrompt (Onda 2)", () => {
+  it("inclui o texto destilado e mantem a clausula por ULTIMO", () => {
+    const comDestilado: UserProfileData = {
+      ...cheio,
+      interactionPrompt: "Prefere respostas curtas e ja com o comparativo do mes anterior.",
+    };
+    const out = formatUserProfileBlock(comDestilado);
+    expect(out).toContain("comparativo do mes anterior");
+    expect(out.endsWith(CLAUSULA_PRECEDENCIA)).toBe(true); // clausula segue sendo o final literal
+    expect(out.indexOf("comparativo")).toBeLessThan(out.indexOf(CLAUSULA_PRECEDENCIA));
+  });
+  it("perfil SO com interactionPrompt nao e vazio", () => {
+    const soDestilado: UserProfileData = { ...EMPTY_PROFILE, interactionPrompt: "Gosta de detalhe." };
+    expect(formatUserProfileBlock(soDestilado)).not.toBe("");
+  });
+});
+
 describe("formatProfileForChips", () => {
   it("vazio -> ''", () => {
     expect(formatProfileForChips(null)).toBe("");

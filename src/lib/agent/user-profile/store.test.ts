@@ -21,6 +21,7 @@ import {
   getUserAgentProfile,
   upsertUserAgentProfile,
   resetUserAgentProfile,
+  applyDistilled,
   PROFILE_CACHE_PREFIX,
 } from "./store";
 
@@ -75,6 +76,27 @@ describe("upsertUserAgentProfile", () => {
     const patterns = mockRedis.keys.mock.calls.map((c) => c[0]);
     expect(patterns.some((p: string) => p.startsWith(PROFILE_CACHE_PREFIX))).toBe(true);
     expect(patterns.some((p: string) => p.includes("welcome-suggestions"))).toBe(true);
+  });
+});
+
+describe("applyDistilled", () => {
+  it("grava SO o interactionPrompt (+carimbo), nunca presentationPrefs/determinISTICOS", async () => {
+    await applyDistilled("u1", { interactionPrompt: "Prefere respostas curtas." }, { model: "claude-profile-v1" });
+    const arg = mockPrisma.userAgentProfile.upsert.mock.calls[0][0];
+    expect(arg.update.interactionPrompt).toBe("Prefere respostas curtas.");
+    expect(arg.update.profileAppliedAt).toBeInstanceOf(Date);
+    // NAO toca os campos determinISTICOS (evita corrida com o job)
+    expect(arg.update.presentationPrefs).toBeUndefined();
+    expect(arg.update.topTopics).toBeUndefined();
+  });
+});
+
+describe("upsertUserAgentProfile NAO apaga interactionPrompt (regressao B2)", () => {
+  it("o upsert do job determinISTICO nao inclui interactionPrompt no update", async () => {
+    await upsertUserAgentProfile("u1", data);
+    const arg = mockPrisma.userAgentProfile.upsert.mock.calls[0][0];
+    expect(arg.update.interactionPrompt).toBeUndefined(); // preservado pelo Prisma
+    expect(arg.create.interactionPrompt).toBeUndefined();
   });
 });
 
