@@ -1,14 +1,7 @@
 #!/usr/bin/env python3
 # Aplica os vereditos do JUIZ (Claude, offline, NUNCA via OpenAI) nas avaliacoes
-# PENDENTE de PROD, do jeito CANONICO (igual aos scripts apply-r15-r16):
-#   status        = veredito (CORRETO|PARCIAL|ERRADO|FORA_DO_ESCOPO|FALHA_TECNICA)
-#   razoes        = diagnostico da pericia (texto)
-#   patterns      = taxonomia (vocab)
-#   judge_model   = claude-opus-4-8
-#   judge_version = manual-cloud-2026-06-19
-#   human_status  = NULL  (o lapisinho/ajuste manual e SO do superadmin na UI)
-# CORRIGE o erro anterior, que setava human_status (virava "ajuste manual"
-# Pendente->X com lapis e escondia o bloco de Ajuste manual).
+# PENDENTE de PROD, do jeito CANONICO: status + razoes + patterns + judge_model/
+# judge_version; human_status fica NULL (o lapis e so ajuste manual do superadmin).
 import importlib.util, json, urllib.parse, urllib.request
 
 spec = importlib.util.spec_from_file_location("dp", "scripts/deploy-portainer.py")
@@ -16,59 +9,54 @@ dp = importlib.util.module_from_spec(spec); spec.loader.exec_module(dp)
 base, token = dp.resolve_portainer(); ep = dp.find_endpoint(base, token)
 
 JUDGE_MODEL = "claude-opus-4-8"
-JUDGE_VERSION = "manual-cloud-2026-06-19"
+JUDGE_VERSION = "manual-cloud-2026-06-19b"
 
-# id -> (status, [patterns], razoes)
+# id -> (status, [patterns], razoes) , conversa da Mariane (comercial/demanda)
 V = {
-    "57e92e56-7b4b-4cd9-8531-70a0ba1349e9": (
-        "CORRETO", ["resposta_correta"],
-        "Faturamento real do mes correto: R$ 13.470.440,07 = R$ 21.650.500,90 bruto - "
-        "R$ 8.180.060,83 intragrupo. A conta fecha e a metodologia e a canonica (real = "
-        "bruto menos vendas entre empresas do grupo). Distinguiu real x bruto com clareza."),
-    "be0f250b-cdea-4fe5-90b0-398a518657fc": (
+    "84310de4-b935-4b34-83e8-fcb5b5b9127b": (
         "PARCIAL", [],
-        "Deu o faturamento BRUTO por empresa (a soma fecha em R$ 21,65M), mas nao sinalizou "
-        "que esse total inclui vendas intragrupo; o usuario precisou pedir o 'verdadeiro' no "
-        "turno seguinte. Dados corretos, faltou a ressalva de que nao e o faturamento real."),
-    "fa1032df-15ac-4657-8116-a95f2c74dc26": (
-        "CORRETO", ["resposta_correta"],
-        "Faturamento real por empresa (sem intragrupo): a soma das empresas fecha no total real "
-        "R$ 13.470.440,07 e o bruto menos o eliminado bate empresa a empresa. Refez no formato "
-        "pedido (verdadeiro), coerente com o turno anterior."),
-    "cf619889-3795-43af-81ef-dcd426971e43": (
-        "PARCIAL", [],
-        "Afirmou que as operacoes da JHT SP 'todas entram como venda' e que 'nao ha operacao de "
-        "nao venda', fechando em R$ 9.435.562,69. Isso nao reconcilia com a quebra por CFOP do "
-        "turno seguinte, que lista operacoes de NAO receita (retorno 5906, 6949, 2352). A "
-        "dimensao 'operacao' omitiu as nao-venda e o total nao casa com bruto nem com o real."),
-    "fddda534-0877-4664-8317-52fe3b5b0d71": (
-        "PARCIAL", [],
-        "A quebra por CFOP e internamente coerente (movimentado R$ 9.906.400,87 menos nao-receita "
-        "R$ 663.501,61 = R$ 9.242.899,26), MAS rotulou esse R$ 9.242.899,26 como 'faturamento "
-        "verdadeiro' da JHT SP, quando o verdadeiro (sem intragrupo) e R$ 8.974.046,14 (turno #3). "
-        "A quebra por CFOP entrega o BRUTO; chamar de 'verdadeiro' gera inconsistencia entre turnos."),
-    "03a63d1d-87a9-4020-aac5-2834a0f611bd": (
+        "Acertou o total da carteira em aberto (R$ 117.584.364,59 / 517 pedidos), mas para "
+        "'produto com mais demanda' trouxe o produto mais FATURADO do mes (T600X), nao a demanda "
+        "DENTRO dos pedidos em aberto , misturou duas bases. Foi honesto ao dizer que nao tem a "
+        "quebra por produto da carteira. A pergunta tinha 2 partes e a 2a foi respondida com base errada."),
+    "f3e6c0c7-abbc-4d76-81ff-dc3d7837e5f8": (
         "CORRETO", ["limitacao_real_declarada"],
-        "Limitacao honesta: nao ha tool para listar nota a nota as operacoes sem CFOP, e o agente "
-        "declarou isso sem inventar, confirmando o agregado (R$ 36.786,70 em 22 itens)."),
-    "823e3c3d-cef7-42ce-96aa-c699b3ef5d90": (
+        "Corrigiu-se com honestidade: reconheceu que o produto citado vinha do faturado e que nao "
+        "consegue fechar a quebra por produto dentro da carteira em aberto. Sem invencao."),
+    "888b2842-62c1-4a22-aa6f-40a21a6c0a49": (
         "CORRETO", ["resposta_correta"],
-        "Top cliente do mes respondido de forma direta e no formato certo (Smartfit, R$ 1.649.165,00 "
-        "em 3 notas), a partir de uma unica tool, sem inconsistencia interna."),
-    "c3b647b2-dd1d-46fd-8d75-bbba5c30026c": (
-        "CORRETO", ["limitacao_real_declarada"],
-        "Honesto sobre nao ter snapshot historico de estoque para comparar mes a mes; deu o estoque "
-        "atual (R$ 45.954.084,22, 1.886 produtos, 168 negativos) e nao inventou a variacao. Gap real "
-        "de produto (falta snapshot de fechamento)."),
+        "Explicou o criterio de 'aberto' (fora de concluido, cancelado e rascunho = carteira ativa) "
+        "de forma clara e consistente com o numero ja dado."),
+    "aa0dceae-54dd-4064-84bb-542921ec90dd": (
+        "CORRETO", ["resposta_correta"],
+        "Otimo enquadramento de negocio: separou 'carteira ativa por etapa' de 'sem nota fiscal ainda', "
+        "explicou quando usar cada um e o risco de misturar. Conducao consultiva correta."),
+    "fd1e5847-0a94-48d8-b2a0-90031b6bd0fc": (
+        "CORRETO", ["resposta_correta"],
+        "Estruturou bem a definicao de 'demanda em aberta' trazida pela usuaria (aprovado + financeiro "
+        "lancado + sem carregamento/NF), alinhando o vocabulario de negocio. Conversacionalmente correto."),
+    "6f523142-9bcf-4cef-af6c-ec53bc4ca30a": (
+        "PARCIAL", [],
+        "Ao pedir para RECALCULAR com a definicao de demanda em aberta, registrou lacuna e respondeu "
+        "'nao tenho dados suficientes'. Honesto e registrou o gap (Caminho 3a, correto), MAS o 'nao tenho "
+        "dados' subestima: existe fato_pedido com etapas + vrNf (0=nao faturado). Falta a CAPACIDADE de "
+        "mapear quais etapas = demanda em aberta (aprovado + financeiro lancado + nao carregado). Gap de "
+        "produto real -> tool/criterio de demanda em aberta (item de spec, exige pericia das etapas com o cliente)."),
+    "ecee1875-5598-4309-8d98-4906a8aa8af9": (
+        "CORRETO", ["resposta_correta"],
+        "Posicao financeira respondida com profundidade e formato correto (caixa -R$ 28,3M, a receber "
+        "R$ 65,8M, a pagar R$ 87,3M, coberturas -0,32/0,43), com leitura critica honesta."),
+    "fdb696af-9051-4e7c-a700-63c17c58e0a1": (
+        "CORRETO", ["resposta_correta"],
+        "Distinguiu corretamente o lider por QUANTIDADE (Weverton, 102 pedidos) do lider por VALOR "
+        "(Jonatas, R$ 16,46M / 61) e avisou que a ordenacao era por valor. Resposta correta e transparente."),
 }
 
 def q(s: str) -> str:
     return "'" + s.replace("'", "''") + "'"
 
 def arr(xs):
-    if not xs:
-        return "ARRAY[]::text[]"
-    return "ARRAY[" + ",".join(q(x) for x in xs) + "]::text[]"
+    return "ARRAY[]::text[]" if not xs else "ARRAY[" + ",".join(q(x) for x in xs) + "]::text[]"
 
 stmts = []
 for vid, (status, patterns, razoes) in V.items():
