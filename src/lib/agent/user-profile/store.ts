@@ -8,9 +8,15 @@
  * da key), sem importar o modulo de welcome , evita ciclo e mantem o worker leve.
  */
 
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { redis } from "@/lib/redis";
 import type { UserProfileData, TopTopic, TopKeyword, RecurringQuestion, PresentationPrefs } from "./types";
+
+/** Os campos derivados sao Json no Prisma; cast estreito para o tipo de input. */
+function asJson(v: unknown): Prisma.InputJsonValue {
+  return v as Prisma.InputJsonValue;
+}
 
 export const PROFILE_CACHE_PREFIX = "nex:user-profile:";
 export const PROFILE_CACHE_TTL_S = 5 * 60;
@@ -78,11 +84,11 @@ export async function upsertUserAgentProfile(
 ): Promise<void> {
   const now = new Date();
   const fields = {
-    topTopics: data.topTopics,
-    topKeywords: data.topKeywords,
+    topTopics: asJson(data.topTopics),
+    topKeywords: asJson(data.topKeywords),
     preferredDomains: data.preferredDomains,
-    recurringQuestions: data.recurringQuestions,
-    presentationPrefs: data.presentationPrefs,
+    recurringQuestions: asJson(data.recurringQuestions),
+    presentationPrefs: asJson(data.presentationPrefs),
     profileBuiltAt: now,
     ...(meta?.lastLearnedModel ? { lastLearnedModel: meta.lastLearnedModel } : {}),
   };
@@ -99,10 +105,10 @@ export async function resetUserAgentProfile(userId: string): Promise<void> {
     where: { userId },
     data: {
       interactionPrompt: null,
-      presentationPrefs: {},
-      recurringQuestions: [],
-      topTopics: [],
-      topKeywords: [],
+      presentationPrefs: asJson({}),
+      recurringQuestions: asJson([]),
+      topTopics: asJson([]),
+      topKeywords: asJson([]),
       preferredDomains: [],
       quarantinedAt: new Date(),
       version: { increment: 1 },
