@@ -23,7 +23,7 @@ describe("isEligibleCandidate", () => {
 describe("selectEligible", () => {
   it("retorna so os userIds elegiveis", () => {
     const stats = [
-      { ...base, userId: "a", conversations: 1 }, // inelegivel
+      { ...base, userId: "a", messages: 5 }, // inelegivel (abaixo do piso de mensagens)
       { ...base, userId: "b" }, // elegivel
     ];
     expect(selectEligible(stats)).toEqual(["b"]);

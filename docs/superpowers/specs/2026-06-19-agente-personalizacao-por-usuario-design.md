@@ -213,8 +213,11 @@ que o role de runtime lê a tabela. Aplicar via `migrate deploy`.
    rejeita sequências longas de dígitos (CNPJ/CPF/valores), nomes próprios fora de um allowlist
    de termos de negócio, e trechos com alta similaridade (n-gram) a mensagens originais. Teste
    obrigatório com a conversa real da Mariane provando ausência de literais.
-6. **Piso de histórico (usuário novo):** não destila nada abaixo de **≥ 3 conversas E ≥ 10
-   mensagens**. Perfil vazio ⇒ **comportamento global atual** (degrada com elegância, declarado).
+6. **Piso de histórico (usuário novo):** calibrado contra o dado real (prod 2026-06-19: uso
+   in-app nascente, o usuário mais ativo tem 2 conversas / 28 mensagens). Contagem de conversas
+   é um gate ruim de engajamento; o sinal está nas mensagens. Piso vigente: **≥ 1 conversa E
+   ≥ 12 mensagens** (3 usuários reais passam a ter perfil hoje); sobe conforme o uso cresce.
+   Perfil vazio ⇒ **comportamento global atual** (degrada com elegância, declarado).
 7. **Identidade:** runtime atual é **in-app** (`runAgent` só chamado de `api/agent/stream` e
    `playground/stream`) , `userId` da sessão sempre presente, sem resolução de telefone. WhatsApp
    inbound é F5; regra forward-looking: **número não-resolvido ou ambíguo ⇒ sem perfil (global)**,
