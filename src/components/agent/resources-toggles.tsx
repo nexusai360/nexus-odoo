@@ -5,41 +5,30 @@
  * imagem e sugestões clicáveis.
  *
  * - Áudio e imagem usam o controle de checkpoint de 3 estados (off / playground
- *   / produção). Quando o checkpoint != OFF, a seção expande com seletores
- *   próprios de Provedor + Modelo (modelo dedicado, independente do de
- *   produção). Lista apenas modelos que entendem áudio (resp. imagem).
+ *   / produção) , esse é o único controle que APLICA em runtime (libera/bloqueia
+ *   a entrada). Não há provedor/modelo dedicado: a transcrição usa modelo fixo
+ *   (gpt-4o-mini-transcribe, fallback whisper-1) pela credencial OpenAI ativa da
+ *   conversa; as imagens vão para o próprio modelo da conversa (com visão). Os
+ *   antigos seletores de provedor/modelo/chave de áudio e imagem eram
+ *   decorativos (não eram lidos em runtime) e foram removidos.
  * - Sugestões continua um toggle on/off simples.
  *
  * Persiste via updateAgentResources / updateAgentSettings de agent-config.ts.
  */
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { Gauge, Image as ImageIcon, KeyRound, MessageSquare, Mic } from "lucide-react";
+import { Gauge, Image as ImageIcon, MessageSquare, Mic } from "lucide-react";
 import { ReasoningCard } from "@/components/agent/reasoning-card";
 import { ResourceCard } from "@/components/agent/resource-card";
 import { ContextWindowCard } from "@/components/agent/context-window-card";
 import { RouterConfigCard } from "@/components/agent/router-config-card";
-import { ApiKeySelect } from "@/components/ui/api-key-select";
 import type { ModelEntry as ModelEntryType } from "@/lib/agent/llm/catalog";
 import { toast } from "sonner";
 import {
   checkpointIconClass,
   type CheckpointState,
 } from "@/components/ui/feature-checkpoint";
-import { CustomSelect } from "@/components/ui/custom-select";
-import { SearchableSelect } from "@/components/ui/searchable-select";
-import { TierBadge } from "@/components/ui/tier-badge";
-import {
-  PROVIDER_META,
-  PROVIDERS_WITH_AUDIO,
-  PROVIDERS_WITH_VISION,
-  listAudioModels,
-  listVisionModels,
-  modelDescription,
-  type ModelEntry,
-} from "@/lib/agent/llm/catalog";
 import { updateAgentResources } from "@/lib/actions/agent-config";
 import { cn } from "@/lib/utils";
 import type { LlmProvider, ReasoningEffort } from "@/lib/agent/llm/types";
@@ -101,17 +90,6 @@ interface ResourcesTogglesProps {
   embeddingOptions?: Array<{ id: string; label: string; maskedSuffix?: string | null }>;
 }
 
-const DEFAULT_AUDIO_MODEL = "gpt-4o-mini-transcribe";
-
-function modelOptions(models: ModelEntry[]) {
-  return models.map((m) => ({
-    value: m.id,
-    label: m.label,
-    notes: modelDescription(m),
-    endAdornment: <TierBadge tier={m.tier} />,
-  }));
-}
-
 export function ResourcesToggles({
   initial,
   credentialsByProvider = {},
@@ -152,47 +130,9 @@ export function ResourcesToggles({
     initial.suggestionsCheckpoint,
   );
 
-  // G6: filtra provedores cadastrados para os que entendem áudio/imagem.
-  const audioProviders = useMemo(
-    () =>
-      PROVIDERS_WITH_AUDIO.filter(
-        (p) => (credentialsByProvider[p]?.length ?? 0) > 0,
-      ),
-    [credentialsByProvider],
-  );
-  const imageProviders = useMemo(
-    () =>
-      PROVIDERS_WITH_VISION.filter(
-        (p) => (credentialsByProvider[p]?.length ?? 0) > 0,
-      ),
-    [credentialsByProvider],
-  );
-
-  const [audioProvider, setAudioProvider] = useState<LlmProvider | "">(
-    (initial.audioProvider as LlmProvider | null) ??
-      audioProviders[0] ??
-      "",
-  );
-  const [audioModel, setAudioModel] = useState<string>(
-    initial.audioModel ?? (audioProvider ? listAudioModels(audioProvider as LlmProvider)[0]?.id ?? DEFAULT_AUDIO_MODEL : ""),
-  );
-  const [audioCredentialId, setAudioCredentialId] = useState<string>(
-    initial.audioCredentialId ??
-      (audioProvider ? credentialsByProvider[audioProvider]?.[0]?.id ?? "" : ""),
-  );
-
-  const [imageProvider, setImageProvider] = useState<LlmProvider | "">(
-    (initial.imageProvider as LlmProvider | null) ??
-      imageProviders[0] ??
-      "",
-  );
-  const [imageModel, setImageModel] = useState<string>(
-    initial.imageModel ?? (imageProvider ? listVisionModels(imageProvider as LlmProvider)[0]?.id ?? "" : ""),
-  );
-  const [imageCredentialId, setImageCredentialId] = useState<string>(
-    initial.imageCredentialId ??
-      (imageProvider ? credentialsByProvider[imageProvider]?.[0]?.id ?? "" : ""),
-  );
+  // Áudio e imagem não têm mais provedor/modelo/chave dedicados (eram
+  // decorativos , não lidos em runtime). Os valores persistidos antigos são
+  // repassados intactos no save (sem migração); só o checkpoint é editável aqui.
 
   const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffort | "">(
     (initial.reasoningEffort as ReasoningEffort | null) ?? "",
@@ -220,12 +160,6 @@ export function ResourcesToggles({
       imageCheckpoint: CheckpointState;
       feedbackCheckpoint: CheckpointState;
       suggestionsCheckpoint: CheckpointState;
-      audioProvider: string;
-      audioModel: string;
-      audioCredentialId: string | null;
-      imageProvider: string;
-      imageModel: string;
-      imageCredentialId: string | null;
       reasoningEffort: ReasoningEffort | null;
       reasoningCheckpoint: CheckpointState;
       maxSuggestions: number;
@@ -243,18 +177,13 @@ export function ResourcesToggles({
         feedbackCheckpoint: next.feedbackCheckpoint ?? feedbackCp,
         kbCheckpoint: initial.kbCheckpoint,
         suggestionsCheckpoint: next.suggestionsCheckpoint ?? suggestionsCp,
-        audioProvider: next.audioProvider ?? audioProvider ?? null,
-        audioModel: next.audioModel ?? audioModel ?? null,
-        audioCredentialId:
-          next.audioCredentialId !== undefined
-            ? next.audioCredentialId
-            : audioCredentialId || null,
-        imageProvider: next.imageProvider ?? imageProvider ?? null,
-        imageModel: next.imageModel ?? imageModel ?? null,
-        imageCredentialId:
-          next.imageCredentialId !== undefined
-            ? next.imageCredentialId
-            : imageCredentialId || null,
+        // Decorativos: repassa intacto o que veio do banco (sem migração).
+        audioProvider: initial.audioProvider,
+        audioModel: initial.audioModel,
+        audioCredentialId: initial.audioCredentialId,
+        imageProvider: initial.imageProvider,
+        imageModel: initial.imageModel,
+        imageCredentialId: initial.imageCredentialId,
         reasoningEffort:
           next.reasoningEffort !== undefined
             ? next.reasoningEffort
@@ -278,19 +207,6 @@ export function ResourcesToggles({
       router.refresh();
     });
   }
-
-  const audioModels = audioProvider
-    ? listAudioModels(audioProvider as LlmProvider)
-    : [];
-  const visionModels = imageProvider
-    ? listVisionModels(imageProvider as LlmProvider)
-    : [];
-  const audioCreds = audioProvider
-    ? credentialsByProvider[audioProvider] ?? []
-    : [];
-  const imageCreds = imageProvider
-    ? credentialsByProvider[imageProvider] ?? []
-    : [];
 
   return (
     <div className="space-y-5">
@@ -326,65 +242,16 @@ export function ResourcesToggles({
         loading={pending === "audio"}
         ariaLabel="Estado da entrada de áudio"
       >
-        {audioCp !== "OFF" && (
-          audioProviders.length === 0 ? (
-            <NoCredentialsCta provider="áudio" />
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-3">
-              <FieldBlock label="Provedor">
-                <CustomSelect
-                  aria-label="Provedor"
-                  value={audioProvider}
-                  onChange={(v) => {
-                    const p = v as LlmProvider;
-                    setAudioProvider(p);
-                    const firstModel = listAudioModels(p)[0]?.id ?? "";
-                    setAudioModel(firstModel);
-                    const firstCred = credentialsByProvider[p]?.[0]?.id ?? "";
-                    setAudioCredentialId(firstCred);
-                    persistResources(
-                      {
-                        audioProvider: p,
-                        audioModel: firstModel,
-                        audioCredentialId: firstCred || null,
-                      },
-                      "audio",
-                    );
-                  }}
-                  options={audioProviders.map((p) => ({
-                    value: p,
-                    label: PROVIDER_META[p].label,
-                  }))}
-                />
-              </FieldBlock>
-              <FieldBlock label="Modelo">
-                <SearchableSelect
-                  value={audioModel}
-                  onChange={(v) => {
-                    setAudioModel(v);
-                    persistResources({ audioModel: v }, "audio");
-                  }}
-                  options={modelOptions(audioModels)}
-                  placeholder="Selecionar modelo"
-                  searchPlaceholder="Buscar modelo…"
-                />
-              </FieldBlock>
-              <FieldBlock label="Chave de API">
-                <ApiKeySelect
-                  aria-label="Chave de API de áudio"
-                  value={audioCredentialId}
-                  onChange={(v) => {
-                    setAudioCredentialId(v);
-                    persistResources({ audioCredentialId: v || null }, "audio");
-                  }}
-                  options={audioCreds}
-                  provider={audioProvider || "openai"}
-                  providerLabel={audioProvider ? PROVIDER_META[audioProvider as LlmProvider].label : "OpenAI"}
-                />
-              </FieldBlock>
-            </div>
-          )
-        )}
+        {audioCp !== "OFF" ? (
+          <ConsolidatedNote>
+            A transcrição usa o modelo fixo{" "}
+            <b className="font-semibold text-foreground">gpt-4o-mini-transcribe</b>{" "}
+            (OpenAI), com fallback automático para{" "}
+            <b className="font-semibold text-foreground">whisper-1</b>, pela
+            credencial OpenAI ativa da conversa (a mesma do modelo de conversa).
+            Não há provedor ou modelo separado a configurar.
+          </ConsolidatedNote>
+        ) : null}
       </ResourceCard>
 
       {/* Entrada de imagem */}
@@ -405,65 +272,13 @@ export function ResourcesToggles({
         loading={pending === "image"}
         ariaLabel="Estado da entrada de imagem"
       >
-        {imageCp !== "OFF" && (
-          imageProviders.length === 0 ? (
-            <NoCredentialsCta provider="anexo" />
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-3">
-              <FieldBlock label="Provedor">
-                <CustomSelect
-                  aria-label="Provedor"
-                  value={imageProvider}
-                  onChange={(v) => {
-                    const p = v as LlmProvider;
-                    setImageProvider(p);
-                    const firstModel = listVisionModels(p)[0]?.id ?? "";
-                    setImageModel(firstModel);
-                    const firstCred = credentialsByProvider[p]?.[0]?.id ?? "";
-                    setImageCredentialId(firstCred);
-                    persistResources(
-                      {
-                        imageProvider: p,
-                        imageModel: firstModel,
-                        imageCredentialId: firstCred || null,
-                      },
-                      "image",
-                    );
-                  }}
-                  options={imageProviders.map((p) => ({
-                    value: p,
-                    label: PROVIDER_META[p].label,
-                  }))}
-                />
-              </FieldBlock>
-              <FieldBlock label="Modelo">
-                <SearchableSelect
-                  value={imageModel}
-                  onChange={(v) => {
-                    setImageModel(v);
-                    persistResources({ imageModel: v }, "image");
-                  }}
-                  options={modelOptions(visionModels)}
-                  placeholder="Selecionar modelo"
-                  searchPlaceholder="Buscar modelo…"
-                />
-              </FieldBlock>
-              <FieldBlock label="Chave de API">
-                <ApiKeySelect
-                  aria-label="Chave de API de imagem"
-                  value={imageCredentialId}
-                  onChange={(v) => {
-                    setImageCredentialId(v);
-                    persistResources({ imageCredentialId: v || null }, "image");
-                  }}
-                  options={imageCreds}
-                  provider={imageProvider || "openai"}
-                  providerLabel={imageProvider ? PROVIDER_META[imageProvider as LlmProvider].label : "OpenAI"}
-                />
-              </FieldBlock>
-            </div>
-          )
-        )}
+        {imageCp !== "OFF" ? (
+          <ConsolidatedNote>
+            As imagens enviadas são interpretadas pelo próprio{" "}
+            <b className="font-semibold text-foreground">modelo da conversa</b>{" "}
+            (com visão). Não há provedor ou modelo separado a configurar.
+          </ConsolidatedNote>
+        ) : null}
       </ResourceCard>
 
       {/* B1. Feedback do usuário , depois do anexo, antes das sugestões */}
@@ -582,33 +397,11 @@ export function ResourcesToggles({
 
 /* -------------------------------------------------------------------------- */
 
-function NoCredentialsCta({ provider }: { provider: "áudio" | "anexo" }) {
+// Nota informativa (substitui os antigos seletores decorativos de áudio/imagem):
+// explica, em linguagem natural, o que de fato roda em runtime.
+function ConsolidatedNote({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-col items-start gap-2 rounded-lg border border-dashed border-border/70 bg-muted/20 p-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-      <span>
-        Nenhuma chave de API cadastrada para provedores de {provider}.
-      </span>
-      <Link
-        href="/agente/chaves"
-        className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-violet-500/40 bg-violet-500/10 px-3 text-xs font-medium text-violet-700 transition-colors hover:bg-violet-500/20 dark:text-violet-300"
-      >
-        <KeyRound className="h-3.5 w-3.5" aria-hidden />
-        Nova chave
-      </Link>
-    </div>
-  );
-}
-
-function FieldBlock({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+    <div className="rounded-lg border border-dashed border-border/70 bg-muted/20 p-3 text-xs leading-relaxed text-muted-foreground">
       {children}
     </div>
   );

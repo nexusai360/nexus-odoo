@@ -153,6 +153,11 @@ export function ChatPanel({
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [isRecording, setIsRecording] = React.useState(false);
   const [audioFlight, setAudioFlight] = React.useState(false);
+  // N4a. True enquanto o histórico da conversa ATIVA está sendo restaurado do
+  // servidor na 1ª abertura. Sem isso, `messages` começa vazio e o painel
+  // piscava o welcome ("sem sessão") até o fetch async voltar. Inicia true
+  // quando já há uma conversa para restaurar (initialConversationId do server).
+  const [restoring, setRestoring] = React.useState<boolean>(!!externalConvId);
 
   const conversationIdRef = React.useRef<string | null>(externalConvId ?? null);
   // Track conversas criadas nesta sessao do componente para NAO recarregar
@@ -253,6 +258,7 @@ export function ChatPanel({
     if (!externalConvId) {
       // Nova conversa: limpa mensagens
       setMessages([]);
+      setRestoring(false);
       return;
     }
 
@@ -260,16 +266,21 @@ export function ChatPanel({
     // o estado local ja tem a primeira resposta com steps; recarregar
     // do banco perderia steps (nao persistidos) e apagaria o "Raciocinio".
     if (justCreatedConvIdsRef.current.has(externalConvId)) {
+      setRestoring(false);
       return;
     }
 
-    // Carrega histórico persistido para a conversa selecionada
+    // Carrega histórico persistido para a conversa selecionada. N4a: marca
+    // `restoring` para o painel mostrar o skeleton (e NÃO o welcome) enquanto
+    // o fetch async não volta , some o "piscar sem sessão" na 1ª abertura.
     let cancelled = false;
+    setRestoring(true);
     void (async () => {
       const result = await getConversationMessages(externalConvId);
       if (cancelled) return;
       if (!result.ok) {
         toast.error("Não foi possível carregar o histórico da conversa.");
+        setRestoring(false);
         return;
       }
       // Reconstroi a trilha "Raciocinio" no historico: as mensagens assistant
@@ -335,6 +346,7 @@ export function ChatPanel({
         pendingSteps = [];
       }
       setMessages(uiMessages);
+      setRestoring(false);
     })();
 
     return () => { cancelled = true; };
@@ -1020,7 +1032,11 @@ export function ChatPanel({
     ? { duration: 0 }
     : { type: "spring" as const, stiffness: 320, damping: 28 };
 
-  const showWelcome = messages.length === 0;
+  // N4a: só cai no welcome quando NÃO está restaurando. Durante o restore da
+  // conversa ativa (fetch async da 1ª abertura), mostra skeleton , nunca o
+  // "sem sessão", que piscava antes do histórico chegar.
+  const showWelcome = !restoring && messages.length === 0;
+  const showRestoring = restoring && messages.length === 0;
 
   // Aviso de "limpar sessao": conta mensagens trocadas (usuario + IA). Dispara
   // a partir de 24; apos dispensar, so volta +6 mensagens depois.
@@ -1172,6 +1188,8 @@ export function ChatPanel({
               onPick={(s) => void handleSend(s, { source: "suggestion" })}
               suggestions={welcomeSuggestionsForUi}
             />
+          ) : showRestoring ? (
+            <RestoringBlock />
           ) : (
             <div ref={contentRef} className="space-y-4">
               {messages.map((m, idx) => {
@@ -1538,6 +1556,34 @@ export function ChatPanel({
 }
 
 /* -------------------------------------------------------------------------- */
+
+// N4a. Skeleton enquanto o histórico da conversa ativa é restaurado na 1ª
+// abertura. Substitui o welcome nesse intervalo, pra não piscar "sem sessão"
+// numa conversa que existe. Bolhas alternadas (usuário à direita, IA à
+// esquerda) em pulse , dá a sensação de "carregando conversa", não de início.
+function RestoringBlock() {
+  return (
+    <div
+      className="space-y-4 pt-1"
+      role="status"
+      aria-label="Carregando conversa"
+    >
+      <div className="flex justify-end">
+        <div className="h-9 w-3/5 animate-pulse rounded-xl bg-violet-600/15" />
+      </div>
+      <div className="flex justify-start">
+        <div className="h-16 w-4/5 animate-pulse rounded-xl bg-muted" />
+      </div>
+      <div className="flex justify-end">
+        <div className="h-9 w-2/5 animate-pulse rounded-xl bg-violet-600/15" />
+      </div>
+      <div className="flex justify-start">
+        <div className="h-12 w-3/4 animate-pulse rounded-xl bg-muted" />
+      </div>
+      <span className="sr-only">Carregando conversa…</span>
+    </div>
+  );
+}
 
 function WelcomeBlock({
   onPick,
