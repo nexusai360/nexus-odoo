@@ -46,6 +46,8 @@ export interface UserProfileData {
   preferredDomains: string[];
   recurringQuestions: RecurringQuestion[];
   presentationPrefs: PresentationPrefs;
+  /** Texto curto destilado por LLM (Onda 2, host-side). null quando ainda nao destilado. */
+  interactionPrompt?: string | null;
 }
 
 /** Perfil vazio canonico (degradacao graciosa: usuario sem historico). */
@@ -65,6 +67,7 @@ export function isEmptyProfile(p: UserProfileData | null | undefined): boolean {
     p.topKeywords.length === 0 &&
     p.preferredDomains.length === 0 &&
     p.recurringQuestions.length === 0 &&
-    Object.keys(p.presentationPrefs).length === 0
+    Object.keys(p.presentationPrefs).length === 0 &&
+    !(p.interactionPrompt && p.interactionPrompt.trim().length > 0)
   );
 }

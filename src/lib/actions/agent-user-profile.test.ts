@@ -24,7 +24,9 @@ describe("getUserProfilesForAudit", () => {
         preferredDomains: ["fiscal"],
         presentationPrefs: { faturamento: { breakdownPreferido: "empresa" } },
         recurringQuestions: [{ label: "faturamento", count: 3, lastSeenAt: "x" }],
+        interactionPrompt: "Prefere respostas curtas.",
         profileBuiltAt: new Date("2026-06-19T00:00:00Z"),
+        profileAppliedAt: null,
         quarantinedAt: null,
         lastLearnedModel: "deterministico-v1",
         user: { name: "Mariane", email: "m@x.com" },
@@ -39,6 +41,7 @@ describe("getUserProfilesForAudit", () => {
       topTopics: ["faturamento"],
       breakdownPrefs: [{ familia: "faturamento", breakdown: "empresa" }],
       recurringLabels: ["faturamento"],
+      interactionPrompt: "Prefere respostas curtas.",
     });
   });
 
