@@ -59,6 +59,27 @@ describe("pickPersonalizedQuestions", () => {
     expect(out).toEqual(["Quanto faturamos no mês corrente?"]);
   });
 
+  test("profileExtras.preferredDomains poe o dominio preferido primeiro", () => {
+    const allTime = [
+      { toolName: "fiscal_faturamento_periodo", count: 50 }, // fiscal (mais usada)
+      { toolName: "estoque_saldo_produto", count: 30 }, // estoque (preferido)
+    ];
+    const out = pickPersonalizedQuestions(allTime, [], 3, undefined, {
+      preferredDomains: ["estoque"],
+    });
+    // mesmo com menor frequencia, estoque (dominio preferido) assume o slot 1
+    expect(out[0]).toBe("Qual o saldo de estoque dos produtos mais movimentados?");
+  });
+
+  test("sem profileExtras, ordem por frequencia preservada (legado)", () => {
+    const allTime = [
+      { toolName: "fiscal_faturamento_periodo", count: 50 },
+      { toolName: "estoque_saldo_produto", count: 30 },
+    ];
+    const out = pickPersonalizedQuestions(allTime, [], 1);
+    expect(out[0]).toBe("Quanto faturamos no mês corrente?");
+  });
+
   test("respeita max clampado em 1..5", () => {
     const allTime = Array.from({ length: 10 }, (_, i) => ({
       toolName: ["fiscal_faturamento_periodo", "estoque_saldo_produto"][i % 2],

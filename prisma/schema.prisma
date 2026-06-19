@@ -3295,10 +3295,11 @@ model ProcessedWhatsappMessage {
 //   C. Continuidade contextual (SuggestionInteraction + dedup runtime)
 //   D. Bullets-pergunta -> chips (sem persist novo; consolida extractor existente)
 
-/// Perfil agregado do usuario para personalizar sugestoes iniciais (Frente B).
-/// Atualizado por job BullMQ `agent-profile-build` (cron 04:30 + on-demand a cada
-/// 10 mensagens novas do usuario). Guarda apenas derivados (topicos, keywords) —
-/// nenhuma frase original do usuario.
+/// Perfil de interacao do usuario: personaliza prompt individual + sugestoes (welcome e por
+/// resposta). Camada DETERMINISTICA (Onda 1) atualizada pelo job BullMQ `profile-aggregate` no
+/// worker (SQL puro, sem claude/OpenAI, roda em prod). Camada DESTILADA por LLM (Onda 2,
+/// host-side) preenche interactionPrompt/presentationPrefs sutis. Guarda APENAS derivados ,
+/// nenhuma frase original do usuario (recurringQuestions.label = tema de vocabulario fechado).
 model UserAgentProfile {
   userId            String    @id @map("user_id") @db.Uuid
   /// [{topic, score, lastSeenAt}], ordenado por score (recencia x frequencia).
@@ -3311,6 +3312,20 @@ model UserAgentProfile {
   profileBuiltAt    DateTime? @map("profile_built_at")
   /// Versao do algoritmo de construcao. Incrementar forca rebuild.
   version           Int       @default(1)
+  /// Incremento destilado (texto curto <=900 chars), so deste usuario. DERIVADO, sem frase
+  /// original (parse filtra PII/verbatim/verbos de ocultacao). Onda 2.
+  interactionPrompt String?   @map("interaction_prompt")
+  /// Preferencias de APRESENTACAO (qual visao/breakdown), DEFAULTS, nunca filtros de recorte de
+  /// dado. Ex.: {"faturamento":{"breakdownPreferido":"empresa"}}.
+  presentationPrefs Json      @default("{}") @map("presentation_prefs")
+  /// [{label, count, lastSeenAt}] , perguntas recorrentes; label = tema de vocabulario FECHADO.
+  recurringQuestions Json     @default("[]") @map("recurring_questions")
+  /// Modelo/rotina da ultima destilacao (auditoria). Ex.: "claude-profile-v1".
+  lastLearnedModel  String?   @map("last_learned_model")
+  /// Circuit-breaker (Onda 2): sinal de qualidade base antes do perfil ativo.
+  qualityBaseline   Json?     @map("quality_baseline")
+  profileAppliedAt  DateTime? @map("profile_applied_at")
+  quarantinedAt     DateTime? @map("quarantined_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

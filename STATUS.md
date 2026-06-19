@@ -1,5 +1,43 @@
 # STATUS — nexus-odoo
 
+> **2026-06-19 (Onda 1 personalização) , PERSONALIZAÇÃO ADAPTATIVA POR USUÁRIO (camada
+> determinística) PRONTA, AGUARDANDO VALIDAÇÃO + DEPLOY (NÃO mergeado ainda).**
+> Metodologia completa cumprida (SPEC v1→2 reviews adversariais→v3; PLAN v1→2 reviews→v3; spike no
+> dado real). O Nex passa a aprender, por usuário e **offline (SQL puro no worker, sem OpenAI em
+> runtime)**: assuntos/domínios preferidos, **afinidade de breakdown por família** (faturamento
+> "por empresa" = a ESCOLHA da tool `_por_empresa`, não um arg , confirmado no dado real; não existe
+> arg `porEmpresa`), e perguntas recorrentes **normalizadas para vocabulário fechado (PII-safe por
+> construção)**. Injeta SÓ para aquele usuário: bloco `[Preferências deste usuário]` via
+> `montarConversa` (**cache-safe**, não toca o `systemPromptBase`), `profileHint` no
+> `enhanceWithChips` (bolhas por resposta) e viés de domínio no welcome. **NUNCA oculta dado:**
+> preferências são defaults de VISÃO, jamais filtros; a pergunta do turno sempre vence (cláusula no
+> bloco). Worker `JOB_PROFILE_AGGREGATE` (cron 1h via `bootstrap`, **roda em prod**). UI super_admin
+> read-only + reset em `/agente/monitoramento/personalizacao`. Schema: estende `user_agent_profiles`
+> (migration manual idempotente, aplicada em dev). Piso calibrado no dado real (1 conversa/12 msgs).
+> **Verificação:** tsc raiz+mcp 0, eslint 0, **jest 3193 passed**, **E2E real verde** (agregação +
+> não-verbatim Mariane-like + injeção cache-safe + calibração acha candidato). **FORA (Onda 2,
+> host-side):** destilação por LLM (`interactionPrompt`/prefs sutis/acordos da Mariane) +
+> circuit-breaker. Specs/plan: `docs/superpowers/{specs,plans}/2026-06-19-*personalizacao*`.
+> **PENDENTE DO USUÁRIO:** validar e autorizar o merge/deploy (PR aberto). Em prod, o
+> `JOB_PROFILE_AGGREGATE` roda no boot do worker; rebuild via CI no merge.
+
+> **2026-06-19 (handoff p/ nova sessão) , ESTOQUE HISTÓRICO COMPLETO + GAPS FECHADOS, EM PROD.**
+> Tudo desta sessão no ar (catálogo 123 tools, `/api/health` 200): notas sem CFOP (#144),
+> snapshot diário de estoque (#146, captura rodando, 1ª foto 19/06) e `estoque_comparativo`
+> (#148, comparação entre datas , precisa, flexível, honesta). Antes: correções de UI da bubble,
+> 16 avaliações julgadas (status, não human_status), CFOP bruto×real (#141), SPEC de
+> personalização por usuário (engatilhada).
+>
+> **PENDENTE / RETOMADA (2 frentes, ambas GATED):**
+> 1. **Tool "demanda em aberta" (comercial) , STANDBY aguardando respostas da Mariane.** Quando
+>    ela responder o mapa de etapas, seguir `docs/superpowers/specs/2026-06-19-demanda-em-aberta-CONTINUACAO.md`
+>    (tem as perguntas, o dado já investigado e o plano de build passo a passo). O usuário aciona.
+> 2. **Personalização adaptativa por usuário , só a comando do usuário.** Spec em
+>    `docs/superpowers/specs/2026-06-19-agente-personalizacao-por-usuario-SPEC-v1-DRAFT.md`.
+>
+> Nota: a comparação EXATA entre datas de estoque fica mais rica conforme as fotos diárias
+> acumulam (1ª = 19/06). Verificar amanhã que o cron diário (09:00 BRT) disparou em prod.
+
 > **2026-06-19 (leva 3) , CORREÇÃO DE VEREDITO + CFOP BRUTO×REAL, EM PRODUÇÃO** (PR #141, health 200).
 > (1) Julgamento do Claude agora grava em `status`+`razoes`+`judge_model` (não `human_status`): some o lápis
 > "Pendente→Correto" e o bloco Ajuste manual volta (o erro anterior setava human_status com status=PENDENTE).

@@ -37,10 +37,16 @@ export function buildEnhancePrompt(args: {
   agentResponse: string;
   recentHistoryText: string;
   maxContextual: number;
+  /** Resumo curto das preferencias do usuario (formatProfileForChips). Opcional. */
+  profileHint?: string;
 }): string {
+  const prefLine =
+    args.profileHint && args.profileHint.trim().length > 0
+      ? `\n- Preferencias deste usuario (priorize drill-downs nesses assuntos/recortes, sem forcar): ${args.profileHint.trim()}`
+      : "";
   return `Voce e um analista de UX para chat de IA. Recebe a resposta da IA e o historico recente; devolve JSON.
 
-Sua tarefa: gerar chips de pergunta (botoes clicaveis) para o usuario continuar a conversa.
+Sua tarefa: gerar chips de pergunta (botoes clicaveis) para o usuario continuar a conversa.${prefLine}
 
 Regras:
 
@@ -131,6 +137,8 @@ export async function enhanceWithChips(args: {
   agentResponse: string;
   recentHistory: ChatMessage[];
   maxContextual: number;
+  /** Resumo curto das preferencias do usuario (formatProfileForChips). Opcional. */
+  profileHint?: string;
   logCtx?: {
     conversationId?: string;
     userId?: string;
@@ -148,6 +156,7 @@ export async function enhanceWithChips(args: {
     agentResponse: args.agentResponse,
     recentHistoryText: historyText,
     maxContextual: args.maxContextual,
+    profileHint: args.profileHint,
   });
 
   const messages: ChatMessage[] = [

@@ -75,6 +75,48 @@ describe("montarConversa", () => {
     expect(dataItem.content).toContain("Data atual");
   });
 
+  test("perfil do usuario entra como item proprio logo apos o system", () => {
+    const { conversation } = montarConversa({
+      systemPromptBase: "REGRAS FIXAS",
+      historyMessages: [],
+      userMessage: "oi",
+      agoraBrt: "2026-06-19",
+      perfilUsuarioTexto: "Costuma consultar mais: fiscal. Ofereca por empresa.",
+    });
+    expect(conversation[0].role).toBe("system");
+    expect(conversation[1].role).toBe("user");
+    expect(conversation[1].content).toContain("[Preferências deste usuário]");
+    expect(conversation[1].content).toContain("por empresa");
+  });
+
+  test("cache-safe: o systemPromptBase e identico com e sem perfil", () => {
+    const sem = montarConversa({
+      systemPromptBase: "REGRAS FIXAS",
+      historyMessages: [],
+      userMessage: "oi",
+      agoraBrt: "2026-06-19",
+    });
+    const com = montarConversa({
+      systemPromptBase: "REGRAS FIXAS",
+      historyMessages: [],
+      userMessage: "oi",
+      agoraBrt: "2026-06-19",
+      perfilUsuarioTexto: "Costuma consultar mais: fiscal.",
+    });
+    expect(sem.conversation[0].content).toBe(com.conversation[0].content); // system base intacto
+  });
+
+  test("perfil vazio nao injeta bloco", () => {
+    const { conversation } = montarConversa({
+      systemPromptBase: "S",
+      historyMessages: [],
+      userMessage: "oi",
+      agoraBrt: "2026-06-19",
+      perfilUsuarioTexto: "",
+    });
+    expect(conversation.some((m) => m.content.includes("[Preferências deste usuário]"))).toBe(false);
+  });
+
   test("M.5: sem resumo, nenhum bloco de resumo e injetado", () => {
     const { conversation } = montarConversa({
       systemPromptBase: "S",
