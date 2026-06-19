@@ -1,5 +1,15 @@
 # STATUS — nexus-odoo
 
+> **2026-06-19 (leva 2) , CORREÇÕES DE UI DA BUBBLE + 8 AVALIAÇÕES JULGADAS, EM PRODUÇÃO** (PR #139,
+> prod `/api/health` `{"ok":true}`, rollout forçado). Bubble RECARREGADA agora bate com a viva e com o
+> monitoramento: getConversationMessages voltou a trazer `kind` e `suggestions` (mesmo snapshot que o
+> monitor lê), então o selo "Áudio transcrito" reaparece e as chips não caem mais no HARD_FALLBACK
+> genérico ao reabrir. Header "Conversa" do monitoramento realinhado (botão de download voltou a size sm
+> p/ a linha alinhar com Colaboradores/Sessões; hover violeta mantido). Avaliações: 8 PENDENTE de prod
+> julgadas OFFLINE pelo Claude (5 CORRETO + 3 PARCIAL); as 3 PARCIAL apontam que a quebra por CFOP/operação
+> entrega o BRUTO e às vezes é rotulada como "verdadeiro" (o real, sem intragrupo, é pairwise por empresa e
+> não fecha por CFOP). Gaps registrados: snapshot histórico de estoque e listagem nota-a-nota sem CFOP.
+>
 > **2026-06-19 , PERÍCIA UI do Agente Nex (N1-N4 + P4) ENTREGUE E EM PRODUÇÃO** (PR #138, prod
 > `/api/health` `{"ok":true}`, rollout forçado app+mcp+worker em `latest`). N1: indicador de áudio
 > unificado (mesmo ícone Mic na bubble e no monitoramento). N2: botão de download da coluna Conversa
