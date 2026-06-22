@@ -31,6 +31,8 @@ export interface UserRows {
   topics: RawTopicRow[];
   toolCalls: RawToolCallRow[];
   questions: RawQuestionRow[];
+  /** Textos crus das mensagens do usuario (p/ detectar verbosidade; nao sao persistidos). */
+  userTexts: string[];
 }
 
 export interface ProfileAggregateDeps {
@@ -151,7 +153,7 @@ async function queryUserRows(p: PrismaClient, userId: string): Promise<UserRows>
     .filter((r) => typeof r.toolName === "string" && r.toolName.length > 0)
     .map((r) => ({ toolName: r.toolName, count: Number(r.count), lastSeenMs: toMs(r.lastSeenMs) }));
 
-  return { topics, toolCalls, questions };
+  return { topics, toolCalls, questions, userTexts: msgRows.map((r) => r.content) };
 }
 
 /** Entrada real do job (usada pelo worker). */

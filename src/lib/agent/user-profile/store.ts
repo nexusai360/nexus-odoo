@@ -54,6 +54,7 @@ function rowToProfile(row: {
   preferredDomains: string[];
   recurringQuestions: unknown;
   presentationPrefs: unknown;
+  verbosidade?: string | null;
 }): UserProfileData {
   return {
     topTopics: (row.topTopics as TopTopic[]) ?? [],
@@ -61,6 +62,9 @@ function rowToProfile(row: {
     preferredDomains: row.preferredDomains ?? [],
     recurringQuestions: (row.recurringQuestions as RecurringQuestion[]) ?? [],
     presentationPrefs: (row.presentationPrefs as PresentationPrefs) ?? {},
+    ...(row.verbosidade === "curto" || row.verbosidade === "detalhado"
+      ? { verbosidade: row.verbosidade }
+      : {}),
   };
 }
 
@@ -84,6 +88,7 @@ export async function getUserAgentProfile(userId: string): Promise<UserProfileDa
           preferredDomains: true,
           recurringQuestions: true,
           presentationPrefs: true,
+          verbosidade: true,
         },
       }),
       DB_READ_TIMEOUT_MS,
@@ -114,6 +119,7 @@ export async function upsertUserAgentProfile(
     preferredDomains: data.preferredDomains,
     recurringQuestions: asJson(data.recurringQuestions),
     presentationPrefs: asJson(data.presentationPrefs),
+    verbosidade: data.verbosidade ?? null, // job e dono: null quando sem sinal (stand-by)
     profileBuiltAt: now,
     ...(meta?.lastLearnedModel ? { lastLearnedModel: meta.lastLearnedModel } : {}),
   };
@@ -135,6 +141,7 @@ export async function resetUserAgentProfile(userId: string): Promise<void> {
       topTopics: asJson([]),
       topKeywords: asJson([]),
       preferredDomains: [],
+      verbosidade: null,
       quarantinedAt: new Date(),
       version: { increment: 1 },
     },

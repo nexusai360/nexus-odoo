@@ -24,6 +24,7 @@ describe("rodarProfileAggregateWith", () => {
       queryUserRows: async (userId) => ({
         topics: [],
         questions: [],
+        userTexts: userId === "ok" ? ["resume aí", "direto ao ponto", "só o total"] : [],
         toolCalls:
           userId === "ok"
             ? [{ toolName: "fiscal_faturamento_por_empresa", count: 3, lastSeenMs: NOW }]
@@ -39,13 +40,14 @@ describe("rodarProfileAggregateWith", () => {
     // usuario sem topic_tags ainda deriva preferredDomains via tool_calls
     expect(upserts[0].data.preferredDomains).toContain("fiscal");
     expect(upserts[0].data.presentationPrefs.faturamento?.breakdownPreferido).toBe("empresa");
+    expect(upserts[0].data.verbosidade).toBe("curto"); // pedidos de concisao nos userTexts
   });
 
   it("retorna 0 quando nao ha candidatos", async () => {
     const res = await rodarProfileAggregateWith({
       nowMs: NOW,
       queryCandidateStats: async () => [],
-      queryUserRows: async () => ({ topics: [], questions: [], toolCalls: [] }),
+      queryUserRows: async () => ({ topics: [], questions: [], toolCalls: [], userTexts: [] }),
       upsert: async () => {},
     });
     expect(res.atualizados).toBe(0);

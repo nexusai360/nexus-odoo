@@ -44,6 +44,13 @@ export function formatUserProfileBlock(p: UserProfileData | null | undefined): s
       `Costuma perguntar sobre: ${prof.recurringQuestions.slice(0, MAX_RECURRING).map((q) => q.label).join(", ")}.`,
     );
   }
+  if (prof.verbosidade) {
+    linhas.push(
+      prof.verbosidade === "curto"
+        ? "Costuma preferir respostas curtas e diretas."
+        : "Costuma preferir respostas detalhadas.",
+    );
+  }
   if (linhas.length === 0) return "";
   return linhas.join(" ") + " " + CLAUSULA_PRECEDENCIA;
 }
