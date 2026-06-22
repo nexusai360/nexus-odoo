@@ -1,26 +1,24 @@
 # STATUS — nexus-odoo
 
-> **2026-06-19 (Onda 2 personalização) , INFRA DA DESTILAÇÃO POR LLM PRONTA; ROTINA DESLIGADA
-> (gated em volume).** Onda 1 já EM PROD (3 perfis). A Onda 2 constrói a camada destilada
-> host-side (Claude, nunca OpenAI runtime) com guardrails fortes, mas a **rotina de destilação
-> fica DESLIGADA** por decisão das 2 reviews adversariais (4 usuários/73 msgs é pouco → ruído/PII;
-> o caso da Mariane depende da tool comercial em standby). Entregue (TDD): **pii-guard**
-> (bloqueia PII/verbatim , dígitos/email/nome-próprio/trigrama default-deny, ignora capitalização
-> de início de frase), **distill-parse** (rejeita verbos de ocultação incl. paráfrase + PII +
-> tamanho + breakdown fora de allowlist), **read-path** do `interactionPrompt` (cache v2),
-> **applyDistilled** (grava só o texto, nunca `presentationPrefs` , sem corrida com o job
-> determinístico; teste de regressão garante), **circuit-breaker** (`guard.piorou`, backstop
-> honesto , em prod o sinal é escasso/host-side, defesa primária = UI+reset manual), **runner
-> host-side** (gated, NÃO agendado) + **script IO** `--dump`/`--apply` (apply recarrega originais
-> p/ anti-verbatim, fail-closed), **UI** de auditoria mostra o texto destilado. **Verificação:**
-> tsc raiz+mcp 0, eslint 0, **jest 3223 passed**, **E2E real verde** (parse+guardrails+
-> applyDistilled+anti-corrida+format+breaker). Sem migration nova. **PARA LIGAR no futuro**
-> (quando houver volume): host-side `npx tsx --env-file=.env.local scripts/distill-user-profiles.ts
-> --dump` → destilar com Claude → `--apply` (revalida tudo). Specs/plan:
-> `docs/superpowers/{specs,plans}/2026-06-19-*personalizacao*` (onda2-plan tem o changelog dos reviews).
+> **2026-06-21 (PIVOT da personalização) , removida a camada de "resumo por IA"; o feature é o
+> RASTREADOR CONTÍNUO POR PARÂMETROS (sempre ligado, sem dado pessoal), a EXPANDIR.**
+> Decisão do usuário: a abordagem certa NÃO é uma IA resumir as conversas (isso obrigava a tratar
+> dado pessoal e virava um liga/desliga por volume , arcaico). A personalização é **aprender
+> preferências continuamente, por parâmetro, conforme as mensagens fluem**, com **stand-by por
+> item** (cada preferência só "forma opinião" quando tem sinal suficiente pra ela). Isso é
+> exatamente a camada determinística que JÁ está no ar. **Removida** toda a Etapa 2 (LLM
+> host-side): `pii-guard`, `distill-parse`, `distill-prompt`, `guard`/circuit-breaker,
+> `distill-runner`, `scripts/distill-user-profiles.ts`, `e2e-user-profile-distill.ts`,
+> `applyDistilled`, e o campo `interactionPrompt` de types/store/format/UI/action. As colunas
+> dormentes em prod (`interaction_prompt`/`quality_baseline`/`profile_applied_at`) ficam sem uso
+> (não dropadas , risco em prod); `quarantined_at` segue usada pelo reset. **PRÓXIMO:** expandir
+> os PARÂMETROS do rastreador (nível de detalhe curto/detalhado, formato de resposta, como lida
+> com temas), cada um medido do fluxo de mensagens com seu próprio gate de sinal. Verificação pós-
+> remoção: tsc raiz+mcp 0, jest verde.
 
-> **2026-06-19 (Onda 1 personalização) , PERSONALIZAÇÃO ADAPTATIVA POR USUÁRIO (camada
-> determinística) EM PRODUÇÃO (mergeada #150, 3 perfis gravados, health 200).**
+> **2026-06-19 (Onda 1 personalização) , RASTREADOR DETERMINÍSTICO POR USUÁRIO EM PRODUÇÃO
+> (mergeada #150, 3 perfis gravados, health 200). É o feature de fato , aprende contínuo, por
+> parâmetro, sem dado pessoal.**
 > Metodologia completa cumprida (SPEC v1→2 reviews adversariais→v3; PLAN v1→2 reviews→v3; spike no
 > dado real). O Nex passa a aprender, por usuário e **offline (SQL puro no worker, sem OpenAI em
 > runtime)**: assuntos/domínios preferidos, **afinidade de breakdown por família** (faturamento
