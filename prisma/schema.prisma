@@ -3312,8 +3312,10 @@ model UserAgentProfile {
   profileBuiltAt    DateTime? @map("profile_built_at")
   /// Versao do algoritmo de construcao. Incrementar forca rebuild.
   version           Int       @default(1)
-  /// Incremento destilado (texto curto <=900 chars), so deste usuario. DERIVADO, sem frase
-  /// original (parse filtra PII/verbatim/verbos de ocultacao). Onda 2.
+  /// Preferencia de DETALHE detectada dos pedidos explicitos do usuario: "curto" | "detalhado".
+  /// null = sem sinal suficiente (stand-by). Parametro deterministico do rastreador.
+  verbosidade       String?   @map("verbosidade")
+  /// (DORMENTE, sem uso , revertido em 2026-06-21) coluna da antiga camada de resumo por IA.
   interactionPrompt String?   @map("interaction_prompt")
   /// Preferencias de APRESENTACAO (qual visao/breakdown), DEFAULTS, nunca filtros de recorte de
   /// dado. Ex.: {"faturamento":{"breakdownPreferido":"empresa"}}.

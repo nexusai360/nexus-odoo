@@ -46,6 +46,8 @@ export interface UserProfileData {
   preferredDomains: string[];
   recurringQuestions: RecurringQuestion[];
   presentationPrefs: PresentationPrefs;
+  /** Preferencia de detalhe detectada ("curto" | "detalhado"), ou undefined em stand-by. */
+  verbosidade?: "curto" | "detalhado";
 }
 
 /** Perfil vazio canonico (degradacao graciosa: usuario sem historico). */
@@ -65,6 +67,7 @@ export function isEmptyProfile(p: UserProfileData | null | undefined): boolean {
     p.topKeywords.length === 0 &&
     p.preferredDomains.length === 0 &&
     p.recurringQuestions.length === 0 &&
-    Object.keys(p.presentationPrefs).length === 0
+    Object.keys(p.presentationPrefs).length === 0 &&
+    !p.verbosidade
   );
 }

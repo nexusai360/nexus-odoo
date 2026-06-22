@@ -10,6 +10,7 @@
  */
 
 import { decayedScore, rankByScore } from "./scoring";
+import { detectarVerbosidade } from "./verbosidade";
 import type { UserProfileData, TopTopic, RecurringQuestion } from "./types";
 
 /** Ocorrencias minimas + share minimo para uma pref de breakdown entrar (volume baixo). */
@@ -64,6 +65,8 @@ export function buildProfileFromRows(input: {
   toolCalls: RawToolCallRow[];
   questions: RawQuestionRow[];
   nowMs: number;
+  /** Textos crus das mensagens do usuario (so p/ detectar verbosidade; nao sao persistidos). */
+  userTexts?: string[];
 }): UserProfileData {
   const { topics, toolCalls, questions, nowMs } = input;
 
@@ -138,11 +141,14 @@ export function buildProfileFromRows(input: {
     ({ label, count, lastSeenAt }) => ({ label, count, lastSeenAt }),
   );
 
+  const verbosidade = detectarVerbosidade(input.userTexts ?? []);
+
   return {
     topTopics,
-    topKeywords: [], // Onda 1 deterministica nao deriva keywords (vem da destilacao, Onda 2)
+    topKeywords: [], // rastreador deterministico nao deriva keywords
     preferredDomains,
     recurringQuestions,
     presentationPrefs,
+    ...(verbosidade ? { verbosidade } : {}),
   };
 }

@@ -71,6 +71,8 @@ async function seed(): Promise<{ userId: string; conversationId: string }> {
     userMsg("e o estoque do armazem central?"),
     toolMsg("estoque_saldo_produto"),
     userMsg("obrigado"),
+    userMsg("resume aí, direto ao ponto"),
+    userMsg("só o total, por favor, sem detalhe"),
     userMsg("faturamento por empresa outra vez"),
   ];
   for (const m of msgs) {
@@ -127,6 +129,7 @@ async function main() {
     const recurring = row.recurringQuestions as { label: string }[];
 
     check(preferredDomains.includes("fiscal"), `preferredDomains inclui fiscal (${preferredDomains.join(",")})`);
+    check(row.verbosidade === "curto", `verbosidade detectada = curto (got ${row.verbosidade})`);
     check(preferredDomains.includes("estoque"), "preferredDomains inclui estoque");
     check(
       prefs?.faturamento?.breakdownPreferido === "empresa",
