@@ -54,7 +54,6 @@ function rowToProfile(row: {
   preferredDomains: string[];
   recurringQuestions: unknown;
   presentationPrefs: unknown;
-  interactionPrompt?: string | null;
 }): UserProfileData {
   return {
     topTopics: (row.topTopics as TopTopic[]) ?? [],
@@ -62,7 +61,6 @@ function rowToProfile(row: {
     preferredDomains: row.preferredDomains ?? [],
     recurringQuestions: (row.recurringQuestions as RecurringQuestion[]) ?? [],
     presentationPrefs: (row.presentationPrefs as PresentationPrefs) ?? {},
-    interactionPrompt: row.interactionPrompt ?? null,
   };
 }
 
@@ -86,7 +84,6 @@ export async function getUserAgentProfile(userId: string): Promise<UserProfileDa
           preferredDomains: true,
           recurringQuestions: true,
           presentationPrefs: true,
-          interactionPrompt: true,
         },
       }),
       DB_READ_TIMEOUT_MS,
@@ -124,36 +121,6 @@ export async function upsertUserAgentProfile(
     where: { userId },
     create: { userId, ...fields },
     update: fields,
-  });
-  await invalidateUserCaches(userId);
-}
-
-/**
- * Aplica o resultado da DESTILACAO (Onda 2, host-side): grava SO o `interactionPrompt` (+ baseline
- * de qualidade + carimbo). NUNCA toca os campos determinISTICOS (topTopics/presentationPrefs/...) ,
- * o JOB_PROFILE_AGGREGATE e dono deles e os sobrescreve a cada rodada (evita corrida , B2).
- */
-export async function applyDistilled(
-  userId: string,
-  distilled: { interactionPrompt: string },
-  opts?: { qualityBaseline?: unknown; model?: string },
-): Promise<void> {
-  const now = new Date();
-  await prisma.userAgentProfile.upsert({
-    where: { userId },
-    create: {
-      userId,
-      interactionPrompt: distilled.interactionPrompt,
-      profileAppliedAt: now,
-      lastLearnedModel: opts?.model ?? "claude-profile-v1",
-      ...(opts?.qualityBaseline !== undefined ? { qualityBaseline: asJson(opts.qualityBaseline) } : {}),
-    },
-    update: {
-      interactionPrompt: distilled.interactionPrompt,
-      profileAppliedAt: now,
-      lastLearnedModel: opts?.model ?? "claude-profile-v1",
-      ...(opts?.qualityBaseline !== undefined ? { qualityBaseline: asJson(opts.qualityBaseline) } : {}),
-    },
   });
   await invalidateUserCaches(userId);
 }

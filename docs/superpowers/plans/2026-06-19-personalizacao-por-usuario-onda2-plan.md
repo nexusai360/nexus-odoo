@@ -1,5 +1,12 @@
 # Personalização adaptativa por usuário , Onda 2 , Plano de Implementação (v1)
 
+> **⚠️ SUPERSEDED / REVERTIDO (2026-06-21).** A abordagem desta onda (uma IA "destilar/resumir" as
+> conversas num texto) foi **descartada por decisão do usuário**: a personalização certa é o
+> **rastreador contínuo por PARÂMETROS** (sempre ligado, sem dado pessoal, stand-by por item) , que
+> já é a camada determinística em prod. Esta camada de resumo por IA foi **removida** do código (ver
+> HISTORY 2026-06-21). Mantido como registro histórico. O caminho adiante é **expandir os parâmetros
+> do rastreador**, não resumir conversas.
+
 > **For agentic workers:** execução **INLINE**. TDD por task, commit atômico. Steps `- [ ]`.
 > SPEC: `docs/superpowers/specs/2026-06-19-agente-personalizacao-por-usuario-design.md` (§4 camada
 > destilada, §6 guardrails, §7 circuit-breaker, §13 Onda 2). Onda 1 já EM PROD.
