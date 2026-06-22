@@ -11,10 +11,19 @@
 > `distill-runner`, `scripts/distill-user-profiles.ts`, `e2e-user-profile-distill.ts`,
 > `applyDistilled`, e o campo `interactionPrompt` de types/store/format/UI/action. As colunas
 > dormentes em prod (`interaction_prompt`/`quality_baseline`/`profile_applied_at`) ficam sem uso
-> (não dropadas , risco em prod); `quarantined_at` segue usada pelo reset. **PRÓXIMO:** expandir
-> os PARÂMETROS do rastreador (nível de detalhe curto/detalhado, formato de resposta, como lida
-> com temas), cada um medido do fluxo de mensagens com seu próprio gate de sinal. Verificação pós-
-> remoção: tsc raiz+mcp 0, jest verde.
+> (não dropadas , risco em prod); `quarantined_at` segue usada pelo reset. **PIVOT EM PRODUÇÃO**
+> (#152 mergeado, deploy rolling, `/api/health` 200, 3 perfis intactos, `interaction_prompt`
+> dormente=0). tsc raiz+mcp 0, jest 3193 verde.
+>
+> **PRÓXIMO (expandir parâmetros , RETOMADA EXATA):** já commitado NA BRANCH (não mergeado) o
+> **detector de preferência de detalhe (curto x detalhado)**, `src/lib/agent/user-profile/
+> verbosidade.ts` (+test, puro, stand-by por dominância, 5 testes verdes). **FALTA INTEGRAR:**
+> (1) migration manual aditiva `verbosidade TEXT` em `user_agent_profiles`; (2) `UserProfileData.
+> verbosidade` em types; (3) `build.ts` recebe os textos do usuário e chama `detectarVerbosidade`
+> (`profile-aggregate` já busca em `msgRows`); (4) `store` persiste/lê; (5) `format` injeta
+> "Costuma preferir respostas curtas/detalhadas."; (6) testes + E2E + merge + deploy. Depois,
+> próximos parâmetros (formato de resposta, como lida com temas), cada um com seu gate de sinal.
+> Tudo determinístico, sem dado pessoal, sempre ligado.
 
 > **2026-06-19 (Onda 1 personalização) , RASTREADOR DETERMINÍSTICO POR USUÁRIO EM PRODUÇÃO
 > (mergeada #150, 3 perfis gravados, health 200). É o feature de fato , aprende contínuo, por
