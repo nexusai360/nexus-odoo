@@ -48,6 +48,8 @@ export interface UserProfileData {
   presentationPrefs: PresentationPrefs;
   /** Preferencia de detalhe detectada ("curto" | "detalhado"), ou undefined em stand-by. */
   verbosidade?: "curto" | "detalhado";
+  /** Preferencia de formato ("lista" | "tabela" | "texto"), ou undefined em stand-by. */
+  formatoPreferido?: "lista" | "tabela" | "texto";
 }
 
 /** Perfil vazio canonico (degradacao graciosa: usuario sem historico). */
@@ -68,6 +70,7 @@ export function isEmptyProfile(p: UserProfileData | null | undefined): boolean {
     p.preferredDomains.length === 0 &&
     p.recurringQuestions.length === 0 &&
     Object.keys(p.presentationPrefs).length === 0 &&
-    !p.verbosidade
+    !p.verbosidade &&
+    !p.formatoPreferido
   );
 }

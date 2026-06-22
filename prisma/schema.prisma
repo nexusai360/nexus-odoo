@@ -3315,6 +3315,8 @@ model UserAgentProfile {
   /// Preferencia de DETALHE detectada dos pedidos explicitos do usuario: "curto" | "detalhado".
   /// null = sem sinal suficiente (stand-by). Parametro deterministico do rastreador.
   verbosidade       String?   @map("verbosidade")
+  /// Preferencia de FORMATO de resposta: "lista" | "tabela" | "texto". null = stand-by.
+  formatoPreferido  String?   @map("formato_preferido")
   /// (DORMENTE, sem uso , revertido em 2026-06-21) coluna da antiga camada de resumo por IA.
   interactionPrompt String?   @map("interaction_prompt")
   /// Preferencias de APRESENTACAO (qual visao/breakdown), DEFAULTS, nunca filtros de recorte de

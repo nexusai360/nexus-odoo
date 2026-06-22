@@ -73,6 +73,8 @@ async function seed(): Promise<{ userId: string; conversationId: string }> {
     userMsg("obrigado"),
     userMsg("resume aí, direto ao ponto"),
     userMsg("só o total, por favor, sem detalhe"),
+    userMsg("me da em tabela"),
+    userMsg("prefiro em tabela, manda a planilha"),
     userMsg("faturamento por empresa outra vez"),
   ];
   for (const m of msgs) {
@@ -130,6 +132,7 @@ async function main() {
 
     check(preferredDomains.includes("fiscal"), `preferredDomains inclui fiscal (${preferredDomains.join(",")})`);
     check(row.verbosidade === "curto", `verbosidade detectada = curto (got ${row.verbosidade})`);
+    check(row.formatoPreferido === "tabela", `formato detectado = tabela (got ${row.formatoPreferido})`);
     check(preferredDomains.includes("estoque"), "preferredDomains inclui estoque");
     check(
       prefs?.faturamento?.breakdownPreferido === "empresa",
