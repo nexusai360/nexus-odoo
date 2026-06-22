@@ -63,13 +63,10 @@ async function main() {
 
   const owner = await prisma.user.upsert({
     where: { email },
-    update: {
-      name,
-      isActive: true,
-      isOwner: true,
-      platformRole: "super_admin",
-      mustChangePassword: false,
-    },
+    // Owner JA existe: NAO sobrescrever NADA. Preserva o que o usuario editou apos a criacao
+    // padrao (nome, etc.) , o seed roda a cada deploy e antes resetava o `name` para
+    // ADMIN_NAME ("Administrador") toda vez (bug relatado 2026-06-22). So cria se nao existir.
+    update: {},
     create: {
       email,
       password: passwordHash,

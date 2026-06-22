@@ -15,7 +15,16 @@
 > (#152 mergeado, deploy rolling, `/api/health` 200, 3 perfis intactos, `interaction_prompt`
 > dormente=0). tsc raiz+mcp 0, jest 3193 verde.
 >
-> **PARÂMETRO "DETALHE" (curto x detalhado) , INTEGRADO E TESTADO** (a mergear/deployar):
+> **PARÂMETROS DE APRESENTAÇÃO , COMPLETOS:** **detalhe** (curto/detalhado, EM PROD) + **formato**
+> (lista/tabela/texto, a mergear neste commit). Ambos detectados de pedidos explícitos do usuário,
+> stand-by por dominância, determinísticos, sem dado pessoal; ligados em types/build/store/format
+> ("Costuma preferir respostas curtas/detalhadas." / "...em lista/tabela/texto."). E2E real verde
+> (verbosidade=curto, formato=tabela). "Como lida com temas" já coberto por topTopics+
+> recurringQuestions , não inventei sinal ruidoso. Conjunto de parâmetros do rastreador: assuntos/
+> domínios, afinidade de breakdown, perguntas recorrentes, detalhe, formato. **FIX junto:** nome do
+> owner não volta mais p/ "Administrador" no deploy (seed `update:{}`, preserva o editado).
+>
+> <!-- detalhe (verbosidade): -->
 > `verbosidade.ts` detecta dos pedidos explícitos do usuário (stand-by por dominância);
 > migration `verbosidade TEXT` (aplicada em dev); ligado em types/build/profile-aggregate/store/
 > format ("Costuma preferir respostas curtas/detalhadas."). tsc raiz+mcp 0, jest 3198, E2E real

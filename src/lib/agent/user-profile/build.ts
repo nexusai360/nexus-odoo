@@ -11,6 +11,7 @@
 
 import { decayedScore, rankByScore } from "./scoring";
 import { detectarVerbosidade } from "./verbosidade";
+import { detectarFormato } from "./formato";
 import type { UserProfileData, TopTopic, RecurringQuestion } from "./types";
 
 /** Ocorrencias minimas + share minimo para uma pref de breakdown entrar (volume baixo). */
@@ -142,6 +143,7 @@ export function buildProfileFromRows(input: {
   );
 
   const verbosidade = detectarVerbosidade(input.userTexts ?? []);
+  const formatoPreferido = detectarFormato(input.userTexts ?? []);
 
   return {
     topTopics,
@@ -150,5 +152,6 @@ export function buildProfileFromRows(input: {
     recurringQuestions,
     presentationPrefs,
     ...(verbosidade ? { verbosidade } : {}),
+    ...(formatoPreferido ? { formatoPreferido } : {}),
   };
 }

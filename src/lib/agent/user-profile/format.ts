@@ -51,6 +51,9 @@ export function formatUserProfileBlock(p: UserProfileData | null | undefined): s
         : "Costuma preferir respostas detalhadas.",
     );
   }
+  if (prof.formatoPreferido) {
+    linhas.push(`Costuma preferir respostas em ${prof.formatoPreferido}.`);
+  }
   if (linhas.length === 0) return "";
   return linhas.join(" ") + " " + CLAUSULA_PRECEDENCIA;
 }
