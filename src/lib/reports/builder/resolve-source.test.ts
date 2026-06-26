@@ -2,12 +2,20 @@ import { resolveSecao } from "./resolve-source";
 import type { BuilderSection } from "./types";
 
 const obterProdutor = jest.fn();
+const guardDominio = jest.fn();
 jest.mock("./source-registry", () => ({
   obterProdutor: (...a: unknown[]) => obterProdutor(...a),
   obterContrato: () => ({ dominio: "estoque" }),
 }));
+jest.mock("@/lib/reports/guard", () => ({
+  guardDominio: (...a: unknown[]) => guardDominio(...a),
+}));
 
-beforeEach(() => obterProdutor.mockReset());
+beforeEach(() => {
+  obterProdutor.mockReset();
+  guardDominio.mockReset();
+  guardDominio.mockResolvedValue(undefined);
+});
 
 const secaoTabela: BuilderSection = {
   id: "s1",
@@ -40,5 +48,12 @@ describe("resolveSecao", () => {
     obterProdutor.mockReturnValue(undefined);
     const r = await resolveSecao(secaoTabela, {});
     expect(r.erro).toBe("fonte_indisponivel");
+  });
+
+  it("nega quando o usuario nao tem acesso ao dominio da fonte", async () => {
+    guardDominio.mockRejectedValue(new Error("Sem acesso ao dominio"));
+    obterProdutor.mockReturnValue(async () => ({ linhas: [{ x: 1 }], freshness: null }));
+    const r = await resolveSecao(secaoTabela, {});
+    expect(r.erro).toBe("sem_acesso_dominio");
   });
 });

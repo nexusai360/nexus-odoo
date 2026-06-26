@@ -1,7 +1,8 @@
 // src/lib/reports/builder/resolve-source.ts
 // Resolve uma secao da ficha: roda o produtor da fonte e aplica o adaptador do
 // shape derivado. O guard de dominio no consumo entra na Task C1.
-import { obterProdutor } from "./source-registry";
+import { obterProdutor, obterContrato } from "./source-registry";
+import { guardDominio } from "@/lib/reports/guard";
 import {
   adaptarTabela,
   adaptarKpis,
@@ -35,6 +36,16 @@ export async function resolveSecao(
   secao: BuilderSection,
   filtros: FiltrosFonte,
 ): Promise<SecaoResolvida> {
+  const contrato = obterContrato(secao.fato);
+  if (!contrato) {
+    return { estado: "erro", erro: "fonte_indisponivel" };
+  }
+  // Guard de dominio reavaliado no consumo (le a sessao internamente).
+  try {
+    await guardDominio(contrato.dominio);
+  } catch {
+    return { estado: "erro", erro: "sem_acesso_dominio" };
+  }
   const produtor = obterProdutor(secao.fato, secao.shapeDerivado);
   if (!produtor) {
     return { estado: "erro", erro: "fonte_indisponivel" };
