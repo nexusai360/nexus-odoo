@@ -220,7 +220,10 @@ export default async function Page() {
         </Card>
 
         <Card className="rounded-2xl border border-border bg-muted/30 p-2">
-          <CardContent className="flex flex-col gap-3 pt-5 pb-5">
+          <CardHeader className="pt-5 pb-5">
+            <CardTitle>Construtor de relatorios</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3 pb-5">
             <BuilderModelCard
               initial={builderModelo}
               providers={builderProviders}

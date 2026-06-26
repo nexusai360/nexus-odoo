@@ -1,9 +1,8 @@
 import { redirect } from "next/navigation";
-import { Settings, LayoutDashboard } from "lucide-react";
+import { Settings } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { getSyncConfig, getSyncState, getFatosState } from "@/lib/actions/sync-config";
 import { obterAcessoRelatorios2 } from "@/lib/reports/acesso-relatorios2";
-import { RELATORIOS2_MENU } from "@/lib/constants/relatorios2";
 import { PageShell } from "@/components/layout/page-shell";
 import { PageHeader } from "@/components/page-header";
 import { ConfiguracaoContent } from "./configuracao-content";
@@ -33,19 +32,10 @@ export default async function ConfiguracaoPage() {
       />
       <ConfiguracaoContent config={config} estado={estado} fatos={fatos} />
 
-      {/* Acesso ao menu Relatorios 2.0 (menu + submenus) */}
-      <section className="mt-8">
-        <div className="mb-3 flex items-center gap-2">
-          <LayoutDashboard className="h-5 w-5 text-violet-500" aria-hidden />
-          <div>
-            <h2 className="text-base font-semibold text-foreground">{RELATORIOS2_MENU.label}</h2>
-            <p className="text-sm text-muted-foreground">
-              Quem pode ver o menu e cada submenu (painéis, meus relatórios, construtor).
-            </p>
-          </div>
-        </div>
+      {/* Acesso ao menu Relatorios 2.0 (menu + submenus) , bloco proprio */}
+      <div className="mt-6">
         <Relatorios2AccessCard initial={acessoRel2} />
-      </section>
+      </div>
     </PageShell>
   );
 }

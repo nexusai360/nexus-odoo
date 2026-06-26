@@ -39,7 +39,7 @@ const PROPS = {
 describe("BuilderModelCard (padrao router)", () => {
   it("mostra titulo e o modelo configurado, no padrao Provedor/Modelo/Chave", () => {
     render(<BuilderModelCard {...PROPS} />);
-    expect(screen.getByText("Construtor de relatorios")).toBeInTheDocument();
+    expect(screen.getByText("Configuração do LLM")).toBeInTheDocument();
     expect(screen.getByText("GPT-5 mini")).toBeInTheDocument();
     expect(screen.getByText("Provedor")).toBeInTheDocument();
     expect(screen.getByText("Modelo")).toBeInTheDocument();

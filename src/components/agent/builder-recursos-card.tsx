@@ -59,9 +59,11 @@ export function BuilderRecursosCard({ initial }: { initial: RecursosConstrutor }
       {/* Raciocinio */}
       <ResourceCard
         id="construtor-raciocinio"
+        collapsible
+        defaultCollapsed
         icon={<Brain className={`h-4 w-4 ${checkpointIconClass(reasoning)}`} aria-hidden />}
         title="Modo raciocínio"
-        subtitle="Deixa o modelo do construtor pensar antes de montar o relatório. Útil para pedidos mais complexos."
+        subtitle="Deixa o modelo do construtor pensar antes de montar o relatório. A própria IA decide quando usar, conforme a complexidade do pedido."
         checkpoint={reasoning}
         onCheckpointChange={(next) => {
           setReasoning(next);
@@ -84,15 +86,21 @@ export function BuilderRecursosCard({ initial }: { initial: RecursosConstrutor }
               options={EFFORT_OPCOES}
             />
           </div>
-        ) : null}
+        ) : (
+          <p className="text-xs text-muted-foreground/80">
+            Ative em Produção para escolher o nível de esforço.
+          </p>
+        )}
       </ResourceCard>
 
       {/* Audio */}
       <ResourceCard
         id="construtor-audio"
+        collapsible
+        defaultCollapsed
         icon={<Mic className={`h-4 w-4 ${checkpointIconClass(audio)}`} aria-hidden />}
         title="Entrada de áudio"
-        subtitle="Permite descrever o relatório por voz no construtor. A transcrição usa o modelo de áudio configurado acima."
+        subtitle="Transcrição de mensagens de voz enviadas pelo usuário."
         checkpoint={audio}
         onCheckpointChange={(next) => {
           setAudio(next);
@@ -101,14 +109,23 @@ export function BuilderRecursosCard({ initial }: { initial: RecursosConstrutor }
         loading={pending}
         ariaLabel="Estado da entrada de áudio do construtor"
         checkpointAllowed={DOIS_ESTADOS}
-      />
+      >
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          A transcrição usa o modelo fixo <strong>gpt-4o-mini-transcribe</strong> (OpenAI),
+          com fallback automático para <strong>whisper-1</strong>, pela credencial OpenAI
+          ativa da conversa (a mesma do modelo de conversa). Não há provedor ou modelo
+          separado a configurar.
+        </p>
+      </ResourceCard>
 
       {/* Anexo */}
       <ResourceCard
         id="construtor-anexo"
+        collapsible
+        defaultCollapsed
         icon={<Paperclip className={`h-4 w-4 ${checkpointIconClass(anexo)}`} aria-hidden />}
         title="Entrada de anexo"
-        subtitle="Permite enviar imagens (ex.: um print do que quer mudar) e arquivos no construtor. Interpretadas pelo modelo de visão configurado."
+        subtitle="Imagens e arquivos enviados pelo usuário."
         checkpoint={anexo}
         onCheckpointChange={(next) => {
           setAnexo(next);
@@ -117,7 +134,12 @@ export function BuilderRecursosCard({ initial }: { initial: RecursosConstrutor }
         loading={pending}
         ariaLabel="Estado da entrada de anexo do construtor"
         checkpointAllowed={DOIS_ESTADOS}
-      />
+      >
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          As imagens enviadas são interpretadas pelo próprio <strong>modelo da conversa</strong>{" "}
+          (com visão). Não há provedor ou modelo separado a configurar.
+        </p>
+      </ResourceCard>
     </div>
   );
 }

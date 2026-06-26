@@ -9,7 +9,7 @@
 // salvar , cada mudanca aplica na hora e mostra um toast (igual ao router).
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { FileBarChart } from "lucide-react";
+import { Wrench } from "lucide-react";
 import { toast } from "sonner";
 import { ResourceCard } from "@/components/agent/resource-card";
 import { CustomSelect } from "@/components/ui/custom-select";
@@ -93,13 +93,13 @@ export function BuilderModelCard({
       hideCheckpoint
       checkpoint="PRODUCTION"
       onCheckpointChange={() => undefined}
-      icon={<FileBarChart className="h-4 w-4 text-violet-500" aria-hidden />}
-      title="Construtor de relatorios"
+      icon={<Wrench className="h-4 w-4 text-violet-500" aria-hidden />}
+      title="Configuração do LLM"
       subtitle="Modelo que monta os relatorios a partir da conversa. Independente do modelo de producao do Nex. So aparecem modelos capazes de usar ferramentas."
       loading={pending}
       ariaLabel="Modelo do construtor de relatorios"
     >
-      <section className="flex flex-col gap-3 border-l-2 border-violet-500/30 pl-3">
+      <section className="flex flex-col gap-3">
         {providers.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border/70 bg-muted/20 p-3 text-xs text-muted-foreground">
             Nenhuma chave de API cadastrada. Cadastre uma em Chaves de API para
