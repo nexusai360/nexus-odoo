@@ -17,6 +17,20 @@ describe("buildEnhancePrompt", () => {
     expect(out).toContain(`max ${MAX_EXTRACTED_CHIPS} chips`);
     expect(out).toContain("ate 3 perguntas");
   });
+
+  it("inclui o profileHint quando presente, e nao quando ausente", () => {
+    const com = buildEnhancePrompt({
+      agentResponse: "R",
+      recentHistoryText: "H",
+      maxContextual: 3,
+      profileHint: "fiscal | faturamento por empresa",
+    });
+    expect(com).toContain("Preferencias deste usuario");
+    expect(com).toContain("faturamento por empresa");
+
+    const sem = buildEnhancePrompt({ agentResponse: "R", recentHistoryText: "H", maxContextual: 3 });
+    expect(sem).not.toContain("Preferencias deste usuario");
+  });
 });
 
 describe("parseEnhanceResponse", () => {

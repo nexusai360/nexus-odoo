@@ -58,3 +58,47 @@ export async function receitaConsolidada(
     percentualEliminado,
   };
 }
+
+export interface ReceitaPorEmpresa {
+  empresaId: number | null;
+  empresaNome: string | null;
+  /** Faturamento REAL da empresa (vendas para fora do grupo). */
+  receitaExterna: number;
+  /** Vendas dessa empresa PARA outras do grupo (eliminadas do consolidado). */
+  receitaIntragrupoEliminavel: number;
+  /** Faturamento individual (externo + intragrupo) antes da eliminação. */
+  receitaIndividualTotal: number;
+}
+
+/**
+ * RECEITA CONSOLIDADA EXTERNA QUEBRADA POR EMPRESA, numa única passada.
+ * Mesma classificação da `receitaConsolidada` (ehReceita + intragrupo), só que
+ * agregada por empresa emissora. Evita que o agente chame a tool N vezes (uma por
+ * empresa) para montar o "faturamento real por empresa". Ordena pelo real desc.
+ */
+export async function receitaConsolidadaPorEmpresa(
+  prisma: PrismaClient,
+  input: FaturamentoInput,
+): Promise<ReceitaPorEmpresa[]> {
+  const { itens } = await carregarItensVendaComGrupo(prisma, input);
+  const map = new Map<string, ReceitaPorEmpresa>();
+  for (const it of itens) {
+    if (!it.ehReceita) continue;
+    const key = String(it.empresaId ?? it.empresaNome ?? "?");
+    let e = map.get(key);
+    if (!e) {
+      e = {
+        empresaId: it.empresaId,
+        empresaNome: it.empresaNome,
+        receitaExterna: 0,
+        receitaIntragrupoEliminavel: 0,
+        receitaIndividualTotal: 0,
+      };
+      map.set(key, e);
+    }
+    if (it.intragrupo) e.receitaIntragrupoEliminavel += it.valorProdutos;
+    else e.receitaExterna += it.valorProdutos;
+    e.receitaIndividualTotal += it.valorProdutos;
+  }
+  return Array.from(map.values()).sort((a, b) => b.receitaExterna - a.receitaExterna);
+}

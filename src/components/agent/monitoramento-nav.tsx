@@ -9,6 +9,7 @@ const TABS = [
   { label: "Router", href: "/agente/monitoramento/router" },
   { label: "Chat", href: "/agente/monitoramento/bubble" },
   { label: "Aprendizado", href: "/agente/monitoramento/aprendizado" },
+  { label: "Personalização", href: "/agente/monitoramento/personalizacao" },
 ] as const;
 
 /**

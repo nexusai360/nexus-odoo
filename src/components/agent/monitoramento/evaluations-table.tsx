@@ -356,7 +356,7 @@ export function EvaluationsTable({
                         />
                       </TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">
-                        {row.model ?? ","}
+                        {row.model ?? "-"}
                       </TableCell>
                       <TableCell>
                         {row.dominantPattern ? (
@@ -364,7 +364,7 @@ export function EvaluationsTable({
                             {row.dominantPattern}
                           </Badge>
                         ) : (
-                          <span className="text-xs text-muted-foreground">,</span>
+                          <span className="text-xs text-muted-foreground">-</span>
                         )}
                       </TableCell>
                       <TableCell className="text-right">

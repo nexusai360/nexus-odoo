@@ -5,11 +5,11 @@
  * O AgentMessage absorve tudo dentro da bolha: sugestões (chevron igual ao
  * Raciocínio), a PERÍCIA (veredito do juiz) como chip rotulado no rodapé
  * (clicável pro Backtest) e a AVALIAÇÃO (voto do usuário) como badge de canto.
- * Por fora só sobra o selo de áudio nas mensagens do usuário.
+ * O selo de áudio transcrito também vem do AgentMessage (mesmo ícone da bubble
+ * viva), via a prop isAudio , sem renderização própria divergente.
  */
 
 import * as React from "react";
-import { Mic } from "lucide-react";
 import { AgentMessage } from "@/components/agent/agent-message";
 import type { ProgressStep } from "@/components/agent/progress-trail";
 import { EVAL_STATUS_LABEL } from "@/components/agent/quality/eval-status-badge";
@@ -79,6 +79,10 @@ export function BubbleMonitorRow({ msg }: { msg: MonitorMessage }) {
         role={msg.role}
         content={msg.content}
         kind="text"
+        // N1: mesmo indicador da bubble viva , o AgentMessage renderiza o
+        // header "Áudio transcrito" (ícone Mic) DENTRO da bolha do usuário.
+        // Antes o monitor mostrava uma pill solta abaixo, divergindo da bubble.
+        isAudio={isUser && isAudio}
         createdAt={msg.createdAt}
         steps={steps.length > 0 ? steps : undefined}
         stepsCollapsed={stepsCollapsed}
@@ -98,14 +102,6 @@ export function BubbleMonitorRow({ msg }: { msg: MonitorMessage }) {
             : null
         }
       />
-
-      {isUser && isAudio ? (
-        <div className="mt-1 flex justify-end">
-          <span className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground">
-            <Mic className="h-3 w-3" /> áudio transcrito
-          </span>
-        </div>
-      ) : null}
     </div>
   );
 }

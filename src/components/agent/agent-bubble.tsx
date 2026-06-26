@@ -72,6 +72,14 @@ export function AgentBubble({
   initialConversationId = null,
 }: AgentBubbleProps = {}) {
   const [open, setOpen] = React.useState(false);
+  // Mantém a ChatPanel montada após a 1ª abertura (oculta com display:none
+  // quando fechada). Assim a pergunta em andamento, a animação de "pensando" e
+  // o indicador de áudio NÃO se perdem ao fechar e reabrir a bubble (antes a
+  // ChatPanel desmontava no fechar e o estado em voo ia embora).
+  const [everOpened, setEverOpened] = React.useState(false);
+  React.useEffect(() => {
+    if (open) setEverOpened(true);
+  }, [open]);
   // Tela expandida: a bubble lateral vira um modal central grande. Vive aqui
   // (não no ChatPanel) pra persistir entre re-renders; reseta ao fechar.
   const [expanded, setExpanded] = React.useState(false);
@@ -172,7 +180,8 @@ export function AgentBubble({
           em estado travado depois do fechamento pelo X (cursor "proibido"
           no FAB ate o refresh). Mount/initial animations dos motion.divs
           continuam funcionando normalmente. */}
-      {open ? (
+      {everOpened ? (
+        <div className={open ? "contents" : "hidden"}>
         <ChatPanel
           open={open}
           onClose={() => {
@@ -197,6 +206,7 @@ export function AgentBubble({
             setConversationId(null);
           }}
         />
+        </div>
       ) : null}
     </>
   );

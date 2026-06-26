@@ -22,6 +22,38 @@ Não precisa rodar mais nada. Para acompanhar: ver a seção 6 (verificação).
 > Se quiser **forçar o deploy na hora** (sem esperar os ~5 min do Shepherd) ou o
 > Shepherd estiver fora do ar, use o deploy manual da seção 4.
 
+### 1.1 PASSO OBRIGATÓRIO quando o deploy leva MUDANÇA DE SCHEMA (REGRA DE RAIZ, 2026-06-18)
+
+> **O `prisma migrate deploy` do entrypoint NÃO aplica mudanças que foram feitas
+> via `prisma db execute` (o padrão deste projeto, ver §5 do CLAUDE.md). Ele só
+> roda arquivos em `prisma/migrations/`.** Como as mudanças aditivas aqui vão por
+> `db execute` (não viram arquivo de migração), o banco de PROD NÃO as recebe no
+> deploy , o código sobe esperando coluna/enum que não existe em prod e quebra em
+> runtime (ex.: "Erro ao listar usuários" porque faltava `users.last_activity_at`).
+> Isso já derrubou a tela de Usuários em prod (incidente 2026-06-18, PR #129).
+>
+> **Portanto: se a sua entrega mexeu em `prisma/schema.prisma` (coluna nova, enum
+> novo, etc.) e você aplicou no dev via `prisma db execute`, você TEM que aplicar
+> o MESMO SQL aditivo no banco de PROD, junto do deploy.** Passos:
+>
+> 1. **Antes/depois do merge**, aplique o SQL aditivo idempotente (`IF NOT EXISTS`)
+>    no banco de prod, via Portainer exec no container `nexus-odoo_db`. Modelo
+>    pronto e reusável: `scripts/_prod-db-migrate-audit.py` (manda o SQL por
+>    heredoc; psql em autocommit roda cada statement em sua transação, o que é
+>    necessário p/ `ALTER TYPE ... ADD VALUE`). Adapte o SQL e rode:
+>    ```bash
+>    python3 scripts/_prod-db-migrate-audit.py   # ou um script equivalente p/ a sua mudança
+>    ```
+> 2. **Confirme em prod** que a mudança entrou (read-only):
+>    ```bash
+>    python3 scripts/_prod-db-query.py "SELECT column_name FROM information_schema.columns WHERE table_name='users' AND column_name='last_activity_at'"
+>    python3 scripts/_prod-db-query.py "SELECT count(*) FROM pg_enum e JOIN pg_type t ON t.oid=e.enumtypid WHERE t.typname='AuditAction'"
+>    ```
+> 3. Só então valide a feature em prod. Regra de ouro: **schema mudou no dev ⇒ o
+>    mesmo SQL aditivo no banco de prod, sempre, no mesmo deploy.** Sempre aditivo
+>    e idempotente (`ADD COLUMN IF NOT EXISTS`, `ADD VALUE IF NOT EXISTS`); nunca
+>    DROP/rename direto em prod sem plano de compatibilidade.
+
 ---
 
 ## 2. Como funciona (a arquitetura, em 1 minuto)

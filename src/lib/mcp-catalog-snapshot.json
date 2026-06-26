@@ -311,6 +311,44 @@
       "examples": []
     },
     {
+      "id": "estoque_comparativo",
+      "operation": "read",
+      "module": "estoque",
+      "descricao": "Compara o estoque (valor e quantidade) entre DUAS datas , ex.: hoje vs fim do mês passado, vs ontem, vs 7 dias atrás, vs ano passado, ou um intervalo de datas que você informar. Use para 'como o estoque variou', 'compare o estoque atual com o mês/semana/ano passado', 'evolução do estoque'. A soma é feita por data; o valor exato vem das fotos diárias (a partir do início do histórico) e, para datas anteriores, a quantidade é reconstruída (exata) sem inventar valor. Aceita dataInicial+dataFinal (YYYY-MM-DD) ou periodo (ontem|semana_anterior|mes_anterior|ano_anterior).",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "dataInicial",
+        "dataFinal",
+        "periodo"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "dataInicial",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "dataFinal",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodo",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "ontem",
+            "semana_anterior",
+            "mes_anterior",
+            "ano_anterior"
+          ]
+        }
+      ],
+      "examples": []
+    },
+    {
       "id": "financeiro_saldo_contas",
       "operation": "read",
       "module": "financeiro",
@@ -2455,7 +2493,7 @@
       "id": "fiscal_faturamento_por_cfop",
       "operation": "read",
       "module": "fiscal",
-      "descricao": "Faturamento de saida autorizado por operacao fiscal: agrupa por categoria gerencial (venda, servico, transferencia, devolucao...) ou por CFOP cru. Separa receita (venda/servico/exportacao) de movimentacao que nao e receita. Base: valor dos produtos no item. Aceita empresa e periodo.",
+      "descricao": "Faturamento de saida autorizado por operacao fiscal: agrupa por categoria gerencial (venda, servico, transferencia, devolucao...) ou por CFOP cru. Separa receita (venda/servico/exportacao) de movimentacao que nao e receita. Tambem separa BRUTO x REAL: cada linha traz valorProdutos (bruto, inclui venda intragrupo) e valorReal (ex-intragrupo), e o total traz totalReceitaReal (faturamento verdadeiro) alem de totalReceita (bruto). Base: valor dos produtos no item. Aceita empresa e periodo.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
@@ -2603,7 +2641,7 @@
       "id": "fiscal_receita_consolidada",
       "operation": "read",
       "module": "fiscal",
-      "descricao": "Receita consolidada externa do grupo (o faturamento real): vendas a clientes FORA do grupo, eliminando o intercompany (venda intragrupo, CPC 36). Mostra quanto do faturamento individual e venda entre empresas do grupo e foi eliminado. Aceita empresa e periodo.",
+      "descricao": "Receita consolidada externa do grupo (o faturamento real): vendas a clientes FORA do grupo, eliminando o intercompany (venda intragrupo, CPC 36). Mostra quanto do faturamento individual e venda entre empresas do grupo e foi eliminado. No escopo do grupo todo (sem empresaRef) JA retorna o campo `porEmpresa` com o faturamento real e o eliminado de CADA empresa numa unica chamada , use para 'faturamento real/verdadeiro por empresa', 'por empresa sem as vendas entre empresas', em vez de chamar a tool varias vezes. Aceita empresa e periodo.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
@@ -2796,6 +2834,50 @@
         {
           "name": "vendedor",
           "type": "string",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_notas_sem_cfop",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Lista NOTA A NOTA as notas fiscais de saída autorizadas que têm itens SEM CFOP (sem classificação fiscal), com número, participante, finalidade, quantidade de itens e valor de produtos. Use quando pedirem 'liste/quais as notas sem CFOP'. Aceita empresa e período.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte",
+        "empresaRef",
+        "limit",
+        "offset"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "empresaRef",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
+          "type": "integer",
           "optional": true
         }
       ],
@@ -4259,6 +4341,6 @@
       "examples": []
     }
   ],
-  "count": 121,
-  "generatedAt": "2026-06-16T02:09:32.031Z"
+  "count": 123,
+  "generatedAt": "2026-06-19T14:04:12.047Z"
 }

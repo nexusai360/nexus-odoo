@@ -23,6 +23,8 @@ import {
   DEFAULT_LOCALE,
 } from "@/lib/datetime-core";
 import { montarConversa } from "./prompt/montar-conversa";
+import { getUserAgentProfile } from "./user-profile/store";
+import { formatUserProfileBlock, formatProfileForChips } from "./user-profile/format";
 import { buildLlmClient } from "./llm/get-client";
 import { getActiveLlmConfig } from "./llm/get-active-config";
 import { logUsage } from "./llm/usage-logger";
@@ -430,6 +432,12 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
 
     // Carregar AgentSettings do banco
     const agentSettings = await loadAgentSettings();
+
+    // Personalizacao por usuario (best-effort: falha/ausencia -> sem personalizacao, igual hoje).
+    // Camada DETERMINISTICA lida em runtime; gravada offline pelo job profile-aggregate.
+    const userProfile = await getUserAgentProfile(args.userId).catch(() => null);
+    const perfilUsuarioTexto = formatUserProfileBlock(userProfile);
+    const profileHint = formatProfileForChips(userProfile);
 
     // F6 Onda 2: override de cenario de router (harnesses/testes), sem mutar o
     // AgentSettings global do banco (compartilhado). Ausente em producao.
@@ -846,6 +854,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       userMessage: args.userMessage,
       agoraBrt,
       memoriaConsultas: janela.digestsAnteriores,
+      perfilUsuarioTexto,
       focoAtualTexto,
       resumoConversa,
       instrucaoTier: tier === "T2" ? INSTRUCAO_T2 : undefined,
@@ -920,7 +929,13 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         ? undefined
         : cap!.levels.length === 1 && cap!.levels[0] === "auto"
           ? "auto"
-          : agentSettings.reasoningEffort ?? undefined;
+          : // PARIDADE COM A UI: o ReasoningCard mostra o nivel efetivo como o
+            // MAIOR nivel do modelo quando reasoning_effort esta null
+            // (resolveEffectiveLevel -> levels[ultimo]). O runtime caia em
+            // `undefined` (= sem raciocinio): a UI dizia "Alto" e o codigo
+            // mandava nada. Espelhamos: null => maior nivel suportado.
+            ((agentSettings.reasoningEffort as ReasoningEffort | null) ??
+            (cap!.levels[cap!.levels.length - 1] as ReasoningEffort));
 
       const result = await client.chat({
         messages: conversation,
@@ -988,6 +1003,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
               agentResponse: result.message,
               recentHistory: conversation.slice(-5),
               maxContextual: agentSettings.maxSuggestions,
+              profileHint,
               logCtx: {
                 conversationId: args.conversationId,
                 userId: args.userId,

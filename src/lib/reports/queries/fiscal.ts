@@ -413,3 +413,91 @@ export async function queryContarNotas(
   ]);
   return { total, totalEntrada, totalSaida };
 }
+
+/**
+ * NOTAS SEM CFOP, nota a nota (gap fechado 2026-06-19). Lista as notas de saida
+ * AUTORIZADAS que tem item(ns) SEM CFOP (cfop_id null = sem classificacao fiscal),
+ * com o valor de produtos desses itens agregado por nota. Responde "liste as notas
+ * sem CFOP" , antes o agente so tinha o total agregado (R$/itens), nao a lista.
+ * Base: item.vrProdutos (mesma base de faturamentoPorCfop). Ordena por valor desc.
+ */
+export async function queryNotasSemCfop(
+  prisma: PrismaClient,
+  filtros: { periodoDe?: string; periodoAte?: string; empresaId?: number; limit?: number; offset?: number },
+): Promise<{
+  linhas: {
+    numero: string | null;
+    serie: string | null;
+    dataEmissao: Date | null;
+    participanteNome: string | null;
+    finalidadeNfe: string | null;
+    totalItens: number;
+    valorProdutos: number;
+  }[];
+  totalNotas: number;
+  totalItens: number;
+  valorProdutos: number;
+}> {
+  const whereItem = {
+    entradaSaida: "1" as const,
+    situacaoNfe: "autorizada" as const,
+    cfopId: null,
+    ...buildPeriodoWhere(filtros.periodoDe, filtros.periodoAte),
+    ...buildEmpresaWhere(filtros.empresaId),
+  };
+
+  // (a) agrega itens sem CFOP por nota (documentoId): valor + contagem.
+  const grupos = await prisma.fatoNotaFiscalItem.groupBy({
+    by: ["documentoId"],
+    where: whereItem,
+    _sum: { vrProdutos: true },
+    _count: true,
+  });
+
+  const totalNotas = grupos.length;
+  const totalItens = grupos.reduce((s, g) => s + Number(g._count ?? 0), 0);
+  const valorProdutos = grupos.reduce((s, g) => s + Number(g._sum.vrProdutos ?? 0), 0);
+
+  // (b) ordena por valor desc e pagina sobre o full-set.
+  const ordenados = grupos
+    .map((g) => ({
+      documentoId: g.documentoId,
+      totalItens: Number(g._count ?? 0),
+      valorProdutos: Number(g._sum.vrProdutos ?? 0),
+    }))
+    .sort((a, b) => b.valorProdutos - a.valorProdutos);
+  const off = filtros.offset ?? 0;
+  const pagina = filtros.limit !== undefined ? ordenados.slice(off, off + filtros.limit) : ordenados;
+
+  // (c) dados de cabecalho das notas da pagina (numero, participante, finalidade).
+  const docIds = pagina.map((p) => p.documentoId).filter((x): x is number => x !== null);
+  const notas = docIds.length
+    ? await prisma.fatoNotaFiscal.findMany({
+        where: { odooId: { in: docIds } },
+        select: {
+          odooId: true,
+          numero: true,
+          serie: true,
+          dataEmissao: true,
+          participanteNome: true,
+          finalidadeNfe: true,
+        },
+      })
+    : [];
+  const notaPorId = new Map(notas.map((n) => [n.odooId, n]));
+
+  const linhas = pagina.map((p) => {
+    const n = p.documentoId !== null ? notaPorId.get(p.documentoId) : undefined;
+    return {
+      numero: n?.numero ?? null,
+      serie: n?.serie ?? null,
+      dataEmissao: n?.dataEmissao ?? null,
+      participanteNome: n?.participanteNome ?? null,
+      finalidadeNfe: n?.finalidadeNfe ?? null,
+      totalItens: p.totalItens,
+      valorProdutos: p.valorProdutos,
+    };
+  });
+
+  return { linhas, totalNotas, totalItens, valorProdutos };
+}

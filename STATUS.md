@@ -1,5 +1,107 @@
 # STATUS — nexus-odoo
 
+> **2026-06-21 (PIVOT da personalização) , removida a camada de "resumo por IA"; o feature é o
+> RASTREADOR CONTÍNUO POR PARÂMETROS (sempre ligado, sem dado pessoal), a EXPANDIR.**
+> Decisão do usuário: a abordagem certa NÃO é uma IA resumir as conversas (isso obrigava a tratar
+> dado pessoal e virava um liga/desliga por volume , arcaico). A personalização é **aprender
+> preferências continuamente, por parâmetro, conforme as mensagens fluem**, com **stand-by por
+> item** (cada preferência só "forma opinião" quando tem sinal suficiente pra ela). Isso é
+> exatamente a camada determinística que JÁ está no ar. **Removida** toda a Etapa 2 (LLM
+> host-side): `pii-guard`, `distill-parse`, `distill-prompt`, `guard`/circuit-breaker,
+> `distill-runner`, `scripts/distill-user-profiles.ts`, `e2e-user-profile-distill.ts`,
+> `applyDistilled`, e o campo `interactionPrompt` de types/store/format/UI/action. As colunas
+> dormentes em prod (`interaction_prompt`/`quality_baseline`/`profile_applied_at`) ficam sem uso
+> (não dropadas , risco em prod); `quarantined_at` segue usada pelo reset. **PIVOT EM PRODUÇÃO**
+> (#152 mergeado, deploy rolling, `/api/health` 200, 3 perfis intactos, `interaction_prompt`
+> dormente=0). tsc raiz+mcp 0, jest 3193 verde.
+>
+> **PARÂMETROS DE APRESENTAÇÃO , COMPLETOS:** **detalhe** (curto/detalhado, EM PROD) + **formato**
+> (lista/tabela/texto, a mergear neste commit). Ambos detectados de pedidos explícitos do usuário,
+> stand-by por dominância, determinísticos, sem dado pessoal; ligados em types/build/store/format
+> ("Costuma preferir respostas curtas/detalhadas." / "...em lista/tabela/texto."). E2E real verde
+> (verbosidade=curto, formato=tabela). "Como lida com temas" já coberto por topTopics+
+> recurringQuestions , não inventei sinal ruidoso. Conjunto de parâmetros do rastreador: assuntos/
+> domínios, afinidade de breakdown, perguntas recorrentes, detalhe, formato. **FIX junto:** nome do
+> owner não volta mais p/ "Administrador" no deploy (seed `update:{}`, preserva o editado).
+>
+> <!-- detalhe (verbosidade): -->
+> `verbosidade.ts` detecta dos pedidos explícitos do usuário (stand-by por dominância);
+> migration `verbosidade TEXT` (aplicada em dev); ligado em types/build/profile-aggregate/store/
+> format ("Costuma preferir respostas curtas/detalhadas."). tsc raiz+mcp 0, jest 3198, E2E real
+> verde (verbosidade=curto detectada). **PRÓXIMOS parâmetros** (cada um com seu gate de sinal):
+> formato de resposta, como lida com temas , determinístico, sem dado pessoal, sempre ligado.
+
+> **2026-06-19 (Onda 1 personalização) , RASTREADOR DETERMINÍSTICO POR USUÁRIO EM PRODUÇÃO
+> (mergeada #150, 3 perfis gravados, health 200). É o feature de fato , aprende contínuo, por
+> parâmetro, sem dado pessoal.**
+> Metodologia completa cumprida (SPEC v1→2 reviews adversariais→v3; PLAN v1→2 reviews→v3; spike no
+> dado real). O Nex passa a aprender, por usuário e **offline (SQL puro no worker, sem OpenAI em
+> runtime)**: assuntos/domínios preferidos, **afinidade de breakdown por família** (faturamento
+> "por empresa" = a ESCOLHA da tool `_por_empresa`, não um arg , confirmado no dado real; não existe
+> arg `porEmpresa`), e perguntas recorrentes **normalizadas para vocabulário fechado (PII-safe por
+> construção)**. Injeta SÓ para aquele usuário: bloco `[Preferências deste usuário]` via
+> `montarConversa` (**cache-safe**, não toca o `systemPromptBase`), `profileHint` no
+> `enhanceWithChips` (bolhas por resposta) e viés de domínio no welcome. **NUNCA oculta dado:**
+> preferências são defaults de VISÃO, jamais filtros; a pergunta do turno sempre vence (cláusula no
+> bloco). Worker `JOB_PROFILE_AGGREGATE` (cron 1h via `bootstrap`, **roda em prod**). UI super_admin
+> read-only + reset em `/agente/monitoramento/personalizacao`. Schema: estende `user_agent_profiles`
+> (migration manual idempotente, aplicada em dev). Piso calibrado no dado real (1 conversa/12 msgs).
+> **Verificação:** tsc raiz+mcp 0, eslint 0, **jest 3193 passed**, **E2E real verde** (agregação +
+> não-verbatim Mariane-like + injeção cache-safe + calibração acha candidato). **FORA (Onda 2,
+> host-side):** destilação por LLM (`interactionPrompt`/prefs sutis/acordos da Mariane) +
+> circuit-breaker. Specs/plan: `docs/superpowers/{specs,plans}/2026-06-19-*personalizacao*`.
+> **PENDENTE DO USUÁRIO:** validar e autorizar o merge/deploy (PR aberto). Em prod, o
+> `JOB_PROFILE_AGGREGATE` roda no boot do worker; rebuild via CI no merge.
+
+> **2026-06-19 (handoff p/ nova sessão) , ESTOQUE HISTÓRICO COMPLETO + GAPS FECHADOS, EM PROD.**
+> Tudo desta sessão no ar (catálogo 123 tools, `/api/health` 200): notas sem CFOP (#144),
+> snapshot diário de estoque (#146, captura rodando, 1ª foto 19/06) e `estoque_comparativo`
+> (#148, comparação entre datas , precisa, flexível, honesta). Antes: correções de UI da bubble,
+> 16 avaliações julgadas (status, não human_status), CFOP bruto×real (#141), SPEC de
+> personalização por usuário (engatilhada).
+>
+> **PENDENTE / RETOMADA (2 frentes, ambas GATED):**
+> 1. **Tool "demanda em aberta" (comercial) , STANDBY aguardando respostas da Mariane.** Quando
+>    ela responder o mapa de etapas, seguir `docs/superpowers/specs/2026-06-19-demanda-em-aberta-CONTINUACAO.md`
+>    (tem as perguntas, o dado já investigado e o plano de build passo a passo). O usuário aciona.
+> 2. **Personalização adaptativa por usuário , só a comando do usuário.** Spec em
+>    `docs/superpowers/specs/2026-06-19-agente-personalizacao-por-usuario-SPEC-v1-DRAFT.md`.
+>
+> Nota: a comparação EXATA entre datas de estoque fica mais rica conforme as fotos diárias
+> acumulam (1ª = 19/06). Verificar amanhã que o cron diário (09:00 BRT) disparou em prod.
+
+> **2026-06-19 (leva 3) , CORREÇÃO DE VEREDITO + CFOP BRUTO×REAL, EM PRODUÇÃO** (PR #141, health 200).
+> (1) Julgamento do Claude agora grava em `status`+`razoes`+`judge_model` (não `human_status`): some o lápis
+> "Pendente→Correto" e o bloco Ajuste manual volta (o erro anterior setava human_status com status=PENDENTE).
+> 8 avaliações reaplicadas (5 CORRETO + 3 PARCIAL) com diagnóstico. (2) Botão de download da Conversa em size
+> md (igual ao por-sessão) com `-my-0.5` p/ manter a linha alinhada. (3) `fiscal_faturamento_por_cfop` separa
+> BRUTO×REAL: cada linha tem `valorReal` (ex-intragrupo) e o total tem `totalReceitaReal`+`receitaIntragrupo`;
+> regra de prompt 12-cfop proíbe rotular o bruto por CFOP como "verdadeiro". E2E real: totalReceitaReal ==
+> receitaExterna da consolidada (invariante exato). Sobram como gaps: snapshot histórico de estoque e
+> listagem nota-a-nota sem CFOP.
+
+> **2026-06-19 (leva 2) , CORREÇÕES DE UI DA BUBBLE + 8 AVALIAÇÕES JULGADAS, EM PRODUÇÃO** (PR #139,
+> prod `/api/health` `{"ok":true}`, rollout forçado). Bubble RECARREGADA agora bate com a viva e com o
+> monitoramento: getConversationMessages voltou a trazer `kind` e `suggestions` (mesmo snapshot que o
+> monitor lê), então o selo "Áudio transcrito" reaparece e as chips não caem mais no HARD_FALLBACK
+> genérico ao reabrir. Header "Conversa" do monitoramento realinhado (botão de download voltou a size sm
+> p/ a linha alinhar com Colaboradores/Sessões; hover violeta mantido). Avaliações: 8 PENDENTE de prod
+> julgadas OFFLINE pelo Claude (5 CORRETO + 3 PARCIAL); as 3 PARCIAL apontam que a quebra por CFOP/operação
+> entrega o BRUTO e às vezes é rotulada como "verdadeiro" (o real, sem intragrupo, é pairwise por empresa e
+> não fecha por CFOP). Gaps registrados: snapshot histórico de estoque e listagem nota-a-nota sem CFOP.
+>
+> **2026-06-19 , PERÍCIA UI do Agente Nex (N1-N4 + P4) ENTREGUE E EM PRODUÇÃO** (PR #138, prod
+> `/api/health` `{"ok":true}`, rollout forçado app+mcp+worker em `latest`). N1: indicador de áudio
+> unificado (mesmo ícone Mic na bubble e no monitoramento). N2: botão de download da coluna Conversa
+> maior (size md) + hover violeta visível na sessão SELECIONADA. N3+N4b: `messagesSignature` do
+> bubble-monitor passou a assinar pelo CONTEÚDO das sugestões (antes só `.length`), consertando a
+> divergência de sugestões bubble × monitoramento e o realtime. N4a: bubble não pisca mais "sem sessão"
+> no load inicial (estado `restoring` + skeleton durante o restore async). P4: removidos os controles
+> DECORATIVOS de áudio/imagem (provedor/modelo/chave não lidos em runtime , transcrição usa
+> gpt-4o-mini-transcribe fixo + chave OpenAI ativa da conversa; imagem vai pro modelo da conversa com
+> visão); cada card mantém só o checkpoint + nota honesta. Sem mudança de schema. tsc 0, eslint 0 erros,
+> jest 3147 passed.
+>
 > **Ponto de retomada entre sessões.** Atualizado em **2026-06-15** , Milestone **Faturamento Real
 > Consolidado COMPLETO e em produção** (Fases 1, 2, 2.5, 2.6, 3, 4 + fix de CI). Catálogo: **121 tools**
 > (112 de leitura, 9 de escrita), sobre **40 fato_\*** e **126 raw_\***. (Números antigos citados nas seções

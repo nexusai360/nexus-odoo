@@ -36,6 +36,12 @@ export interface MontarConversaArgs {
    * Entra no item de data (volatil, fim do prompt , nao quebra o cache).
    */
   instrucaoTier?: string;
+  /**
+   * Personalizacao: bloco curto de preferencias DESTE usuario (formatUserProfileBlock).
+   * Entra como item proprio logo apos o system (item role:"user"), NUNCA no systemPromptBase
+   * , preserva o promptCacheKey = sha1(systemPromptBase). So entra se nao-vazio.
+   */
+  perfilUsuarioTexto?: string;
 }
 
 /** Monta a conversa inicial: system estavel + historico + item de data + pergunta. */
@@ -73,8 +79,14 @@ export function montarConversa(args: MontarConversaArgs): { conversation: ChatMe
           },
         ]
       : [];
+  // Personalizacao: bloco de preferencias do usuario, logo apos o system (cache-safe).
+  const perfilItens: ChatMessage[] =
+    args.perfilUsuarioTexto && args.perfilUsuarioTexto.trim().length > 0
+      ? [{ role: "user" as const, content: `[Preferências deste usuário] ${args.perfilUsuarioTexto}` }]
+      : [];
   const conversation: ChatMessage[] = [
     { role: "system", content: args.systemPromptBase },
+    ...perfilItens,
     ...resumoItens,
     ...memoriaItens,
     ...args.historyMessages,
