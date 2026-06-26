@@ -10,7 +10,9 @@ import {
   obterAcessoRelatorios2,
   podeAcessarSubmenu,
 } from "@/lib/reports/acesso-relatorios2";
+import { obterBuilderConversaAtiva } from "@/lib/reports/builder/builder-conversation-repo";
 import { BuilderWorkspace } from "@/components/reports/builder/builder-workspace";
+import type { BuilderReportEntry } from "@/lib/reports/builder/types";
 
 export const metadata = { title: "Construtor de relatórios | Relatórios 2.0" };
 export const dynamic = "force-dynamic";
@@ -52,11 +54,39 @@ export default async function ConstrutorPage() {
       settings?.imageModel,
   );
 
+  // Restaura a conversa ativa do construtor (mensagens persistidas) + a ficha em
+  // construcao, para o chat e o preview reaparecerem ao recarregar a pagina.
+  const conversaAtiva = await obterBuilderConversaAtiva(user.id).catch(() => null);
+  let initialFicha: BuilderReportEntry | null = null;
+  let initialSavedId: string | null = null;
+  let initialEtag: string | null = null;
+  if (conversaAtiva?.savedReportId) {
+    const sr = await prisma.savedReport
+      .findUnique({
+        where: { id: conversaAtiva.savedReportId },
+        select: { entry: true, etag: true, criadoPor: true },
+      })
+      .catch(() => null);
+    if (sr && sr.criadoPor === user.id) {
+      initialFicha = sr.entry as unknown as BuilderReportEntry;
+      initialSavedId = conversaAtiva.savedReportId;
+      initialEtag = sr.etag;
+    }
+  }
+
   return (
     // Altura casada com o padding do layout (pt+pb) para caber sem rolagem e
     // ainda deixar o respiro inferior (a bubble nao cobre o composer).
     <div className="h-[calc(100dvh-10rem)] px-4 sm:px-6 sm:h-[calc(100dvh-8rem)] lg:px-8">
-      <BuilderWorkspace audioEnabled={audioEnabled} anexoEnabled={anexoEnabled} />
+      <BuilderWorkspace
+        audioEnabled={audioEnabled}
+        anexoEnabled={anexoEnabled}
+        podeExportar
+        initialConversationId={conversaAtiva?.id ?? null}
+        initialFicha={initialFicha}
+        initialSavedId={initialSavedId}
+        initialEtag={initialEtag}
+      />
     </div>
   );
 }

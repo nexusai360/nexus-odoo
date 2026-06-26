@@ -1,63 +1,55 @@
 "use client";
 
 // src/components/reports/builder/builder-workspace.tsx
-// F2c/F2d (v2) , Workspace do construtor em tela cheia: chat (painel lateral) +
-// preview ao vivo (area dominante). Mantem o estado da conversa + ficha +
-// rascunho salvo e liga tudo em construirRelatorio. "Abrir relatorio" navega
-// para a rota dinamica depois que o rascunho foi persistido.
-import { useState, useRef } from "react";
+// F2c/F2d (v3 , chat = Nex) , Workspace do construtor: chat (painel lateral com
+// a experiencia do Agente Nex) + preview ao vivo. O chat fala com
+// /api/builder/stream e PERSISTE a conversa; a ficha do preview vem do `onDone`
+// de cada turno. "Abrir relatorio" navega para a rota dinamica do SavedReport.
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ExternalLink, FileBarChart, MessagesSquare } from "lucide-react";
-import { construirRelatorio } from "@/lib/actions/builder";
-import { BuilderChat, type BuilderChatMensagem } from "./builder-chat";
+import { BuilderChatPanel, type BuilderDonePayload } from "./builder-chat-panel";
 import { BuilderPreview } from "./builder-preview";
 import type { BuilderReportEntry } from "@/lib/reports/builder/types";
 
 export function BuilderWorkspace({
   audioEnabled = false,
   anexoEnabled = false,
+  podeExportar = false,
+  initialConversationId = null,
+  initialFicha = null,
+  initialSavedId = null,
+  initialEtag = null,
 }: {
   audioEnabled?: boolean;
   anexoEnabled?: boolean;
+  podeExportar?: boolean;
+  initialConversationId?: string | null;
+  initialFicha?: BuilderReportEntry | null;
+  initialSavedId?: string | null;
+  initialEtag?: string | null;
 }) {
   const router = useRouter();
-  const seq = useRef(0);
-  const [mensagens, setMensagens] = useState<BuilderChatMensagem[]>([]);
-  const [ficha, setFicha] = useState<BuilderReportEntry | null>(null);
-  const [pensando, setPensando] = useState(false);
-  const [savedId, setSavedId] = useState<string | null>(null);
-  const [etag, setEtag] = useState<string | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(initialConversationId);
+  const [ficha, setFicha] = useState<BuilderReportEntry | null>(initialFicha);
+  const [savedId, setSavedId] = useState<string | null>(initialSavedId);
+  const [, setEtag] = useState<string | null>(initialEtag);
 
-  function novoId() {
-    seq.current += 1;
-    return `m${seq.current}`;
+  function handleDone(p: BuilderDonePayload) {
+    if (p.ficha !== undefined && p.ficha !== null) setFicha(p.ficha);
+    if (p.savedId) setSavedId(p.savedId);
+    if (p.etag) setEtag(p.etag);
   }
 
-  function addMensagem(role: "user" | "assistant", content: string) {
-    setMensagens((prev) => [...prev, { id: novoId(), role, content }]);
-  }
-
-  async function enviar(prompt: string) {
-    addMensagem("user", prompt);
-    setPensando(true);
-    try {
-      const r = await construirRelatorio({ prompt, fichaAtual: ficha, savedId, etag });
-      if (r.ficha) setFicha(r.ficha);
-      if (r.savedId) setSavedId(r.savedId);
-      if (r.etag) setEtag(r.etag);
-      addMensagem("assistant", r.mensagem || "Pronto.");
-    } catch {
-      addMensagem(
-        "assistant",
-        "Tive um problema ao montar o relatorio agora. Pode tentar de novo?",
-      );
-    } finally {
-      setPensando(false);
-    }
+  function handleCleared() {
+    setConversationId(null);
+    setFicha(null);
+    setSavedId(null);
+    setEtag(null);
   }
 
   function abrir() {
-    if (savedId) router.push(`/relatorios/d/${savedId}`);
+    if (savedId) router.push(`/relatorios-2/d/${savedId}`);
   }
 
   return (
@@ -69,9 +61,7 @@ export function BuilderWorkspace({
             <FileBarChart className="h-5 w-5" aria-hidden />
           </div>
           <div>
-            <h1 className="text-sm font-semibold text-foreground">
-              Construtor de relatorios
-            </h1>
+            <h1 className="text-sm font-semibold text-foreground">Construtor de relatorios</h1>
             <p className="text-xs text-muted-foreground">
               Converse para montar o relatorio e veja o resultado ao lado.
             </p>
@@ -95,13 +85,15 @@ export function BuilderWorkspace({
             <MessagesSquare className="h-3.5 w-3.5" aria-hidden />
             Conversa
           </div>
-          <div className="min-h-[280px] flex-1 lg:min-h-0">
-            <BuilderChat
-              mensagens={mensagens}
-              pensando={pensando}
-              onEnviar={enviar}
+          <div className="min-h-[320px] flex-1 lg:min-h-0">
+            <BuilderChatPanel
+              conversationId={conversationId}
+              onConversationCreated={setConversationId}
+              onCleared={handleCleared}
+              onDone={handleDone}
               audioEnabled={audioEnabled}
               anexoEnabled={anexoEnabled}
+              podeExportar={podeExportar}
             />
           </div>
         </aside>

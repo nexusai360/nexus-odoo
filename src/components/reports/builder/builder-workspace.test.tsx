@@ -2,98 +2,58 @@
  * @jest-environment jsdom
  */
 import "@testing-library/jest-dom";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { BuilderWorkspace } from "./builder-workspace";
-import type { BuilderReportEntry } from "@/lib/reports/builder/types";
 
-const construirRelatorio = jest.fn();
-const previsualizarSecoes = jest.fn();
 const push = jest.fn();
-
-jest.mock("@/lib/prisma", () => ({ prisma: {} }));
 jest.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+jest.mock("@/lib/prisma", () => ({ prisma: {} }));
+jest.mock("@/lib/actions/builder-conversation", () => ({
+  getBuilderConversationMessages: jest.fn(async () => ({ ok: true, messages: [] })),
+  arquivarBuilderConversaAction: jest.fn(async () => ({ ok: true })),
+  exportarBuilderConversaTxt: jest.fn(async () => ({ ok: false, error: "vazio" })),
+}));
 jest.mock("@/lib/actions/builder", () => ({
-  construirRelatorio: (...a: unknown[]) => construirRelatorio(...a),
-  previsualizarSecoes: (...a: unknown[]) => previsualizarSecoes(...a),
+  previsualizarSecoes: jest.fn(async () => ({ tipo: "ok", dados: {} })),
 }));
 
-const FICHA: BuilderReportEntry = {
-  id: "rascunho",
-  titulo: "Saldo por armazem",
-  dominio: "estoque",
-  schemaVersion: 1,
-  tipo: "tela_cheia",
-  parametros: [],
-  secoes: [
-    {
-      id: "secao-1",
-      template: "DataTable",
-      fato: "fato_estoque_saldo",
-      shapeDerivado: "tabela",
-      config: { colunas: [{ key: "produtoNome", header: "Produto", tipo: "texto" }] },
-      filtros: [],
-    },
-  ],
-};
-
-beforeEach(() => {
-  construirRelatorio.mockReset();
-  previsualizarSecoes.mockReset();
-  push.mockReset();
-  previsualizarSecoes.mockResolvedValue({ tipo: "ok", dados: { "secao-1": { estado: "ok", dado: [] } } });
+beforeAll(() => {
+  global.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  } as unknown as typeof ResizeObserver;
 });
 
+beforeEach(() => push.mockReset());
+
 describe("BuilderWorkspace", () => {
-  it("envia o prompt e mostra as mensagens de usuario e assistente", async () => {
-    construirRelatorio.mockResolvedValue({
-      ok: true,
-      ficha: FICHA,
-      mensagem: "Montei a tabela de saldo.",
-      savedId: "sr1",
-      etag: "e1",
-    });
+  it("renderiza chat (welcome) + preview vazio e 'Abrir relatorio' desabilitado sem ficha", () => {
     render(<BuilderWorkspace />);
-    const campo = screen.getByPlaceholderText(/construa com o agente nex/i);
-    fireEvent.change(campo, { target: { value: "saldo por armazem" } });
-    fireEvent.click(screen.getByRole("button", { name: /enviar/i }));
-
-    expect(screen.getByText("saldo por armazem")).toBeInTheDocument();
-    expect(await screen.findByText("Montei a tabela de saldo.")).toBeInTheDocument();
-    await waitFor(() => expect(construirRelatorio).toHaveBeenCalledTimes(1));
-    expect(construirRelatorio.mock.calls[0][0]).toMatchObject({ prompt: "saldo por armazem" });
+    expect(screen.getByText(/construa com o agente nex/i)).toBeInTheDocument();
+    expect(screen.getByText(/o preview do relatorio aparece aqui/i)).toBeInTheDocument();
+    const abrir = screen.getByRole("button", { name: /abrir relatorio/i });
+    expect(abrir).toBeDisabled();
   });
 
-  it("habilita abrir relatorio apos salvar e navega para a rota dinamica", async () => {
-    construirRelatorio.mockResolvedValue({
-      ok: true,
-      ficha: FICHA,
-      mensagem: "Pronto.",
-      savedId: "sr1",
-      etag: "e1",
-    });
-    render(<BuilderWorkspace />);
-    fireEvent.change(screen.getByPlaceholderText(/construa com o agente nex/i), {
-      target: { value: "saldo" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /enviar/i }));
-    const abrir = await screen.findByRole("button", { name: /abrir relatorio/i });
-    expect(abrir).toBeEnabled();
-    fireEvent.click(abrir);
-    expect(push).toHaveBeenCalledWith("/relatorios/d/sr1");
-  });
-
-  it("repassa a segunda chamada com savedId+etag para atualizar o mesmo rascunho", async () => {
-    construirRelatorio
-      .mockResolvedValueOnce({ ok: true, ficha: FICHA, mensagem: "1", savedId: "sr1", etag: "e1" })
-      .mockResolvedValueOnce({ ok: true, ficha: FICHA, mensagem: "2", savedId: "sr1", etag: "e2" });
-    render(<BuilderWorkspace />);
-    const campo = screen.getByPlaceholderText(/construa com o agente nex/i);
-    fireEvent.change(campo, { target: { value: "primeiro" } });
-    fireEvent.click(screen.getByRole("button", { name: /enviar/i }));
-    await screen.findByText("1");
-    fireEvent.change(campo, { target: { value: "segundo" } });
-    fireEvent.click(screen.getByRole("button", { name: /enviar/i }));
-    await screen.findByText("2");
-    expect(construirRelatorio.mock.calls[1][0]).toMatchObject({ savedId: "sr1", etag: "e1" });
+  it("habilita 'Abrir relatorio' e navega para /relatorios-2/d/<id> quando ha ficha salva", () => {
+    render(
+      <BuilderWorkspace
+        initialSavedId="sr-1"
+        initialFicha={{
+          id: "rascunho",
+          titulo: "Saldo",
+          dominio: "estoque",
+          schemaVersion: 1,
+          tipo: "tela_cheia",
+          parametros: [],
+          secoes: [],
+        }}
+      />,
+    );
+    const abrir = screen.getByRole("button", { name: /abrir relatorio/i });
+    expect(abrir).not.toBeDisabled();
+    abrir.click();
+    expect(push).toHaveBeenCalledWith("/relatorios-2/d/sr-1");
   });
 });
