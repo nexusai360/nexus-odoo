@@ -24,7 +24,7 @@ const fichaComSecao: BuilderReportEntry = {
 };
 
 describe("builder tools index", () => {
-  it("BUILDER_TOOLS expoe as 10 tools com inputSchema", () => {
+  it("BUILDER_TOOLS expoe todas as tools com inputSchema", () => {
     const nomes = BUILDER_TOOLS.map((t) => t.name);
     expect(nomes).toEqual(
       expect.arrayContaining([
@@ -36,11 +36,14 @@ describe("builder tools index", () => {
         "adicionar_secao",
         "editar_secao",
         "remover_secao",
+        "mover_secao",
+        "definir_titulo",
+        "definir_titulo_secao",
         "definir_filtro",
         "validar",
       ]),
     );
-    expect(BUILDER_TOOLS).toHaveLength(10);
+    expect(BUILDER_TOOLS).toHaveLength(13);
   });
 
   it("validarFicha aprova ficha valida e compativel", () => {

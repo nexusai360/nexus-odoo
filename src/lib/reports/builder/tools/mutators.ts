@@ -90,6 +90,56 @@ export function removerSecao(
   };
 }
 
+/** Reposiciona uma secao: por direcao (cima/baixo) ou posicao (1-based). */
+export function moverSecao(
+  ficha: BuilderReportEntry,
+  args: { secaoId: string; direcao?: "cima" | "baixo"; posicao?: number },
+): MutResult {
+  const idx = ficha.secoes.findIndex((s) => s.id === args.secaoId);
+  if (idx < 0) return { erro: "secao_inexistente" };
+  const n = ficha.secoes.length;
+  let alvo: number;
+  if (typeof args.posicao === "number") {
+    alvo = Math.min(Math.max(args.posicao - 1, 0), n - 1);
+  } else if (args.direcao === "cima") {
+    alvo = Math.max(idx - 1, 0);
+  } else if (args.direcao === "baixo") {
+    alvo = Math.min(idx + 1, n - 1);
+  } else {
+    return { erro: "informe direcao (cima/baixo) ou posicao" };
+  }
+  if (alvo === idx) return { ficha };
+  const secoes = [...ficha.secoes];
+  const [s] = secoes.splice(idx, 1);
+  secoes.splice(alvo, 0, s);
+  return { ficha: { ...ficha, secoes } };
+}
+
+/** Renomeia o relatorio (titulo no topo). */
+export function definirTitulo(
+  ficha: BuilderReportEntry,
+  args: { titulo: string },
+): MutResult {
+  const t = args.titulo.trim();
+  if (!t) return { erro: "titulo_vazio" };
+  return { ficha: { ...ficha, titulo: t } };
+}
+
+/** Define o titulo (config.titulo) de uma secao. */
+export function definirTituloSecao(
+  ficha: BuilderReportEntry,
+  args: { secaoId: string; titulo: string },
+): MutResult {
+  const idx = ficha.secoes.findIndex((s) => s.id === args.secaoId);
+  if (idx < 0) return { erro: "secao_inexistente" };
+  const secoes = [...ficha.secoes];
+  secoes[idx] = {
+    ...secoes[idx],
+    config: { ...secoes[idx].config, titulo: args.titulo.trim() },
+  };
+  return { ficha: { ...ficha, secoes } };
+}
+
 interface FiltroArg {
   tipo: "armazem" | "familia" | "sentido" | "faixaDias";
   default?: string;

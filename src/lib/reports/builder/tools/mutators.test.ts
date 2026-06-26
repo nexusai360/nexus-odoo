@@ -3,8 +3,12 @@ import {
   adicionarSecao,
   editarSecao,
   removerSecao,
+  moverSecao,
+  definirTitulo,
+  definirTituloSecao,
 } from "./mutators";
 import { validarReportEntry } from "../report-entry-schema";
+import type { BuilderReportEntry } from "../types";
 
 jest.mock("@/lib/prisma", () => ({ prisma: {} }));
 
@@ -14,6 +18,44 @@ describe("mutators", () => {
     expect(ficha.tipo).toBe("tela_cheia");
     expect(ficha.secoes).toEqual([]);
     expect(validarReportEntry(ficha).ok).toBe(true);
+  });
+
+  function fichaTresSecoes(): BuilderReportEntry {
+    return {
+      id: "rascunho",
+      titulo: "Estoque",
+      dominio: "estoque",
+      schemaVersion: 1,
+      tipo: "tela_cheia",
+      parametros: [],
+      secoes: [
+        { id: "a", template: "KPIRow", fato: "fato_estoque_saldo", shapeDerivado: "kpis", config: {}, filtros: [] },
+        { id: "b", template: "BarChart", fato: "fato_estoque_saldo", shapeDerivado: "agregacaoCategorica", config: {}, filtros: [] },
+        { id: "c", template: "DataTable", fato: "fato_estoque_saldo", shapeDerivado: "tabela", config: {}, filtros: [] },
+      ],
+    };
+  }
+
+  it("moverSecao reordena por direcao e por posicao", () => {
+    const f = fichaTresSecoes();
+    const sobe = moverSecao(f, { secaoId: "c", direcao: "cima" });
+    expect("ficha" in sobe && sobe.ficha.secoes.map((s) => s.id)).toEqual(["a", "c", "b"]);
+    const pos = moverSecao(f, { secaoId: "c", posicao: 1 });
+    expect("ficha" in pos && pos.ficha.secoes.map((s) => s.id)).toEqual(["c", "a", "b"]);
+    expect(moverSecao(f, { secaoId: "x", direcao: "cima" })).toEqual({ erro: "secao_inexistente" });
+  });
+
+  it("definirTitulo renomeia o relatorio (rejeita vazio)", () => {
+    const f = fichaTresSecoes();
+    const r = definirTitulo(f, { titulo: "  Estoque por armazem  " });
+    expect("ficha" in r && r.ficha.titulo).toBe("Estoque por armazem");
+    expect(definirTitulo(f, { titulo: "  " })).toEqual({ erro: "titulo_vazio" });
+  });
+
+  it("definirTituloSecao grava config.titulo", () => {
+    const f = fichaTresSecoes();
+    const r = definirTituloSecao(f, { secaoId: "b", titulo: "Top categorias" });
+    expect("ficha" in r && r.ficha.secoes[1].config.titulo).toBe("Top categorias");
   });
 
   it("adicionarSecao compativel adiciona a secao", () => {

@@ -13,6 +13,9 @@ const LABELS: Record<string, string> = {
   adicionar_secao: "Adicionando uma secao",
   editar_secao: "Ajustando uma secao",
   remover_secao: "Removendo uma secao",
+  mover_secao: "Reposicionando uma secao",
+  definir_titulo: "Renomeando o relatorio",
+  definir_titulo_secao: "Renomeando uma secao",
   definir_filtro: "Aplicando um filtro",
   validar: "Validando o relatorio",
 };

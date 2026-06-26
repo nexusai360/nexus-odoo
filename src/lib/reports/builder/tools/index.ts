@@ -15,6 +15,9 @@ import {
   editarSecao,
   removerSecao,
   definirFiltro,
+  moverSecao,
+  definirTitulo,
+  definirTituloSecao,
 } from "./mutators";
 import { validarReportEntry } from "../report-entry-schema";
 import { checarCompatibilidade } from "../compat";
@@ -42,6 +45,9 @@ export const BUILDER_TOOLS: BuilderToolMeta[] = [
   { name: "adicionar_secao", muta: true, descricao: "Adiciona uma secao (template + fonte + shape) se compativel.", inputSchema: z.object({ template: z.string(), fato: z.string(), shapeDerivado: z.string(), config: z.record(z.string(), z.unknown()).optional() }) },
   { name: "editar_secao", muta: true, descricao: "Edita uma secao existente (config/template/shape), re-checa compatibilidade.", inputSchema: z.object({ secaoId: z.string(), patch: z.object({ template: z.string().optional(), shapeDerivado: z.string().optional(), config: z.record(z.string(), z.unknown()).optional() }) }) },
   { name: "remover_secao", muta: true, descricao: "Remove uma secao pela id.", inputSchema: z.object({ secaoId: z.string() }) },
+  { name: "mover_secao", muta: true, descricao: "Reposiciona uma secao (reordena): por direcao (cima/baixo) ou posicao (1-based).", inputSchema: z.object({ secaoId: z.string(), direcao: z.enum(["cima", "baixo"]).optional(), posicao: z.number().int().positive().optional() }) },
+  { name: "definir_titulo", muta: true, descricao: "Renomeia o relatorio (titulo do topo).", inputSchema: z.object({ titulo: z.string() }) },
+  { name: "definir_titulo_secao", muta: true, descricao: "Define o titulo de uma secao (config.titulo).", inputSchema: z.object({ secaoId: z.string(), titulo: z.string() }) },
   { name: "definir_filtro", muta: true, descricao: "Acrescenta um filtro a uma secao.", inputSchema: z.object({ secaoId: z.string(), filtro: filtroSchema }) },
   { name: "validar", muta: false, descricao: "Valida a ficha atual (schema + compatibilidade de todas as secoes).", inputSchema: z.object({}) },
 ];
@@ -97,6 +103,15 @@ export function executarTool(
     case "remover_secao":
       if (!ficha) return { tipo: "erro", erro: "sem_ficha" };
       return { tipo: "ficha", ficha: removerSecao(ficha, args as { secaoId: string }).ficha };
+    case "mover_secao":
+      if (!ficha) return { tipo: "erro", erro: "sem_ficha" };
+      return mutResult(moverSecao(ficha, args as unknown as Parameters<typeof moverSecao>[1]));
+    case "definir_titulo":
+      if (!ficha) return { tipo: "erro", erro: "sem_ficha" };
+      return mutResult(definirTitulo(ficha, args as { titulo: string }));
+    case "definir_titulo_secao":
+      if (!ficha) return { tipo: "erro", erro: "sem_ficha" };
+      return mutResult(definirTituloSecao(ficha, args as { secaoId: string; titulo: string }));
     case "definir_filtro":
       if (!ficha) return { tipo: "erro", erro: "sem_ficha" };
       return mutResult(definirFiltro(ficha, args as unknown as Parameters<typeof definirFiltro>[1]));
