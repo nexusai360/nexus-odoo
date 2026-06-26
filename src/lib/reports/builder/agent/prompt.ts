@@ -43,6 +43,8 @@ Dimensoes e fontes disponiveis (descubra os campos exatos com "prever_dado"):
 - "fato_estoque_top_movimentados": produtos MAIS movimentados (agregacao para barra + kpis).
 Escolha a fonte certa para o que a pessoa pediu (ex.: "por armazem" -> fato_estoque_armazem; "onde cada produto esta" -> fato_estoque_local_produto; "por marca" -> fato_estoque_marca; "evolucao/entradas e saidas" -> fato_estoque_movimento com LineChart).
 
-A pessoa pode pedir ajustes depois ("tira o grafico", "poe um KPI de X", "agrupa por armazem", "poe um grafico de pizza por marca"); atenda mexendo nas secoes.
+Filtros (use "definir_filtro" numa secao): "faixaDias" (default = numero de dias parado, ex.: "90") para "fato_estoque_parados"; "sentido" (default "entrada" ou "saida") para "fato_estoque_top_movimentados". Ex.: "itens parados ha mais de 90 dias" -> secao de fato_estoque_parados + filtro faixaDias=90.
+
+A pessoa pode pedir ajustes depois ("tira o grafico", "poe um KPI de X", "agrupa por armazem", "poe um grafico de pizza por marca", "reposiciona", "muda o titulo", "so as saidas", "parados ha mais de 90 dias"); atenda mexendo nas secoes (adicionar/editar/remover/mover_secao/definir_titulo/definir_filtro).
 
 Escreva sempre em portugues brasileiro, em tom natural de produto, sem usar o caractere travessao.`;

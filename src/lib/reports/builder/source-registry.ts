@@ -21,6 +21,10 @@ export type FiltrosFonte = {
   armazemId?: number;
   familiaId?: number;
   termo?: string;
+  /** Dias minimos parado (fato_estoque_parados). */
+  faixaDias?: number;
+  /** Sentido do movimento: "entrada" | "saida" (fato_estoque_top_movimentados). */
+  sentido?: string;
 };
 
 type Produtor = (filtros: FiltrosFonte) => Promise<RawSourceData>;
@@ -262,12 +266,12 @@ const fatoEstoqueParados: FonteDef = {
     },
   },
   produtores: {
-    kpis: async () => {
-      const d = await queryProdutosParados(prisma, {});
+    kpis: async (filtros) => {
+      const d = await queryProdutosParados(prisma, { faixaDias: filtros.faixaDias });
       return { linhas: [], kpis: { totalParados: d.kpis.totalParados, valorImobilizado: d.kpis.valorImobilizado }, freshness: null };
     },
-    tabela: async () => {
-      const d = await queryProdutosParados(prisma, {});
+    tabela: async (filtros) => {
+      const d = await queryProdutosParados(prisma, { faixaDias: filtros.faixaDias });
       return { linhas: d.linhas as unknown as Record<string, unknown>[], freshness: null };
     },
   },
@@ -292,12 +296,12 @@ const fatoEstoqueTopMovimentados: FonteDef = {
     },
   },
   produtores: {
-    agregacaoCategorica: async () => {
-      const d = await queryTopMovimentados(prisma, {});
+    agregacaoCategorica: async (filtros) => {
+      const d = await queryTopMovimentados(prisma, { sentido: filtros.sentido });
       return { linhas: d.linhas, freshness: null };
     },
-    kpis: async () => {
-      const d = await queryTopMovimentados(prisma, {});
+    kpis: async (filtros) => {
+      const d = await queryTopMovimentados(prisma, { sentido: filtros.sentido });
       return { linhas: [], kpis: { totalProdutos: d.kpis.totalProdutos, totalUnidades: d.kpis.totalUnidades }, freshness: null };
     },
   },

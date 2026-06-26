@@ -37,11 +37,27 @@ function aplicarAdaptador(
   }
 }
 
+/** Converte os filtros declarados na secao (tipo + default) em FiltrosFonte. */
+function filtrosDaSecao(secao: BuilderSection): FiltrosFonte {
+  const out: FiltrosFonte = {};
+  for (const f of secao.filtros ?? []) {
+    if (f.tipo === "faixaDias" && f.default != null) {
+      const n = Number(f.default);
+      if (!Number.isNaN(n)) out.faixaDias = n;
+    } else if (f.tipo === "sentido" && f.default) {
+      out.sentido = f.default;
+    }
+  }
+  return out;
+}
+
 /** Resolve o dado de uma secao para render. */
 export async function resolveSecao(
   secao: BuilderSection,
   filtros: FiltrosFonte,
 ): Promise<SecaoResolvida> {
+  // Filtros vindos da ficha (secao.filtros) + filtros de runtime (caller).
+  const filtrosEfetivos: FiltrosFonte = { ...filtrosDaSecao(secao), ...filtros };
   const contrato = obterContrato(secao.fato);
   if (!contrato) {
     return { estado: "erro", erro: "fonte_indisponivel" };
@@ -56,7 +72,7 @@ export async function resolveSecao(
   if (!produtor) {
     return { estado: "erro", erro: "fonte_indisponivel" };
   }
-  const raw = await produtor(filtros);
+  const raw = await produtor(filtrosEfetivos);
   const campos = contrato.campos?.[secao.shapeDerivado];
   const dado = aplicarAdaptador(secao, raw, campos);
   // KPIs nao tem "linhas" (sao escalares na fonte): considera vazio so quando

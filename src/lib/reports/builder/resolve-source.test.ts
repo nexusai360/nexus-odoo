@@ -26,6 +26,38 @@ const secaoTabela: BuilderSection = {
   filtros: [],
 };
 
+describe("resolveSecao , filtros da secao", () => {
+  it("converte secao.filtros (faixaDias) em FiltrosFonte e passa ao produtor", async () => {
+    const prod = jest.fn().mockResolvedValue({ linhas: [{ a: 1 }], freshness: null });
+    obterProdutor.mockReturnValue(prod);
+    const secao: BuilderSection = {
+      id: "p",
+      template: "DataTable",
+      fato: "fato_estoque_parados",
+      shapeDerivado: "tabela",
+      config: {},
+      filtros: [{ tipo: "faixaDias", default: "90" }],
+    };
+    await resolveSecao(secao, {});
+    expect(prod).toHaveBeenCalledWith(expect.objectContaining({ faixaDias: 90 }));
+  });
+
+  it("filtro de runtime tem precedencia sobre o filtro da secao", async () => {
+    const prod = jest.fn().mockResolvedValue({ linhas: [{ a: 1 }], freshness: null });
+    obterProdutor.mockReturnValue(prod);
+    const secao: BuilderSection = {
+      id: "t",
+      template: "BarChart",
+      fato: "fato_estoque_top_movimentados",
+      shapeDerivado: "agregacaoCategorica",
+      config: {},
+      filtros: [{ tipo: "sentido", default: "entrada" }],
+    };
+    await resolveSecao(secao, { sentido: "saida" });
+    expect(prod).toHaveBeenCalledWith(expect.objectContaining({ sentido: "saida" }));
+  });
+});
+
 describe("resolveSecao", () => {
   it("resolve DataTable/tabela em linhas com estado ok", async () => {
     obterProdutor.mockReturnValue(async () => ({
