@@ -74,8 +74,14 @@ Duas formas de entrega, em ondas distintas: **relatório de tela cheia** (onda 1
 1. **Config-driven, nunca code-gen.** Relatório é `ReportEntry` validado por schema.
 2. **MCP de construção separado do Nex** (catálogo/tools exclusivos). Implementado como
    **biblioteca de handlers TS**; o servidor MCP é a casca de exposição (§4.6).
-3. **Agente construtor** reusa a infra LLM multi-provedor (`src/lib/agent/llm`), default
-   **OpenAI `gpt-5-mini`**, padrão de orquestração do Nex, isolado (prompt/catálogo/sessão).
+3. **Agente construtor: modelo selecionável na Configuração, mesmo padrão do Agente Nex.**
+   Reusa toda a infra LLM existente (`src/lib/agent/llm`): credenciais (`LlmCredential`),
+   catálogo de modelos (`LlmModelEntry`/`effective-catalog`), client (`get-client`) e billing
+   (`LlmUsage`). O construtor tem sua **própria configuração de modelo ativo** (provedor +
+   modelo), editável numa tela no padrão da `agente/configuracao` (puxa as credenciais já
+   cadastradas em `agente/chaves`). Default sugerido: OpenAI `gpt-5-mini`, mas é o usuário
+   quem escolhe na tela. Orquestração no padrão do Nex, isolada (prompt/catálogo/sessão
+   próprios). Ver §4.8.
 4. **Design pela `ui-ux-pro-max` em design-time**, embutido nos componentes; IA não
    desenha em runtime.
 5. **Biblioteca milimetricamente documentada** (formato em §6).
@@ -161,6 +167,20 @@ da ficha (barato, a cada turno) e renderizar com dado (sob demanda / amostra lim
 não re-consultar o cache pesado a cada turno). Localização na navegação e refino visual ficam
 comigo (com a skill), sem validação tela-a-tela.
 
+### 4.8 Configuração de modelo do construtor (reusa o padrão do Agente Nex)
+
+O construtor tem uma seção de configuração de LLM **espelhando o padrão visual e funcional
+da `agente/configuracao`** (a tela "Configuração > Recursos" do Nex, com o mesmo estilo de
+cards e seleção de modelo/custo). Nela o `super_admin` escolhe **provedor + modelo** que o
+construtor usa, a partir do **catálogo existente** (`LlmModelEntry`/`effective-catalog`) e das
+**credenciais já cadastradas** em `agente/chaves` (`LlmCredential`). Não duplica credenciais.
+- A "config ativa" do construtor é própria (não compartilha o `LlmConfig` do Nex, para que
+  trocar o modelo do construtor não afete o Nex): um registro de config marcado por uso
+  (`uso: "construtor"`) ou um modelo análogo, decidido no plano.
+- O runtime resolve o client por `get-client` + a config ativa do construtor.
+- Consumo é registrado em `LlmUsage` (billing já existente), o que **realiza a medição** de
+  §9 sem reinventar contagem de tokens.
+
 ---
 
 ## 5. RBAC e visibilidade
@@ -219,7 +239,8 @@ nas ondas de acervo.
   5. **Tools de construção** (biblioteca de handlers) + validação + compatibilidade.
   6. **Agente construtor** (infra LLM existente, enums fechados, teto, loop de reparo, recusa honesta).
   7. **Tela chat + preview** (reusa Playground/bubble; preview em 2 níveis).
-  8. **Medição de IA** mínima (tokens por usuário + teto duro configurável).
+  8. **Config de modelo do construtor** (§4.8, tela no padrão do Nex, reusa credenciais/
+     catálogo) + **teto de IA** (reusa billing `LlmUsage` + bloqueio ao atingir).
   9. **Critério de aceite (§11).**
   (Sem publicação, sem RBAC de consumo, sem widget/painel, sem grid.)
 - **Onda 2 , Acervo + edição manual (tela cheia):** `KPIRow` config-driven, `BarChart`,
@@ -247,9 +268,11 @@ onda 4. Concorrência: `etag` + escrita otimista (conflito → recarrega e reapl
 
 - **Sem code-gen:** agente só emite `ReportEntry` validado (schema + compatibilidade). Fonte
   sempre por referência a query auditada.
-- **Medição de IA (onda 1):** tokens por chamada, contabilizados **por usuário** e **agregado
-  da instância**; **teto duro** por período (Configuração, só super_admin); ao atingir,
-  **bloqueia** com mensagem. Modelo único configurável globalmente (reusa a whitelist existente).
+- **Medição de IA (onda 1):** reusa o **billing existente** (`LlmUsage` + `usage-logger`),
+  que já contabiliza tokens/custo por chamada. O construtor só acrescenta o **teto duro** por
+  período (na config do construtor, §4.8, só super_admin); ao atingir, **bloqueia** novas
+  construções com mensagem. Modelo escolhido na config do construtor (§4.8), via catálogo e
+  whitelist existentes.
 - **Limites:** nº de seções por relatório (e, onda 4, widgets por painel) parametrizáveis.
 
 ---
@@ -297,7 +320,8 @@ agendamento; servidor MCP externo na onda 1 (vem com a externalização).
 
 ## 14. Pontos fechados
 
-1. Provedor: infra LLM existente, default **OpenAI `gpt-5-mini`**.
+1. Provedor/modelo: **selecionável na config do construtor** (§4.8, padrão do Agente Nex,
+   reusa `LlmCredential`/`LlmModelEntry`/`LlmUsage`); default sugerido OpenAI `gpt-5-mini`.
 2. Ficha: **`ReportEntry` estendido** (diff em §4.3), não modelo paralelo.
 3. Motor: **genérico novo** (a F3 é estática); maior frente da onda 1.
 4. MCP: handlers como **biblioteca**; servidor é casca para externalização futura.
