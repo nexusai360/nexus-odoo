@@ -244,8 +244,38 @@ export function CanvasViewport({ children }: { children: React.ReactNode }) {
 }
 
 /**
+ * Pinca de zoom: polegar + indicador saindo de um mesmo ponto (o "pulso") e
+ * ABRINDO/FECHANDO o angulo entre eles, como o gesto de pinca do trackpad.
+ */
+function PincaZoom({ reduce }: { reduce: boolean }) {
+  const t = reduce
+    ? {}
+    : { duration: 1.2, repeat: 1, repeatType: "reverse" as const, ease: "easeInOut" };
+  return (
+    <div className="relative h-10 w-12">
+      {/* indicador (dedo de cima/esquerda) */}
+      <motion.div
+        className="absolute bottom-1 left-1/2 h-7 w-2 -translate-x-1/2 rounded-full bg-violet-500"
+        style={{ transformOrigin: "50% 100%" }}
+        animate={reduce ? {} : { rotate: [-8, -30] }}
+        transition={t}
+      />
+      {/* polegar (dedo de baixo/direita) */}
+      <motion.div
+        className="absolute bottom-1 left-1/2 h-6 w-2 -translate-x-1/2 rounded-full bg-violet-400"
+        style={{ transformOrigin: "50% 100%" }}
+        animate={reduce ? {} : { rotate: [8, 30] }}
+        transition={t}
+      />
+      {/* pulso (ponto de origem dos dedos) */}
+      <span className="absolute bottom-0 left-1/2 h-2.5 w-2.5 -translate-x-1/2 rounded-full bg-violet-600" />
+    </div>
+  );
+}
+
+/**
  * Camada de dica: fundo embacado + cartao central com a mao. Fase "drag" mostra a
- * mao deslizando; fase "zoom" mostra dois dedos fazendo a pinca (afasta/junta).
+ * mao deslizando; fase "zoom" mostra a pinca (polegar + indicador abrindo/fechando).
  * pointer-events-none: gestos passam direto para o canvas (interrompem a dica).
  */
 function DicaCanvas({ fase, reduce }: { fase: FaseDica; reduce: boolean }) {
@@ -273,26 +303,7 @@ function DicaCanvas({ fase, reduce }: { fase: FaseDica; reduce: boolean }) {
                   <Hand className="h-8 w-8" aria-hidden />
                 </motion.div>
               ) : (
-                // Pinca de zoom: dois "dedos" que afastam e juntam (2x).
-                <div className="relative flex items-center justify-center">
-                  <motion.span
-                    animate={reduce ? {} : { x: [-4, -20, -4] }}
-                    transition={reduce ? {} : { duration: 1.2, repeat: 1, ease: "easeInOut" }}
-                    className="absolute h-3.5 w-3.5 rounded-full bg-violet-500"
-                  />
-                  <motion.span
-                    animate={reduce ? {} : { x: [4, 20, 4] }}
-                    transition={reduce ? {} : { duration: 1.2, repeat: 1, ease: "easeInOut" }}
-                    className="absolute h-3.5 w-3.5 rounded-full bg-violet-400"
-                  />
-                  <motion.div
-                    animate={reduce ? {} : { scale: [1, 1.18, 1] }}
-                    transition={reduce ? {} : { duration: 1.2, repeat: 1, ease: "easeInOut" }}
-                    className="text-violet-500/70"
-                  >
-                    <Hand className="h-9 w-9" aria-hidden />
-                  </motion.div>
-                </div>
+                <PincaZoom reduce={reduce} />
               )}
             </div>
             <div className="text-center">

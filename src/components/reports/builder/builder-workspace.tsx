@@ -93,7 +93,10 @@ export function BuilderWorkspace({
             />
           </div>
         </aside>
-        <section className="min-h-0 flex-1 bg-background">
+        {/* min-w-0: deixa a coluna do preview ENCOLHER abaixo da largura do
+            conteudo (o canvas mede 1040px). Sem isso o flex-1 nao encolhe e o
+            canvas le uma largura grande demais, abrindo o relatorio sem fit. */}
+        <section className="min-h-0 min-w-0 flex-1 bg-background">
           <BuilderPreview ficha={ficha} />
         </section>
       </div>
