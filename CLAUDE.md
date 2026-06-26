@@ -3,6 +3,32 @@
 > Carregado automaticamente em toda sessão. Define como conduzir o trabalho.
 > Sobrescreve regras globais quando houver conflito específico.
 
+> ## 🔒 REGRA DURÁVEL , F6 (Construtor de relatórios): SÓ LOCAL ATÉ APROVAÇÃO EXPLÍCITA
+>
+> **Decisão do usuário (2026-06-26), inegociável, vale para ESTA e TODAS as sessões
+> futuras.** TODO o trabalho do **Construtor de relatórios (F6)** fica **somente
+> local** e **NÃO sobe para produção** sem **aprovação explícita do usuário**.
+>
+> Concretamente, enquanto a F6 não for liberada por ele:
+> - **NUNCA mergear a branch do F6 para `main`** (merge na `main` dispara o
+>   auto-deploy via Shepherd e vai para produção). O `gh pr merge` da F6 só
+>   acontece com o "sim" explícito do usuário, como qualquer merge, e aqui com
+>   rigor redobrado.
+> - **NÃO rodar `scripts/ship.py`, `scripts/deploy-portainer.py` nem qualquer
+>   deploy** para a F6.
+> - **NÃO aplicar migrations da F6 no banco de produção.** Schema novo da F6 só
+>   em dev local. Como o Postgres é compartilhado entre worktrees, qualquer
+>   migration da F6 segue o protocolo de schema e fica restrita ao dev.
+> - O trabalho vive numa **worktree/branch local dedicada** do F6. Push da branch
+>   feature para o GitHub (backup/PR de revisão) é tolerável, MAS **o merge para
+>   `main` é o gatilho proibido** sem aprovação. Em dúvida, perguntar antes.
+> - Validação é toda **local** (dev local, `npm run dev:fresh`, containers locais),
+>   nunca em produção.
+>
+> Esta regra protege contra subir um construtor (que gera relatórios e consome a
+> API do Claude por cliente) para produção antes do usuário validar. Só sai daqui
+> quando ele disser, com todas as letras, que pode subir.
+
 > **Ao iniciar uma sessão, ler `STATUS.md`** — é o ponto de retomada: o que já
 > foi feito, em que fase/bloco estamos e qual a próxima ação. Trabalho conduzido
 > em **modo autônomo** (ver §5).
