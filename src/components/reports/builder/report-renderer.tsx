@@ -43,13 +43,23 @@ function SecaoView({
     );
   }
   if (secao.template === "DataTable") {
-    const colunas = (secao.config.colunas as ColunaConfig[] | undefined) ?? [];
-    const columns: ColumnDef<Record<string, unknown>>[] = colunas.map((c) => ({
-      key: c.key,
-      header: c.header,
-      tipo: c.tipo ?? "texto",
-    }));
     const rows = (resolvida.dado as Record<string, unknown>[]) ?? [];
+    let colunas = (secao.config.colunas as ColunaConfig[] | undefined) ?? [];
+    // Fallback: quando o agente nao define `colunas`, deriva das chaves do dado
+    // (evita tabela vazia + erro de key por colunas inexistentes).
+    if (colunas.length === 0 && rows.length > 0) {
+      colunas = Object.keys(rows[0]).map((k) => ({ key: k, header: humanizarChave(k) }));
+    }
+    const columns: ColumnDef<Record<string, unknown>>[] = colunas
+      .filter((c) => c && c.key)
+      .map((c) => ({ key: c.key, header: c.header ?? c.key, tipo: c.tipo ?? "texto" }));
+    if (columns.length === 0) {
+      return (
+        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+          Sem colunas para esta secao.
+        </div>
+      );
+    }
     return <DataTable columns={columns} rows={rows} searchable />;
   }
   return (
@@ -78,4 +88,10 @@ export function ReportRenderer({
       ))}
     </div>
   );
+}
+
+/** camelCase / snake_case -> "Texto legivel" para cabecalho derivado. */
+function humanizarChave(k: string): string {
+  const s = k.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ").trim();
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }

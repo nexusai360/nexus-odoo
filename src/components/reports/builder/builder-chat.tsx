@@ -95,7 +95,7 @@ export function BuilderChat({
             </div>
             <div className="max-w-xs space-y-1">
               <p className="text-sm font-semibold text-foreground">
-                Construa com o agente Nex
+                Construa com o Agente Nex
               </p>
               <p className="text-xs leading-relaxed text-muted-foreground">
                 Descreva o relatorio que voce quer ver. Ex.: saldo de estoque por
@@ -182,7 +182,7 @@ export function BuilderChat({
                 onSend={enviar}
                 disabled={desabilitado || transcrevendo}
                 placeholder={
-                  transcrevendo ? "Transcrevendo seu audio…" : "Construa com o agente Nex…"
+                  transcrevendo ? "Transcrevendo seu audio…" : "Construa com o Agente Nex…"
                 }
                 aria-label="Mensagem para o construtor"
                 maxRows={6}
