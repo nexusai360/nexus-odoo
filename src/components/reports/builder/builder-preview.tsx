@@ -8,6 +8,7 @@
 import { useState, useEffect } from "react";
 import { LayoutDashboard, AlertTriangle, Eye } from "lucide-react";
 import { ReportRenderer } from "./report-renderer";
+import { CanvasViewport } from "./canvas-viewport";
 import { previsualizarSecoes } from "@/lib/actions/builder";
 import { validarReportEntry } from "@/lib/reports/builder/report-entry-schema";
 import type { BuilderReportEntry } from "@/lib/reports/builder/types";
@@ -77,8 +78,15 @@ export function BuilderPreview({ ficha }: { ficha: BuilderReportEntry | null }) 
         ) : null}
       </div>
 
-      {/* Canvas */}
-      <div className="relative flex-1 overflow-y-auto bg-[radial-gradient(circle_at_1px_1px,var(--color-border)_1px,transparent_0)] [background-size:22px_22px]">
+      {/* Canvas , quando ha relatorio, vira um canvas com zoom/pan; nos demais
+          estados e uma area pontilhada centralizada. */}
+      <div
+        className={
+          estado === "ok"
+            ? "relative flex-1 overflow-hidden"
+            : "relative flex-1 overflow-y-auto bg-[radial-gradient(circle_at_1px_1px,var(--color-border)_1px,transparent_0)] [background-size:22px_22px]"
+        }
+      >
         {estado === "vazio" ? (
           <Moldura icon={<LayoutDashboard className="h-8 w-8" aria-hidden />}>
             <p className="text-sm font-medium text-foreground">
@@ -125,11 +133,14 @@ export function BuilderPreview({ ficha }: { ficha: BuilderReportEntry | null }) 
         ) : null}
 
         {estado === "ok" && ficha ? (
-          <div className="mx-auto max-w-5xl p-6">
-            <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-              <ReportRenderer entry={ficha} dados={dados} />
+          <CanvasViewport>
+            {/* "papel" do relatorio com largura logica fixa (BASE_WIDTH do canvas). */}
+            <div className="px-5 pb-10">
+              <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+                <ReportRenderer entry={ficha} dados={dados} />
+              </div>
             </div>
-          </div>
+          </CanvasViewport>
         ) : null}
       </div>
     </div>

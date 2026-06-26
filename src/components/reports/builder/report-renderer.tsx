@@ -9,6 +9,7 @@ import { Boxes, Coins, TrendingUp } from "lucide-react";
 import { DataTable, type ColumnDef } from "@/components/charts/data-table";
 import { KPICard, type NumberFormat } from "@/components/charts/kpi-card";
 import { BarChartCard } from "@/components/charts/bar-chart";
+import { PieChartCard } from "@/components/charts/pie-chart";
 import type {
   BuilderReportEntry,
   BuilderSection,
@@ -110,6 +111,18 @@ function SecaoView({
     );
   }
 
+  // PieChart , proporcao entre poucas categorias (mesma agregacaoCategorica).
+  if (secao.template === "PieChart") {
+    const data = (resolvida.dado as Record<string, unknown>[]) ?? [];
+    const campoValor = (resolvida.campos ?? []).find((c) => c.key === "valor");
+    return (
+      <PieChartCard
+        data={data}
+        config={{ nameKey: "rotulo", valueKey: "valor", formato: formatoDoCampo(campoValor?.tipo) }}
+      />
+    );
+  }
+
   // DataTable , detalhe linha a linha.
   if (secao.template === "DataTable") {
     const rows = (resolvida.dado as Record<string, unknown>[]) ?? [];
@@ -163,9 +176,9 @@ export function ReportRenderer({
     <div className="flex flex-col gap-6">
       {entry.titulo ? (
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-foreground">{entry.titulo}</h1>
+          <h1 className="text-lg font-semibold tracking-tight text-foreground">{entry.titulo}</h1>
           {entry.descricao ? (
-            <p className="mt-1 text-sm text-muted-foreground">{entry.descricao}</p>
+            <p className="mt-1 text-[13px] text-muted-foreground">{entry.descricao}</p>
           ) : null}
         </div>
       ) : null}
@@ -174,7 +187,7 @@ export function ReportRenderer({
         return (
           <section key={secao.id} className="flex flex-col gap-2">
             {titulo ? (
-              <h2 className="text-sm font-semibold text-foreground/80">{titulo}</h2>
+              <h2 className="text-[13px] font-semibold text-foreground/80">{titulo}</h2>
             ) : null}
             <SecaoView secao={secao} resolvida={dados[secao.id]} />
           </section>

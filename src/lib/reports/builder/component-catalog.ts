@@ -51,6 +51,20 @@ export const COMPONENT_CATALOG: ComponentEntry[] = [
     tokensVisuais: { barra: "chart.bar", grade: "chart.grid" },
   },
   {
+    chave: "PieChart",
+    nome: "Grafico de pizza",
+    paraQueServe:
+      "Mostrar a proporcao (a fatia de cada categoria) sobre um total. Usa o mesmo shape do grafico de barras.",
+    quandoUsar:
+      "Poucas categorias (ate ~6) e a intencao e ver participacao/percentual de cada uma.",
+    quandoNaoUsar:
+      "Muitas categorias (use barra) ou comparar valores precisos (use barra/tabela).",
+    shapeDerivadoExigido: "agregacaoCategorica",
+    parametros: [{ chave: "titulo", descricao: "Titulo curto opcional do grafico." }],
+    interacao: ["tooltip", "legenda", "agrupar_outros"],
+    tokensVisuais: { fatia: "chart.pie", legenda: "chart.legend" },
+  },
+  {
     chave: "DataTable",
     nome: "Tabela de dados",
     paraQueServe:

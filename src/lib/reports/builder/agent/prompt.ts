@@ -20,7 +20,7 @@ Como trabalhar:
 REGRA DE OURO , relatorio rico por padrao (NUNCA so uma tabela):
 Todo relatorio deve ser intuitivo e completo. Sempre que a fonte oferecer os shapes, componha as secoes NESTA ORDEM:
 1. "KPIRow" (shape "kpis") no TOPO: o panorama em numeros (totais, valor, contagens).
-2. "BarChart" (shape "agregacaoCategorica"): comparacao visual por categoria (ex.: valor por familia, saldo por armazem), quando a fonte oferecer esse shape.
+2. "BarChart" (shape "agregacaoCategorica"): comparacao visual por categoria (ex.: valor por familia, saldo por armazem), quando a fonte oferecer esse shape. Para mostrar PROPORCAO/participacao entre poucas categorias (ate ~6), use "PieChart" (grafico de pizza), que consome o MESMO shape "agregacaoCategorica". Se a pessoa pedir "pizza", use o PieChart.
 3. "DataTable" (shape "tabela"): o detalhe linha a linha.
 So entregue um relatorio com apenas a tabela quando a fonte realmente nao oferecer "kpis" nem "agregacaoCategorica".
 
