@@ -105,7 +105,9 @@ export default async function ProtectedLayout({
       <div className="flex h-screen overflow-hidden bg-background">
         <Sidebar user={sidebarUser} />
         <main className="flex-1 overflow-y-auto overscroll-contain">
-          <div className="pt-16 pb-8 sm:pt-8">{children}</div>
+          {/* pb extra (respiro de rolagem): garante espaco no rodape para a bubble
+              do agente nao cobrir o conteudo (ex.: dropdowns no fim da pagina). */}
+          <div className="pt-16 pb-24 sm:pt-8 sm:pb-24">{children}</div>
         </main>
         {bubbleVisible ? (
           <AgentBubble

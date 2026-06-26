@@ -20,6 +20,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import type { PlatformRole } from "@/generated/prisma/client";
 import { USUARIOS_SUPER_ADMIN_ONLY } from "@/lib/constants/temp-rules";
+import { RELATORIOS2_MENU, RELATORIOS2_SUBMENUS } from "@/lib/constants/relatorios2";
 
 type NavSection = "admin";
 
@@ -41,28 +42,30 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: Home },
   { label: "Relatórios", href: "/relatorios", icon: BarChart3 },
   {
-    // Relatórios 2.0 , área nova (F6): construtor + meus relatórios + painéis.
-    // Grupo expansível (mesmo padrão do Agente Nex). admin e super_admin.
-    label: "Relatórios 2.0",
-    href: "/relatorios-2",
+    // Relatórios 2.0 , área nova (F6): painéis + meus relatórios + construtor.
+    // Label e rotas vêm de RELATORIOS2_* (fonte única). Grupo expansível (padrão
+    // Agente Nex). A visibilidade fina por nível entra na Onda 4 (RBAC dinâmico);
+    // por ora admin e super_admin.
+    label: RELATORIOS2_MENU.label,
+    href: RELATORIOS2_MENU.href,
     icon: LayoutDashboard,
     visibleTo: ["super_admin", "admin"],
     children: [
       {
-        label: "Painéis",
-        href: "/relatorios-2/paineis",
+        label: RELATORIOS2_SUBMENUS[0].label,
+        href: RELATORIOS2_SUBMENUS[0].href,
         icon: LayoutGrid,
         visibleTo: ["super_admin", "admin"],
       },
       {
-        label: "Meus relatórios",
-        href: "/relatorios-2/meus",
+        label: RELATORIOS2_SUBMENUS[1].label,
+        href: RELATORIOS2_SUBMENUS[1].href,
         icon: FileText,
         visibleTo: ["super_admin", "admin"],
       },
       {
-        label: "Construtor de relatórios",
-        href: "/relatorios-2/construtor",
+        label: RELATORIOS2_SUBMENUS[2].label,
+        href: RELATORIOS2_SUBMENUS[2].href,
         icon: Wrench,
         visibleTo: ["super_admin", "admin"],
       },

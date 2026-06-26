@@ -31,7 +31,9 @@ export default async function ConstrutorPage() {
   );
 
   return (
-    <div className="h-[calc(100dvh-4rem)] px-4 pb-2 sm:px-6 lg:px-8">
+    // Altura casada com o padding do layout (pt+pb) para caber sem rolagem e
+    // ainda deixar o respiro inferior (a bubble nao cobre o composer).
+    <div className="h-[calc(100dvh-10rem)] px-4 sm:px-6 sm:h-[calc(100dvh-8rem)] lg:px-8">
       <BuilderWorkspace audioEnabled={audioEnabled} />
     </div>
   );

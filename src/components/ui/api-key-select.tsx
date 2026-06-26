@@ -44,8 +44,19 @@ export function ApiKeySelect({
   "aria-label": ariaLabel,
 }: ApiKeySelectProps) {
   const [open, setOpen] = useState(false);
+  const [flipUp, setFlipUp] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const selected = options.find((o) => o.id === value);
+
+  // Abre pra cima quando nao ha espaco suficiente abaixo do gatilho (ex.: select
+  // no fim da pagina). ~260px cobre a lista + o rodape "Nova chave".
+  function toggle() {
+    if (!open && ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      setFlipUp(window.innerHeight - rect.bottom < 260);
+    }
+    setOpen((v) => !v);
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -64,7 +75,7 @@ export function ApiKeySelect({
         aria-haspopup="listbox"
         aria-expanded={open}
         disabled={disabled}
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggle}
         className={cn(
           "flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground cursor-pointer transition-all duration-200 hover:border-muted-foreground/30",
           "disabled:cursor-not-allowed disabled:opacity-50",
@@ -79,7 +90,10 @@ export function ApiKeySelect({
       {open ? (
         <div
           role="listbox"
-          className="absolute z-50 mt-1 w-full overflow-hidden rounded-lg border border-border bg-popover shadow-lg"
+          className={cn(
+            "absolute z-50 w-full overflow-hidden rounded-lg border border-border bg-popover shadow-lg",
+            flipUp ? "bottom-full mb-1" : "top-full mt-1",
+          )}
         >
           <div className="max-h-56 overflow-y-auto p-1">
             {options.length === 0 ? (
