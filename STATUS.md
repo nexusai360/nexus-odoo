@@ -28,8 +28,15 @@
 >   (1894 linhas), **2/2 sem fonte** recusam + `FeatureRequest`. Evidências em `_f6-onda1-aceite.md`.
 > **Migration** `20260626040000_f6_builder_model_config` (aditiva: `builder_model_provider`/
 > `builder_model_id` em `agent_settings`) aplicada MANUAL (sem reset do banco dev). **NUNCA
-> usar `migrate dev` no F6** (reseta o banco compartilhado). Containers rebuildados após
-> mudança de schema (build do `app` → imagem `nexus-odoo:local`). **Observação de qualidade
+> usar `migrate dev` no F6** (reseta o banco compartilhado). **REBUILD DE CONTAINERS PENDENTE
+> (limitação de infra, NÃO de código):** `docker compose build app` trava no passo
+> `load metadata for docker.io/library/node:22-alpine` , o daemon Docker deste ambiente não
+> consegue puxar do Docker Hub (o base `node:22-alpine` não está em cache local), embora o
+> egress geral funcione (OpenAI/git/E2E rodaram). A validação real do F6 foi feita pelo **E2E
+> no host** (10/10 contra LLM+cache reais), que não depende dos containers. Para ver a UI nova
+> em `localhost:3000`, rodar localmente quando o Docker Hub estiver acessível:
+> `docker compose build app && docker compose up -d --force-recreate worker mcp app` (worker
+> não tem build próprio , a imagem vem do `app`). **Observação de qualidade
 > (onda 2):** o agente nem sempre preenche `config.colunas` (DataTable deriva das chaves;
 > renderiza ok) , reforçar no prompt via `prever_dado`. **PRÓXIMO (quando o usuário liberar):**
 > publicação/RBAC de consumo, widgets/painéis, mais templates (KPIRow/PieChart/LineChart) e
