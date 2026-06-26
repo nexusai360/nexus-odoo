@@ -23,18 +23,30 @@ export default async function ConstrutorPage() {
   const settings = await prisma.agentSettings
     .findUnique({
       where: { id: "global" },
-      select: { audioProvider: true, audioModel: true, audioCheckpoint: true },
+      select: {
+        audioProvider: true,
+        audioModel: true,
+        audioCheckpoint: true,
+        imageProvider: true,
+        imageModel: true,
+        imageCheckpoint: true,
+      },
     })
     .catch(() => null);
   const audioEnabled = Boolean(
     settings?.audioProvider && settings?.audioModel && settings?.audioCheckpoint !== "OFF",
+  );
+  // Anexo (imagem) reusa a config de entendimento de imagem do Nex como
+  // pre-requisito de visao. O envio ao agente construtor entra na Onda 2.
+  const anexoEnabled = Boolean(
+    settings?.imageProvider && settings?.imageModel && settings?.imageCheckpoint !== "OFF",
   );
 
   return (
     // Altura casada com o padding do layout (pt+pb) para caber sem rolagem e
     // ainda deixar o respiro inferior (a bubble nao cobre o composer).
     <div className="h-[calc(100dvh-10rem)] px-4 sm:px-6 sm:h-[calc(100dvh-8rem)] lg:px-8">
-      <BuilderWorkspace audioEnabled={audioEnabled} />
+      <BuilderWorkspace audioEnabled={audioEnabled} anexoEnabled={anexoEnabled} />
     </div>
   );
 }

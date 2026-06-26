@@ -53,7 +53,7 @@ describe("BuilderWorkspace", () => {
       etag: "e1",
     });
     render(<BuilderWorkspace />);
-    const campo = screen.getByPlaceholderText(/descreva o relatorio/i);
+    const campo = screen.getByPlaceholderText(/construa com o agente nex/i);
     fireEvent.change(campo, { target: { value: "saldo por armazem" } });
     fireEvent.click(screen.getByRole("button", { name: /enviar/i }));
 
@@ -72,7 +72,7 @@ describe("BuilderWorkspace", () => {
       etag: "e1",
     });
     render(<BuilderWorkspace />);
-    fireEvent.change(screen.getByPlaceholderText(/descreva o relatorio/i), {
+    fireEvent.change(screen.getByPlaceholderText(/construa com o agente nex/i), {
       target: { value: "saldo" },
     });
     fireEvent.click(screen.getByRole("button", { name: /enviar/i }));
@@ -87,7 +87,7 @@ describe("BuilderWorkspace", () => {
       .mockResolvedValueOnce({ ok: true, ficha: FICHA, mensagem: "1", savedId: "sr1", etag: "e1" })
       .mockResolvedValueOnce({ ok: true, ficha: FICHA, mensagem: "2", savedId: "sr1", etag: "e2" });
     render(<BuilderWorkspace />);
-    const campo = screen.getByPlaceholderText(/descreva o relatorio/i);
+    const campo = screen.getByPlaceholderText(/construa com o agente nex/i);
     fireEvent.change(campo, { target: { value: "primeiro" } });
     fireEvent.click(screen.getByRole("button", { name: /enviar/i }));
     await screen.findByText("1");

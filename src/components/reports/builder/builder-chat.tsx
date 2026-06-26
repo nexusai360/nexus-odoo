@@ -1,12 +1,15 @@
 "use client";
 
 // src/components/reports/builder/builder-chat.tsx
-// F2a (v2) , Painel de conversa do construtor. Reusa a estetica da bolha do Nex
-// (acento violeta, rounded-xl) e o AudioRecorder + /api/agent/transcribe para
-// entrada por voz. Componente apresentacional: estado/orquestracao na pagina.
-import { useState, useRef, useEffect, type KeyboardEvent } from "react";
-import { Send, Sparkles, Mic, Loader2 } from "lucide-react";
+// F2a (v3) , Painel de conversa do construtor com o MESMO composer da bubble do
+// Nex: reusa MessageInput (input sutil de 1 linha) + AttachMenu (anexo
+// imagem/arquivo) + AudioRecorder persistente (1 instancia, grava de verdade) +
+// botao de enviar arredondado. Estetica e comportamento iguais ao Nex.
+import { useState, useRef, useEffect } from "react";
+import { Send, Sparkles, Mic, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
+import { MessageInput } from "@/components/agent/message-input";
+import { AttachMenu } from "@/components/agent/attach-menu";
 import { AudioRecorder, type AudioRecorderHandle } from "@/components/agent/audio-recorder";
 
 export interface BuilderChatMensagem {
@@ -20,8 +23,10 @@ interface BuilderChatProps {
   pensando: boolean;
   onEnviar: (prompt: string) => void;
   desabilitado?: boolean;
-  /** Quando true, mostra o microfone (modelo de audio configurado). */
+  /** Mostra o microfone (modelo de audio configurado). */
   audioEnabled?: boolean;
+  /** Mostra o anexo (entrada de imagem/arquivo configurada). */
+  anexoEnabled?: boolean;
 }
 
 export function BuilderChat({
@@ -30,10 +35,12 @@ export function BuilderChat({
   onEnviar,
   desabilitado = false,
   audioEnabled = false,
+  anexoEnabled = false,
 }: BuilderChatProps) {
   const [texto, setTexto] = useState("");
   const [gravando, setGravando] = useState(false);
   const [transcrevendo, setTranscrevendo] = useState(false);
+  const [anexos, setAnexos] = useState<{ nome: string; kind: "image" | "file" }[]>([]);
   const fimRef = useRef<HTMLDivElement>(null);
   const recorderRef = useRef<AudioRecorderHandle | null>(null);
 
@@ -47,13 +54,7 @@ export function BuilderChat({
     if (!podeEnviar) return;
     onEnviar(texto.trim());
     setTexto("");
-  }
-
-  function onKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      enviar();
-    }
+    setAnexos([]);
   }
 
   async function transcrever(blob: Blob) {
@@ -73,7 +74,6 @@ export function BuilderChat({
         toast.error("Nao consegui entender o audio.");
         return;
       }
-      // Coloca no campo para o usuario revisar e enviar.
       setTexto((prev) => (prev ? `${prev} ${t}` : t));
     } catch (err) {
       toast.error(
@@ -95,12 +95,11 @@ export function BuilderChat({
             </div>
             <div className="max-w-xs space-y-1">
               <p className="text-sm font-semibold text-foreground">
-                Descreva o relatorio que voce quer
+                Construa com o agente Nex
               </p>
               <p className="text-xs leading-relaxed text-muted-foreground">
-                Ex.: saldo de estoque por armazem, ou valor parado por familia.
-                {audioEnabled ? " Voce pode digitar ou falar." : ""} Eu monto e voce
-                ve o resultado ao lado.
+                Descreva o relatorio que voce quer ver. Ex.: saldo de estoque por
+                armazem, ou valor parado por familia.
               </p>
             </div>
           </div>
@@ -140,82 +139,119 @@ export function BuilderChat({
         <div ref={fimRef} />
       </div>
 
-      {/* Composer */}
-      <div className="border-t border-border bg-card p-3">
-        <div className="flex items-end gap-2 rounded-xl border border-border bg-background px-3 py-2 focus-within:border-violet-500/50 focus-within:ring-2 focus-within:ring-violet-400/30">
-          {/* Barra de gravacao (visivel so gravando) ou textarea */}
-          {audioEnabled && gravando ? (
-            <div className="flex min-h-[36px] flex-1 items-center">
-              <AudioRecorder
-                ref={recorderRef}
-                mode="embedded"
-                onSend={(blob) => void transcrever(blob)}
-                onRecordingStateChange={setGravando}
-              />
-            </div>
-          ) : (
-            <>
-              {audioEnabled ? (
-                <span className="sr-only" aria-hidden>
-                  <AudioRecorder
-                    ref={recorderRef}
-                    mode="embedded"
-                    onSend={(blob) => void transcrever(blob)}
-                    onRecordingStateChange={setGravando}
-                  />
-                </span>
-              ) : null}
-              <textarea
+      {/* Composer (igual ao Nex) */}
+      <footer className="border-t border-border bg-card px-3 pt-2 pb-3">
+        {/* Anexos staged */}
+        {anexos.length > 0 ? (
+          <div className="mb-2 flex flex-wrap gap-1.5">
+            {anexos.map((a, i) => (
+              <span
+                key={`${a.nome}-${i}`}
+                className="flex items-center gap-1 rounded-md border border-border bg-muted/60 px-2 py-1 text-[11px] text-foreground"
+              >
+                {a.nome}
+                <button
+                  type="button"
+                  onClick={() => setAnexos((prev) => prev.filter((_, j) => j !== i))}
+                  aria-label={`Remover ${a.nome}`}
+                  className="cursor-pointer text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-3 w-3" aria-hidden />
+                </button>
+              </span>
+            ))}
+          </div>
+        ) : null}
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (gravando) {
+              recorderRef.current?.sendNow();
+              return;
+            }
+            enviar();
+          }}
+          className="flex items-center gap-2"
+        >
+          <div className="min-w-0 flex-1">
+            {!gravando ? (
+              <MessageInput
                 value={texto}
-                onChange={(e) => setTexto(e.target.value)}
-                onKeyDown={onKeyDown}
-                rows={1}
+                onChange={setTexto}
+                onSend={enviar}
                 disabled={desabilitado || transcrevendo}
                 placeholder={
-                  transcrevendo
-                    ? "Transcrevendo seu audio..."
-                    : "Descreva o relatorio (ex.: saldo por armazem)..."
+                  transcrevendo ? "Transcrevendo seu audio…" : "Construa com o agente Nex…"
                 }
-                className="max-h-32 min-h-[24px] flex-1 resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+                aria-label="Mensagem para o construtor"
+                maxRows={6}
+                leftSlot={
+                  anexoEnabled ? (
+                    <AttachMenu
+                      disabled={desabilitado || pensando}
+                      onPick={(file, kind) =>
+                        setAnexos((prev) => [...prev, { nome: file.name, kind }])
+                      }
+                    />
+                  ) : undefined
+                }
+                rightSlot={
+                  audioEnabled ? (
+                    <button
+                      type="button"
+                      onClick={() => void recorderRef.current?.start()}
+                      disabled={transcrevendo || pensando}
+                      aria-label="Gravar audio"
+                      className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {transcrevendo ? (
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                      ) : (
+                        <Mic className="h-4 w-4" aria-hidden />
+                      )}
+                    </button>
+                  ) : undefined
+                }
               />
-            </>
-          )}
+            ) : null}
 
-          {/* Microfone */}
-          {audioEnabled && !gravando ? (
-            <button
-              type="button"
-              onClick={() => recorderRef.current?.start()}
-              disabled={desabilitado || transcrevendo || pensando}
-              aria-label="Gravar audio"
-              className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-violet-400/60 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {transcrevendo ? (
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-              ) : (
-                <Mic className="h-4 w-4" aria-hidden />
-              )}
-            </button>
-          ) : null}
+            {/* AudioRecorder ÚNICO e persistente: sr-only quando idle, barra de
+                gravacao com waveform quando ativo (mesma instancia , evita o mic
+                que nao grava). */}
+            {audioEnabled ? (
+              <div
+                className={
+                  gravando
+                    ? "flex min-h-9 items-center rounded-2xl border border-violet-500/40 bg-violet-500/5 px-3 py-1"
+                    : "sr-only"
+                }
+                aria-hidden={!gravando}
+              >
+                <AudioRecorder
+                  ref={recorderRef}
+                  mode="embedded"
+                  onSend={(blob) => void transcrever(blob)}
+                  onRecordingStateChange={setGravando}
+                />
+              </div>
+            ) : null}
+          </div>
 
-          {/* Enviar (escondido enquanto grava) */}
-          {!gravando ? (
-            <button
-              type="button"
-              onClick={enviar}
-              disabled={!podeEnviar}
-              aria-label="Enviar"
-              className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-violet-600 text-white shadow-sm transition-colors hover:bg-violet-500 focus-visible:ring-2 focus-visible:ring-violet-400/60 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <Send className="h-4 w-4" aria-hidden />
-            </button>
-          ) : null}
-        </div>
+          {/* Enviar (arredondado, fora do input) */}
+          <button
+            type="submit"
+            disabled={gravando ? false : !podeEnviar}
+            aria-label={gravando ? "Enviar audio" : "Enviar"}
+            className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center self-center rounded-2xl bg-gradient-to-br from-violet-600 to-violet-500 text-white shadow-md shadow-violet-600/30 transition-all duration-200 hover:from-violet-500 hover:to-violet-400 hover:shadow-lg focus-visible:ring-2 focus-visible:ring-violet-400/50 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
+          >
+            <Send className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+          </button>
+        </form>
         <p className="mt-1.5 px-1 text-[11px] text-muted-foreground">
-          Enter envia, Shift+Enter quebra linha
-          {audioEnabled ? ", ou toque no microfone para falar." : "."}
+          Enter envia · Shift+Enter quebra linha
         </p>
-      </div>
+      </footer>
     </div>
   );
 }

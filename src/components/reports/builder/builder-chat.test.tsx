@@ -20,7 +20,7 @@ describe("BuilderChat", () => {
   it("envia o texto digitado ao clicar em enviar e limpa o campo", () => {
     const onEnviar = jest.fn();
     render(<BuilderChat mensagens={[]} pensando={false} onEnviar={onEnviar} />);
-    const campo = screen.getByPlaceholderText(/descreva o relatorio/i) as HTMLTextAreaElement;
+    const campo = screen.getByPlaceholderText(/construa com o agente nex/i) as HTMLTextAreaElement;
     fireEvent.change(campo, { target: { value: "saldo por familia" } });
     fireEvent.click(screen.getByRole("button", { name: /enviar/i }));
     expect(onEnviar).toHaveBeenCalledWith("saldo por familia");
@@ -38,7 +38,7 @@ describe("BuilderChat", () => {
     const onEnviar = jest.fn();
     render(<BuilderChat mensagens={MENSAGENS} pensando={true} onEnviar={onEnviar} />);
     expect(screen.getByTestId("builder-pensando")).toBeInTheDocument();
-    const campo = screen.getByPlaceholderText(/descreva o relatorio/i);
+    const campo = screen.getByPlaceholderText(/construa com o agente nex/i);
     fireEvent.change(campo, { target: { value: "x" } });
     fireEvent.click(screen.getByRole("button", { name: /enviar/i }));
     expect(onEnviar).not.toHaveBeenCalled();

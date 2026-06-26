@@ -13,7 +13,13 @@ import { BuilderChat, type BuilderChatMensagem } from "./builder-chat";
 import { BuilderPreview } from "./builder-preview";
 import type { BuilderReportEntry } from "@/lib/reports/builder/types";
 
-export function BuilderWorkspace({ audioEnabled = false }: { audioEnabled?: boolean }) {
+export function BuilderWorkspace({
+  audioEnabled = false,
+  anexoEnabled = false,
+}: {
+  audioEnabled?: boolean;
+  anexoEnabled?: boolean;
+}) {
   const router = useRouter();
   const seq = useRef(0);
   const [mensagens, setMensagens] = useState<BuilderChatMensagem[]>([]);
@@ -95,6 +101,7 @@ export function BuilderWorkspace({ audioEnabled = false }: { audioEnabled?: bool
               pensando={pensando}
               onEnviar={enviar}
               audioEnabled={audioEnabled}
+              anexoEnabled={anexoEnabled}
             />
           </div>
         </aside>
