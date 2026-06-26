@@ -71,11 +71,15 @@ export interface RunBuilderDeps {
 export async function criarClienteConstrutorPadrao(): Promise<
   ProviderClient | { erro: string }
 > {
-  const { provider, model } = await obterConfigModeloConstrutor();
-  const cred = await prisma.llmCredential.findFirst({
-    where: { provider },
-    orderBy: { updatedAt: "desc" },
-  });
+  const { provider, model, credentialId } = await obterConfigModeloConstrutor();
+  // Usa a credencial escolhida no card; se nao houver (config antiga), cai na
+  // 1a credencial cadastrada do provedor.
+  const cred = credentialId
+    ? await prisma.llmCredential.findUnique({ where: { id: credentialId } })
+    : await prisma.llmCredential.findFirst({
+        where: { provider },
+        orderBy: { updatedAt: "desc" },
+      });
   if (!cred?.encryptedApiKey) {
     return { erro: `sem_credencial:${provider}` };
   }

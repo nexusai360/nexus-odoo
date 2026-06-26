@@ -1,142 +1,172 @@
 "use client";
 
 // src/components/agent/builder-model-card.tsx
-// G1 , Card de modelo do agente construtor de relatorios (F6), na tela JA
-// EXISTENTE de configuracao do agente. NAO e uma tela propria: e mais um card no
-// padrao dos seletores de modelo dedicados (audio/imagem). Grava
-// builderModelProvider/builderModelId em AgentSettings via server action.
-import { useState } from "react";
-import { FileBarChart, Loader2, Check } from "lucide-react";
-import { CustomSelect, type SelectOption } from "@/components/ui/custom-select";
+// G1 (v2) , Card de modelo do agente construtor de relatorios (F6), na tela JA
+// EXISTENTE de configuracao do agente. Espelha EXATAMENTE o padrao do bloco
+// "Configuracao do Router": Provedor / Modelo (com busca) / Chave de API, em
+// linha; provedores so os que tem chave cadastrada; modelos so os que usam
+// ferramentas (exclui embedding/audio); chave com atalho "Nova chave". Sem botao
+// salvar , cada mudanca aplica na hora e mostra um toast (igual ao router).
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { FileBarChart } from "lucide-react";
+import { toast } from "sonner";
+import { ResourceCard } from "@/components/agent/resource-card";
+import { CustomSelect } from "@/components/ui/custom-select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import { ApiKeySelect, type ApiKeyOption } from "@/components/ui/api-key-select";
+import { TierBadge } from "@/components/ui/tier-badge";
+import {
+  PROVIDER_META,
+  modelDescription,
+  type ModelEntry,
+} from "@/lib/agent/llm/catalog";
 import { salvarModeloConstrutor } from "@/lib/actions/builder-config";
-
-const PROVIDER_LABEL: Record<string, string> = {
-  openai: "OpenAI",
-  anthropic: "Anthropic",
-  gemini: "Google Gemini",
-  openrouter: "OpenRouter",
-};
-
-export interface BuilderModelOption {
-  value: string;
-  label: string;
-}
+import type { LlmProvider } from "@/lib/agent/llm/types";
 
 interface BuilderModelCardProps {
-  initialProvider: string;
-  initialModel: string;
-  providers: string[];
-  modelsByProvider: Record<string, BuilderModelOption[]>;
+  initial: { provider: string; model: string; credentialId: string | null };
+  /** Provedores com chave de API cadastrada. */
+  providers: LlmProvider[];
+  credentialsByProvider: Record<string, ApiKeyOption[]>;
+  modelsByProvider: Record<string, ModelEntry[]>;
+}
+
+/** So modelos que usam ferramentas: exclui embedding e audio (transcricao). */
+function usaFerramentas(m: ModelEntry): boolean {
+  return m.use !== "embedding" && m.use !== "áudio" && !m.audio;
+}
+
+function modelOptions(models: ModelEntry[]) {
+  return models.map((m) => ({
+    value: m.id,
+    label: m.label,
+    notes: modelDescription(m),
+    endAdornment: <TierBadge tier={m.tier} />,
+  }));
 }
 
 export function BuilderModelCard({
-  initialProvider,
-  initialModel,
+  initial,
   providers,
+  credentialsByProvider,
   modelsByProvider,
 }: BuilderModelCardProps) {
-  const [provider, setProvider] = useState(initialProvider);
-  const [model, setModel] = useState(initialModel);
-  const [salvando, setSalvando] = useState(false);
-  const [status, setStatus] = useState<"idle" | "ok" | "erro">("idle");
-  const [erro, setErro] = useState<string | null>(null);
+  const router = useRouter();
+  const [, startTransition] = useTransition();
+  const [pending, setPending] = useState(false);
 
-  const providerOptions: SelectOption[] = providers.map((p) => ({
-    value: p,
-    label: PROVIDER_LABEL[p] ?? p,
-  }));
-  const modelOptions: SelectOption[] = (modelsByProvider[provider] ?? []).map((m) => ({
-    value: m.value,
-    label: m.label,
-  }));
+  const [provider, setProvider] = useState<LlmProvider | "">(
+    (initial.provider as LlmProvider) || providers[0] || "",
+  );
+  const [model, setModel] = useState(initial.model);
+  const [credId, setCredId] = useState(initial.credentialId ?? "");
 
-  function trocarProvider(p: string) {
-    setProvider(p);
-    // Ao trocar de provedor, escolhe o primeiro modelo disponivel dele.
-    const primeiro = modelsByProvider[p]?.[0]?.value ?? "";
-    setModel(primeiro);
-    setStatus("idle");
-  }
+  const modelos = provider
+    ? (modelsByProvider[provider] ?? []).filter(usaFerramentas)
+    : [];
+  const creds = provider ? credentialsByProvider[provider] ?? [] : [];
 
-  async function salvar() {
-    setSalvando(true);
-    setStatus("idle");
-    setErro(null);
-    try {
-      const r = await salvarModeloConstrutor({ provider, model });
-      if (r.ok) {
-        setStatus("ok");
-      } else {
-        setStatus("erro");
-        setErro(r.error);
+  function persist(next: { provider?: string; model?: string; credentialId?: string | null }) {
+    setPending(true);
+    startTransition(async () => {
+      const r = await salvarModeloConstrutor({
+        provider: next.provider ?? provider,
+        model: next.model ?? model,
+        credentialId:
+          next.credentialId !== undefined ? next.credentialId : credId || null,
+      });
+      setPending(false);
+      if (!r.ok) {
+        toast.error(r.error ?? "Erro ao salvar o modelo do construtor.");
+        router.refresh();
+        return;
       }
-    } catch {
-      setStatus("erro");
-      setErro("Nao consegui salvar agora.");
-    } finally {
-      setSalvando(false);
-    }
+      toast.success("Modelo do construtor atualizado.");
+      router.refresh();
+    });
   }
 
   return (
-    <div className="rounded-xl border border-border bg-muted/30 px-4 py-3.5">
-      <div className="flex items-start gap-2">
-        <FileBarChart className="mt-0.5 h-4 w-4 shrink-0 text-violet-500" aria-hidden />
-        <div className="min-w-0 flex-1">
-          <div className="text-sm font-medium text-foreground">
-            Modelo do construtor de relatorios
+    <ResourceCard
+      id="config-construtor-modelo"
+      hideCheckpoint
+      checkpoint="PRODUCTION"
+      onCheckpointChange={() => undefined}
+      icon={<FileBarChart className="h-4 w-4 text-violet-500" aria-hidden />}
+      title="Construtor de relatorios"
+      subtitle="Modelo que monta os relatorios a partir da conversa. Independente do modelo de producao do Nex. So aparecem modelos capazes de usar ferramentas."
+      loading={pending}
+      ariaLabel="Modelo do construtor de relatorios"
+    >
+      <section className="flex flex-col gap-3 border-l-2 border-violet-500/30 pl-3">
+        {providers.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border/70 bg-muted/20 p-3 text-xs text-muted-foreground">
+            Nenhuma chave de API cadastrada. Cadastre uma em Chaves de API para
+            habilitar o construtor.
           </div>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Modelo usado pelo assistente que monta relatorios. Independente do
-            modelo de producao do Nex.
-          </p>
-        </div>
-      </div>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-3">
+            <FieldBlock label="Provedor">
+              <CustomSelect
+                aria-label="Provedor do construtor"
+                value={provider}
+                onChange={(v) => {
+                  const p = v as LlmProvider;
+                  setProvider(p);
+                  const primeiroModelo =
+                    (modelsByProvider[p] ?? []).filter(usaFerramentas)[0]?.id ?? "";
+                  const primeiraChave = credentialsByProvider[p]?.[0]?.id ?? "";
+                  setModel(primeiroModelo);
+                  setCredId(primeiraChave);
+                  persist({
+                    provider: p,
+                    model: primeiroModelo,
+                    credentialId: primeiraChave || null,
+                  });
+                }}
+                options={providers.map((p) => ({ value: p, label: PROVIDER_META[p].label }))}
+              />
+            </FieldBlock>
+            <FieldBlock label="Modelo">
+              <SearchableSelect
+                value={model}
+                onChange={(v) => {
+                  setModel(v);
+                  persist({ model: v });
+                }}
+                options={modelOptions(modelos)}
+                placeholder="Selecionar modelo"
+                searchPlaceholder="Buscar modelo…"
+              />
+            </FieldBlock>
+            <FieldBlock label="Chave de API">
+              <ApiKeySelect
+                aria-label="Chave do construtor"
+                value={credId}
+                onChange={(v) => {
+                  setCredId(v);
+                  persist({ credentialId: v || null });
+                }}
+                options={creds}
+                provider={provider || "openai"}
+                providerLabel={
+                  provider ? PROVIDER_META[provider as LlmProvider].label : "OpenAI"
+                }
+              />
+            </FieldBlock>
+          </div>
+        )}
+      </section>
+    </ResourceCard>
+  );
+}
 
-      <div className="mt-3 grid grid-cols-1 gap-3 border-t border-border/60 pt-3 sm:grid-cols-2">
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-muted-foreground">Provedor</span>
-          <CustomSelect
-            value={provider}
-            onChange={trocarProvider}
-            options={providerOptions}
-            placeholder="Selecionar provedor"
-          />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-xs font-medium text-muted-foreground">Modelo</span>
-          <CustomSelect
-            value={model}
-            onChange={(v) => {
-              setModel(v);
-              setStatus("idle");
-            }}
-            options={modelOptions}
-            placeholder="Selecionar modelo"
-          />
-        </label>
-      </div>
-
-      <div className="mt-3 flex items-center justify-end gap-3">
-        {status === "ok" ? (
-          <span className="flex items-center gap-1 text-xs font-medium text-emerald-500">
-            <Check className="h-3.5 w-3.5" aria-hidden />
-            Salvo
-          </span>
-        ) : null}
-        {status === "erro" ? (
-          <span className="text-xs font-medium text-red-500">{erro}</span>
-        ) : null}
-        <button
-          type="button"
-          onClick={salvar}
-          disabled={salvando || !model}
-          className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-violet-500 focus-visible:ring-2 focus-visible:ring-violet-400/60 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          {salvando ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
-          Salvar modelo
-        </button>
-      </div>
+function FieldBlock({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+      {children}
     </div>
   );
 }

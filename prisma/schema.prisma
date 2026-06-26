@@ -2958,8 +2958,10 @@ model AgentSettings {
 
   /// Modelo do agente construtor de relatorios (F6). Independente do modelo de
   /// producao do Nex. Default no codigo (openai/gpt-5-mini) quando vazio.
-  builderModelProvider String? @map("builder_model_provider")
-  builderModelId       String? @map("builder_model_id")
+  builderModelProvider     String? @map("builder_model_provider")
+  builderModelId           String? @map("builder_model_id")
+  /// Credencial (chave de API) usada pelo modelo do construtor.
+  builderModelCredentialId String? @map("builder_model_credential_id") @db.Uuid
 
   /// R1 router de catalogo (sub-projeto do roadmap de cobertura completa).
   /// Ver docs/superpowers/specs/2026-05-28-router-catalogo-design.md.

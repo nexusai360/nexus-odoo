@@ -31,14 +31,19 @@ describe("salvarModeloConstrutor", () => {
     expect(definirConfigModeloConstrutor).not.toHaveBeenCalled();
   });
 
-  it("grava provider+model quando super_admin", async () => {
+  it("grava provider+model+credencial quando super_admin", async () => {
     requireSuperAdmin.mockResolvedValue({ id: "u1", platformRole: "super_admin" });
     definirConfigModeloConstrutor.mockResolvedValue(undefined);
-    const r = await salvarModeloConstrutor({ provider: "openai", model: "gpt-5-mini" });
+    const r = await salvarModeloConstrutor({
+      provider: "openai",
+      model: "gpt-5-mini",
+      credentialId: "cred-1",
+    });
     expect(r.ok).toBe(true);
     expect(definirConfigModeloConstrutor).toHaveBeenCalledWith({
       provider: "openai",
       model: "gpt-5-mini",
+      credentialId: "cred-1",
     });
   });
 });

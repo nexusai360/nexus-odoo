@@ -12,6 +12,8 @@ export const DEFAULT_BUILDER_MODEL = "gpt-5-mini";
 export interface ConfigModeloConstrutor {
   provider: string;
   model: string;
+  /** Credencial (chave de API) escolhida; null = usa a 1a credencial do provedor. */
+  credentialId: string | null;
 }
 
 /**
@@ -21,28 +23,31 @@ export interface ConfigModeloConstrutor {
 export async function obterConfigModeloConstrutor(): Promise<ConfigModeloConstrutor> {
   const settings = await prisma.agentSettings.findUnique({
     where: { id: "global" },
-    select: { builderModelProvider: true, builderModelId: true },
+    select: {
+      builderModelProvider: true,
+      builderModelId: true,
+      builderModelCredentialId: true,
+    },
   });
   return {
     provider: settings?.builderModelProvider || DEFAULT_BUILDER_PROVIDER,
     model: settings?.builderModelId || DEFAULT_BUILDER_MODEL,
+    credentialId: settings?.builderModelCredentialId ?? null,
   };
 }
 
-/** Grava provider+model do construtor no singleton AgentSettings. */
+/** Grava provider+model(+credencial) do construtor no singleton AgentSettings. */
 export async function definirConfigModeloConstrutor(
   config: ConfigModeloConstrutor,
 ): Promise<void> {
+  const data = {
+    builderModelProvider: config.provider,
+    builderModelId: config.model,
+    builderModelCredentialId: config.credentialId ?? null,
+  };
   await prisma.agentSettings.upsert({
     where: { id: "global" },
-    update: {
-      builderModelProvider: config.provider,
-      builderModelId: config.model,
-    },
-    create: {
-      id: "global",
-      builderModelProvider: config.provider,
-      builderModelId: config.model,
-    },
+    update: data,
+    create: { id: "global", ...data },
   });
 }

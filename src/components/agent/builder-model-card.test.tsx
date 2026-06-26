@@ -2,59 +2,57 @@
  * @jest-environment jsdom
  */
 import "@testing-library/jest-dom";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { BuilderModelCard } from "./builder-model-card";
+import type { ModelEntry } from "@/lib/agent/llm/catalog";
 
-const salvarModeloConstrutor = jest.fn();
-
+jest.mock("next/navigation", () => ({ useRouter: () => ({ refresh: jest.fn() }) }));
+jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
 jest.mock("@/lib/actions/builder-config", () => ({
-  salvarModeloConstrutor: (...a: unknown[]) => salvarModeloConstrutor(...a),
+  salvarModeloConstrutor: jest.fn(async () => ({ ok: true })),
 }));
 
-const MODELS = {
-  openai: [
-    { value: "gpt-5-mini", label: "GPT-5 mini" },
-    { value: "gpt-5", label: "GPT-5" },
-  ],
-  anthropic: [{ value: "claude-haiku-4-5", label: "Claude Haiku 4.5" }],
+const M = (id: string, label: string): ModelEntry =>
+  ({
+    id,
+    provider: "openai",
+    label,
+    tier: "low",
+    pricing: { inputPerMTok: 0.25, outputPerMTok: 2 },
+    use: "conversação",
+    audio: false,
+    vision: true,
+    deprecated: false,
+  }) as ModelEntry;
+
+const PROPS = {
+  initial: { provider: "openai", model: "gpt-5-mini", credentialId: "cred-1" },
+  providers: ["openai"] as ("openai" | "anthropic" | "gemini" | "openrouter")[],
+  credentialsByProvider: {
+    openai: [{ id: "cred-1", label: "Nexus", maskedSuffix: "••••DFYA" }],
+  },
+  modelsByProvider: {
+    openai: [M("gpt-5-mini", "GPT-5 mini"), M("gpt-5", "GPT-5")],
+  },
 };
 
-function setup() {
-  render(
-    <BuilderModelCard
-      initialProvider="openai"
-      initialModel="gpt-5-mini"
-      providers={["openai", "anthropic"]}
-      modelsByProvider={MODELS}
-    />,
-  );
-}
-
-beforeEach(() => salvarModeloConstrutor.mockReset());
-
-describe("BuilderModelCard", () => {
-  it("mostra o modelo atual configurado", () => {
-    setup();
+describe("BuilderModelCard (padrao router)", () => {
+  it("mostra titulo e o modelo configurado, no padrao Provedor/Modelo/Chave", () => {
+    render(<BuilderModelCard {...PROPS} />);
+    expect(screen.getByText("Construtor de relatorios")).toBeInTheDocument();
     expect(screen.getByText("GPT-5 mini")).toBeInTheDocument();
+    expect(screen.getByText("Provedor")).toBeInTheDocument();
+    expect(screen.getByText("Modelo")).toBeInTheDocument();
+    expect(screen.getByText("Chave de API")).toBeInTheDocument();
   });
 
-  it("salva o provider+model atuais ao clicar em salvar", async () => {
-    salvarModeloConstrutor.mockResolvedValue({ ok: true });
-    setup();
-    fireEvent.click(screen.getByRole("button", { name: /salvar modelo/i }));
-    await waitFor(() =>
-      expect(salvarModeloConstrutor).toHaveBeenCalledWith({
-        provider: "openai",
-        model: "gpt-5-mini",
-      }),
-    );
-    expect(await screen.findByText(/salvo/i)).toBeInTheDocument();
+  it("NAO tem botao salvar (aplica na hora, igual aos outros blocos)", () => {
+    render(<BuilderModelCard {...PROPS} />);
+    expect(screen.queryByRole("button", { name: /salvar modelo/i })).not.toBeInTheDocument();
   });
 
-  it("mostra erro quando a gravacao falha", async () => {
-    salvarModeloConstrutor.mockResolvedValue({ ok: false, error: "Acesso negado" });
-    setup();
-    fireEvent.click(screen.getByRole("button", { name: /salvar modelo/i }));
-    expect(await screen.findByText(/acesso negado/i)).toBeInTheDocument();
+  it("mostra aviso quando nao ha provedor com chave", () => {
+    render(<BuilderModelCard {...PROPS} providers={[]} credentialsByProvider={{}} />);
+    expect(screen.getByText(/nenhuma chave de api cadastrada/i)).toBeInTheDocument();
   });
 });

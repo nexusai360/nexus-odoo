@@ -10,6 +10,7 @@ import { definirConfigModeloConstrutor } from "@/lib/reports/builder/agent/model
 export interface SalvarModeloConstrutorInput {
   provider: string;
   model: string;
+  credentialId?: string | null;
 }
 
 export type SalvarModeloConstrutorResult =
@@ -31,6 +32,10 @@ export async function salvarModeloConstrutor(
     return { ok: false, error: "Selecione um provedor e um modelo." };
   }
 
-  await definirConfigModeloConstrutor({ provider, model });
+  await definirConfigModeloConstrutor({
+    provider,
+    model,
+    credentialId: input.credentialId ?? null,
+  });
   return { ok: true };
 }

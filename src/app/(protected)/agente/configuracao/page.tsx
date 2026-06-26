@@ -160,15 +160,8 @@ export default async function Page() {
     openrouter: modelEntries[3],
   };
 
-  // F6 , config de modelo do construtor (card; default openai/gpt-5-mini).
+  // F6 , config de modelo do construtor (card no padrao do router).
   const builderModelo = await obterConfigModeloConstrutor();
-  const builderModelsByProvider: Record<string, { value: string; label: string }[]> = {};
-  for (const p of PROVIDERS) {
-    builderModelsByProvider[p] = modelsByProvider[p].map((m) => ({
-      value: m.id,
-      label: m.label,
-    }));
-  }
   const builderProviders = reformProviders.length > 0 ? reformProviders : PROVIDERS;
 
   return (
@@ -222,15 +215,12 @@ export default async function Page() {
         </Card>
 
         <Card className="rounded-2xl border border-border bg-muted/30 p-2">
-          <CardHeader className="pt-5 pb-5">
-            <CardTitle>Construtor de relatorios</CardTitle>
-          </CardHeader>
-          <CardContent className="pb-5">
+          <CardContent className="pt-5 pb-5">
             <BuilderModelCard
-              initialProvider={builderModelo.provider}
-              initialModel={builderModelo.model}
+              initial={builderModelo}
               providers={builderProviders}
-              modelsByProvider={builderModelsByProvider}
+              credentialsByProvider={credentialsByProvider}
+              modelsByProvider={modelsByProvider}
             />
           </CardContent>
         </Card>
