@@ -69,8 +69,9 @@ export function BuilderPreview({ ficha }: { ficha: BuilderReportEntry | null }) 
 
   return (
     <div className="flex h-full flex-col">
-      {/* Barra do canvas */}
-      <div className="flex items-center gap-2 border-b border-border px-5 py-2.5 text-xs font-medium text-muted-foreground">
+      {/* Barra do canvas , altura fixa (h-11) casada com o header da Conversa
+          para a linha divisoria dos dois lados ficar alinhada. */}
+      <div className="flex h-11 items-center gap-2 border-b border-border px-5 text-xs font-medium text-muted-foreground">
         <Eye className="h-3.5 w-3.5" aria-hidden />
         Pre-visualizacao
         {estado === "ok" && ficha ? (
