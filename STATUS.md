@@ -26,8 +26,12 @@
 > `(fato,shapeDerivado)→produtor` (`querySaldoProduto` p/ tabela, `queryConcentracao` p/ agregação),
 > tipos `ShapeDerivado/CampoMeta/RawSourceData` definidos, tool-calling via `ProviderClient.chat`,
 > casca de chat própria, recusa honesta em `FeatureRequest`.
-> **EXECUÇÃO EM ANDAMENTO (Bloco A):** A2 (tipos base, `builder/types.ts`), A3 (schema Zod
-> `validarReportEntry`) e A1 (tabela `SavedReport`) FEITOS e commitados; 8 testes verdes; tsc ok.
+> **EXECUÇÃO , Bloco A COMPLETO + Bloco B (núcleo de dados):** feitos e commitados via TDD (24
+> testes verdes, tsc do builder limpo), tudo em `src/lib/reports/builder/`: A2 `types.ts`
+> (ShapeDerivado/CampoMeta/RawSourceData/BuilderReportEntry + guards), A3 `report-entry-schema.ts`
+> (Zod, template/icone/shape fechados), A1 tabela `SavedReport`, A4 `saved-report-repo.ts` (etag
+> otimista + super_admin), B1 `shape-adapters.ts`, B3 `source-registry.ts` ((fato,shape)->produtor,
+> estoque), B4 `resolve-source.ts` (`resolveSecao`).
 > **NOTA CRÍTICA , drift do banco dev:** `prisma migrate dev` quis RESETAR o banco dev compartilhado
 > (drift pre-existente: `last_activity_at`, indices renomeados, etc.). Abortou SEM PERDA (estoque
 > intacto, 3904 linhas). A migration do F6 foi aplicada MANUALMENTE (idempotente) via `psql` no
@@ -35,9 +39,14 @@
 > NUNCA usar `migrate dev` (reseta o banco dev); usar SEMPRE o caminho manual** (escrever o
 > `migration.sql` idempotente em `prisma/migrations/<ts>_<nome>/`, aplicar via
 > `docker exec -i nexus-odoo-db-1 ... psql < migration.sql`, `migrate resolve --applied`, `prisma generate`).
-> **PRÓXIMA AÇÃO:** A4 (repo `saved-report-repo.ts`, etag otimista + super_admin), depois Bloco B
-> (registry/adaptadores), C (motor genérico + rota dinâmica), D (catálogo/tools), E (agente), F (tela
-> chat/preview), G (config + E2E). Stack local de pé (localhost:3000 health 200). Heartbeat 15min ativo.
+> **PRÓXIMA AÇÃO:** B2 (freshness real por fato , hoje `resolve-source` devolve `freshness:null`;
+> extrair `estadoDoFato` de `src/lib/actions/report-data.ts` para `freshnessPorFato({fato,modeloFonte})`).
+> Depois Bloco C (C1 guard de domínio no `resolveSecao` via `guardDominio`; C2 `<ReportRenderer>` reusando
+> `DataTable`; C3 rota `/relatorios/d/[savedId]`), D (catálogo/tools), E (agente), F (tela chat/preview),
+> G (config + E2E). Pendência: `resolveSecao` marca 'vazio' por `linhas.length` (refinar p/ shape `kpis` na
+> onda 2). UI exige `ui-ux-pro-max`. Plano: `docs/superpowers/plans/2026-06-26-f6-construtor-onda1.md`.
+> Stack local de pé (localhost:3000 health 200). Heartbeat 15min ativo. Migrations do F6: SEMPRE manual
+> (migrate dev reseta o banco dev).
 >
 > **2026-06-21 (PIVOT da personalização) , removida a camada de "resumo por IA"; o feature é o
 > RASTREADOR CONTÍNUO POR PARÂMETROS (sempre ligado, sem dado pessoal), a EXPANDIR.**
