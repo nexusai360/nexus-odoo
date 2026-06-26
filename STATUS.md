@@ -43,9 +43,13 @@
 > NUNCA usar `migrate dev` (reseta o banco dev); usar SEMPRE o caminho manual** (escrever o
 > `migration.sql` idempotente em `prisma/migrations/<ts>_<nome>/`, aplicar via
 > `docker exec -i nexus-odoo-db-1 ... psql < migration.sql`, `migrate resolve --applied`, `prisma generate`).
-> **PRÓXIMA AÇÃO:** Bloco D (D1 `component-catalog.ts` , catálogo de componentes documentado, DataTable,
-> formato spec §6; D2 `compat.ts` , compatibilidade template×shape; D3a-d , biblioteca de handlers de
-> construção: read-tools, prever_dado, mutadores, BUILDER_TOOLS+validar). Depois E (agente construtor +
+> **D1 (`component-catalog.ts`) e D2 (`compat.ts`) JÁ FEITOS. Total: 12 tasks, 36 testes verdes, tsc limpo.**
+> **PRÓXIMA AÇÃO:** D3 (biblioteca de handlers, quebrada: D3a read-tools `listar_componentes`/
+> `descrever_componente`/`listar_fontes`; D3b `prever_dado`; D3c mutadores `criar_relatorio`/`adicionar_secao`/
+> `editar_secao`/`remover_secao`/`definir_filtro`, cada um valida + `checarCompatibilidade`; D3d catálogo
+> `BUILDER_TOOLS`+`validar`). NOTA DE TESTE: testes que importam `source-registry` precisam
+> `jest.mock("@/lib/prisma", () => ({ prisma: {} }))` (o client gerado usa `import.meta`, quebra fora de module).
+> NUNCA usar `| tail` ao rodar jest (mascara exit code); usar `; echo EXIT=${PIPESTATUS[0]}`. Depois E (agente construtor +
 > `BuilderLlmConfig` + teto via `LlmUsage`/`origin:"construtor"`), F (tela chat/preview, `ui-ux-pro-max`),
 > G (tela config + E2E). PENDÊNCIAS MENORES: B2 freshness real (hoje `resolveSecao` devolve `freshness:null`;
 > extrair `estadoDoFato` de `src/lib/actions/report-data.ts`); `resolveSecao` marca 'vazio' por `linhas.length`
