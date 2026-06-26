@@ -189,6 +189,8 @@ model User {
   reportPresets          ReportPreset[]
   // F5
   conversations          Conversation[]
+  // F6 , conversas do Construtor de relatorios (isoladas das do Nex)
+  builderConversations   BuilderConversation[]
   whatsappNumbers        UserWhatsappNumber[]
   playgroundSessions     PlaygroundSession[]
   // F4.5 — Agente Nex Inteligencia
@@ -244,6 +246,46 @@ model SavedReport {
 
   @@index([criadoPor, status])
   @@map("saved_reports")
+}
+
+/// F6 , conversa do Construtor de relatorios. Isolada da Conversation do Nex
+/// (que tem muitos consumidores: monitoramento, qualidade, router) para nao
+/// contaminar a producao. Uma conversa constroi UMA ficha (savedReportId).
+model BuilderConversation {
+  id            String           @id @default(uuid()) @db.Uuid
+  userId        String           @map("user_id") @db.Uuid
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title         String?
+  /// Ficha (SavedReport) que esta conversa esta construindo. Setado no 1o turno
+  /// que persiste rascunho; reusado nos turnos seguintes (atualiza, nao recria).
+  savedReportId String?          @map("saved_report_id")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+  /// "Limpar conversa": arquiva (nao deleta). null = ativa.
+  endedAt       DateTime?        @map("ended_at")
+  messages      BuilderMessage[]
+
+  @@index([userId, endedAt, updatedAt])
+  @@map("builder_conversations")
+}
+
+/// F6 , mensagem da conversa do Construtor (user | assistant). `steps` guarda os
+/// rotulos das tools consultadas no turno (rebuild da trilha "Raciocinio") e
+/// `durationMs` a duracao (resumo "Raciocinio . N tools . Xs").
+model BuilderMessage {
+  id             String              @id @default(uuid()) @db.Uuid
+  conversationId String              @map("conversation_id") @db.Uuid
+  conversation   BuilderConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String
+  content        String
+  /// Array<{ label: string }> das tools consultadas neste turno.
+  steps          Json?
+  durationMs     Int?                @map("duration_ms")
+  kind           String              @default("text")
+  createdAt      DateTime            @default(now()) @map("created_at")
+
+  @@index([conversationId, createdAt])
+  @@map("builder_messages")
 }
 
 model AppSetting {

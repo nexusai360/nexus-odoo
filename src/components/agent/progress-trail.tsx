@@ -20,6 +20,13 @@ export interface ProgressStep {
   /** Rótulo genérico já traduzido (ex.: "faturamento", "estoque"). */
   label: string;
   state: "running" | "done";
+  /**
+   * Quando true, o rótulo é renderizado VERBATIM (sem o prefixo
+   * "Consultou/Consultando"). Usado pelo Construtor de relatórios (F6), cujas
+   * tools misturam leitura e mutação e já vêm como frases de ação. O Agente Nex
+   * nunca seta este flag, então o comportamento dele fica inalterado.
+   */
+  raw?: boolean;
 }
 
 /** Acima deste total, os passos do meio são colapsados. */
@@ -77,8 +84,9 @@ export function ProgressTrail({ steps }: { steps: ProgressStep[] }) {
                   : "text-muted-foreground",
               )}
             >
-              {running ? "Consultando" : "Consultou"} {row.label}
-              {running ? "…" : ""}
+              {row.raw
+                ? `${row.label}${running ? "…" : ""}`
+                : `${running ? "Consultando" : "Consultou"} ${row.label}${running ? "…" : ""}`}
             </span>
           </li>
         );

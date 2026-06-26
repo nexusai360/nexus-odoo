@@ -68,6 +68,47 @@ describe("runBuilder , caminho feliz", () => {
   });
 });
 
+describe("runBuilder , eventos de tool ao vivo + resumo", () => {
+  it("emite tool_call/tool_result por tool e devolve toolsCalled + reasoningMs", async () => {
+    const cliente = clienteRoteirizado([
+      resultado({
+        toolCalls: [
+          { id: "a", name: "criar_relatorio", arguments: { titulo: "Estoque por armazem" } },
+          { id: "b", name: "adicionar_secao", arguments: SECAO_DATATABLE },
+        ],
+      }),
+      resultado({ message: "Pronto." }),
+    ]);
+    const deps = depsBase(cliente);
+    const eventos: { type: string; toolName: string; label: string }[] = [];
+    const r = await runBuilder(
+      {
+        prompt: "estoque por armazem",
+        fichaAtual: null,
+        user: USER,
+        onEvent: (e) => eventos.push(e as (typeof eventos)[number]),
+      },
+      deps,
+    );
+    // 2 tools -> 4 eventos (call+result de cada), na ordem.
+    expect(eventos.map((e) => e.type)).toEqual([
+      "tool_call",
+      "tool_result",
+      "tool_call",
+      "tool_result",
+    ]);
+    expect(eventos[0]).toMatchObject({ toolName: "criar_relatorio", label: "Criando o relatorio" });
+    expect(eventos[2]).toMatchObject({ toolName: "adicionar_secao", label: "Adicionando uma secao" });
+    // Resumo do turno: rotulos das tools + duracao numerica.
+    expect(r.toolsCalled).toEqual([
+      { label: "Criando o relatorio" },
+      { label: "Adicionando uma secao" },
+    ]);
+    expect(typeof r.reasoningMs).toBe("number");
+    expect(r.reasoningMs).toBeGreaterThanOrEqual(0);
+  });
+});
+
 describe("runBuilder , estouro de MAX_ITER", () => {
   it("para com mensagem de limite quando o modelo nunca conclui", async () => {
     const cliente = clienteRoteirizado([

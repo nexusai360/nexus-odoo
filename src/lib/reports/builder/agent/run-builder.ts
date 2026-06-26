@@ -28,6 +28,15 @@ import { verificarQuota, type ResultadoQuota } from "./quota";
 import { obterRecursosConstrutor } from "./recursos-config";
 import type { ReasoningEffort } from "@/lib/agent/llm/types";
 import { SYSTEM_CONSTRUTOR } from "./prompt";
+import { builderProgressLabel } from "./builder-progress-labels";
+
+/**
+ * Evento emitido ao vivo durante o loop, para o stream SSE animar a trilha de
+ * tools na bolha (igual ao Agente Nex). `label` ja vem humanizado e verbatim.
+ */
+export type BuilderRunEvent =
+  | { type: "tool_call"; toolCallId: string; toolName: string; label: string }
+  | { type: "tool_result"; toolCallId: string; toolName: string; label: string; erro: boolean };
 
 /** Maximo de iteracoes do loop (cada uma = 1 chamada ao modelo). */
 export const MAX_ITER = 8;
@@ -44,6 +53,8 @@ export interface RunBuilderInput {
   prompt: string;
   fichaAtual: BuilderReportEntry | null;
   user: BuilderUser;
+  /** Callback ao vivo por tool call/result (alimenta a trilha do stream SSE). */
+  onEvent?: (evt: BuilderRunEvent) => void;
 }
 
 export interface RunBuilderResult {
@@ -55,6 +66,10 @@ export interface RunBuilderResult {
   bloqueado?: boolean;
   /** true quando houve falha tecnica (sem credencial, estouro de passos). */
   erro?: boolean;
+  /** Rotulos das tools consultadas no turno (rebuild da trilha "Raciocinio"). */
+  toolsCalled: { label: string }[];
+  /** Duracao total do turno em ms (resumo "Raciocinio . N tools . Xs"). */
+  reasoningMs: number;
 }
 
 /** Dependencias injetaveis (default = infra real). Facilita teste sem mock global. */
@@ -135,12 +150,21 @@ export async function runBuilder(
   input: RunBuilderInput,
   deps: RunBuilderDeps = DEPS_PADRAO,
 ): Promise<RunBuilderResult> {
-  const { prompt, user } = input;
+  const { prompt, user, onEvent } = input;
+  const t0 = Date.now();
+  const toolsCalled: { label: string }[] = [];
+  const tempo = () => Date.now() - t0;
 
   // E3 , teto antes de qualquer chamada ao modelo.
   const quota = await deps.verificarQuota(user.id);
   if (!quota.ok) {
-    return { ficha: input.fichaAtual, mensagem: quota.motivo, bloqueado: true };
+    return {
+      ficha: input.fichaAtual,
+      mensagem: quota.motivo,
+      bloqueado: true,
+      toolsCalled,
+      reasoningMs: tempo(),
+    };
   }
 
   const cliente = await deps.criarCliente();
@@ -150,6 +174,8 @@ export async function runBuilder(
       mensagem:
         "Nao consegui falar com o modelo do construtor. Verifique a credencial do provedor configurado em Agente > Configuracao.",
       erro: true,
+      toolsCalled,
+      reasoningMs: tempo(),
     };
   }
 
@@ -195,8 +221,18 @@ export async function runBuilder(
     if (toolCalls.length > 0) {
       messages.push({ role: "assistant", content: res.message ?? "", toolCalls });
       for (const tc of toolCalls) {
+        const label = builderProgressLabel(tc.name);
+        toolsCalled.push({ label });
+        onEvent?.({ type: "tool_call", toolCallId: tc.id, toolName: tc.name, label });
         const r = despachar(tc, ficha);
         if (r.tipo === "ficha") ficha = r.ficha;
+        onEvent?.({
+          type: "tool_result",
+          toolCallId: tc.id,
+          toolName: tc.name,
+          label,
+          erro: r.tipo === "erro",
+        });
         messages.push({
           role: "tool",
           content: serializarResultadoTool(r, ficha),
@@ -220,6 +256,8 @@ export async function runBuilder(
           limpa ||
           "Esse dado ainda nao tem fonte disponivel no construtor. Registrei o pedido para avaliacao.",
         recusa: true,
+        toolsCalled,
+        reasoningMs: tempo(),
       };
     }
 
@@ -239,7 +277,7 @@ export async function runBuilder(
       continue;
     }
 
-    return { ficha, mensagem: msg };
+    return { ficha, mensagem: msg, toolsCalled, reasoningMs: tempo() };
   }
 
   return {
@@ -247,5 +285,7 @@ export async function runBuilder(
     mensagem:
       "Nao consegui concluir o relatorio dentro do limite de passos. Tente reformular o pedido de forma mais simples.",
     erro: true,
+    toolsCalled,
+    reasoningMs: tempo(),
   };
 }

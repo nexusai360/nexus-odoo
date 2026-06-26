@@ -637,10 +637,11 @@ function AssistantTrailBlock({
                           : "text-muted-foreground",
                       )}
                     >
-                      {/* BI: label "consulta avancada" e auto-explicativo,
-                          sem prefixo "Consultou/Consultando". Demais tools:
-                          mantem prefixo (ex. "Consultou faturamento"). */}
-                      {s.label === "consulta avançada"
+                      {/* BI ("consulta avancada") e tools raw (Construtor F6)
+                          sao auto-explicativos: renderizam o label verbatim,
+                          sem prefixo. Demais tools do Nex mantem o prefixo
+                          (ex. "Consultou faturamento"). */}
+                      {s.label === "consulta avançada" || s.raw
                         ? `${s.label}${s.state === "running" ? "…" : ""}`
                         : `${s.state === "running" ? "Consultando" : "Consultou"} ${s.label}${s.state === "running" ? "…" : ""}`}
                     </span>
