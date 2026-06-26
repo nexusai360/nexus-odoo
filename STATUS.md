@@ -1,5 +1,27 @@
 # STATUS — nexus-odoo
 
+> **2026-06-26 (F6 , CONSTRUTOR DE RELATÓRIOS , SPEC v3 PRONTA, INICIANDO O PLAN) ,
+> branch `feat/nex-reconstrucao`. Trabalho em modo autônomo (heartbeat 15min ativo).**
+> **REGRA DE RAIZ (topo do `CLAUDE.md`): F6 fica SÓ LOCAL até aprovação explícita do
+> usuário.** Sem merge para `main`, sem deploy, sem migration em prod. Construído na
+> worktree `feat/nex-reconstrucao` (decisão do usuário; a branch estava idêntica à main).
+>
+> **Spec:** `docs/superpowers/specs/2026-06-26-f6-construtor-relatorios-design.md` (v3,
+> após 2 rodadas de review adversarial em Opus + verificação no código real).
+> **Decisões fechadas:** config-driven (ficha `ReportEntry` da F3 estendida, nunca code-gen);
+> agente construtor reusa a infra LLM multi-provedor (`src/lib/agent/llm`), default OpenAI
+> `gpt-5-mini`; MCP de construção como **biblioteca de handlers** (servidor MCP é casca p/
+> externalização futura ChatGPT/Claude); design embutido via `ui-ux-pro-max` (não IA em
+> runtime); recusa honesta (Caminho 3); reuso do chat do Playground + bubble do Nex.
+> **Achado crítico verificado:** o motor de render da F3 é ESTÁTICO (`QUERIES[id]` →
+> `notFound()` em `relatorios/[id]/page.tsx`); ficha dinâmica cai em 404. Então a **onda 1
+> constrói o motor genérico** (rota `/relatorios/d/[savedId]`, registry de fontes,
+> adaptadores de shape, guard de domínio no resolver) + `SavedReport` + tools de construção
+> + agente mínimo + tela chat/preview + 1 template (DataTable) + medição de IA. Rascunho
+> pessoal só (publicação/RBAC de consumo e widgets/painéis em ondas seguintes).
+> **PRÓXIMA AÇÃO:** PLAN v1 (`superpowers:writing-plans`) sobre a spec v3 → 2 reviews → v3 →
+> execução por ondas (TDD, `ui-ux-pro-max`). Stack local de pé (localhost:3000 health 200).
+>
 > **2026-06-21 (PIVOT da personalização) , removida a camada de "resumo por IA"; o feature é o
 > RASTREADOR CONTÍNUO POR PARÂMETROS (sempre ligado, sem dado pessoal), a EXPANDIR.**
 > Decisão do usuário: a abordagem certa NÃO é uma IA resumir as conversas (isso obrigava a tratar
