@@ -1,13 +1,12 @@
 "use client";
 
 // src/components/reports/builder/builder-preview.tsx
-// F2b , Preview ao vivo da ficha em construcao. Valida a estrutura localmente
-// (barato) e, quando valida, pede ao servidor a resolucao das secoes
-// (previsualizarSecoes, sem persistir) e desenha via ReportRenderer. Os dois
-// niveis (validacao local + resolucao no server) evitam ir ao banco a cada
-// tecla e dao feedback imediato de ficha incompleta.
+// F2b (v2) , Canvas de preview ao vivo. Valida a estrutura localmente (barato) e,
+// quando valida, pede ao servidor a resolucao das secoes (previsualizarSecoes,
+// sem persistir) e desenha via ReportRenderer numa "pagina" de relatorio sobre
+// um fundo de canvas. E a area dominante da tela do construtor.
 import { useState, useEffect } from "react";
-import { LayoutDashboard, AlertTriangle } from "lucide-react";
+import { LayoutDashboard, AlertTriangle, Eye } from "lucide-react";
 import { ReportRenderer } from "./report-renderer";
 import { previsualizarSecoes } from "@/lib/actions/builder";
 import { validarReportEntry } from "@/lib/reports/builder/report-entry-schema";
@@ -16,10 +15,19 @@ import type { SecaoResolvida } from "@/lib/reports/builder/resolve-source";
 
 type EstadoPreview = "vazio" | "invalida" | "carregando" | "ok" | "erro";
 
-function Moldura({ children }: { children: React.ReactNode }) {
+function Moldura({
+  icon,
+  children,
+}: {
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center text-muted-foreground">
-      {children}
+    <div className="flex h-full flex-col items-center justify-center gap-4 px-6 text-center">
+      <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-border bg-card text-muted-foreground/60 shadow-sm">
+        {icon}
+      </div>
+      <div className="max-w-sm space-y-1 text-muted-foreground">{children}</div>
     </div>
   );
 }
@@ -58,54 +66,72 @@ export function BuilderPreview({ ficha }: { ficha: BuilderReportEntry | null }) 
     };
   }, [ficha]);
 
-  if (estado === "vazio") {
-    return (
-      <Moldura>
-        <LayoutDashboard className="h-10 w-10 text-muted-foreground/50" aria-hidden />
-        <p className="max-w-xs text-sm">
-          O preview do relatorio aparece aqui conforme voce conversa com o construtor.
-        </p>
-      </Moldura>
-    );
-  }
-
-  if (estado === "invalida") {
-    return (
-      <Moldura>
-        <AlertTriangle className="h-9 w-9 text-amber-500" aria-hidden />
-        <p className="max-w-xs text-sm">
-          Ainda nao da para visualizar: o relatorio precisa de ao menos uma secao
-          valida. Continue a conversa para completar.
-        </p>
-      </Moldura>
-    );
-  }
-
-  if (estado === "erro") {
-    return (
-      <Moldura>
-        <AlertTriangle className="h-9 w-9 text-red-500" aria-hidden />
-        <p className="max-w-xs text-sm">
-          Nao consegui montar o preview agora. Tente ajustar o pedido na conversa.
-        </p>
-      </Moldura>
-    );
-  }
-
-  if (estado === "carregando") {
-    return (
-      <div className="space-y-3 p-6" aria-busy="true">
-        <div className="h-7 w-2/5 animate-pulse rounded-lg bg-muted" />
-        <div className="h-4 w-3/5 animate-pulse rounded bg-muted/70" />
-        <div className="mt-4 h-48 w-full animate-pulse rounded-xl bg-muted" />
-      </div>
-    );
-  }
-
-  // estado === "ok"
   return (
-    <div className="h-full overflow-y-auto p-6">
-      <ReportRenderer entry={ficha!} dados={dados} />
+    <div className="flex h-full flex-col">
+      {/* Barra do canvas */}
+      <div className="flex items-center gap-2 border-b border-border px-5 py-2.5 text-xs font-medium text-muted-foreground">
+        <Eye className="h-3.5 w-3.5" aria-hidden />
+        Pre-visualizacao
+        {estado === "ok" && ficha ? (
+          <span className="ml-1 truncate text-foreground">· {ficha.titulo}</span>
+        ) : null}
+      </div>
+
+      {/* Canvas */}
+      <div className="relative flex-1 overflow-y-auto bg-[radial-gradient(circle_at_1px_1px,var(--color-border)_1px,transparent_0)] [background-size:22px_22px]">
+        {estado === "vazio" ? (
+          <Moldura icon={<LayoutDashboard className="h-8 w-8" aria-hidden />}>
+            <p className="text-sm font-medium text-foreground">
+              O preview do relatorio aparece aqui
+            </p>
+            <p className="text-xs leading-relaxed">
+              Converse com o construtor a esquerda. Conforme voce descreve o que
+              quer, o relatorio vai sendo montado e renderizado nesta area.
+            </p>
+          </Moldura>
+        ) : null}
+
+        {estado === "invalida" ? (
+          <Moldura icon={<AlertTriangle className="h-8 w-8 text-amber-500" aria-hidden />}>
+            <p className="text-sm font-medium text-foreground">
+              Ainda nao da para visualizar
+            </p>
+            <p className="text-xs leading-relaxed">
+              O relatorio precisa de ao menos uma secao valida. Continue a conversa
+              para completar.
+            </p>
+          </Moldura>
+        ) : null}
+
+        {estado === "erro" ? (
+          <Moldura icon={<AlertTriangle className="h-8 w-8 text-red-500" aria-hidden />}>
+            <p className="text-sm font-medium text-foreground">
+              Nao consegui montar o preview agora
+            </p>
+            <p className="text-xs leading-relaxed">
+              Tente ajustar o pedido na conversa.
+            </p>
+          </Moldura>
+        ) : null}
+
+        {estado === "carregando" ? (
+          <div className="mx-auto max-w-4xl p-6" aria-busy="true">
+            <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+              <div className="h-7 w-2/5 animate-pulse rounded-lg bg-muted" />
+              <div className="mt-2 h-4 w-3/5 animate-pulse rounded bg-muted/70" />
+              <div className="mt-5 h-56 w-full animate-pulse rounded-xl bg-muted" />
+            </div>
+          </div>
+        ) : null}
+
+        {estado === "ok" && ficha ? (
+          <div className="mx-auto max-w-5xl p-6">
+            <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+              <ReportRenderer entry={ficha} dados={dados} />
+            </div>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

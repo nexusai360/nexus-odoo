@@ -1,9 +1,11 @@
 /**
  * /relatorios-2/construtor , Construtor de relatórios (F6). Gate admin/super_admin
- * (layout do grupo). Layout split: chat + preview ao vivo.
+ * (layout do grupo). Tela cheia: chat (painel lateral) + preview ao vivo (área
+ * dominante). Áudio habilitado quando há modelo de transcrição configurado.
  */
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { BuilderWorkspace } from "@/components/reports/builder/builder-workspace";
 
 export const metadata = { title: "Construtor de relatórios | Relatórios 2.0" };
@@ -15,5 +17,22 @@ export default async function ConstrutorPage() {
   if (user.platformRole !== "admin" && user.platformRole !== "super_admin") {
     redirect("/relatorios-2/paineis");
   }
-  return <BuilderWorkspace />;
+
+  // Áudio só quando há modelo de transcrição dedicado configurado (senão a rota
+  // /api/agent/transcribe falharia). O card de áudio fica em Agente > Configuração.
+  const settings = await prisma.agentSettings
+    .findUnique({
+      where: { id: "global" },
+      select: { audioProvider: true, audioModel: true, audioCheckpoint: true },
+    })
+    .catch(() => null);
+  const audioEnabled = Boolean(
+    settings?.audioProvider && settings?.audioModel && settings?.audioCheckpoint !== "OFF",
+  );
+
+  return (
+    <div className="h-[calc(100dvh-4rem)] px-4 pb-2 sm:px-6 lg:px-8">
+      <BuilderWorkspace audioEnabled={audioEnabled} />
+    </div>
+  );
 }

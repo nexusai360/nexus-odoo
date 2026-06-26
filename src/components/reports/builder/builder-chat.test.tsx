@@ -43,4 +43,14 @@ describe("BuilderChat", () => {
     fireEvent.click(screen.getByRole("button", { name: /enviar/i }));
     expect(onEnviar).not.toHaveBeenCalled();
   });
+
+  it("mostra o microfone quando o audio esta habilitado", () => {
+    render(<BuilderChat mensagens={[]} pensando={false} onEnviar={() => {}} audioEnabled />);
+    expect(screen.getByRole("button", { name: /gravar audio/i })).toBeInTheDocument();
+  });
+
+  it("oculta o microfone quando o audio esta desabilitado", () => {
+    render(<BuilderChat mensagens={[]} pensando={false} onEnviar={() => {}} />);
+    expect(screen.queryByRole("button", { name: /gravar audio/i })).not.toBeInTheDocument();
+  });
 });

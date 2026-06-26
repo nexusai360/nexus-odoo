@@ -1,19 +1,19 @@
 "use client";
 
 // src/components/reports/builder/builder-workspace.tsx
-// F2c/F2d , Orquestrador do construtor: junta o chat (F2a) e o preview (F2b)
-// num layout split, mantem o estado da conversa + ficha + rascunho salvo e liga
-// tudo em construirRelatorio. O botao "Abrir relatorio" navega para a rota
-// dinamica /relatorios/d/[savedId] depois que o rascunho foi persistido.
+// F2c/F2d (v2) , Workspace do construtor em tela cheia: chat (painel lateral) +
+// preview ao vivo (area dominante). Mantem o estado da conversa + ficha +
+// rascunho salvo e liga tudo em construirRelatorio. "Abrir relatorio" navega
+// para a rota dinamica depois que o rascunho foi persistido.
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ExternalLink, FileBarChart } from "lucide-react";
+import { ExternalLink, FileBarChart, MessagesSquare } from "lucide-react";
 import { construirRelatorio } from "@/lib/actions/builder";
 import { BuilderChat, type BuilderChatMensagem } from "./builder-chat";
 import { BuilderPreview } from "./builder-preview";
 import type { BuilderReportEntry } from "@/lib/reports/builder/types";
 
-export function BuilderWorkspace() {
+export function BuilderWorkspace({ audioEnabled = false }: { audioEnabled?: boolean }) {
   const router = useRouter();
   const seq = useRef(0);
   const [mensagens, setMensagens] = useState<BuilderChatMensagem[]>([]);
@@ -55,7 +55,8 @@ export function BuilderWorkspace() {
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+      {/* Cabecalho */}
       <header className="flex items-center justify-between gap-3 border-b border-border px-5 py-3">
         <div className="flex items-center gap-2.5">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-violet-500 text-white shadow-md shadow-violet-600/40">
@@ -66,7 +67,7 @@ export function BuilderWorkspace() {
               Construtor de relatorios
             </h1>
             <p className="text-xs text-muted-foreground">
-              Converse para montar um relatorio e veja o resultado ao lado.
+              Converse para montar o relatorio e veja o resultado ao lado.
             </p>
           </div>
         </div>
@@ -81,13 +82,25 @@ export function BuilderWorkspace() {
         </button>
       </header>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-2">
-        <div className="min-h-0 border-b border-border lg:border-r lg:border-b-0">
-          <BuilderChat mensagens={mensagens} pensando={pensando} onEnviar={enviar} />
-        </div>
-        <div className="min-h-0 bg-background">
+      {/* Corpo: chat (lateral) + preview (dominante) */}
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        <aside className="flex min-h-0 w-full shrink-0 flex-col border-b border-border lg:h-auto lg:w-[400px] lg:border-r lg:border-b-0">
+          <div className="flex items-center gap-1.5 border-b border-border px-5 py-2.5 text-xs font-medium text-muted-foreground">
+            <MessagesSquare className="h-3.5 w-3.5" aria-hidden />
+            Conversa
+          </div>
+          <div className="min-h-[280px] flex-1 lg:min-h-0">
+            <BuilderChat
+              mensagens={mensagens}
+              pensando={pensando}
+              onEnviar={enviar}
+              audioEnabled={audioEnabled}
+            />
+          </div>
+        </aside>
+        <section className="min-h-0 flex-1 bg-background">
           <BuilderPreview ficha={ficha} />
-        </div>
+        </section>
       </div>
     </div>
   );
