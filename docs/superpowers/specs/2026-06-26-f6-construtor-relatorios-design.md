@@ -167,19 +167,22 @@ da ficha (barato, a cada turno) e renderizar com dado (sob demanda / amostra lim
 não re-consultar o cache pesado a cada turno). Localização na navegação e refino visual ficam
 comigo (com a skill), sem validação tela-a-tela.
 
-### 4.8 Configuração de modelo do construtor (reusa o padrão do Agente Nex)
+### 4.8 Configuração de modelo do construtor (mais um card na Configuração do Agente Nex)
 
-O construtor tem uma seção de configuração de LLM **espelhando o padrão visual e funcional
-da `agente/configuracao`** (a tela "Configuração > Recursos" do Nex, com o mesmo estilo de
-cards e seleção de modelo/custo). Nela o `super_admin` escolhe **provedor + modelo** que o
-construtor usa, a partir do **catálogo existente** (`LlmModelEntry`/`effective-catalog`) e das
-**credenciais já cadastradas** em `agente/chaves` (`LlmCredential`). Não duplica credenciais.
-- A "config ativa" do construtor é própria (não compartilha o `LlmConfig` do Nex, para que
-  trocar o modelo do construtor não afete o Nex): um registro de config marcado por uso
-  (`uso: "construtor"`) ou um modelo análogo, decidido no plano.
-- O runtime resolve o client por `get-client` + a config ativa do construtor.
-- Consumo é registrado em `LlmUsage` (billing já existente), o que **realiza a medição** de
-  §9 sem reinventar contagem de tokens.
+**Decisão do usuário (2026-06-26):** o modelo do construtor é **apenas mais um bloco/card na
+tela de Configuração do Agente Nex** (`agente/configuracao`), exatamente como hoje já existem
+os cards de áudio, imagem e modo raciocínio. NÃO é uma tela separada nem um armazenamento próprio.
+- **Armazenamento:** campos novos no singleton `AgentSettings` (id="global"), ex.:
+  `builderModelProvider` e `builderModelId` (migration aditiva manual). Reusa o mesmo modelo que
+  guarda `audioCheckpoint`/`imageCheckpoint`/`reasoningEffort`.
+- **UI:** um **card** na `agente/configuracao` (no padrão de `resource-card.tsx`/`reasoning-card.tsx`),
+  com seletor de **provedor + modelo** a partir do catálogo existente (`effective-catalog`/
+  `LlmModelEntry`) e das **credenciais já cadastradas** (`LlmCredential`). Não duplica credenciais.
+- **Runtime:** `model-config.ts` do construtor lê `builderModelProvider`/`builderModelId` de
+  `AgentSettings` e resolve o client por `get-client` (default OpenAI `gpt-5-mini` se não configurado).
+- **Sem** `BuilderLlmConfig` (modelo Prisma separado) e **sem** tela própria , cortados.
+- Consumo é registrado em `LlmUsage` com `origin:"construtor"` (billing já existente), o que
+  realiza a medição (§9) sem reinventar contagem de tokens.
 
 ---
 

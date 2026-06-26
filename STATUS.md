@@ -46,8 +46,14 @@
 > **BLOCO D COMPLETO** (D1 `component-catalog.ts`, D2 `compat.ts`, D3a-d biblioteca de tools em
 > `builder/tools/`: read-tools, prever_dado, mutadores, `BUILDER_TOOLS`+`executarTool`+`validarFicha`).
 > **Total: 16 tasks, 51 testes verdes, tsc limpo. Blocos A+B+C+D prontos (fundação inteira do construtor).**
-> **PRÓXIMA AÇÃO , Bloco E (agente construtor, COMPLEXO):** E1a `BuilderLlmConfig` (modelo Prisma NOVO,
-> isolado do `LlmConfig` global do Nex; migration MANUAL) + `model-config.ts`; E1b `tool-bridge.ts` (converte
+> **CORRECAO DO USUARIO (26/06): a config de modelo do construtor e MAIS UM CARD na tela `agente/configuracao`
+> existente** (no padrao dos cards de audio/imagem/raciocinio), guardado em campos novos de `AgentSettings`
+> (`builderModelProvider`/`builderModelId`). NAO criar `BuilderLlmConfig` (modelo Prisma separado) nem tela
+> propria , ambos CORTADOS. Card no padrao `resource-card.tsx`/`reasoning-card.tsx`; seletor de modelo do
+> `effective-catalog`; credenciais `LlmCredential` ja cadastradas. Spec §4.8 e plano (Correcao #1, E1a, G1) atualizados.
+> **PRÓXIMA AÇÃO , Bloco E (agente construtor):** E1a campos `builderModelProvider`/`builderModelId` em
+> `AgentSettings` (migration MANUAL aditiva) + `builder/agent/model-config.ts` (le/grava em AgentSettings; default
+> openai/gpt-5-mini); E1b `tool-bridge.ts` (converte
 > `BUILDER_TOOLS` p/ `ProviderClient.chat({tools})` e despacha via `executarTool`); E2a `run-builder.ts` (loop
 > `MAX_ITER`, billing `logUsage({origin:"construtor"})`); E2b reparo de ficha + recusa honesta
 > (`FeatureRequest.create`); E3 `quota.ts` (soma `LlmUsage` por `origin="construtor"`). Depois F (tela

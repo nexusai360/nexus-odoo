@@ -34,9 +34,13 @@ existente (`src/lib/agent/llm`: `buildLlmClient`, `ProviderClient.chat`, `logUsa
 
 ## Correções aplicadas (das 2 reviews do plano, verificadas no código)
 
-1. **Config de modelo isolada:** modelo Prisma novo `BuilderLlmConfig` (NÃO reusar `LlmConfig`,
-   cujo `isActive` é global e desativaria o Nex). Campos: `provider`, `model`, `tetoTokensPeriodo`,
-   `periodo` (`dia`|`mes`), `atualizadoEm`. Singleton (1 linha).
+1. **Config de modelo = card na Configuração do Agente Nex (DECISAO DO USUARIO 2026-06-26, substitui
+   o BuilderLlmConfig):** o modelo do construtor e mais um CARD em `agente/configuracao`, guardado em
+   campos novos do singleton `AgentSettings` (`builderModelProvider`/`builderModelId`), no mesmo padrao
+   dos cards de audio/imagem/raciocinio (`resource-card.tsx`/`reasoning-card.tsx`). SEM `BuilderLlmConfig`
+   separado, SEM tela propria. Migration aditiva MANUAL. Seletor de modelo do catalogo `effective-catalog`,
+   credenciais `LlmCredential` ja cadastradas. Teto de consumo NAO foi pedido pelo usuario nesta rodada:
+   manter so a medicao via `LlmUsage` (`origin:"construtor"`); o teto duro fica opcional/onda seguinte.
 2. **Consumo isolado:** `logUsage({ origin: "construtor" })` (campo `origin` já existe em
    `LlmUsage`); `verificarQuota` soma `LlmUsage` filtrado por `origin="construtor"`. Sem coluna nova.
 3. **Registry `(fato, shapeDerivado) → produtor`** (não `fato → query`): para `fato_estoque_saldo`,
@@ -128,9 +132,10 @@ existente (`src/lib/agent/llm`: `buildLlmClient`, `ProviderClient.chat`, `logUsa
 
 ## Bloco E , Agente construtor
 
-- **E1a , `BuilderLlmConfig` + migration dev local** (`prisma/schema.prisma` + `builder/agent/model-config.ts`).
-  `obterConfigModeloConstrutor()` (default openai/gpt-5-mini), `definirConfigModeloConstrutor({provider,model,tetoTokensPeriodo,periodo})`.
-  Steps: schema → migrate dev `f6_builder_llm_config` → `schema-changed` → teste obter/definir → impl. TDD.
+- **E1a , campos no `AgentSettings` + `model-config.ts`** (migration MANUAL aditiva: `builderModelProvider`
+  e `builderModelId` em `AgentSettings`). `obterConfigModeloConstrutor()` le de `AgentSettings` (default
+  openai/gpt-5-mini se vazio); `definirConfigModeloConstrutor({provider,model})` grava em `AgentSettings`.
+  TDD (mock prisma). (NAO criar `BuilderLlmConfig`; ver Correcao #1.)
 - **E1b , Ponte tool-format** (`builder/agent/tool-bridge.ts`). Converte `BUILDER_TOOLS` (Zod) → formato `tools`
   do `ProviderClient.chat`; `despachar(toolCall): Promise<resultado>` roteia para o handler. Teste (mock): converte 1 tool; despacha chama handler. TDD.
 - **E2a , Loop do agente** (`builder/agent/run-builder.ts`). `runBuilder({prompt, fichaAtual, user})`:
@@ -162,9 +167,10 @@ existente (`src/lib/agent/llm`: `buildLlmClient`, `ProviderClient.chat`, `logUsa
 
 ## Bloco G , Config (tela) + verificação E2E
 
-- **G1 , Tela de config de modelo** (`app/(protected)/relatorios/construtor/configuracao/page.tsx`;
-  test correspondente). Padrão visual de `agente/configuracao` (cards); seleção provider+model (de `effective-catalog`)
-  + teto; só super_admin. `ui-ux-pro-max`. TDD.
+- **G1 , Card de modelo do construtor na `agente/configuracao`** (adicionar um card no padrao de
+  `resource-card.tsx`/`reasoning-card.tsx` na tela JA EXISTENTE; server action que grava
+  `builderModelProvider`/`builderModelId` em `AgentSettings`). Seletor provider+model de `effective-catalog`;
+  so super_admin. `ui-ux-pro-max`. NAO criar tela nova. TDD.
 - **G2a , Fixar os 8 prompts-alvo** (`docs/superpowers/plans/_f6-onda1-prompts.md`). Rodar contra o cache real e
   congelar 8 prompts de estoque com fonte 100% disponível (saldo/valor por armazém/família) + 2 sem fonte. Define os
   golden cases `{prompt, shapeEsperado, colunasPlausiveis}`. (Pré-requisito da G2c.)
