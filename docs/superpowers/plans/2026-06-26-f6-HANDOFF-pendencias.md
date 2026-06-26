@@ -1,5 +1,11 @@
 # F6 , HANDOFF: pendências do construtor (retomar AQUI na nova sessão)
 
+> **ATUALIZAÇÃO 2026-06-26 (sessão seguinte): P1, P2 e P3 ENTREGUES e commitados
+> com TDD (tsc 0; 371+ testes verdes). Detalhes no topo do `STATUS.md`. Falta só a
+> validação na UI pelo usuário (`/relatorios-2/construtor` e `/relatorios-2/meus`)
+> e o E2E do chat contra o LLM pela sessão logada. F6 segue só local.** Itens abaixo
+> mantidos como registro do que foi pedido.
+
 > Usuário frustrado: "nada do que pedi foi feito devidamente". Várias coisas
 > ficaram pela metade ou não pegaram (hot-reload do dev velho mascarou). 
 > **AÇÃO 1 da nova sessão: `npm run dev:fresh` ANTES de validar qualquer coisa**

@@ -1,5 +1,31 @@
 # STATUS — nexus-odoo
 
+> **2026-06-26 (F6 , PENDÊNCIAS P1+P2+P3 ENTREGUES) , branch `feat/nex-reconstrucao`.
+> F6 SEGUE SÓ LOCAL (sem merge/deploy; migrations manuais).**
+> As 3 prioridades do handoff (`docs/superpowers/plans/2026-06-26-f6-HANDOFF-pendencias.md`)
+> foram implementadas com TDD (tsc 0; 371+ testes de relatórios verdes) e commitadas:
+> - **P1 , chat do Construtor = Agente Nex (o grosso):** mensagens agora PERSISTEM
+>   (tabelas novas `builder_conversations`/`builder_messages`, migration manual
+>   `20260626160000_f6_builder_conversation`); rota SSE `/api/builder/stream` que
+>   anima as tools ao vivo (`tool_call`/`tool_result`; run-builder ganhou
+>   `onEvent`/`toolsCalled`/`reasoningMs`); novo `BuilderChatPanel` reusa
+>   `AgentMessage` (trilha "Raciocínio" com nº de tools+duração, copiar, timestamp),
+>   stick-to-bottom, tag de data flutuante, FAB ir-pro-fim, menu 3-pontos
+>   (Limpar conversa + Baixar .txt). `ProgressStep.raw` (retrocompatível) deixa o
+>   trail renderizar frases de ação. `builder-chat.tsx` antigo removido.
+> - **P2 , abrir relatório:** view migrada para `/relatorios-2/d/[savedId]` (acende
+>   "Meus relatórios" via `effectivePathname` na sidebar); rota antiga `/relatorios/d/`
+>   vira redirect; cabeçalho `ReportViewHeader` (título/criador foto+nome+email+tag/data).
+> - **P3 , Meus relatórios:** card abre `ReportDetailModal` (editar nome inline;
+>   bloco criador; visibilidade Privado/Compartilhado; chips de nível que marcam
+>   exatamente o nível; lista de usuários com busca+checkbox; "Atualizar permissões").
+>   `SavedReport.visibilidadeConsumo` guarda os userIds; `obterRascunho` respeita o
+>   guard de consumo (criador OU na lista OU super_admin). Badge Privado/Compartilhado.
+> **Decisões aplicadas (do plano):** "marcar nível" = exatamente aquele nível (sem
+> herança); detalhe em modal; v1 persiste userIds. **Falta validar na UI pelo
+> usuário** (`/relatorios-2/construtor` e `/relatorios-2/meus`, dev no ar) e o E2E do
+> chat contra o LLM real pela própria sessão logada. **F6 não sobe sem aprovação.**
+
 > **2026-06-26 (F6 , TROCA DE SESSÃO) , branch `feat/nex-reconstrucao`.**
 > Construtor (Relatórios 2.0) funcional no backend (runBuilder E2E OK, gpt-5.4-mini
 > + raciocínio), mas **a UI do chat NÃO está no padrão do Agente Nex e as
