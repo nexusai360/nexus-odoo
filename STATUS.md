@@ -1,5 +1,40 @@
 # STATUS — nexus-odoo
 
+> **2026-06-26 (F6 , CONSTRUTOR DE RELATÓRIOS , ONDA 1 COMPLETA, Blocos A-G) ,
+> branch `feat/nex-reconstrucao`. Modo autônomo. F6 SEGUE SÓ LOCAL (regra de raiz:
+> sem merge para `main`, sem deploy, sem migration em prod).**
+> **Blocos E, F, G entregues e commitados (TDD, tsc 0):**
+> - **E (agente construtor)** em `src/lib/reports/builder/agent/`: `model-config.ts`
+>   (lê/grava `builderModelProvider`/`builderModelId` no singleton `AgentSettings`,
+>   default `openai/gpt-5-mini`); `tool-bridge.ts` (converte `BUILDER_TOOLS` Zod →
+>   JSON Schema via `z.toJSONSchema` + valida args + despacha `executarTool`);
+>   `quota.ts` (teto `TETO_TOKENS_PERIODO=5M`/30d somando `LlmUsage` `origin="construtor"`);
+>   `run-builder.ts` (loop `MAX_ITER=8`, reparo `MAX_REPAIR=2` quando conclui sem
+>   seção, recusa honesta `SEM_FONTE:` → `FeatureRequest` dedup, `logUsage origin=construtor`,
+>   deps injetáveis); `prompt.ts` (system; só DataTable na onda 1).
+> - **F (UI, `ui-ux-pro-max`)**: `builder.ts` actions (`construirRelatorio` gate
+>   admin/super_admin + persiste rascunho + auditoria `report_preset_created`;
+>   `previsualizarSecoes`); `builder-chat.tsx` (casca própria, estética da bolha do Nex);
+>   `builder-preview.tsx` (validação local + `previsualizarSecoes` + `ReportRenderer`);
+>   `builder-workspace.tsx` (split chat+preview, estado conversa+ficha+rascunho, abrir
+>   `/relatorios/d/[savedId]`); página `/relatorios/construtor`; aba "Meus relatórios"
+>   em `/relatorios` + botão "Novo relatório".
+> - **G1**: card de modelo do construtor na tela JÁ EXISTENTE `agente/configuracao`
+>   (`salvarModeloConstrutor` gate super_admin; `BuilderModelCard` seletor provider+model
+>   do effective-catalog). NÃO é tela nova nem `BuilderLlmConfig` (cortados na correção 26/06).
+> - **G2**: `_f6-onda1-prompts.md` (8 golden + 2 sem fonte); `gates.test.ts` (asserções
+>   exatas dos 3 gates); **E2E REAL** (`scripts/e2e-f6-construtor.ts`, `gpt-5-mini` + cache
+>   real de estoque): **8/8 com fonte** geram ficha DataTable/tabela válida que renderiza
+>   (1894 linhas), **2/2 sem fonte** recusam + `FeatureRequest`. Evidências em `_f6-onda1-aceite.md`.
+> **Migration** `20260626040000_f6_builder_model_config` (aditiva: `builder_model_provider`/
+> `builder_model_id` em `agent_settings`) aplicada MANUAL (sem reset do banco dev). **NUNCA
+> usar `migrate dev` no F6** (reseta o banco compartilhado). Containers rebuildados após
+> mudança de schema (build do `app` → imagem `nexus-odoo:local`). **Observação de qualidade
+> (onda 2):** o agente nem sempre preenche `config.colunas` (DataTable deriva das chaves;
+> renderiza ok) , reforçar no prompt via `prever_dado`. **PRÓXIMO (quando o usuário liberar):**
+> publicação/RBAC de consumo, widgets/painéis, mais templates (KPIRow/PieChart/LineChart) e
+> mais domínios , tudo onda 2. **F6 só sobe para produção com aprovação explícita do usuário.**
+>
 > **2026-06-26 (F6 , CONSTRUTOR DE RELATÓRIOS , SPEC v3 PRONTA, INICIANDO O PLAN) ,
 > branch `feat/nex-reconstrucao`. Trabalho em modo autônomo (heartbeat 15min ativo).**
 > **REGRA DE RAIZ (topo do `CLAUDE.md`): F6 fica SÓ LOCAL até aprovação explícita do
