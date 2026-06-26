@@ -20,15 +20,16 @@
       arredondado. Áudio corrigido (instância única). Placeholder/ajuda Nex.
       Anexo gated por config de imagem (chips staged; envio ao agente = Onda 2).
 
-## Onda 4 , Controle de acesso do menu Relatórios 2.0 (tela Configuração)
-- [ ] 7. Fonte única do nome "Relatórios 2.0" (constant compartilhado nav+config).
-- [ ] 8. Bloco "Relatórios 2.0" abaixo de "Intervalos de sincronização": seletor
-      à direita (Desativado/Superadmin/Admin/Gerente/Visualizador) + descrição
-      mutável; um nível para o menu + um por submenu (Painéis/Meus/Construtor).
-- [ ] 9. Travas: Construtor puxa Painéis/Meus para no mínimo o mesmo nível;
-      menu off some pra todos menos super_admin dono; submenus cinza quando off.
-- [ ] 10. Gating dinâmico: sidebar + layouts das rotas respeitam os níveis;
-      botão "Novo relatório" só p/ quem acessa o Construtor (some se off).
+## Onda 4 , Controle de acesso do menu Relatórios 2.0 , FEITA (commit a8772c5)
+- [x] 7. Constant RELATORIOS2_* (nav + config + sidebar puxam daqui).
+- [x] 8. Relatorios2AccessCard (tela Configuração, abaixo do sync): seletor à
+      direita + descrição mutável; menu + 3 submenus.
+- [x] 9. Travas no servidor (normalizarComTravas: Construtor puxa Painéis/Meus);
+      off = só super_admin dono; submenus cinza quando menu off.
+- [x] 10. Gating dinâmico: layout+páginas /relatorios-2 checam nível; sidebar
+      via relatorios2Visible (server); botão Novo relatório só com acesso ao Construtor.
 
 ## Estado
-- Onda 1: em andamento.
+- TODAS as ondas (1-4) concluídas e commitadas. 4 migrations manuais aplicadas
+  (builder_model_credential, builder_recursos, relatorios2_acesso + a anterior).
+- Dev reiniciado a cada mudança de schema para recarregar o Prisma Client.
