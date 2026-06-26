@@ -51,6 +51,20 @@ export const COMPONENT_CATALOG: ComponentEntry[] = [
     tokensVisuais: { barra: "chart.bar", grade: "chart.grid" },
   },
   {
+    chave: "LineChart",
+    nome: "Grafico de linha",
+    paraQueServe:
+      "Mostrar a evolucao de um ou mais valores ao longo do tempo (serie temporal).",
+    quandoUsar:
+      "Quando a fonte oferecer 'serieTemporal' (ex.: entradas e saidas por mes).",
+    quandoNaoUsar:
+      "Comparar categorias sem tempo (use barra) ou proporcao (use pizza).",
+    shapeDerivadoExigido: "serieTemporal",
+    parametros: [{ chave: "titulo", descricao: "Titulo curto opcional do grafico." }],
+    interacao: ["tooltip", "legenda", "multi_serie"],
+    tokensVisuais: { linha: "chart.line", area: "chart.area" },
+  },
+  {
     chave: "PieChart",
     nome: "Grafico de pizza",
     paraQueServe:

@@ -11,6 +11,7 @@ import { DataTable, type ColumnDef } from "@/components/charts/data-table";
 import { formatNumber, type NumberFormat } from "@/components/charts/kpi-card";
 import { BarChartCard } from "@/components/charts/bar-chart";
 import { PieChartCard } from "@/components/charts/pie-chart";
+import { LineChartCard } from "@/components/charts/line-chart";
 import type {
   BuilderReportEntry,
   BuilderSection,
@@ -107,6 +108,23 @@ function SecaoView({
       <BarChartCard
         data={data}
         config={{ xKey: "rotulo", yKey: "valor", formato: formatoDoCampo(campoValor?.tipo) }}
+      />
+    );
+  }
+
+  // LineChart , serie temporal (ex.: entradas/saidas por mes).
+  if (secao.template === "LineChart") {
+    const data = (resolvida.dado as Record<string, unknown>[]) ?? [];
+    const campos = resolvida.campos ?? [];
+    const xCampo = campos.find((c) => c.tipo === "texto") ?? campos[0];
+    const series = campos
+      .filter((c) => c.tipo === "numero" || c.tipo === "moeda")
+      .map((c) => ({ key: c.key, label: c.label }));
+    const formatoSerie = campos.find((c) => c.tipo === "numero" || c.tipo === "moeda")?.tipo;
+    return (
+      <LineChartCard
+        data={data}
+        config={{ xKey: xCampo?.key ?? "mes", formato: formatoDoCampo(formatoSerie), series }}
       />
     );
   }

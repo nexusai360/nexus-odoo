@@ -110,4 +110,10 @@ export interface BuilderReportEntry
 export type { ReportTemplate };
 
 /** Templates que efetivamente renderizam (compostos num relatorio rico). */
-export const TEMPLATES_ONDA1: ReportTemplate[] = ["KPIRow", "BarChart", "PieChart", "DataTable"];
+export const TEMPLATES_ONDA1: ReportTemplate[] = [
+  "KPIRow",
+  "BarChart",
+  "PieChart",
+  "LineChart",
+  "DataTable",
+];

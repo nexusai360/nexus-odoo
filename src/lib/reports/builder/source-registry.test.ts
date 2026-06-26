@@ -11,11 +11,47 @@ jest.mock("@/lib/prisma", () => ({ prisma: {} }));
 jest.mock("@/lib/reports/queries/estoque", () => ({
   querySaldoProduto: (...a: unknown[]) => querySaldoProduto(...a),
   queryConcentracao: (...a: unknown[]) => queryConcentracao(...a),
+  queryValorArmazem: jest.fn(),
+  queryEntradasSaidas: jest.fn(),
+  queryProdutosParados: jest.fn(),
+  queryTopMovimentados: jest.fn(),
 }));
 
 beforeEach(() => {
   querySaldoProduto.mockReset();
   queryConcentracao.mockReset();
+});
+
+describe("source-registry , todos os fatos ativados", () => {
+  it("expoe todas as dimensoes de estoque como fontes", () => {
+    const fatos = listarFontes().map((f) => f.fato).sort();
+    expect(fatos).toEqual(
+      [
+        "fato_estoque_armazem",
+        "fato_estoque_familia",
+        "fato_estoque_local_produto",
+        "fato_estoque_marca",
+        "fato_estoque_movimento",
+        "fato_estoque_parados",
+        "fato_estoque_saldo",
+        "fato_estoque_top_movimentados",
+      ].sort(),
+    );
+  });
+
+  it("cada novo fato tem produtor para os shapes que declara", () => {
+    for (const fonte of listarFontes()) {
+      for (const shape of fonte.shapes) {
+        expect(typeof obterProdutor(fonte.fato, shape)).toBe("function");
+      }
+    }
+  });
+
+  it("armazem oferece serie/kpis/tabela coerentes", () => {
+    const c = obterContrato("fato_estoque_armazem");
+    expect(c?.shapes).toEqual(expect.arrayContaining(["agregacaoCategorica", "kpis", "tabela"]));
+    expect(obterProdutor("fato_estoque_movimento", "serieTemporal")).toBeDefined();
+  });
 });
 
 describe("source-registry", () => {

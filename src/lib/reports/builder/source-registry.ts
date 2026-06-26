@@ -6,6 +6,10 @@ import { prisma } from "@/lib/prisma";
 import {
   querySaldoProduto,
   queryConcentracao,
+  queryValorArmazem,
+  queryEntradasSaidas,
+  queryProdutosParados,
+  queryTopMovimentados,
 } from "@/lib/reports/queries/estoque";
 import type {
   RawSourceData,
@@ -74,8 +78,240 @@ const fatoEstoqueSaldo: FonteDef = {
   },
 };
 
+// --- Dimensao ARMAZEM: valor/produtos por armazem (queryValorArmazem). ---
+const fatoEstoqueArmazem: FonteDef = {
+  contract: {
+    fato: "fato_estoque_armazem",
+    modeloFonte: "estoque.saldo.hoje",
+    dominio: "estoque",
+    shapes: ["agregacaoCategorica", "kpis", "tabela"],
+    campos: {
+      agregacaoCategorica: [
+        { key: "rotulo", label: "Armazem", tipo: "texto" },
+        { key: "valor", label: "Valor", tipo: "moeda" },
+      ],
+      kpis: [
+        { key: "valorTotal", label: "Valor total", tipo: "moeda" },
+        { key: "numArmazens", label: "Armazens", tipo: "numero" },
+      ],
+      tabela: [
+        { key: "armazem", label: "Armazem", tipo: "texto" },
+        { key: "numProdutos", label: "Produtos", tipo: "numero" },
+        { key: "valor", label: "Valor", tipo: "moeda" },
+      ],
+    },
+  },
+  produtores: {
+    agregacaoCategorica: async () => {
+      const d = await queryValorArmazem(prisma);
+      return { linhas: d.linhasBruto.map((l) => ({ rotulo: l.armazem, valor: l.valor })), freshness: null };
+    },
+    kpis: async () => {
+      const d = await queryValorArmazem(prisma);
+      return { linhas: [], kpis: { valorTotal: d.kpis.valorTotal, numArmazens: d.kpis.numArmazens }, freshness: null };
+    },
+    tabela: async () => {
+      const d = await queryValorArmazem(prisma);
+      return { linhas: d.linhasBruto as unknown as Record<string, unknown>[], freshness: null };
+    },
+  },
+};
+
+// --- ONDE cada produto esta: produto x armazem (querySaldoProduto.detalhePorLocal). ---
+const fatoEstoqueLocalProduto: FonteDef = {
+  contract: {
+    fato: "fato_estoque_local_produto",
+    modeloFonte: "estoque.saldo.hoje",
+    dominio: "estoque",
+    shapes: ["tabela"],
+    campos: {
+      tabela: [
+        { key: "produtoNome", label: "Produto", tipo: "texto" },
+        { key: "armazem", label: "Armazem", tipo: "texto" },
+        { key: "saldo", label: "Saldo", tipo: "numero" },
+        { key: "valor", label: "Valor", tipo: "moeda" },
+      ],
+    },
+  },
+  produtores: {
+    tabela: async () => {
+      const d = await querySaldoProduto(prisma, {});
+      const linhas: Record<string, unknown>[] = [];
+      for (const p of d.linhas) {
+        for (const loc of p.detalhePorLocal) {
+          linhas.push({ produtoNome: p.produtoNome, armazem: loc.localRotulo, saldo: loc.saldo, valor: loc.valor });
+        }
+      }
+      return { linhas, freshness: null };
+    },
+  },
+};
+
+// --- Dimensao MARCA: valor por marca (queryConcentracao.marcasBruto). ---
+const fatoEstoqueMarca: FonteDef = {
+  contract: {
+    fato: "fato_estoque_marca",
+    modeloFonte: "estoque.saldo.hoje",
+    dominio: "estoque",
+    shapes: ["agregacaoCategorica", "tabela"],
+    campos: {
+      agregacaoCategorica: [
+        { key: "rotulo", label: "Marca", tipo: "texto" },
+        { key: "valor", label: "Valor", tipo: "moeda" },
+      ],
+      tabela: [
+        { key: "marca", label: "Marca", tipo: "texto" },
+        { key: "valor", label: "Valor", tipo: "moeda" },
+      ],
+    },
+  },
+  produtores: {
+    agregacaoCategorica: async () => {
+      const d = await queryConcentracao(prisma);
+      return { linhas: d.marcasBruto, freshness: null };
+    },
+    tabela: async () => {
+      const d = await queryConcentracao(prisma);
+      return { linhas: d.marcasBruto.map((m) => ({ marca: m.rotulo, valor: m.valor })), freshness: null };
+    },
+  },
+};
+
+// --- Dimensao FAMILIA explicita (queryConcentracao.familiasBruto). ---
+const fatoEstoqueFamilia: FonteDef = {
+  contract: {
+    fato: "fato_estoque_familia",
+    modeloFonte: "estoque.saldo.hoje",
+    dominio: "estoque",
+    shapes: ["agregacaoCategorica", "tabela"],
+    campos: {
+      agregacaoCategorica: [
+        { key: "rotulo", label: "Familia", tipo: "texto" },
+        { key: "valor", label: "Valor", tipo: "moeda" },
+      ],
+      tabela: [
+        { key: "familia", label: "Familia", tipo: "texto" },
+        { key: "valor", label: "Valor", tipo: "moeda" },
+      ],
+    },
+  },
+  produtores: {
+    agregacaoCategorica: async () => {
+      const d = await queryConcentracao(prisma);
+      return { linhas: d.familiasBruto, freshness: null };
+    },
+    tabela: async () => {
+      const d = await queryConcentracao(prisma);
+      return { linhas: d.familiasBruto.map((f) => ({ familia: f.rotulo, valor: f.valor })), freshness: null };
+    },
+  },
+};
+
+// --- MOVIMENTO: entradas/saidas por mes (serie temporal) + detalhe. ---
+const fatoEstoqueMovimento: FonteDef = {
+  contract: {
+    fato: "fato_estoque_movimento",
+    modeloFonte: "estoque.movimento",
+    dominio: "estoque",
+    shapes: ["serieTemporal", "tabela"],
+    campos: {
+      serieTemporal: [
+        { key: "mes", label: "Mes", tipo: "texto" },
+        { key: "entrada", label: "Entradas", tipo: "numero" },
+        { key: "saida", label: "Saidas", tipo: "numero" },
+      ],
+      tabela: [
+        { key: "mes", label: "Mes", tipo: "texto" },
+        { key: "sentido", label: "Sentido", tipo: "texto" },
+        { key: "produto", label: "Produto", tipo: "texto" },
+        { key: "quantidade", label: "Quantidade", tipo: "numero" },
+      ],
+    },
+  },
+  produtores: {
+    serieTemporal: async () => {
+      const d = await queryEntradasSaidas(prisma, {});
+      return { linhas: d.serie as unknown as Record<string, unknown>[], freshness: null };
+    },
+    tabela: async () => {
+      const d = await queryEntradasSaidas(prisma, {});
+      return { linhas: d.detalhe as unknown as Record<string, unknown>[], freshness: null };
+    },
+  },
+};
+
+// --- PRODUTOS PARADOS: kpis + tabela (queryProdutosParados). ---
+const fatoEstoqueParados: FonteDef = {
+  contract: {
+    fato: "fato_estoque_parados",
+    modeloFonte: "estoque.parado",
+    dominio: "estoque",
+    shapes: ["kpis", "tabela"],
+    campos: {
+      kpis: [
+        { key: "totalParados", label: "Itens parados", tipo: "numero" },
+        { key: "valorImobilizado", label: "Valor imobilizado", tipo: "moeda" },
+      ],
+      tabela: [
+        { key: "produtoNome", label: "Produto", tipo: "texto" },
+        { key: "localNome", label: "Armazem", tipo: "texto" },
+        { key: "dias", label: "Dias parado", tipo: "numero" },
+        { key: "saldo", label: "Saldo", tipo: "numero" },
+        { key: "vrSaldo", label: "Valor", tipo: "moeda" },
+      ],
+    },
+  },
+  produtores: {
+    kpis: async () => {
+      const d = await queryProdutosParados(prisma, {});
+      return { linhas: [], kpis: { totalParados: d.kpis.totalParados, valorImobilizado: d.kpis.valorImobilizado }, freshness: null };
+    },
+    tabela: async () => {
+      const d = await queryProdutosParados(prisma, {});
+      return { linhas: d.linhas as unknown as Record<string, unknown>[], freshness: null };
+    },
+  },
+};
+
+// --- TOP MOVIMENTADOS: produtos mais movimentados (queryTopMovimentados). ---
+const fatoEstoqueTopMovimentados: FonteDef = {
+  contract: {
+    fato: "fato_estoque_top_movimentados",
+    modeloFonte: "estoque.movimento",
+    dominio: "estoque",
+    shapes: ["agregacaoCategorica", "kpis"],
+    campos: {
+      agregacaoCategorica: [
+        { key: "rotulo", label: "Produto", tipo: "texto" },
+        { key: "valor", label: "Unidades movimentadas", tipo: "numero" },
+      ],
+      kpis: [
+        { key: "totalProdutos", label: "Produtos", tipo: "numero" },
+        { key: "totalUnidades", label: "Unidades", tipo: "numero" },
+      ],
+    },
+  },
+  produtores: {
+    agregacaoCategorica: async () => {
+      const d = await queryTopMovimentados(prisma, {});
+      return { linhas: d.linhas, freshness: null };
+    },
+    kpis: async () => {
+      const d = await queryTopMovimentados(prisma, {});
+      return { linhas: [], kpis: { totalProdutos: d.kpis.totalProdutos, totalUnidades: d.kpis.totalUnidades }, freshness: null };
+    },
+  },
+};
+
 const REGISTRY: Record<string, FonteDef> = {
   fato_estoque_saldo: fatoEstoqueSaldo,
+  fato_estoque_armazem: fatoEstoqueArmazem,
+  fato_estoque_local_produto: fatoEstoqueLocalProduto,
+  fato_estoque_marca: fatoEstoqueMarca,
+  fato_estoque_familia: fatoEstoqueFamilia,
+  fato_estoque_movimento: fatoEstoqueMovimento,
+  fato_estoque_parados: fatoEstoqueParados,
+  fato_estoque_top_movimentados: fatoEstoqueTopMovimentados,
 };
 
 /** Lista os contratos publicos de todas as fontes (alimenta o agente). */
