@@ -218,6 +218,34 @@ model ReportPreset {
   @@map("report_presets")
 }
 
+/// F6 , ficha de relatorio dinamico criada pelo Construtor de Relatorios (config-driven).
+enum SavedReportTipo {
+  tela_cheia
+  widget
+}
+
+enum SavedReportStatus {
+  rascunho
+  publicado
+}
+
+model SavedReport {
+  id                  String            @id @default(cuid())
+  tipo                SavedReportTipo   @default(tela_cheia)
+  titulo              String
+  entry               Json
+  schemaVersion       Int               @default(1) @map("schema_version")
+  status              SavedReportStatus @default(rascunho)
+  criadoPor           String            @map("criado_por") @db.Uuid
+  visibilidadeConsumo String[]          @default([]) @map("visibilidade_consumo")
+  etag                String            @default(cuid())
+  criadoEm            DateTime          @default(now()) @map("criado_em")
+  atualizadoEm        DateTime          @updatedAt @map("atualizado_em")
+
+  @@index([criadoPor, status])
+  @@map("saved_reports")
+}
+
 model AppSetting {
   key         String   @id
   value       Json
