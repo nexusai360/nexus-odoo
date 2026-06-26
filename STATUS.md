@@ -31,7 +31,11 @@
 > (ShapeDerivado/CampoMeta/RawSourceData/BuilderReportEntry + guards), A3 `report-entry-schema.ts`
 > (Zod, template/icone/shape fechados), A1 tabela `SavedReport`, A4 `saved-report-repo.ts` (etag
 > otimista + super_admin), B1 `shape-adapters.ts`, B3 `source-registry.ts` ((fato,shape)->produtor,
-> estoque), B4 `resolve-source.ts` (`resolveSecao`).
+> estoque), B4 `resolve-source.ts` (`resolveSecao`). **Bloco C COMPLETO (motor end-to-end):** C1
+> guard de domínio no `resolveSecao`, C2 `components/reports/builder/report-renderer.tsx`
+> (`ReportRenderer`, reusa `DataTable`, estados), C3 rota `app/(protected)/relatorios/d/[savedId]` +
+> `carregar-relatorio-dinamico.ts`. **30 testes verdes, tsc limpo. Um `SavedReport` com ficha válida JÁ
+> renderiza contra o dado real de estoque, com guard de domínio.**
 > **NOTA CRÍTICA , drift do banco dev:** `prisma migrate dev` quis RESETAR o banco dev compartilhado
 > (drift pre-existente: `last_activity_at`, indices renomeados, etc.). Abortou SEM PERDA (estoque
 > intacto, 3904 linhas). A migration do F6 foi aplicada MANUALMENTE (idempotente) via `psql` no
@@ -39,12 +43,13 @@
 > NUNCA usar `migrate dev` (reseta o banco dev); usar SEMPRE o caminho manual** (escrever o
 > `migration.sql` idempotente em `prisma/migrations/<ts>_<nome>/`, aplicar via
 > `docker exec -i nexus-odoo-db-1 ... psql < migration.sql`, `migrate resolve --applied`, `prisma generate`).
-> **PRÓXIMA AÇÃO:** B2 (freshness real por fato , hoje `resolve-source` devolve `freshness:null`;
-> extrair `estadoDoFato` de `src/lib/actions/report-data.ts` para `freshnessPorFato({fato,modeloFonte})`).
-> Depois Bloco C (C1 guard de domínio no `resolveSecao` via `guardDominio`; C2 `<ReportRenderer>` reusando
-> `DataTable`; C3 rota `/relatorios/d/[savedId]`), D (catálogo/tools), E (agente), F (tela chat/preview),
-> G (config + E2E). Pendência: `resolveSecao` marca 'vazio' por `linhas.length` (refinar p/ shape `kpis` na
-> onda 2). UI exige `ui-ux-pro-max`. Plano: `docs/superpowers/plans/2026-06-26-f6-construtor-onda1.md`.
+> **PRÓXIMA AÇÃO:** Bloco D (D1 `component-catalog.ts` , catálogo de componentes documentado, DataTable,
+> formato spec §6; D2 `compat.ts` , compatibilidade template×shape; D3a-d , biblioteca de handlers de
+> construção: read-tools, prever_dado, mutadores, BUILDER_TOOLS+validar). Depois E (agente construtor +
+> `BuilderLlmConfig` + teto via `LlmUsage`/`origin:"construtor"`), F (tela chat/preview, `ui-ux-pro-max`),
+> G (tela config + E2E). PENDÊNCIAS MENORES: B2 freshness real (hoje `resolveSecao` devolve `freshness:null`;
+> extrair `estadoDoFato` de `src/lib/actions/report-data.ts`); `resolveSecao` marca 'vazio' por `linhas.length`
+> (refinar p/ shape `kpis` na onda 2). UI exige `ui-ux-pro-max`. Plano: `docs/superpowers/plans/2026-06-26-f6-construtor-onda1.md`.
 > Stack local de pé (localhost:3000 health 200). Heartbeat 15min ativo. Migrations do F6: SEMPRE manual
 > (migrate dev reseta o banco dev).
 >
