@@ -1,487 +1,188 @@
-# F6 Construtor de Relatórios , Onda 1 , Plano de Implementação (v1)
+# F6 Construtor de Relatórios , Onda 1 , Plano de Implementação (v3)
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development
-> (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use
-> checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development ou
+> superpowers:executing-plans. Steps em checkbox (`- [ ]`).
+> **v3** incorpora 2 reviews adversariais do plano (verificadas no código). Mudanças-chave do
+> v1→v3 na seção "Correções aplicadas".
 
-**Goal:** Entregar o construtor de relatórios de tela cheia mínimo ponta a ponta: o
-super_admin/admin descreve em linguagem natural, um agente monta uma ficha declarativa via
-ferramentas, o motor genérico renderiza contra o dado real de estoque, e o relatório é salvo
-como rascunho pessoal.
+**Goal:** Construtor de relatórios de tela cheia mínimo ponta a ponta: admin descreve em
+linguagem natural, um agente monta uma ficha declarativa via ferramentas, o motor genérico
+renderiza contra o dado real de estoque, salvo como rascunho pessoal.
 
-**Architecture:** Config-driven. A ficha é um `ReportEntry` estendido (reusa o tipo da F3),
-validado por Zod. Um **registry de fontes** mapeia `fato → query + adaptadores de shape`. Um
-**motor genérico** (rota dinâmica nova) resolve cada seção e renderiza com os componentes da
-F3. As **tools de construção** são uma biblioteca de handlers TS chamada pelo agente via
-tool-calling (sem servidor MCP separado nesta onda). O agente reusa a infra LLM existente
-(`src/lib/agent/llm`), com modelo selecionável numa config própria do construtor.
+**Architecture:** Config-driven. Ficha = `ReportEntry` estendido (Zod). Registry mapeia
+`(fato, shapeDerivado) → produtor` (query + adaptador). Motor genérico (rota dinâmica nova)
+resolve cada seção e renderiza com `DataTable`. Tools de construção = biblioteca de handlers TS
+chamados pelo agente via `ProviderClient.chat({ tools })` (já uniformiza OpenAI/Anthropic). Sem
+servidor MCP separado nesta onda (handlers in-app). Modelo selecionável via `BuilderLlmConfig`.
 
-**Tech Stack:** Next.js 16 (App Router, Server Actions), TypeScript, Prisma v7, Zod, Postgres
-cache, infra LLM existente (`src/lib/agent/llm`, providers OpenAI/Anthropic/...), Jest.
+**Tech Stack:** Next.js 16 (App Router, Server Actions), TypeScript, Prisma v7, Zod, infra LLM
+existente (`src/lib/agent/llm`: `buildLlmClient`, `ProviderClient.chat`, `logUsage`), Jest.
 
 ## Global Constraints
 
-- **Só local até aprovação** (regra de raiz, topo do `CLAUDE.md`): sem merge para `main`, sem
-  deploy, migration só em dev local.
-- **Sem travessão** (`—`) em qualquer texto/código/comentário/commit. Usar vírgula/parênteses/dois-pontos.
-- **Config-driven, nunca code-gen:** o agente só emite `ReportEntry` validado; fonte sempre por
-  referência a query auditada; nada de SQL/React livre em runtime.
-- **TDD:** todo código testável nasce de um teste que falha primeiro.
-- **`ui-ux-pro-max` obrigatório** em qualquer task de UI; consistência com o design da plataforma.
-- **Modelo Opus** em qualquer subagente. Português brasileiro em tudo.
-- **Migration da F6 só em dev local** (Postgres compartilhado; seguir protocolo de schema).
-- **Catálogo de fontes da onda 1:** apenas estoque (queries comprovadas em `src/lib/reports/queries/estoque.ts`).
-- **1 template nesta onda:** `DataTable` (o mais config-driven). KPIRow/Bar/Pie são onda 2.
+- **Só local até aprovação** (regra de raiz do `CLAUDE.md`): sem merge para `main`, sem deploy,
+  migration só em dev local + `agente schema-changed`.
+- **Sem travessão** (`—`) em qualquer texto/código/comentário/commit.
+- **Config-driven, nunca code-gen.** Fonte sempre por referência a query auditada.
+- **TDD** (teste que falha primeiro), commits atômicos por task.
+- **`ui-ux-pro-max` obrigatório** em toda task de UI; consistência com o design da plataforma.
+- **Onda 1: domínio estoque; 1 template renderizável (`DataTable`).** Shapes `kpis`/
+  `agregacaoCategorica` são declarados no registry (alimentam `prever_dado`) mas **sem render
+  nesta onda** (KPIRow/Pie são onda 2).
 
 ---
 
-## Bloco A , Persistência da ficha (`SavedReport`)
+## Correções aplicadas (das 2 reviews do plano, verificadas no código)
 
-### Task A1: Modelo `SavedReport` + migration (dev local)
-
-**Files:**
-- Modify: `prisma/schema.prisma` (adicionar modelo)
-- Create (gerado): migration em `prisma/migrations/`
-
-**Interfaces:**
-- Produces: modelo Prisma `SavedReport { id, tipo, titulo, entry Json, schemaVersion Int,
-  status, criadoPor, visibilidadeConsumo String[], etag, criadoEm, atualizadoEm }` e enums
-  `SavedReportTipo { tela_cheia, widget }`, `SavedReportStatus { rascunho, publicado }`.
-
-- [ ] **Step 1:** Adicionar ao `prisma/schema.prisma`:
-```prisma
-enum SavedReportTipo { tela_cheia widget }
-enum SavedReportStatus { rascunho publicado }
-
-model SavedReport {
-  id                  String            @id @default(cuid())
-  tipo                SavedReportTipo   @default(tela_cheia)
-  titulo              String
-  entry               Json
-  schemaVersion       Int               @default(1)
-  status              SavedReportStatus @default(rascunho)
-  criadoPor           String
-  visibilidadeConsumo String[]          @default([])
-  etag                String            @default(cuid())
-  criadoEm            DateTime          @default(now())
-  atualizadoEm        DateTime          @updatedAt
-  @@index([criadoPor, status])
-}
-```
-- [ ] **Step 2:** Avisar (regra de schema) e rodar migration **em dev local**:
-  Run: `npx prisma migrate dev --name f6_saved_report`
-  Expected: migration criada e aplicada no Postgres dev; `npx prisma generate` ok.
-- [ ] **Step 3:** Rodar `agente schema-changed` (protocolo multi-worktree).
-- [ ] **Step 4: Commit**
-```bash
-git add prisma/schema.prisma prisma/migrations
-git commit -m "feat(f6): modelo SavedReport (ficha de relatorio dinamico, rascunho/publicado)"
-```
-
-### Task A2: `ReportEntry` estendido + schema Zod
-
-**Files:**
-- Create: `src/lib/reports/builder/report-entry-schema.ts`
-- Test: `src/lib/reports/builder/report-entry-schema.test.ts`
-
-**Interfaces:**
-- Consumes: `ReportEntry`, `ReportSection`, `ReportTemplate` de `src/lib/reports/types.ts`.
-- Produces: `reportEntrySchema` (Zod) e tipo `BuilderReportEntry = ReportEntry & { tipo, parametros, schemaVersion }`;
-  `validarReportEntry(input: unknown): { ok: true, entry } | { ok: false, erros: string[] }`.
-
-- [ ] **Step 1: Teste que falha** , ficha mínima válida e ficha inválida:
-```ts
-import { validarReportEntry } from "./report-entry-schema";
-test("aceita ficha minima de DataTable de estoque", () => {
-  const r = validarReportEntry({
-    id: "draft-1", titulo: "Saldo", dominio: "estoque", schemaVersion: 1, tipo: "tela_cheia",
-    parametros: [], secoes: [{ id: "s1", template: "DataTable", fato: "fato_estoque_saldo",
-      shapeDerivado: "tabela", config: { colunas: [{ key: "produtoNome", header: "Produto", tipo: "texto" }] }, filtros: [] }],
-  });
-  expect(r.ok).toBe(true);
-});
-test("rejeita template fora do enum", () => {
-  const r = validarReportEntry({ id: "x", titulo: "x", dominio: "estoque", schemaVersion: 1,
-    tipo: "tela_cheia", parametros: [], secoes: [{ id: "s", template: "Hologram", fato: "fato_estoque_saldo", shapeDerivado: "tabela", config: {}, filtros: [] }] });
-  expect(r.ok).toBe(false);
-});
-```
-- [ ] **Step 2:** Run `npx jest report-entry-schema -t "aceita ficha"` , Expected: FAIL (módulo inexistente).
-- [ ] **Step 3:** Implementar `report-entry-schema.ts` com Zod: enums de `template` (só os 5 da F3),
-  `shapeDerivado` (`kpis|tabela|agregacaoCategorica|serieTemporal`), `tipo`, `parametros[]`, `secoes[]`.
-- [ ] **Step 4:** Run jest , Expected: PASS (ambos).
-- [ ] **Step 5: Commit** `feat(f6): schema Zod do ReportEntry estendido (tipo, parametros, shapeDerivado)`
-
-### Task A3: Repositório de `SavedReport` (CRUD rascunho com etag)
-
-**Files:**
-- Create: `src/lib/reports/builder/saved-report-repo.ts`
-- Test: `src/lib/reports/builder/saved-report-repo.test.ts` (mock do Prisma como nos repos existentes)
-
-**Interfaces:**
-- Consumes: `validarReportEntry` (A2), PrismaClient.
-- Produces: `criarRascunho(criadoPor, entry)`, `obterRascunho(id, userId)`, `atualizarRascunho(id, userId, entry, etag)`
-  (rejeita etag divergente), `listarMeus(userId)`. Retornos com `{ id, etag, entry, ... }`.
-
-- [ ] **Step 1: Teste que falha:** criar rascunho grava entry válido + etag; atualizar com etag
-  errado lança `EtagConflitoError`; listarMeus filtra por `criadoPor`.
-- [ ] **Step 2:** Run jest , Expected: FAIL.
-- [ ] **Step 3:** Implementar repo (valida entry antes de gravar; gera novo etag a cada update).
-- [ ] **Step 4:** Run jest , Expected: PASS.
-- [ ] **Step 5: Commit** `feat(f6): repositorio de SavedReport (rascunho, etag otimista)`
+1. **Config de modelo isolada:** modelo Prisma novo `BuilderLlmConfig` (NÃO reusar `LlmConfig`,
+   cujo `isActive` é global e desativaria o Nex). Campos: `provider`, `model`, `tetoTokensPeriodo`,
+   `periodo` (`dia`|`mes`), `atualizadoEm`. Singleton (1 linha).
+2. **Consumo isolado:** `logUsage({ origin: "construtor" })` (campo `origin` já existe em
+   `LlmUsage`); `verificarQuota` soma `LlmUsage` filtrado por `origin="construtor"`. Sem coluna nova.
+3. **Registry `(fato, shapeDerivado) → produtor`** (não `fato → query`): para `fato_estoque_saldo`,
+   `tabela` usa `querySaldoProduto`; `agregacaoCategorica` usa `queryConcentracao`; `kpis` usa os
+   escalares de `querySaldoProduto`. Cada shape declara seu produtor.
+4. **Tipos definidos explicitamente** (Task B0): `ShapeDerivado = "kpis"|"tabela"|"agregacaoCategorica"|"serieTemporal"`;
+   `CampoMeta = { key, label, tipo }`; `RawSourceData = { linhas: Record<string,unknown>[], kpis?: Record<string,number>, freshness: Date|null }`;
+   `SourceContract = { fato, modeloFonte, dominio, shapes: ShapeDerivado[], campos: Record<ShapeDerivado, CampoMeta[]> }`.
+5. **`ReportEntry` do construtor:** entry ganha `+tipo +parametros +schemaVersion`; section ganha
+   `+shapeDerivado`. `descricao`/`icone`/`modeloFonte` viram **opcionais com default gerado** no
+   schema do builder (decisão tomada). `icone` restrito ao enum de `resolveReportIcon`
+   (`Boxes|Coins|ArrowLeftRight|Clock|TrendingUp|PieChart`), nome inválido = erro.
+6. **`ReportTemplate` tem 6 membros** (KPICard, KPIRow, DataTable, BarChart, LineChart, PieChart);
+   o builder valida todos no enum mas só `DataTable` renderiza na onda 1.
+7. **Guard via sessão:** usar `guardDominio(dominio)` (lê a sessão internamente); não inventar
+   `UserContext`. Caminho real das derivações: `src/lib/actions/report-data.ts`.
+8. **Freshness por fato:** registry expõe `modeloFonte` por fato; criar `freshnessPorFato({fato, modeloFonte})`
+   (extrair de `report-data.ts`), não passar `ReportEntry`.
+9. **Tool-calling:** `ProviderClient.chat({ messages, tools })` já devolve `toolCalls` uniformes.
+   Task E1b só converte `BUILDER_TOOLS` (Zod) para o formato `tools` do `chat` e despacha.
+10. **Casca de chat própria** (não refatorar `chat-panel`/`agent-bubble` do Playground, acoplados
+    a SSE): reconstruir um chat leve reusando a estética da bubble.
+11. **Recusa honesta:** registrar em `FeatureRequest` (modelo existe).
+12. **Épicos quebrados:** D3→D3a/b/c/d; E2→E1b/E2a/E2b; F2→F2a/b/c/d; G2→G2a/b/c.
+13. **Critério de aceite reformulado** (1 template só → "template plausível" não mede): ver G2.
 
 ---
 
-## Bloco B , Registry de fontes + adaptadores de shape
+## Bloco A , Persistência
 
-### Task B1: Contrato de fonte + registry (estoque)
+- **A1 , Modelo `SavedReport` + migration dev local.** `prisma/schema.prisma` (modelo + enums
+  `SavedReportTipo`, `SavedReportStatus`, campos `entry Json`, `schemaVersion`, `status`, `criadoPor`,
+  `visibilidadeConsumo String[]`, `etag`). Steps: editar schema → `prisma migrate dev --name f6_saved_report`
+  → `agente schema-changed` → commit. (Sem teste de código; verificação = migration aplica e `prisma generate` ok.)
+- **A2 , Tipos base do builder + enums** (`src/lib/reports/builder/types.ts`). Define `ShapeDerivado`,
+  `CampoMeta`, `RawSourceData`, `SourceContract`, `BuilderReportEntry` (entry +tipo/parametros/schemaVersion),
+  `BuilderSection` (+shapeDerivado), enum de ícone. Teste: tipos compilam + um type-guard mínimo. TDD.
+- **A3 , Schema Zod `validarReportEntry`** (`builder/report-entry-schema.ts`). Aceita ficha mínima de
+  DataTable/`tabela` (com `descricao`/`icone`/`modeloFonte` opcionais); rejeita template fora do enum-6 e
+  ícone fora do set. Testes: 1 positivo + 2 negativos (template inválido, ícone inválido). TDD.
+- **A4 , Repo `SavedReport`** (`builder/saved-report-repo.ts`). `criarRascunho(criadoPor, entry)`,
+  `obterRascunho(id, { userId, role })` (libera super_admin), `atualizarRascunho(id, userId, entry, etag)`
+  (lança `EtagConflitoError` se etag diverge), `listarMeus({ userId, role })`. Testes (mock Prisma):
+  criar grava entry válido; etag errado conflita; super_admin vê de outro dono. TDD.
 
-**Files:**
-- Create: `src/lib/reports/builder/source-registry.ts`
-- Test: `src/lib/reports/builder/source-registry.test.ts`
+## Bloco B , Registry de fontes + adaptadores
 
-**Interfaces:**
-- Consumes: as queries de `src/lib/reports/queries/estoque.ts` (`querySaldoProduto`, `queryValorArmazem`, etc.).
-- Produces: tipo `SourceContract { fato, dominio, shapes: ShapeDerivado[], campos: Record<ShapeDerivado, CampoMeta[]> }`,
-  `SOURCE_REGISTRY: Record<string, SourceEntry>` onde `SourceEntry = { contract, run(filtros): Promise<RawSourceData> }`,
-  e `listarFontes(): SourceContract[]`, `obterFonte(fato): SourceEntry | undefined`.
-
-- [ ] **Step 1: Teste que falha:** `listarFontes()` inclui `fato_estoque_saldo` com shapes
-  `["kpis","tabela","agregacaoCategorica"]`; `obterFonte("inexistente")` é `undefined`.
-- [ ] **Step 2:** Run jest , Expected: FAIL.
-- [ ] **Step 3:** Implementar o registry para as fontes de estoque comprovadas (mapear cada
-  `fato` para a query e declarar os shapes que ela oferece + os campos de cada shape).
-- [ ] **Step 4:** Run jest , Expected: PASS.
-- [ ] **Step 5: Commit** `feat(f6): registry de fontes de estoque com contrato de shapes`
-
-### Task B2: Adaptadores de shape (extraídos das derivações dos wrappers)
-
-**Files:**
-- Create: `src/lib/reports/builder/shape-adapters.ts`
-- Test: `src/lib/reports/builder/shape-adapters.test.ts`
-
-**Interfaces:**
-- Consumes: `RawSourceData` (B1).
-- Produces: `adaptarTabela(raw): LinhaTabela[]`, `adaptarKpis(raw): Kpi[]`,
-  `adaptarAgregacaoCategorica(raw, { topN }): { rotulo, valor }[]`. Cada adaptador puro e testável.
-
-- [ ] **Step 1: Teste que falha** , dado um `raw` de saldo, `adaptarAgregacaoCategorica` devolve
-  top-N por valor com `{ rotulo, valor }`; `adaptarKpis` devolve os escalares esperados.
-- [ ] **Step 2:** Run jest , Expected: FAIL.
-- [ ] **Step 3:** Implementar os adaptadores (portar a lógica de top-N/kpis que hoje vive nos
-  wrappers de `report-data.ts`, agora como funções puras nomeadas por shape).
-- [ ] **Step 4:** Run jest , Expected: PASS.
-- [ ] **Step 5: Commit** `feat(f6): adaptadores de shape (tabela, kpis, agregacaoCategorica)`
-
-### Task B3: Resolver de fonte (run + adapta + freshness)
-
-**Files:**
-- Create: `src/lib/reports/builder/resolve-source.ts`
-- Test: `src/lib/reports/builder/resolve-source.test.ts`
-
-**Interfaces:**
-- Consumes: `SOURCE_REGISTRY` (B1), shape-adapters (B2), `estadoDoFato`/freshness existente.
-- Produces: `resolveSecao(secao, filtros, ctx): Promise<{ dado, estado, erro? }>` , executa a fonte,
-  aplica o adaptador do `secao.shapeDerivado`, anexa freshness.
-
-- [ ] **Step 1: Teste que falha:** `resolveSecao` de uma seção DataTable/`tabela` sobre `fato_estoque_saldo`
-  devolve `dado` no formato de linhas + `estado` de freshness; fonte inexistente devolve `{ erro }`.
-- [ ] **Step 2:** Run jest (mock das queries) , Expected: FAIL.
-- [ ] **Step 3:** Implementar `resolveSecao`.
-- [ ] **Step 4:** Run jest , Expected: PASS.
-- [ ] **Step 5: Commit** `feat(f6): resolveSecao (executa fonte + aplica shape + freshness)`
-
----
+- **B1 , Adaptadores de shape puros** (`builder/shape-adapters.ts`). `adaptarTabela(raw): LinhaTabela[]`,
+  `adaptarKpis(raw): Record<string,number>`, `adaptarAgregacaoCategorica(raw,{topN}): {rotulo,valor}[]`.
+  Testes com **fixtures concretos** (linhas de saldo reais + valores esperados exatos). TDD.
+- **B2 , Freshness por fato** (`builder/freshness-por-fato.ts`). Extrair `estadoDoFato` de
+  `src/lib/actions/report-data.ts` para função exportada `freshnessPorFato({fato, modeloFonte})`. Teste:
+  retorna data de sync por fato (mock). TDD.
+- **B3 , Registry de fontes (estoque)** (`builder/source-registry.ts`). `SOURCE_REGISTRY` com
+  `(fato, shape) → produtor`: `fato_estoque_saldo`/`tabela`→`querySaldoProduto`+`adaptarTabela`;
+  `.../agregacaoCategorica`→`queryConcentracao`+`adaptarAgregacaoCategorica`; `.../kpis`→`querySaldoProduto`+`adaptarKpis`.
+  `listarFontes(): SourceContract[]`, `obterProdutor(fato, shape)`. Testes: contrato lista shapes; produtor inexistente undefined. TDD.
+- **B4 , `resolveSecao`** (`builder/resolve-source.ts`). `resolveSecao(secao, filtros): Promise<{dado, estado, erro?}>`
+  via produtor (B3) + freshness (B2). Testes (mock queries): DataTable/`tabela` retorna linhas+estado; fonte inexistente `{erro}`. TDD.
 
 ## Bloco C , Motor de render genérico
 
-### Task C1: Guard de domínio no resolver (consumo)
-
-**Files:**
-- Modify: `src/lib/reports/builder/resolve-source.ts` (injeta guard)
-- Test: `src/lib/reports/builder/resolve-source.test.ts` (novo caso)
-
-**Interfaces:**
-- Consumes: `visibleDomains`/`guardDominio` de `src/lib/reports/domains.ts`, `UserContext`.
-- Produces: `resolveSecao` passa a receber `user` e nega com `{ erro: "sem_acesso_dominio" }` quando
-  o domínio da fonte não é visível ao usuário.
-
-- [ ] **Step 1: Teste que falha:** usuário sem acesso a `estoque` recebe `{ erro: "sem_acesso_dominio" }`.
-- [ ] **Step 2:** Run jest , Expected: FAIL.
-- [ ] **Step 3:** Injetar o guard no início de `resolveSecao`.
-- [ ] **Step 4:** Run jest , Expected: PASS.
-- [ ] **Step 5: Commit** `feat(f6): guard de dominio reavaliado no consumo da ficha`
-
-### Task C2: Componente motor `<ReportRenderer entry>`
-
-**Files:**
-- Create: `src/components/reports/builder/report-renderer.tsx`
-- Test: `src/components/reports/builder/report-renderer.test.tsx`
-
-**Interfaces:**
-- Consumes: `resolveSecao` (B3/C1), `DataTable` de `src/components/charts/data-table.tsx`,
-  `validarReportEntry` (A2).
-- Produces: `ReportRenderer({ entry, dados })` , para cada seção mapeia `template` ao componente,
-  injeta `dados[secao.id]`, e renderiza estados loading/erro/vazio padronizados.
-
-- [ ] **Step 1: Teste que falha:** dado um `entry` com 1 seção DataTable e `dados` resolvidos,
-  renderiza a `DataTable` com as colunas; seção com `erro` renderiza o aviso padronizado.
-- [ ] **Step 2:** Run jest , Expected: FAIL.
-- [ ] **Step 3:** Implementar `ReportRenderer` (nesta onda só o caso `DataTable`; `default` mostra
-  "template ainda não suportado" sem quebrar). **Usar `ui-ux-pro-max` para os estados visuais.**
-- [ ] **Step 4:** Run jest , Expected: PASS.
-- [ ] **Step 5: Commit** `feat(f6): ReportRenderer generico (DataTable + estados)`
-
-### Task C3: Rota dinâmica `/relatorios/d/[savedId]`
-
-**Files:**
-- Create: `src/app/(protected)/relatorios/d/[savedId]/page.tsx`
-- Test: `src/app/(protected)/relatorios/d/[savedId]/page.test.tsx`
-
-**Interfaces:**
-- Consumes: `obterRascunho` (A3), `validarReportEntry` (A2), `resolveSecao` (C1), `ReportRenderer` (C2),
-  sessão/usuário do padrão existente.
-- Produces: página que carrega a ficha salva, valida contra o catálogo atual, resolve as seções e
-  renderiza; ficha órfã (fonte/template removido) mostra erro explícito (não 404 silencioso).
-
-- [ ] **Step 1: Teste que falha:** savedId inexistente → notFound; ficha válida → renderiza;
-  ficha com fonte órfã → estado de erro explícito.
-- [ ] **Step 2:** Run jest , Expected: FAIL.
-- [ ] **Step 3:** Implementar a page (server component): carrega, valida, resolve seções (com `user`),
-  passa para `ReportRenderer`.
-- [ ] **Step 4:** Run jest , Expected: PASS.
-- [ ] **Step 5: Commit** `feat(f6): rota dinamica de relatorio /relatorios/d/[savedId]`
-
----
+- **C1 , Guard de domínio no resolver.** Modifica `resolveSecao` para chamar `guardDominio(contract.dominio)`
+  no início (lê sessão); nega com `{erro:"sem_acesso_dominio"}`. Teste: usuário sem estoque é negado. TDD.
+- **C2 , `<ReportRenderer entry dados>`** (`components/reports/builder/report-renderer.tsx`). Recebe `entry`
+  + `dados` JÁ resolvidos (não chama resolveSecao); mapeia `DataTable`; `default` mostra "template ainda não
+  suportado"; estados loading/erro/vazio. `ui-ux-pro-max`. Teste: renderiza DataTable + estado de erro. TDD.
+- **C3 , Rota `/relatorios/d/[savedId]`** (`app/(protected)/relatorios/d/[savedId]/page.tsx`). Carrega ficha
+  (A4), valida contra catálogo (A3 + checagem de fonte órfã → erro explícito, não 404), resolve seções (B4/C1),
+  passa ao `ReportRenderer`. Registra **auditoria de abrir**. Teste: inexistente→notFound; válida→render; órfã→erro. TDD.
 
 ## Bloco D , Catálogo de componentes + tools de construção
 
-### Task D1: Catálogo de componentes (DataTable) documentado
-
-**Files:**
-- Create: `src/lib/reports/builder/component-catalog.ts`
-- Test: `src/lib/reports/builder/component-catalog.test.ts`
-
-**Interfaces:**
-- Produces: `ComponentEntry { chave, nome, paraQueServe, quandoUsar, quandoNaoUsar,
-  shapeDerivadoExigido, parametros, interacao, tokensVisuais }` e `COMPONENT_CATALOG: ComponentEntry[]`
-  (onda 1: só `DataTable`), `listarComponentes()`, `descreverComponente(chave)`.
-
-- [ ] **Step 1: Teste que falha:** `descreverComponente("DataTable")` retorna `shapeDerivadoExigido: "tabela"`
-  e os parâmetros; `descreverComponente("inexistente")` é `undefined`.
-- [ ] **Step 2:** Run jest , Expected: FAIL.
-- [ ] **Step 3:** Implementar o catálogo com a entrada `DataTable` no formato documentado da spec §6.
-- [ ] **Step 4:** Run jest , Expected: PASS.
-- [ ] **Step 5: Commit** `feat(f6): catalogo de componentes documentado (DataTable)`
-
-### Task D2: Validação de compatibilidade template x shape
-
-**Files:**
-- Create: `src/lib/reports/builder/compat.ts`
-- Test: `src/lib/reports/builder/compat.test.ts`
-
-**Interfaces:**
-- Consumes: `COMPONENT_CATALOG` (D1), `SOURCE_REGISTRY` (B1).
-- Produces: `checarCompatibilidade(secao): { ok: true } | { ok: false, motivo }` , confere que o
-  `shapeDerivado` da seção é oferecido pela fonte E é o exigido pelo template.
-
-- [ ] **Step 1: Teste que falha:** DataTable+`tabela`+`fato_estoque_saldo` → ok; DataTable+`serieTemporal` → erro.
-- [ ] **Step 2:** Run jest , Expected: FAIL.
-- [ ] **Step 3:** Implementar `checarCompatibilidade`.
-- [ ] **Step 4:** Run jest , Expected: PASS.
-- [ ] **Step 5: Commit** `feat(f6): checagem de compatibilidade template x shape x fonte`
-
-### Task D3: Biblioteca de handlers de construção
-
-**Files:**
-- Create: `src/lib/reports/builder/tools/index.ts` (catálogo de tools)
-- Create: `src/lib/reports/builder/tools/handlers.ts`
-- Test: `src/lib/reports/builder/tools/handlers.test.ts`
-
-**Interfaces:**
-- Consumes: A2 (validar), B1 (fontes), D1 (componentes), D2 (compat).
-- Produces: `BUILDER_TOOLS` (catálogo com `name`, `descricao`, `inputSchema` Zod, `handler`) cobrindo
-  `listar_componentes`, `descrever_componente`, `listar_fontes`, `prever_dado`, `criar_relatorio`,
-  `adicionar_secao`, `editar_secao`, `remover_secao`, `definir_filtro`, `validar`. Cada handler recebe
-  e devolve a ficha (estado imutável), validando a cada passo.
-
-- [ ] **Step 1: Teste que falha:** `criar_relatorio` devolve ficha vazia válida; `adicionar_secao`
-  com seção incompatível é rejeitado por `validar`/`checarCompatibilidade`; `prever_dado` de `fato_estoque_saldo`
-  retorna os campos do shape.
-- [ ] **Step 2:** Run jest , Expected: FAIL.
-- [ ] **Step 3:** Implementar os handlers (cada um puro: `(ficha, args) => ficha'`), com enums fechados
-  derivados de B1/D1.
-- [ ] **Step 4:** Run jest , Expected: PASS.
-- [ ] **Step 5: Commit** `feat(f6): biblioteca de handlers de construcao (tools do construtor)`
-
----
+- **D1 , Catálogo de componentes** (`builder/component-catalog.ts`). `ComponentEntry` (formato spec §6) +
+  `COMPONENT_CATALOG` (só `DataTable`), `listarComponentes()`, `descreverComponente(chave)`. Teste: descreve
+  DataTable (`shapeDerivadoExigido:"tabela"`); inexistente undefined. TDD.
+- **D2 , Compatibilidade** (`builder/compat.ts`). `checarCompatibilidade(secao): {ok}|{ok:false,motivo}` (shape
+  da seção é oferecido pela fonte E exigido pelo template). Testes: DataTable+tabela+saldo ok; DataTable+serieTemporal erro. TDD.
+- **D3a , Tools de leitura** (`builder/tools/read-tools.ts`). `listar_componentes`, `descrever_componente`,
+  `listar_fontes` (puras sobre catálogos). 1 teste por tool. TDD.
+- **D3b , `prever_dado`** (`builder/tools/prever-dado.ts`). `prever_dado({fato, shapeDerivado}): {campos: CampoMeta[]}`
+  do contrato (B3). Teste: campos de `fato_estoque_saldo`/`tabela`. TDD.
+- **D3c , Mutadores de ficha** (`builder/tools/mutators.ts`). Cada `(ficha, args) => ficha'`, args declarados:
+  `criar_relatorio({titulo})`, `adicionar_secao({template, fato, shapeDerivado, config})`,
+  `editar_secao({secaoId, patch})`, `remover_secao({secaoId})`, `definir_filtro({secaoId, filtro})`. Validam +
+  `checarCompatibilidade` a cada passo. Testes: criar vazia válida; adicionar incompatível rejeitado; remover. TDD.
+- **D3d , Catálogo `BUILDER_TOOLS` + `validar`** (`builder/tools/index.ts`). Junta D3a-c num catálogo
+  `{name, descricao, inputSchema (Zod), handler}` + tool `validar(ficha)`. Teste: catálogo tem as 10 tools com inputSchema. TDD.
 
 ## Bloco E , Agente construtor
 
-### Task E1: Config de modelo do construtor
+- **E1a , `BuilderLlmConfig` + migration dev local** (`prisma/schema.prisma` + `builder/agent/model-config.ts`).
+  `obterConfigModeloConstrutor()` (default openai/gpt-5-mini), `definirConfigModeloConstrutor({provider,model,tetoTokensPeriodo,periodo})`.
+  Steps: schema → migrate dev `f6_builder_llm_config` → `schema-changed` → teste obter/definir → impl. TDD.
+- **E1b , Ponte tool-format** (`builder/agent/tool-bridge.ts`). Converte `BUILDER_TOOLS` (Zod) → formato `tools`
+  do `ProviderClient.chat`; `despachar(toolCall): Promise<resultado>` roteia para o handler. Teste (mock): converte 1 tool; despacha chama handler. TDD.
+- **E2a , Loop do agente** (`builder/agent/run-builder.ts`). `runBuilder({prompt, fichaAtual, user})`:
+  `verificarQuota` (E3) → loop `client.chat({tools})` até `MAX_ITER=8`, despacha toolCalls (E1b), agrega ficha;
+  retorna `{ficha, mensagem}`. Constantes nomeadas. Teste (mock provider determinístico): prompt simples gera ficha
+  válida com 1 DataTable; estouro de MAX_ITER para com mensagem. TDD.
+- **E2b , Reparo + recusa honesta** (mesmo arquivo). Ficha inválida volta como feedback (`MAX_REPAIR=2`); pedido sem
+  fonte → `recusa` + `FeatureRequest.create` (log de gap). `logUsage({origin:"construtor"})` a cada chamada. Testes:
+  ficha inválida dispara reparo; pedido sem fonte registra FeatureRequest + recusa. TDD.
+- **E3 , Quota** (`builder/agent/quota.ts`). `verificarQuota(user): {ok}|{bloqueado,motivo}` soma `LlmUsage` por
+  `origin="construtor"` no período de `BuilderLlmConfig` vs `tetoTokensPeriodo`. Testes: acima→bloqueado; abaixo→ok. TDD.
 
-**Files:**
-- Modify: `prisma/schema.prisma` (config própria do construtor) + migration dev local
-- Create: `src/lib/reports/builder/agent/model-config.ts`
-- Test: `src/lib/reports/builder/agent/model-config.test.ts`
+## Bloco F , Tela do construtor (UI , `ui-ux-pro-max` obrigatório, sem mostrar mockup)
 
-**Interfaces:**
-- Consumes: infra `src/lib/agent/llm` (`get-client`, `effective-catalog`, `LlmCredential`).
-- Produces: `obterConfigModeloConstrutor()` e `definirConfigModeloConstrutor(provider, model)` , análogo
-  ao `get-active-config` do Nex, porém com `uso: "construtor"`; resolve client por `get-client`.
+- **F1 , Action `construirRelatorio`** (`lib/actions/builder.ts`). Gate super_admin/admin → `runBuilder` →
+  persiste rascunho (A4); registra **auditoria de criar/editar**. Retorna `{ficha, mensagem, savedId, recusa?}`. Testes:
+  papel barrado; admin gera e persiste. TDD.
+- **F1b , Action `previsualizarSecoes`** (`lib/actions/builder.ts`). `previsualizarSecoes(ficha)` resolve seções com
+  amostra/limit (sem persistir), para o preview ao vivo. Teste: resolve 1 seção com amostra. TDD.
+- **F2a , `builder-chat.tsx`** (casca própria). Props `{ mensagens, pensando, onEnviar(prompt) }`; estética da bubble
+  (animação pensando). Teste: enviar chama `onEnviar`; `pensando` mostra animação. `ui-ux-pro-max`. TDD.
+- **F2b , `builder-preview.tsx`.** Props `{ ficha }`; valida estrutura (barato) + chama `previsualizarSecoes` (sob
+  demanda) e renderiza via `ReportRenderer`. Teste: ficha válida renderiza preview; inválida mostra aviso. TDD.
+- **F2c , Página construtor** (`app/(protected)/relatorios/construtor/page.tsx`). Layout split (chat F2a + preview F2b),
+  liga em `construirRelatorio`/`previsualizarSecoes`. Teste: enviar prompt atualiza chat e preview. TDD.
+- **F2d , Salvar/abrir.** Botão salvar (persistido por F1) + abrir `/relatorios/d/[savedId]`. Teste: salvar navega. TDD.
+- **F3 , Cards de relatórios do usuário** (`app/(protected)/relatorios/page.tsx` , aba "Meus relatórios";
+  test `relatorios-meus.test.tsx`). Lista `listarMeus` + botão "Novo relatório" → construtor. `ui-ux-pro-max`. TDD.
 
-- [ ] **Step 1: Teste que falha:** definir e obter a config do construtor; default sugerido openai/gpt-5-mini
-  quando não configurado.
-- [ ] **Step 2:** Migration dev local (`f6_builder_llm_config`) + jest , Expected: FAIL → implementar → PASS.
-- [ ] **Step 3:** Implementar (reusar credenciais existentes; não duplicar chave).
-- [ ] **Step 4:** Run jest , Expected: PASS.
-- [ ] **Step 5: Commit** `feat(f6): config de modelo do construtor (reusa infra LLM do Nex)`
+## Bloco G , Config (tela) + verificação E2E
 
-### Task E2: Loop do agente (tool-calling, teto, reparo, recusa)
-
-**Files:**
-- Create: `src/lib/reports/builder/agent/run-builder.ts`
-- Test: `src/lib/reports/builder/agent/run-builder.test.ts`
-
-**Interfaces:**
-- Consumes: `BUILDER_TOOLS` (D3), `obterConfigModeloConstrutor` (E1), client LLM, `LlmUsage`/usage-logger.
-- Produces: `runBuilder({ prompt, fichaAtual, user }): Promise<{ ficha, mensagem, recusa? }>` , loop
-  agente↔tools com `MAX_ITER`, valida a ficha a cada passo, em erro devolve feedback ao modelo (até `MAX_REPAIR`),
-  e em pedido sem fonte devolve `recusa` honesta + registra gap (`feature_requests`).
-
-- [ ] **Step 1: Teste que falha (LLM mockado):** prompt simples gera ficha válida com 1 DataTable;
-  prompt sem fonte gera `recusa` + chama registrar lacuna; estouro de `MAX_ITER` para com mensagem.
-- [ ] **Step 2:** Run jest , Expected: FAIL.
-- [ ] **Step 3:** Implementar o loop (mockar o provider nos testes; billing real via usage-logger).
-- [ ] **Step 4:** Run jest , Expected: PASS.
-- [ ] **Step 5: Commit** `feat(f6): loop do agente construtor (teto, reparo de ficha, recusa honesta)`
-
-### Task E3: Teto de consumo de IA (bloqueio)
-
-**Files:**
-- Create: `src/lib/reports/builder/agent/quota.ts`
-- Test: `src/lib/reports/builder/agent/quota.test.ts`
-
-**Interfaces:**
-- Consumes: `LlmUsage` (billing existente), config do construtor (E1).
-- Produces: `verificarQuota(user): Promise<{ ok } | { bloqueado, motivo }>` , soma uso do período via
-  `LlmUsage` e compara com o teto configurado; `runBuilder` chama antes de iniciar.
-
-- [ ] **Step 1: Teste que falha:** uso acima do teto → `bloqueado`; abaixo → `ok`.
-- [ ] **Step 2:** Run jest , Expected: FAIL → implementar → PASS.
-- [ ] **Step 3:** Ligar `verificarQuota` no início de `runBuilder`.
-- [ ] **Step 4:** Run jest , Expected: PASS.
-- [ ] **Step 5: Commit** `feat(f6): teto de consumo de IA do construtor (reusa LlmUsage)`
+- **G1 , Tela de config de modelo** (`app/(protected)/relatorios/construtor/configuracao/page.tsx`;
+  test correspondente). Padrão visual de `agente/configuracao` (cards); seleção provider+model (de `effective-catalog`)
+  + teto; só super_admin. `ui-ux-pro-max`. TDD.
+- **G2a , Fixar os 8 prompts-alvo** (`docs/superpowers/plans/_f6-onda1-prompts.md`). Rodar contra o cache real e
+  congelar 8 prompts de estoque com fonte 100% disponível (saldo/valor por armazém/família) + 2 sem fonte. Define os
+  golden cases `{prompt, shapeEsperado, colunasPlausiveis}`. (Pré-requisito da G2c.)
+- **G2b , Gates determinísticos** (`builder/agent/__tests__/gates.test.ts`). Com provider mockado: recusa honesta
+  registra FeatureRequest; teto bloqueia; ficha inválida repara. Asserções exatas. TDD.
+- **G2c , Corrida E2E com LLM real** (`scripts/e2e-f6-construtor.ts`). Stack local atualizado; rodar os 8 prompts:
+  **>=7/8** geram ficha válida que renderiza; shape/colunas conferem com o golden (asserção tolerante); registrar
+  evidências em `_f6-onda1-aceite.md`. `tsc` raiz+mcp 0, `jest` verde.
 
 ---
 
-## Bloco F , Tela do construtor (chat + preview)
+## Self-review (v3)
 
-> **UI: usar `ui-ux-pro-max` em todas as tasks deste bloco. Reusar a mecânica de chat do
-> Playground do Nex (`agente/playground`) e a animação de pensando da bubble. Consistência total
-> com o design da plataforma. Sem mostrar mockups para validação (decisão do usuário).**
-
-### Task F1: Server action `construirRelatorio`
-
-**Files:**
-- Create: `src/lib/actions/builder.ts`
-- Test: `src/lib/actions/builder.test.ts`
-
-**Interfaces:**
-- Consumes: `runBuilder` (E2), `saved-report-repo` (A3), sessão/RBAC (gate super_admin/admin).
-- Produces: action `construirRelatorio({ prompt, savedId? })` , gate de papel, chama `runBuilder`,
-  persiste rascunho, devolve `{ ficha, mensagem, savedId, recusa? }`.
-
-- [ ] **Step 1: Teste que falha:** papel sem acesso é rejeitado; admin gera e persiste rascunho.
-- [ ] **Step 2:** Run jest , Expected: FAIL → implementar → PASS.
-- [ ] **Step 3:** Implementar action.
-- [ ] **Step 4:** Run jest , Expected: PASS.
-- [ ] **Step 5: Commit** `feat(f6): server action construirRelatorio (gate + persiste rascunho)`
-
-### Task F2: Tela do construtor (layout split chat + preview)
-
-**Files:**
-- Create: `src/app/(protected)/relatorios/construtor/page.tsx`
-- Create: `src/components/reports/builder/builder-chat.tsx`
-- Create: `src/components/reports/builder/builder-preview.tsx`
-- Test: `src/components/reports/builder/builder-chat.test.tsx`
-
-**Interfaces:**
-- Consumes: `construirRelatorio` (F1), `ReportRenderer` (C2), componentes de chat do Playground.
-- Produces: tela com conversa à esquerda (mensagens + animação pensando) e preview à direita
-  (valida estrutura barato; render sob demanda). Botão de salvar/abrir o relatório.
-
-- [ ] **Step 1: Teste que falha:** enviar prompt chama `construirRelatorio` e renderiza a resposta +
-  atualiza o preview; estado de "pensando" aparece durante a chamada.
-- [ ] **Step 2:** Run jest , Expected: FAIL.
-- [ ] **Step 3:** Implementar a UI com `ui-ux-pro-max` (reusando chat do Playground + bubble).
-- [ ] **Step 4:** Run jest , Expected: PASS.
-- [ ] **Step 5: Commit** `feat(f6): tela do construtor (chat + preview ao vivo)`
-
-### Task F3: Seção Relatórios , cards dos rascunhos do usuário
-
-**Files:**
-- Modify: `src/app/(protected)/relatorios/page.tsx` (ou criar aba "Meus relatórios")
-- Test: correspondente
-
-**Interfaces:**
-- Consumes: `listarMeus` (A3).
-- Produces: lista de cards clicáveis dos relatórios do usuário, levando a `/relatorios/d/[savedId]`,
-  e botão "Novo relatório" indo para `/relatorios/construtor`.
-
-- [ ] **Step 1: Teste que falha:** lista mostra os rascunhos do usuário; clique navega para a rota dinâmica.
-- [ ] **Step 2:** Run jest , Expected: FAIL → implementar (com `ui-ux-pro-max`) → PASS.
-- [ ] **Step 3:** Implementar.
-- [ ] **Step 4:** Run jest , Expected: PASS.
-- [ ] **Step 5: Commit** `feat(f6): cards de relatorios do usuario + entrada do construtor`
-
----
-
-## Bloco G , Config de modelo (tela) + verificação E2E
-
-### Task G1: Tela de configuração de modelo do construtor
-
-**Files:**
-- Create: `src/app/(protected)/relatorios/construtor/configuracao/page.tsx`
-- Test: correspondente
-
-**Interfaces:**
-- Consumes: `obterConfigModeloConstrutor`/`definirConfigModeloConstrutor` (E1), catálogo de modelos
-  (`effective-catalog`), credenciais (`agente/chaves`).
-- Produces: tela no padrão visual da `agente/configuracao` (cards), com seleção de provedor+modelo e
-  o teto de consumo; só super_admin.
-
-- [ ] **Step 1: Teste que falha:** super_admin salva provedor+modelo e teto; não-super_admin é barrado.
-- [ ] **Step 2:** Run jest , Expected: FAIL → implementar (com `ui-ux-pro-max`, espelhando o padrão do Nex) → PASS.
-- [ ] **Step 3:** Implementar.
-- [ ] **Step 4:** Run jest , Expected: PASS.
-- [ ] **Step 5: Commit** `feat(f6): tela de config de modelo do construtor (padrao do Agente Nex)`
-
-### Task G2: Verificação E2E contra o dado real (critério de aceite)
-
-**Files:**
-- Create: `scripts/e2e-f6-construtor.ts` (8 prompts-alvo de estoque)
-- Create: `docs/superpowers/plans/_f6-onda1-aceite.md` (registro do resultado)
-
-**Interfaces:**
-- Consumes: `runBuilder` (E2) com o LLM real configurado, dado real do cache (estoque), `ReportRenderer`.
-
-- [ ] **Step 1:** Definir os 8 prompts-alvo (confirmar antes quais cortes de estoque existem; usar
-  saldo/valor por armazém/família, que são comprovados; "por estado" só se houver fato).
-- [ ] **Step 2:** Subir o stack local atualizado (rebuild se tocou caminho do `mcp`/`worker`).
-- [ ] **Step 3:** Rodar o script: cada prompt deve gerar ficha válida que renderiza; medir 7/8 válidas,
-  6/8 com template plausível, 2 pedidos sem fonte com recusa honesta, teto bloqueando.
-- [ ] **Step 4:** Registrar evidências no doc de aceite. `tsc` raiz+mcp 0, `jest` verde.
-- [ ] **Step 5: Commit** `test(f6): E2E do construtor contra dado real + criterio de aceite onda 1`
-
----
-
-## Self-review (a fazer após v1, antes das reviews adversariais)
-
-- Cobertura da spec v3: A (persistência §4.4), B (registry/adaptadores §4.2), C (motor §4.1),
-  D (catálogo/tools §6/§4.6), E (agente §4.5/§4.8/§9), F (tela §4.7), G (config §4.8 + aceite §11).
-- Placeholders: nenhuma task com "TBD"; cada uma tem arquivos, interfaces e steps testáveis.
-- Consistência de tipos: `ReportEntry` estendido (A2) é o tipo usado por B/C/D; `shapeDerivado` é o
-  vocabulário comum entre B1/B2/D1/D2.
-- Pontos a endurecer nas reviews: detalhar o corpo de implementação de C2/F2 (UI), o formato exato do
-  `prever_dado`, e os 8 prompts-alvo do E2E.
+- **Cobertura spec v3:** A (§4.4 persistência), B (§4.2 registry/adaptadores + §4.1 freshness), C (§4.1 motor + §5
+  guard), D (§6 catálogo + §4.6 tools), E (§4.5 agente + §4.8 config + §9 teto/billing), F (§4.7 tela + preview 2 níveis
+  + auditoria §5), G (§4.8 config tela + §11 aceite). Recusa honesta (§3.7) em E2b; versionamento/órfão (§10) em C3.
+- **Épicos quebrados:** D3 (4), E2 (3), F2 (4), G2 (3). Cada task = 1 deliverable testável.
+- **Tipos:** A2 fixa `ShapeDerivado/CampoMeta/RawSourceData/SourceContract/BuilderReportEntry`; usados consistentes em B/C/D/E.
+- **Premissas verificadas no código:** `ProviderClient.chat`→toolCalls; `DataTable` colunas dinâmicas; `LlmUsage.origin`;
+  `FeatureRequest`; `queryConcentracao` para agregação; `guardDominio` lê sessão.
+- **Ordem:** A→B→C→D→E→F→G; dentro de E, E3 (quota) é consumida por E2a (declarada antes na escrita, implementável junto).

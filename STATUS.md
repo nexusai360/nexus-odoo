@@ -19,8 +19,16 @@
 > adaptadores de shape, guard de domínio no resolver) + `SavedReport` + tools de construção
 > + agente mínimo + tela chat/preview + 1 template (DataTable) + medição de IA. Rascunho
 > pessoal só (publicação/RBAC de consumo e widgets/painéis em ondas seguintes).
-> **PRÓXIMA AÇÃO:** PLAN v1 (`superpowers:writing-plans`) sobre a spec v3 → 2 reviews → v3 →
-> execução por ondas (TDD, `ui-ux-pro-max`). Stack local de pé (localhost:3000 health 200).
+> **PLAN v3 PRONTO** (`docs/superpowers/plans/2026-06-26-f6-construtor-onda1.md`), após 2 reviews
+> adversariais do plano em Opus (verificadas no código). Épicos quebrados (D3→4, E2→3, F2→4,
+> G2→3), ~32 tasks atômicas TDD. Decisões da review já no plano: `BuilderLlmConfig` isolado (não
+> reusar `LlmConfig` global), consumo isolado por `logUsage({origin:"construtor"})`, registry
+> `(fato,shapeDerivado)→produtor` (`querySaldoProduto` p/ tabela, `queryConcentracao` p/ agregação),
+> tipos `ShapeDerivado/CampoMeta/RawSourceData` definidos, tool-calling via `ProviderClient.chat`,
+> casca de chat própria, recusa honesta em `FeatureRequest`.
+> **PRÓXIMA AÇÃO:** EXECUÇÃO inline com TDD, Bloco A → G na ordem do plano. Começar por A2 (tipos
+> base do builder) e A3 (schema Zod), depois A1 (migration `SavedReport`, dev local + `schema-changed`).
+> Stack local de pé (localhost:3000 health 200). Heartbeat 15min ativo.
 >
 > **2026-06-21 (PIVOT da personalização) , removida a camada de "resumo por IA"; o feature é o
 > RASTREADOR CONTÍNUO POR PARÂMETROS (sempre ligado, sem dado pessoal), a EXPANDIR.**
