@@ -1,297 +1,366 @@
-# F6 , Construtor de Relatórios (SPEC v1)
+# F6 , Construtor de Relatórios (SPEC v2)
 
-> **Status:** SPEC v1 (rascunho para as 2 reviews adversariais antes da v3).
+> **Status:** SPEC v2 (incorpora as 2 reviews adversariais da v1). Falta a 2ª
+> rodada de review sobre esta v2 antes da v3.
 > **Branch de trabalho:** `feat/nex-reconstrucao` (decisão do usuário 2026-06-26).
 > **Regra de raiz (inegociável):** TUDO desta fase fica **somente local** e **não
 > sobe para produção** sem aprovação explícita do usuário. Sem merge para `main`,
 > sem deploy, sem migration em prod. Ver bloco no topo do `CLAUDE.md`.
-> **Metodologia:** SPEC v1 → 2 reviews adversariais → v3 → PLAN v1 → 2 reviews →
-> v3 → execução (superpowers, por ondas/tasks, TDD, `ui-ux-pro-max` em todo
-> front-end, consistência com o design da plataforma).
+> **Metodologia:** SPEC v1 → 2 reviews → v2 (aqui) → review → v3 → PLAN v1→v3 →
+> execução (superpowers, ondas/tasks, TDD, `ui-ux-pro-max` em todo front-end,
+> consistência com o design da plataforma).
+
+> **Mudou v1 → v2 (resumo dos achados aplicados):**
+> - A ficha **reusa o `ReportEntry` da F3** (não cria modelo paralelo). O motor de
+>   render é o `report-view.tsx` existente, estendido.
+> - Contrato de dado por fonte = **`outputSchema` do `ToolEntry`** (já existe).
+> - **Recusa honesta (Caminho 3)** e "limitado pelos fatos existentes" de volta.
+> - **RBAC de consumo entra na onda 1** (gate de domínio reavaliado no consumo).
+> - **Persistência modelada** (modelo Prisma `SavedReport`).
+> - **Onda 1 recortada de novo** (a fundação de render já existe, então a onda 1
+>   foca no que falta: persistir ficha dinâmica + agente + MCP de construção).
+> - **Catálogo de componentes com formato concreto** + exemplo fim a fim.
+> - **Medição de IA desenhada**; **provedor fechado em OpenAI `gpt-5-mini`**.
+> - Loop de **reparo de ficha**, **enums fechados** e **teto de iterações** no agente.
 
 ---
 
 ## 1. Objetivo
 
-Dar a `super_admin` e `admin` um **construtor de relatórios in-app** onde a pessoa
-**descreve em linguagem natural** o relatório que quer e a plataforma o **monta
-sozinha**, escolhendo a melhor visualização a partir de uma **biblioteca de
-componentes padronizada**. Não é um editor "arrasta e solta": o caminho primário
-é o **prompt**; a edição manual existe, porém **limitada** (ajustar o que já está
-posto, nunca criar estrutura nova do zero).
+Dar a `super_admin`/`admin` um **construtor de relatórios in-app** onde a pessoa
+**descreve em linguagem natural** o relatório e a plataforma o **monta sozinha**, a
+partir de uma **biblioteca de componentes padronizada**, e pode **publicar** o
+relatório para perfis que o consomem. Caminho primário: **prompt**. Edição manual
+existe, porém **limitada** (ajustar o que já está posto, nunca criar estrutura nova).
 
-Duas formas de entrega convivem:
+Duas formas de entrega, em ondas distintas:
+- **Relatório de tela cheia:** página inteira, acessível na seção **Relatórios**
+  (cards clicáveis). É a onda 1.
+- **Widget + Painéis:** widget adicionável a um **Painel** montável; tamanho por
+  **grid de encaixe** (tamanhos discretos), quantidade limitada por parâmetro. Onda 3.
 
-- **Relatório de tela cheia:** uma página inteira de relatório, acessível por uma
-  seção **Relatórios** na navegação. A pessoa vê cards organizados ("retângulos
-  bonitos") e clica no relatório que quer abrir.
-- **Widget:** um componente de relatório que pode ser adicionado a um **Painel**.
-  Existe uma seção **Painéis** onde a pessoa monta um ou vários painéis,
-  posicionando widgets. O tamanho dos widgets é flexível (com regras de encaixe
-  que impedem bagunça), e a quantidade por painel é limitada por parâmetro.
-
-O valor central: **unir os dois mundos** (montar por conversa + ajustar na mão)
-sobre uma **mesma definição declarativa**, sem nunca gerar código em produção.
+Valor central: montar por conversa e ajustar na mão sobre **uma mesma ficha
+declarativa**, **sem nunca gerar código em produção**, e **só alcançando o que já
+existe como dado** (com recusa honesta quando não dá).
 
 ---
 
-## 2. Decisões canônicas (travadas com o usuário)
+## 2. Fundação que JÁ existe (a F6 estende, não recria)
 
-1. **Config-driven, nunca code-gen.** Todo relatório é uma **ficha declarativa**
-   (um documento estruturado, JSON validado por schema), não código. Um **motor
-   de renderização genérico** lê a ficha e desenha. A IA produz e edita a ficha,
-   jamais escreve React/SQL solto que vá para produção. Risco zero de quebrar a
-   plataforma.
-2. **MCP separado e exclusivo.** A construção de relatórios usa um **servidor MCP
-   próprio**, distinto do MCP semântico do Agente Nex. Mesma base de engenharia
-   como molde (`@modelcontextprotocol/sdk`, transporte, RBAC 7 camadas), mas
-   servidor, catálogo e ferramentas **exclusivos**. Proibido misturar com as
-   tools do Nex.
-3. **Agente construtor reusa o provedor atual.** O agente que interpreta o prompt
-   e monta a ficha usa o **mesmo provedor/modelo já em produção** (OpenAI, hoje
-   `gpt-5-mini`), no mesmo padrão de orquestração agente↔tools do Nex. (Atualiza a
-   ideia antiga de usar a API do Claude: reuso do que já roda é mais barato e
-   consistente. Ponto a confirmar na review do usuário.)
-4. **Design pela `ui-ux-pro-max`, em design-time.** O bom design é **embutido nos
-   componentes** quando eu os construo (com a skill), não gerado por IA em runtime.
-   Em produção o agente só **escolhe e parametriza** peças que já nasceram lindas e
-   consistentes com o resto da plataforma. A skill NÃO roda dentro do agente em
-   produção.
-5. **Biblioteca grande, diversa e milimetricamente documentada.** Espaçamentos,
-   posições, sombras, hover, efeitos e animações são padronizados **por estado e
-   condição** e descritos num catálogo. Essa documentação não é burocracia: é o
-   que permite as ferramentas acharem o componente certo para o que foi pedido.
-6. **Edição manual limitada.** A pessoa pode ajustar o que já existe (texto de
-   título, trocar tipo de gráfico de uma lista, trocar ícone num seletor com busca,
-   trocar cor de uma paleta fixa, redimensionar widget dentro do grid). Não pode
-   criar campos/estrutura novos na mão (isso só via prompt). Sem editor livre.
-7. **Só local até aprovação.** Ver regra de raiz no topo. Validação toda em dev
-   local.
+A F3 entregou a base declarativa. A F6 a reusa:
+
+- **Ficha:** `ReportEntry` (`src/lib/reports/types.ts` + `catalog.ts`):
+  `{ id, titulo, dominio, descricao, icone, modeloFonte, temporal?, secoes[] }`.
+- **Seções:** `secoes[] { id, template, fato, config, filtros[] }`, com
+  `template ∈ { KPIRow, DataTable, BarChart, LineChart, PieChart }` (a biblioteca
+  inicial já existe e está testada).
+- **Filtros:** modelados por seção (`filtros: [{ tipo: "armazem" }, { tipo: "familia" }]`),
+  com controles de UI prontos (`report-filters`, `warehouse-filter`, `family-filter`,
+  `period-bar`, presets via modelo Prisma `ReportPreset`).
+- **Motor de render:** `src/app/(protected)/relatorios/[id]/report-view.tsx` +
+  `src/components/charts/*` + `src/components/reports/*`. Já desenha `ReportEntry`.
+- **Fonte de dado:** `modeloFonte`/`fato` resolvem para as `queries/*.ts`
+  (ex.: `querySaldoProduto`, `queryValorArmazem`), com shape conhecido. O wrapper
+  `report-data.ts` injeta estado/freshness.
+- **Contrato de dado por fonte:** cada `ToolEntry` do catálogo MCP já carrega
+  `outputSchema` (`mcp/catalog/types.ts`). É o contrato que o construtor usa para
+  saber o que uma fonte entrega.
+
+Consequência: o F6 **não inventa** ficha, motor nem biblioteca base. Ele adiciona:
+(1) **persistir `ReportEntry` dinâmicos** criados pelo usuário; (2) o **agente
+construtor**; (3) o **MCP de Construção**; (4) a **tela de chat+preview**;
+(5) ao longo das ondas, **novos templates** (mapa, etc.), edição manual e painéis.
 
 ---
 
-## 3. Arquitetura macro
+## 3. Decisões canônicas (travadas com o usuário)
+
+1. **Config-driven, nunca code-gen.** Relatório é `ReportEntry` validado por schema
+   (Zod). Motor genérico renderiza. A IA produz/edita a ficha, nunca escreve
+   React/SQL para produção. Risco zero de quebrar a plataforma.
+2. **MCP separado e exclusivo.** Servidor MCP próprio para construção, distinto do
+   MCP do Nex. Mesma base de engenharia como molde, catálogo e tools exclusivos.
+   **Mecanismo de dado:** o MCP de Construção referencia a **camada de queries
+   compartilhada** (`src/lib/reports/queries` + catálogo de fontes) por **import**,
+   não chama o servidor MCP do Nex em runtime (sem acoplamento cross-processo). A
+   separação é de **catálogo e responsabilidade** (construir vs responder), não de
+   duplicação de dados.
+3. **Agente construtor: provedor OpenAI `gpt-5-mini`** (mesmo de produção/Nex),
+   padrão de orquestração agente↔tools do Nex, porém isolado (prompt, catálogo e
+   sessão próprios). Decisão fechada (atualiza a ideia antiga de usar a API do Claude).
+4. **Design pela `ui-ux-pro-max` em design-time, embutido nos componentes.** A IA
+   não desenha em runtime; só escolhe e parametriza peças que já nasceram lindas e
+   consistentes com a plataforma.
+5. **Biblioteca grande, diversa e milimetricamente documentada** (ver §6: formato do
+   catálogo de componentes). A documentação é o que faz o agente achar o componente
+   certo.
+6. **Edição manual limitada** (ver §8): ajustar o existente, nunca criar estrutura.
+7. **Limitado pelos fatos existentes + recusa honesta (Caminho 3).** O construtor só
+   alcança o que há como `fato_*`/query auditada. Quando o pedido não cabe, **recusa
+   com honestidade** ("esse dado não existe ainda / consigo de tal forma") e **registra
+   o gap** (reusa `feature_requests`/`registrar_lacuna`). Nunca alucina dado.
+8. **Só local até aprovação** (regra de raiz).
+
+---
+
+## 4. Arquitetura macro
 
 ```
 ┌──────────────────────────────────────────────┐
 │  Construtor (tela): chat + pré-visualização   │
 │  reusa mecânica do Playground + bubble do Nex │
 └───────────────┬───────────────────────────────┘
-                │ prompt do usuário
+                │ prompt
                 ▼
-┌──────────────────────────────┐   chama tools   ┌─────────────────────────┐
-│  Agente construtor (OpenAI)  │────────────────▶│  MCP de Construção       │
-│  mesmo padrão do Nex         │◀────────────────│  (servidor próprio)      │
-└──────────────┬───────────────┘  ficha editada  │  tools exclusivas:       │
-               │                                  │  montar/editar a ficha   │
-               │ produz/edita                     │  + consultar catálogo    │
-               ▼                                  │  + buscar dado (ref.)    │
-┌──────────────────────────────┐                 └────────────┬────────────┘
-│  Ficha declarativa (ReportSpec)│                            │ referencia
-│  JSON validado por schema      │                            ▼
-└──────────────┬─────────────────┘            ┌──────────────────────────────┐
-               │ renderiza                     │  Camada de dados existente    │
-               ▼                               │  (fatos_* / queries / MCP Nex │
-┌──────────────────────────────┐              │   de leitura, como fonte)     │
-│  Motor de render (genérico)   │              └──────────────────────────────┘
-│  + Biblioteca de componentes  │
-│  + Design system documentado  │
+┌──────────────────────────────┐  tools (enum)  ┌─────────────────────────┐
+│  Agente construtor (OpenAI)  │───────────────▶│  MCP de Construção       │
+│  loop com teto de iteracoes  │◀───────────────│  (servidor próprio)      │
+│  + loop de reparo de ficha   │  ReportEntry    │  tools exclusivas:       │
+└──────────────┬───────────────┘                │  catalogo + montar ficha │
+               │ produz/edita                    │  + prever_dado (import)  │
+               ▼                                  └────────────┬────────────┘
+┌──────────────────────────────┐                              │ import (não RPC)
+│  ReportEntry (ficha) validada │                             ▼
+│  + estado rascunho/publicado  │            ┌──────────────────────────────┐
+│  persistida em SavedReport    │            │  Camada de queries existente  │
+└──────────────┬─────────────────┘           │  src/lib/reports/queries/*    │
+               │ renderiza                     │  + outputSchema (contrato)    │
+               ▼                               └──────────────────────────────┘
+┌──────────────────────────────┐
+│  Motor de render (F3 estendido)│  gate de domínio reavaliado no CONSUMO
+│  + biblioteca de componentes   │
 └──────────────────────────────┘
 ```
 
-### 3.1 Ficha declarativa (`ReportSpec`)
+### 4.1 Resolução de fonte (sem SQL livre)
 
-O artefato central. Um JSON validado por schema (Zod) que descreve um relatório
-**sem** dizer "como" desenhar, só "o quê". Estrutura inicial proposta:
+- Cada `secao` referencia um par `modeloFonte`/`fato` que mapeia para uma **query
+  auditada existente** (registry de fontes). Nunca SQL livre.
+- O **contrato** de cada fonte é o `outputSchema` correspondente: define os campos
+  disponíveis (KPIs, colunas, séries). O agente lê esse contrato via `prever_dado`
+  e só monta seções cujo `template` é compatível com o shape da fonte (ex.: `PieChart`
+  exige uma dimensão categórica + uma medida; `KPIRow` exige escalares).
+- A **compatibilidade fonte×template** é validada: além do schema da ficha, há uma
+  checagem de que a fonte entrega o shape que o template precisa. Ficha que passa no
+  Zod mas é incompatível é rejeitada com mensagem, não renderiza quebrada.
 
-- `id`, `tipo` (`tela_cheia` | `widget`), `titulo`, `dono` (userId), `visibilidade`.
-- `blocos[]`: lista ordenada de blocos. Cada bloco tem:
-  - `componente`: chave do catálogo (ex.: `kpi`, `tabela`, `pizza`, `barra_comparativa`, `mapa_brasil`).
-  - `fonte`: referência a uma consulta de dado (nome da tool/fato + parâmetros), **nunca SQL livre**.
-  - `parametros`: opções daquele componente (agrupamento, ordenação, formato de número, paleta da lista fixa, rótulos).
-  - `layout`: posição/tamanho (para widget no grid; para tela cheia, ordem e largura relativa).
-- `versao` do schema, para evolução segura.
+### 4.2 Filtros e parâmetros
 
-A ficha é o **único ponto de verdade**: o prompt a edita, a edição manual a edita,
-o motor a renderiza. É o que une os dois mundos.
+- **Filtro de seção** (já na F3): `filtros: [{ tipo }]`, fixo na ficha.
+- **Parâmetro de ficha (runtime):** período/armazém/família que o consumidor ajusta
+  ao ver o relatório, refluindo em várias seções. Modelado no topo da ficha como
+  `parametros[]` com binding `parametro → seções`. A F3 já tem `temporal` +
+  controles de filtro; a F6 generaliza para "um parâmetro liga a N seções".
+- Ordem de resolução: parâmetros de ficha (runtime) sobrepõem defaults; filtros de
+  seção restringem dentro disso.
 
-### 3.2 Motor de render genérico
+### 4.3 Persistência (modelo Prisma novo)
 
-Um componente React que recebe um `ReportSpec` e desenha, mapeando cada
-`bloco.componente` ao componente da biblioteca, injetando `parametros` e os dados
-resolvidos da `fonte`. Não tem lógica de negócio: é um intérprete. Estados de
-loading/erro/vazio são padronizados.
+`SavedReport` (migration só em dev local, regra de raiz):
+- `id`, `tipo` (`tela_cheia` | `widget`), `titulo`, `entry` (JSON do `ReportEntry`),
+  `schemaVersion`, `status` (`rascunho` | `publicado`), `criadoPor` (userId),
+  `visibilidadeConsumo` (quais roles/usuários consomem), `criadoEm`/`atualizadoEm`.
+- Versão do schema da ficha para migração (ver §10).
+- Auditoria de criação/edição/execução reusa o padrão atual.
 
-### 3.3 Biblioteca de componentes + design system documentado
+### 4.4 Agente construtor (robustez)
 
-Conjunto de componentes de visualização **fechados e parametrizáveis**, cada um:
+- **Enums fechados:** os inputs das tools de construção usam enums derivados do
+  catálogo real (templates válidos, fontes válidas, tipos de filtro). O agente não
+  pode referenciar chave inexistente.
+- **Teto de iterações:** o loop agente↔tools tem máximo de passos; ao estourar, para
+  com mensagem honesta (não loop infinito de tools).
+- **Loop de reparo:** se a ficha não passa na validação (schema ou compatibilidade
+  fonte×template), o erro volta ao agente como feedback estruturado para uma nova
+  tentativa, limitada a N tentativas; depois, fallback honesto.
+- **Recusa honesta:** se não há fonte para o pedido, o agente diz o que não dá e
+  registra o gap, sem inventar.
 
-- com **contrato claro**: que dado aceita, que parâmetros expõe, que estados tem;
-- **documentado** num catálogo legível por humano e por máquina (o agente lê o
-  catálogo para escolher), incluindo: para que serve, formato de dado ideal,
-  parâmetros, e tokens de espaçamento/sombra/hover/animação por estado;
-- desenhado com `ui-ux-pro-max` seguindo a **consistência visual da plataforma**
-  (mesmos botões, listas suspensas, checkboxes, ícones, efeitos já existentes).
+### 4.5 Tela de construção (chat + preview)
 
-Catálogo inicial proposto (onda 1, enxuto): `kpi`, `tabela`, `barra` (com variante
-comparativa meta/ideal), `pizza`. Avançados (ondas seguintes): `linha/serie`,
-`mapa_brasil` (com hover destacando o estado), `comparativo_periodo`, `calendario`,
-`badge_status`, e o resto do acervo. A biblioteca **nunca fecha**: cresce por ondas.
-
-### 3.4 MCP de Construção (servidor próprio)
-
-Servidor MCP exclusivo. Famílias de tools (exclusivas, sem relação com as do Nex):
-
-- **Catálogo:** `listar_componentes`, `descrever_componente` (o agente descobre o
-  que existe e como usar).
-- **Construção da ficha:** `criar_relatorio`, `adicionar_bloco`, `editar_bloco`,
-  `remover_bloco`, `reordenar`, `definir_layout`, `definir_filtro`.
-- **Dado (referência, não duplicação):** `listar_fontes` e `prever_dado` apontam
-  para as consultas de leitura já existentes (fatos/tools do Nex como fonte), para
-  o componente saber que dado vai receber. Não reimplementa as métricas.
-- **Validação:** toda tool valida a ficha contra o schema antes de devolver.
-
-RBAC 7 camadas reusado, gated para `super_admin`/`admin`.
-
-### 3.5 Agente construtor
-
-Reusa o provedor/modelo de produção (OpenAI `gpt-5-mini`) e o padrão de
-orquestração do Nex (loop agente↔tools), porém **isolado**: prompt de sistema
-próprio, catálogo de tools próprio (o MCP de Construção), sessão própria. Ele:
-
-1. entende o pedido em linguagem natural;
-2. consulta o catálogo de componentes e as fontes de dado;
-3. escolhe a **melhor visualização** para o formato do dado (não força tabela);
-4. monta/edita a ficha via tools;
-5. devolve a ficha + uma explicação curta do que montou.
-
-### 3.6 Tela de construção (chat + preview)
-
-Layout dividido: **conversa** de um lado, **pré-visualização ao vivo** do relatório
-do outro. Reusa a mecânica de chat do **Playground do Nex** (campo, botões, lista
-de mensagens) e a **animação de "pensando" da bubble**. A cada resposta do agente,
-o preview re-renderiza a ficha. Botões de ação rápida (ex.: "trocar para pizza",
-"agrupar por estado") aceleram pedidos comuns. Localização na navegação e refino
-visual ficam comigo (com a skill), sem validação tela-a-tela.
+Layout dividido: conversa de um lado, pré-visualização ao vivo do outro. Reusa a
+mecânica de chat do **Playground do Nex** e a **animação de "pensando" da bubble**.
+O preview re-renderiza a ficha **com debounce** (não dispara consulta a cada
+caractere). Localização na navegação e refino visual ficam comigo (com a skill).
 
 ---
 
-## 4. Fluxo de dados
+## 5. RBAC, visibilidade e consumo
 
-1. Usuário descreve o relatório no chat.
-2. Agente consulta catálogo + fontes, escolhe componentes, monta a ficha via MCP.
-3. A ficha é salva (rascunho) e renderizada no preview; os dados de cada bloco vêm
-   das consultas de leitura existentes (mesma fonte do Nex/dashboard, garantindo
-   números consistentes em toda a plataforma).
-4. Usuário aprova ou pede ajuste (por prompt ou edição manual limitada).
-5. Ao salvar, o relatório passa a aparecer na seção Relatórios (tela cheia) ou
-   fica disponível como widget para os Painéis.
-
-Nenhuma leitura vai ao Odoo ao vivo: tudo do cache, como o resto da plataforma.
-
----
-
-## 5. RBAC e visibilidade
-
-- Acesso ao construtor: só `super_admin` e `admin`. `manager`/`viewer` não entram.
-- Visibilidade do relatório criado: amarrada ao criador. `super_admin` e `owner`
-  veem todos; `admin` vê os seus. (A regra fina por perfil de quem **consome** o
-  relatório pronto é detalhada na onda de permissões.)
-- Tudo auditado (quem criou/editou/rodou), reusando o padrão de auditoria atual.
+- **Acesso ao construtor:** só `super_admin`/`admin`. `manager`/`viewer` não constroem.
+- **Papéis reais do projeto:** `super_admin`, `admin`, `manager`, `viewer` (não existe
+  papel "owner"; o "dono" é o `criadoPor`). A visibilidade usa esses papéis.
+- **Visibilidade de autoria:** `super_admin` vê todos os relatórios salvos; `admin` vê
+  os seus (e os publicados para ele).
+- **Publicação para consumo (na ficha desde a onda 1):** `visibilidadeConsumo` define
+  quais perfis/usuários veem o relatório pronto. É isso que faz o construtor servir
+  para distribuir relatório (senão seria ferramenta pessoal do admin).
+- **Gate de domínio no CONSUMO (onda 1):** ao **abrir** um relatório, o acesso à
+  `fonte`/domínio é reavaliado contra **quem consome** (reusa `visibleDomains`), não
+  só contra o criador. Um consumidor nunca vê dado de domínio que não poderia ver no
+  dashboard.
+- Tudo auditado (criar/editar/publicar/abrir).
 
 ---
 
-## 6. Segurança, limites e custo
+## 6. Biblioteca de componentes e catálogo documentado
 
-- **Sem code-gen:** o agente só emite ficha validada por schema. Nada de React/SQL
-  livre em runtime. Fonte de dado sempre por referência a consulta auditada.
-- **Medição de consumo de IA por cliente é obrigatória** (o agente consome a conta
-  do provedor): rate limit, teto por período, seleção de modelo, e quais perfis
-  usam quais modelos, na Configuração (só `super_admin`). Sem cota = custo sem teto.
-- **Limites do construtor:** quantidade de blocos por relatório e de widgets por
-  painel são parametrizáveis. Edição manual restrita a um conjunto fechado de
-  ações (ver §2.6).
+A biblioteca cresce por ondas e **nunca fecha**. Cada componente é fechado e
+parametrizável, desenhado com `ui-ux-pro-max`, consistente com a plataforma.
+
+**Formato do catálogo (legível por humano e máquina)** , cada entrada:
+- `chave` (ex.: `PieChart`), `nome`, `paraQueServe`.
+- `quandoUsar` / `quandoNaoUsar` (orienta a escolha do agente).
+- `dadoIdeal`: shape de dado que o componente espera (dimensões/medidas), casado com
+  o `outputSchema` das fontes compatíveis.
+- `parametros`: opções expostas (agrupamento, formato de número, paleta da lista fixa,
+  rótulos, ordenação).
+- `interacao`: capacidades de interação suportadas (hover, tooltip, drill, seleção,
+  cross-filter) , **declaradas desde já**, mesmo que só implementadas em ondas futuras.
+- `tokensVisuais`: espaçamento/sombra/hover/efeito/animação por estado, referenciando
+  os tokens do design system (não valores soltos).
+
+> **Exemplo fim a fim (entrada de catálogo, `PieChart`):**
+> ```
+> chave: "PieChart"
+> nome: "Gráfico de pizza"
+> paraQueServe: "Distribuição de uma medida entre poucas categorias (até ~8)."
+> quandoUsar: "Composição/participação (ex.: estoque por família)."
+> quandoNaoUsar: "Séries temporais, muitas categorias, comparação precisa de valores."
+> dadoIdeal: { dimensao: 1 categórica, medida: 1 numérica, linhas: "<= 8 ideal" }
+> parametros: { rotulo, formato: moeda|numero|percentual, paleta: <lista fixa>, ordenar }
+> interacao: { hover: realce do setor, tooltip: valor+percentual, drill: opcional }
+> tokensVisuais: { sombra: card.sm, hover: realce.tonal, animacao: entrada.scale.150ms }
+> ```
+
+O contrato `interacao` é o que garante que componentes ricos (mapa do Brasil com
+hover destacando estado, drill-down) **cabem na fundação** sem reescrever o motor:
+a ficha já sabe declarar interação.
+
+Catálogo inicial (onda 1, reusando F3): `KPIRow`, `DataTable`, `BarChart`, `PieChart`.
+Avançados (ondas seguintes): `LineChart`/série, `comparativo_periodo`, `badge_status`,
+`mapa_brasil` (hover destacando estado; efeito 3D é o teto, onda de showcase), etc.
 
 ---
 
 ## 7. Decomposição em ondas
 
-A arquitetura (ficha, motor, MCP separado, design system, agente) nasce preparada
-para a visão completa. A **entrega** é faseada; a biblioteca cresce sempre.
+A fundação de render e a biblioteca base já existem (F3). As ondas focam no que falta.
 
-- **Onda 1 , Fatia fina ponta a ponta (validar o conceito):**
-  relatório de **tela cheia**; catálogo enxuto (`kpi`, `tabela`, `barra`, `pizza`);
-  ficha + schema; motor de render; MCP de Construção com as tools essenciais;
-  agente montando via prompt; **1 domínio** (estoque/produtos, ex.: "produtos por
-  estado e por armazém com preço médio"); preview no chat; salvar e ver na seção
-  Relatórios. Sem painéis, sem edição manual ainda.
-- **Onda 2 , Edição manual limitada:** trocar título/tipo de gráfico/ícone/cor,
-  reordenar, sobre a mesma ficha.
-- **Onda 3 , Painéis e widgets:** seção Painéis, grid de encaixe, adicionar widgets,
-  limites por painel.
-- **Onda 4 , Acervo avançado:** série/linha, comparativos de período, badges,
-  calendário, e o **mapa do Brasil com hover destacando o estado** (showcase; o
-  efeito 3D pleno é o teto de sofisticação, entregue aqui).
-- **Ondas seguintes , Expansão contínua:** mais domínios, mais componentes,
-  permissões finas de consumo, exportação.
+- **Onda 1 , Construtor de relatório de tela cheia (fatia fina REAL):**
+  - Modelo `SavedReport` + persistência (rascunho/publicado) , migration dev local.
+  - MCP de Construção com tools essenciais: `listar_componentes`, `descrever_componente`,
+    `listar_fontes`, `prever_dado`, `criar_relatorio`, `adicionar_secao`, `editar_secao`,
+    `remover_secao`, `definir_filtro`, `validar`.
+  - Agente construtor (OpenAI) com enums fechados, teto de iterações e loop de reparo.
+  - Tela chat + preview (reusa Playground/bubble), preview com debounce.
+  - Reuso do motor `report-view.tsx` e dos templates `KPIRow/DataTable/BarChart/PieChart`.
+  - **1 domínio: estoque** (queries já existem e comprovadas: `querySaldoProduto`,
+    `queryValorArmazem` por armazém/família; "por estado" só se houver fato, ver §12).
+  - RBAC: construtor gated a super_admin/admin; **gate de consumo por domínio** ativo.
+  - Recusa honesta para pedido sem fonte.
+  - Medição de IA mínima (ver §9): contador + teto duro por usuário/instância.
+  - **Critério de aceite (§11).**
+- **Onda 2 , Edição manual limitada (tela cheia):** trocar título, trocar template de
+  uma lista compatível, trocar ícone (seletor com busca), reordenar seções, sobre a
+  mesma ficha. Sem grid (ainda não há widget).
+- **Onda 3 , Painéis e widgets:** `tipo: widget`, seção Painéis, grid de encaixe
+  (tamanhos discretos), limites por painel, edição manual de widget (resize no grid).
+- **Onda 4 , Acervo avançado + showcase:** série/linha, comparativos de período,
+  badges, e o **mapa do Brasil com hover destacando estado** (efeito 3D como teto).
+- **Ondas seguintes:** mais domínios, mais componentes, permissões finas, exportação.
 
-Cada onda tem sua spec/plan de detalhe quando chegar; esta SPEC desenha a fundação
-e a onda 1 em profundidade.
-
----
-
-## 8. Caso de teste real (do usuário)
-
-O relatório do HTML de referência (vendas/estoque por estado, comparativos,
-formas de pagamento, e o mapa de demandas por estado) é o **norte de complexidade**.
-O HTML serve só para dimensionar ambição e inventário; **nada do design dele é
-copiado** (o design é o da nossa plataforma, via skill). A onda 1 valida com um
-relatório de estoque/produtos por estado; o mapa por estado entra na onda 4.
+Cada onda tem sua spec/plan de detalhe quando chegar.
 
 ---
 
-## 9. Testes e verificação
+## 8. Edição manual limitada (fronteira clara)
 
-- **Schema/ficha:** testes de validação (ficha válida/ inválida, migração de versão).
-- **Motor de render:** testes de render por componente (dado → saída esperada,
-  estados loading/erro/vazio).
-- **MCP de Construção:** testes por tool (monta/edita/valida a ficha corretamente).
-- **Agente:** testes de que, dado um pedido, ele escolhe componente plausível e
-  produz ficha válida (golden cases).
-- **E2E real (regra de raiz):** subir o stack local, montar um relatório de verdade
-  via prompt contra o dado real do cache, conferir que os números batem com a fonte.
-- `ui-ux-pro-max` aplicada em todo componente; consistência visual com a plataforma.
+Permitido (onda 2, tela cheia): editar texto de título/subtítulo; trocar o template de
+uma seção **por outro compatível com a mesma fonte** (lista filtrada); trocar ícone
+(seletor com busca); reordenar seções; ajustar rótulos. **Cor:** travada na semântica
+do componente por padrão; troca só dentro de paletas semanticamente seguras (não
+permitir, por ex., pintar um KPI negativo de verde). **Proibido na mão:** criar
+seção/fonte nova, escrever fórmula, mudar a fonte de dado (isso só por prompt).
+Edição de widget no grid (resize/posição) é **onda 3**, não onda 2.
 
----
-
-## 10. Riscos e mitigações
-
-- **Escopo épico.** Mitigado pela fatia fina (onda 1) e biblioteca incremental.
-- **Agente escolher visualização ruim.** Mitigado por catálogo bem descrito (dado
-  ideal por componente) + edição/prompt corretivo + golden cases.
-- **Inconsistência visual.** Mitigado por design embutido nos componentes (skill em
-  design-time) e tokens documentados, não IA desenhando em runtime.
-- **Custo de IA sem teto.** Mitigado por medição/quota obrigatória desde a onda 1.
-- **Vazamento para produção.** Mitigado pela regra de raiz (só local até aprovação).
-- **Grid de painel virar bagunça.** Mitigado por grid de encaixe (tamanhos discretos)
-  em vez de pixel-livre.
+Concorrência: a ficha tem `schemaVersion` + etag; edição manual e por prompt usam
+escrita otimista (quem grava confere o etag; conflito → recarrega e reaplica).
 
 ---
 
-## 11. Fora de escopo (YAGNI por ora)
+## 9. Segurança, limites e custo de IA
+
+- **Sem code-gen:** agente só emite `ReportEntry` validado por schema + compatibilidade
+  fonte×template. Fonte sempre por referência a query auditada.
+- **Medição de consumo de IA (desde a onda 1):** unidade = **tokens por chamada**,
+  contabilizados **por usuário** e **agregado da instância** (single-tenant). Teto
+  **duro** por período (configurável em Configuração, só super_admin); ao atingir,
+  **bloqueia** novas construções com mensagem (não degrada silenciosamente). O preview
+  só chama a IA em turno de construção (debounce evita rajada). "Seleção de modelo por
+  perfil" da ideia antiga é simplificada: modelo único configurável globalmente.
+- **Limites do construtor:** nº de seções por relatório e (onda 3) de widgets por
+  painel, parametrizáveis.
+
+---
+
+## 10. Versionamento e fichas salvas
+
+- `schemaVersion` na ficha; **migrators versionados** por bump.
+- Ao abrir uma ficha salva, ela é **validada contra o catálogo atual**: fonte/template
+  órfão (renomeado/removido) gera **estado de erro explícito** no relatório (não quebra
+  silenciosa), com caminho de correção.
+
+---
+
+## 11. Critério de aceite da onda 1 (linha de chegada objetiva)
+
+A onda 1 está validada quando, contra o **dado real** do cache (E2E):
+- um conjunto de **prompts-alvo** (mínimo definido no plano, ex.: 8 pedidos de estoque)
+  produz **ficha válida** e **render correto** em pelo menos a maioria deles;
+- o agente escolhe um **componente plausível** para o formato do dado (avaliado por
+  golden cases com asserção **tolerante**: valida validade da ficha + classe de
+  componente, não a ficha exata);
+- um pedido **sem fonte** produz **recusa honesta** + log de gap (não alucinação);
+- o **gate de consumo** impede um consumidor de ver domínio fora do seu acesso;
+- o **teto de IA** bloqueia ao ser atingido.
+
+---
+
+## 12. Riscos e mitigações
+
+- **Escopo épico.** Mitigado: a fundação de render já existe; onda 1 foca no que falta.
+- **Agente escolher visualização ruim / ficha inválida.** Enums fechados + loop de
+  reparo + teto de iterações + golden cases tolerantes + edição corretiva.
+- **Combinação fonte×template impossível.** Checagem de compatibilidade além do Zod.
+- **Inconsistência visual.** Design embutido (skill em design-time) + tokens.
+- **Vazamento entre domínios no consumo.** Gate reavaliado no consumo (onda 1).
+- **Custo de IA sem teto.** Medição + teto duro desde a onda 1.
+- **Componentes ricos forçarem refazer a fundação.** Contrato `interacao` declarado
+  desde já no catálogo.
+- **Fonte do exemplo inexistente.** "Por estado" para estoque só entra se houver fato;
+  onda 1 usa fontes comprovadas (armazém/família). Verificar no início do plano.
+- **Vazamento para produção.** Regra de raiz (só local até aprovação).
+
+---
+
+## 13. Fora de escopo (YAGNI por ora)
 
 - Editor "arrasta e solta" completo / criação livre de componentes pela pessoa.
 - IA gerando código de componente em produção.
-- Skill `ui-ux-pro-max` rodando em runtime.
-- Exportação (PDF/Excel), agendamento e envio automático de relatório (ondas bem
-  posteriores, se desejado).
+- Skill `ui-ux-pro-max` em runtime.
+- Exportação (PDF/Excel), agendamento e envio automático (ondas posteriores, se desejado).
 
 ---
 
-## 12. Pontos a confirmar na review do usuário
+## 14. Pontos fechados (não são mais dúvidas)
 
-1. Reuso do provedor OpenAI atual para o agente construtor (vs. API do Claude da
-   ideia antiga).
-2. Onda 1 começar por **tela cheia** (painéis na onda 3).
-3. Domínio da onda 1: estoque/produtos por estado.
-4. Grid de encaixe (tamanhos discretos) no lugar de tamanho livre pixel a pixel.
+1. Provedor: **OpenAI `gpt-5-mini`** (decisão do usuário).
+2. Ficha: **reusa `ReportEntry` da F3** (não cria modelo paralelo).
+3. Onda 1: **tela cheia**, domínio **estoque**, fontes comprovadas (armazém/família).
+4. Grid de painel: **encaixe discreto** (onda 3).
+5. MCP **separado** (decisão do usuário), referenciando a camada de queries por import.
+
+> **Pendência de verificação técnica (no início do PLAN, não bloqueante agora):**
+> confirmar contra o dado real quais cortes de estoque existem ("por estado" tem fato?)
+> para fixar os prompts-alvo da onda 1 em fontes 100% disponíveis.
