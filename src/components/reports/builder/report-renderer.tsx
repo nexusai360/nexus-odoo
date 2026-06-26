@@ -37,7 +37,7 @@ function SecaoView({
   }
   if (resolvida.estado === "vazio") {
     return (
-      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+      <div className="rounded-lg border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
         Sem dados para esta secao.
       </div>
     );
@@ -55,7 +55,7 @@ function SecaoView({
       .map((c) => ({ key: c.key, header: c.header ?? c.key, tipo: c.tipo ?? "texto" }));
     if (columns.length === 0) {
       return (
-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+        <div className="rounded-lg border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
           Sem colunas para esta secao.
         </div>
       );
@@ -63,7 +63,7 @@ function SecaoView({
     return <DataTable columns={columns} rows={rows} searchable />;
   }
   return (
-    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+    <div className="rounded-lg border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
       Este tipo de visual ainda nao e suportado pelo construtor.
     </div>
   );
@@ -79,7 +79,7 @@ export function ReportRenderer({
   return (
     <div className="flex flex-col gap-6">
       {entry.titulo ? (
-        <h1 className="text-2xl font-semibold text-slate-900">{entry.titulo}</h1>
+        <h1 className="text-2xl font-semibold text-foreground">{entry.titulo}</h1>
       ) : null}
       {entry.secoes.map((secao) => (
         <section key={secao.id}>
