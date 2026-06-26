@@ -1,5 +1,24 @@
 # STATUS — nexus-odoo
 
+> **2026-06-26 (F6 , TROCA DE SESSÃO) , branch `feat/nex-reconstrucao`.**
+> Construtor (Relatórios 2.0) funcional no backend (runBuilder E2E OK, gpt-5.4-mini
+> + raciocínio), mas **a UI do chat NÃO está no padrão do Agente Nex e as
+> mensagens NÃO persistem** , esse é o grosso pendente. **RETOMAR PELO DOC:**
+> `docs/superpowers/plans/2026-06-26-f6-HANDOFF-pendencias.md` (fonte única das
+> pendências, prioridades 1-3). Plano de compartilhamento de relatório em
+> `docs/superpowers/plans/2026-06-26-f6-meus-relatorios-compartilhamento.md`.
+> **AÇÃO 1 da nova sessão: `npm run dev:fresh`** (hot-reload falhou várias vezes;
+> código novo não aparecia , causou a impressão de "nada mudou / ficou pior").
+> Pendências principais: (1) chat = EXATAMENTE o Nex (persistência de mensagens,
+> animação com tools, menu 3-pontos limpar/baixar TXT, data flutuante, por
+> mensagem: nº tools/copiar/timestamp/duração); (2) abrir relatório destaca menu
+> errado (mover rota p/ `/relatorios-2/d/`) + cabeçalho com título/criador; (3)
+> Meus relatórios: editar nome + compartilhar por nível/usuário (visibilidadeConsumo).
+> Já commitado/feito: menu 2.0 + RBAC dinâmico, config do construtor (LLM card +
+> Recursos), composer reusando MessageInput/AttachMenu/AudioRecorder, default
+> gpt-5.4-mini, fix preview (colunas derivadas) + título (cores de tema). tsc 0.
+
+
 > **2026-06-26 (F6 , CONSTRUTOR DE RELATÓRIOS , ONDA 1 COMPLETA, Blocos A-G) ,
 > branch `feat/nex-reconstrucao`. Modo autônomo. F6 SEGUE SÓ LOCAL (regra de raiz:
 > sem merge para `main`, sem deploy, sem migration em prod).**
