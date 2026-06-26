@@ -1,4 +1,5 @@
 import { construirRelatorio, previsualizarSecoes } from "./builder";
+import type { BuilderReportEntry } from "@/lib/reports/builder/types";
 
 const getCurrentUser = jest.fn();
 const runBuilder = jest.fn();
@@ -24,7 +25,7 @@ jest.mock("@/lib/reports/builder/resolve-source", () => ({
 const ADMIN = { id: "11111111-1111-1111-1111-111111111111", platformRole: "admin" };
 const VIEWER = { id: "22222222-2222-2222-2222-222222222222", platformRole: "viewer" };
 
-const FICHA_VALIDA = {
+const FICHA_VALIDA: BuilderReportEntry = {
   id: "rascunho",
   titulo: "Estoque por armazem",
   dominio: "estoque",
