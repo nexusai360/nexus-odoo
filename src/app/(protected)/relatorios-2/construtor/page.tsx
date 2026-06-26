@@ -81,7 +81,7 @@ export default async function ConstrutorPage() {
       <BuilderWorkspace
         audioEnabled={audioEnabled}
         anexoEnabled={anexoEnabled}
-        podeExportar
+        podeExportar={user.platformRole === "super_admin"}
         initialConversationId={conversaAtiva?.id ?? null}
         initialFicha={initialFicha}
         initialSavedId={initialSavedId}

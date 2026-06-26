@@ -12,7 +12,7 @@
  */
 
 import { motion, useReducedMotion } from "framer-motion";
-import { ChevronDown, Download, Loader2, Mic, MoreVertical, Send, Sparkles, Trash2, X } from "lucide-react";
+import { ChevronDown, Download, Loader2, MessagesSquare, Mic, MoreVertical, Send, Sparkles, Trash2 } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -581,24 +581,18 @@ export function BuilderChatPanel({
 
   return (
     <div className="relative flex h-full flex-col bg-card">
-      {/* Header com menu de 3 pontos */}
-      <header className="relative z-40 flex items-center justify-between gap-2 border-b border-border bg-background/60 px-4 py-2.5">
-        <div className="flex items-center gap-2.5">
-          <div className="relative flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-violet-500 text-white shadow-md shadow-violet-600/40">
-            <Sparkles className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-            <span aria-hidden className="absolute right-0 bottom-0 h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-card" />
-          </div>
-          <div>
-            <h2 className="text-sm leading-tight font-semibold tracking-tight text-foreground">Agente Nex</h2>
-            <p className="text-xs leading-tight text-muted-foreground">Construtor</p>
-          </div>
+      {/* Linha unica "Conversa" com o menu de 3 pontos a direita (sem tarja). */}
+      <header className="relative z-40 flex items-center justify-between gap-2 border-b border-border px-5 py-2.5">
+        <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+          <MessagesSquare className="h-3.5 w-3.5" aria-hidden />
+          Conversa
         </div>
         <div className="relative flex items-center">
           <button
             type="button"
             aria-label="Mais opcoes"
             onClick={() => setMenuOpen((v) => !v)}
-            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-violet-400/60 focus-visible:outline-none"
+            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-violet-400/60 focus-visible:outline-none"
           >
             <MoreVertical className="h-4 w-4" />
           </button>
@@ -638,7 +632,7 @@ export function BuilderChatPanel({
 
       {/* Tag de data flutuante */}
       {!showWelcome && dateLabel ? (
-        <div className="pointer-events-none absolute top-[58px] left-1/2 z-30 -translate-x-1/2">
+        <div className="pointer-events-none absolute top-[44px] left-1/2 z-30 -translate-x-1/2">
           <span className="block rounded-full bg-violet-500/15 px-3 py-1 text-[11px] font-bold text-violet-700 ring-1 ring-violet-400/25 backdrop-blur-md dark:text-violet-200">
             <motion.span
               key={dateLabel}

@@ -1,21 +1,24 @@
 "use client";
 
 // src/components/reports/builder/canvas-viewport.tsx
-// F6 , Canvas infinito do preview do construtor (estilo Figma/mapa mental):
-// - fit-to-width por padrao (o relatorio inteiro cabe na largura, sem cortar);
-// - zoom com os botoes OU ctrl/cmd + scroll (centrado no cursor);
-// - pan arrastando o fundo OU com o scroll (sem ctrl);
-// - botao "ajustar" reenquadra. O conteudo tem largura fixa (BASE_WIDTH) para o
-//   calculo de enquadramento ser deterministico.
+// F6 , Canvas do preview do construtor (estilo Figma/mapa mental):
+// - fit-to-width por padrao (o relatorio inteiro cabe na largura);
+// - arrastar em QUALQUER lugar move o canvas (exceto sobre controles
+//   interativos: inputs, botoes, links); um threshold preserva o clique;
+// - zoom SUAVE: botoes (+/-) ou ctrl/cmd + scroll (proporcional ao gesto);
+// - scroll comum = mover (pan) vertical/horizontal;
+// - "ajustar" reenquadra; mao animada (3x) no 1o load ensina o arraste.
 import * as React from "react";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Minus, Plus, Maximize, Hand } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /** Largura logica do "papel" do relatorio (antes do zoom). */
 const BASE_WIDTH = 1040;
-const MIN_SCALE = 0.25;
-const MAX_SCALE = 2;
+const MIN_SCALE = 0.2;
+const MAX_SCALE = 2.5;
 const PAD_TOP = 24;
+const DRAG_THRESHOLD = 4;
 
 interface Transform {
   scale: number;
@@ -23,15 +26,27 @@ interface Transform {
   ty: number;
 }
 
+/** Layout-effect no cliente (evita o flash em escala 1 antes de enquadrar). */
+const useIsoLayoutEffect =
+  typeof window !== "undefined" ? React.useLayoutEffect : React.useEffect;
+
+/** Alvo interativo (nao deve iniciar arraste): deixa o clique/seleção passar. */
+function ehInterativo(el: HTMLElement | null): boolean {
+  return !!el?.closest(
+    'input,textarea,select,button,a,[role="button"],[contenteditable="true"]',
+  );
+}
+
 export function CanvasViewport({ children }: { children: React.ReactNode }) {
+  const reduce = useReducedMotion();
   const viewportRef = React.useRef<HTMLDivElement | null>(null);
-  const contentRef = React.useRef<HTMLDivElement | null>(null);
   const [t, setT] = React.useState<Transform>({ scale: 1, tx: 0, ty: PAD_TOP });
   const tRef = React.useRef(t);
   React.useEffect(() => {
     tRef.current = t;
   }, [t]);
   const [arrastando, setArrastando] = React.useState(false);
+  const [mostrarDica, setMostrarDica] = React.useState(true);
 
   // Enquadra: escala para a largura caber e centraliza horizontalmente.
   const ajustar = React.useCallback(() => {
@@ -43,8 +58,10 @@ export function CanvasViewport({ children }: { children: React.ReactNode }) {
     setT({ scale, tx, ty: PAD_TOP });
   }, []);
 
-  // Enquadra na montagem e quando a largura do viewport muda.
-  React.useEffect(() => {
+  // Enquadra JA no primeiro frame (layout effect) para abrir exatamente
+  // ajustado a largura, sem piscar em escala 1. ResizeObserver mantem o
+  // enquadramento quando o painel muda de tamanho.
+  useIsoLayoutEffect(() => {
     ajustar();
     const vp = viewportRef.current;
     if (!vp || typeof ResizeObserver === "undefined") return;
@@ -54,12 +71,18 @@ export function CanvasViewport({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Esconde a dica da mao apos a animacao (ou na 1a interacao).
+  React.useEffect(() => {
+    if (!mostrarDica) return;
+    const id = window.setTimeout(() => setMostrarDica(false), 4200);
+    return () => window.clearTimeout(id);
+  }, [mostrarDica]);
+
   // Zoom centrado num ponto do viewport (mantem o ponto sob o cursor fixo).
   const zoomEm = React.useCallback((fator: number, cx: number, cy: number) => {
     setT((prev) => {
       const scale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, prev.scale * fator));
       const k = scale / prev.scale;
-      // ponto no espaco do conteudo: (c - tx)/prev.scale; mantem fixo => ajusta t.
       const tx = cx - (cx - prev.tx) * k;
       const ty = cy - (cy - prev.ty) * k;
       return { scale, tx, ty };
@@ -75,15 +98,18 @@ export function CanvasViewport({ children }: { children: React.ReactNode }) {
     [zoomEm],
   );
 
-  // Wheel: ctrl/cmd = zoom no cursor; senao = pan (vertical + horizontal).
+  // Wheel: ctrl/cmd (ou pinch do trackpad) = zoom SUAVE; senao = pan.
   React.useEffect(() => {
     const vp = viewportRef.current;
     if (!vp) return;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
+      setMostrarDica(false);
       if (e.ctrlKey || e.metaKey) {
         const rect = vp.getBoundingClientRect();
-        const fator = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+        // Proporcional ao gesto, com teto por evento (nada de salto forte).
+        const bruto = Math.exp(-e.deltaY * 0.0016);
+        const fator = Math.min(1.12, Math.max(0.89, bruto));
         zoomEm(fator, e.clientX - rect.left, e.clientY - rect.top);
       } else {
         setT((prev) => ({ ...prev, tx: prev.tx - e.deltaX, ty: prev.ty - e.deltaY }));
@@ -93,24 +119,30 @@ export function CanvasViewport({ children }: { children: React.ReactNode }) {
     return () => vp.removeEventListener("wheel", onWheel);
   }, [zoomEm]);
 
-  // Pan arrastando: comeca so quando o pointer-down e no FUNDO do canvas (nao em
-  // cima do papel do relatorio, para nao atrapalhar a busca/tabela).
-  const panRef = React.useRef<{ x: number; y: number; tx: number; ty: number } | null>(null);
+  // Arraste em qualquer lugar (menos sobre controles interativos). Threshold
+  // preserva o clique: so vira "pan" depois de mover alguns pixels.
+  const dragRef = React.useRef<{ x: number; y: number; tx: number; ty: number; moved: boolean } | null>(null);
   const onPointerDown = (e: React.PointerEvent) => {
-    const alvo = e.target as HTMLElement;
-    const noFundo = alvo.dataset.canvasBg === "1";
-    if (!noFundo) return;
-    panRef.current = { x: e.clientX, y: e.clientY, tx: tRef.current.tx, ty: tRef.current.ty };
-    setArrastando(true);
+    if (e.button !== 0) return;
+    if (ehInterativo(e.target as HTMLElement)) return;
+    dragRef.current = { x: e.clientX, y: e.clientY, tx: tRef.current.tx, ty: tRef.current.ty, moved: false };
+    setMostrarDica(false);
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   };
   const onPointerMove = (e: React.PointerEvent) => {
-    const p = panRef.current;
-    if (!p) return;
-    setT((prev) => ({ ...prev, tx: p.tx + (e.clientX - p.x), ty: p.ty + (e.clientY - p.y) }));
+    const d = dragRef.current;
+    if (!d) return;
+    const dx = e.clientX - d.x;
+    const dy = e.clientY - d.y;
+    if (!d.moved && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+    if (!d.moved) {
+      d.moved = true;
+      setArrastando(true);
+    }
+    setT((prev) => ({ ...prev, tx: d.tx + dx, ty: d.ty + dy }));
   };
   const onPointerUp = (e: React.PointerEvent) => {
-    panRef.current = null;
+    dragRef.current = null;
     setArrastando(false);
     try {
       (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
@@ -125,29 +157,52 @@ export function CanvasViewport({ children }: { children: React.ReactNode }) {
     <div className="relative h-full w-full overflow-hidden">
       <div
         ref={viewportRef}
-        data-canvas-bg="1"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
         className={cn(
-          "h-full w-full overflow-hidden",
+          "h-full w-full touch-none overflow-hidden select-none",
           "bg-[radial-gradient(circle_at_1px_1px,var(--color-border)_1px,transparent_0)] [background-size:22px_22px]",
           arrastando ? "cursor-grabbing" : "cursor-grab",
         )}
       >
-        {/* aviso para o ponteiro do pan: o fundo carrega o data-canvas-bg; o
-            conteudo abaixo NAO, entao arrastar sobre o papel nao inicia pan. */}
         <div
-          ref={contentRef}
           style={{
             width: BASE_WIDTH,
             transform: `translate(${t.tx}px, ${t.ty}px) scale(${t.scale})`,
             transformOrigin: "0 0",
+            willChange: "transform",
           }}
         >
           {children}
         </div>
       </div>
+
+      {/* Mao animada no 1o load: ensina que da pra arrastar (repete ~3x e some). */}
+      <AnimatePresence>
+        {mostrarDica ? (
+          <motion.div
+            key="drag-hint"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, transition: { duration: 0.4 } }}
+            className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center"
+          >
+            <div className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-card/85 px-5 py-4 shadow-lg backdrop-blur">
+              <motion.div
+                animate={reduce ? {} : { x: [-22, 22, -22] }}
+                transition={reduce ? {} : { duration: 1.1, repeat: 2, ease: "easeInOut" }}
+                className="text-violet-500"
+              >
+                <Hand className="h-7 w-7" aria-hidden />
+              </motion.div>
+              <p className="text-xs font-medium text-foreground">Arraste para mover</p>
+              <p className="text-[11px] text-muted-foreground">ctrl/cmd + scroll para dar zoom</p>
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       {/* Controles flutuantes (canto inferior direito). */}
       <div className="pointer-events-auto absolute right-3 bottom-3 z-20 flex items-center gap-1 rounded-xl border border-border bg-card/90 p-1 shadow-md backdrop-blur">
@@ -180,12 +235,6 @@ export function CanvasViewport({ children }: { children: React.ReactNode }) {
         >
           <Maximize className="h-4 w-4" />
         </button>
-      </div>
-
-      {/* Dica discreta (canto inferior esquerdo). */}
-      <div className="pointer-events-none absolute bottom-3 left-3 z-20 hidden items-center gap-1.5 rounded-lg border border-border bg-card/80 px-2.5 py-1.5 text-[11px] text-muted-foreground shadow-sm backdrop-blur sm:flex">
-        <Hand className="h-3.5 w-3.5" aria-hidden />
-        Arraste o fundo para mover · ctrl/cmd + scroll para zoom
       </div>
     </div>
   );

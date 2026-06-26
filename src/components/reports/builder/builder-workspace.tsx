@@ -7,7 +7,7 @@
 // de cada turno. "Abrir relatorio" navega para a rota dinamica do SavedReport.
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ExternalLink, FileBarChart, MessagesSquare } from "lucide-react";
+import { ExternalLink, FileBarChart } from "lucide-react";
 import { BuilderChatPanel, type BuilderDonePayload } from "./builder-chat-panel";
 import { BuilderPreview } from "./builder-preview";
 import type { BuilderReportEntry } from "@/lib/reports/builder/types";
@@ -80,11 +80,7 @@ export function BuilderWorkspace({
 
       {/* Corpo: chat (lateral) + preview (dominante) */}
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-        <aside className="flex min-h-0 w-full shrink-0 flex-col border-b border-border lg:h-auto lg:w-[384px] lg:border-r lg:border-b-0">
-          <div className="flex items-center gap-1.5 border-b border-border px-5 py-2.5 text-xs font-medium text-muted-foreground">
-            <MessagesSquare className="h-3.5 w-3.5" aria-hidden />
-            Conversa
-          </div>
+        <aside className="flex min-h-0 w-full shrink-0 flex-col border-b border-border lg:h-auto lg:w-[400px] lg:border-r lg:border-b-0">
           <div className="min-h-[320px] flex-1 lg:min-h-0">
             <BuilderChatPanel
               conversationId={conversationId}
