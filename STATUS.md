@@ -26,9 +26,18 @@
 > `(fato,shapeDerivado)→produtor` (`querySaldoProduto` p/ tabela, `queryConcentracao` p/ agregação),
 > tipos `ShapeDerivado/CampoMeta/RawSourceData` definidos, tool-calling via `ProviderClient.chat`,
 > casca de chat própria, recusa honesta em `FeatureRequest`.
-> **PRÓXIMA AÇÃO:** EXECUÇÃO inline com TDD, Bloco A → G na ordem do plano. Começar por A2 (tipos
-> base do builder) e A3 (schema Zod), depois A1 (migration `SavedReport`, dev local + `schema-changed`).
-> Stack local de pé (localhost:3000 health 200). Heartbeat 15min ativo.
+> **EXECUÇÃO EM ANDAMENTO (Bloco A):** A2 (tipos base, `builder/types.ts`), A3 (schema Zod
+> `validarReportEntry`) e A1 (tabela `SavedReport`) FEITOS e commitados; 8 testes verdes; tsc ok.
+> **NOTA CRÍTICA , drift do banco dev:** `prisma migrate dev` quis RESETAR o banco dev compartilhado
+> (drift pre-existente: `last_activity_at`, indices renomeados, etc.). Abortou SEM PERDA (estoque
+> intacto, 3904 linhas). A migration do F6 foi aplicada MANUALMENTE (idempotente) via `psql` no
+> container `nexus-odoo-db-1` + `prisma migrate resolve --applied`. **Para futuras migrations do F6:
+> NUNCA usar `migrate dev` (reseta o banco dev); usar SEMPRE o caminho manual** (escrever o
+> `migration.sql` idempotente em `prisma/migrations/<ts>_<nome>/`, aplicar via
+> `docker exec -i nexus-odoo-db-1 ... psql < migration.sql`, `migrate resolve --applied`, `prisma generate`).
+> **PRÓXIMA AÇÃO:** A4 (repo `saved-report-repo.ts`, etag otimista + super_admin), depois Bloco B
+> (registry/adaptadores), C (motor genérico + rota dinâmica), D (catálogo/tools), E (agente), F (tela
+> chat/preview), G (config + E2E). Stack local de pé (localhost:3000 health 200). Heartbeat 15min ativo.
 >
 > **2026-06-21 (PIVOT da personalização) , removida a camada de "resumo por IA"; o feature é o
 > RASTREADOR CONTÍNUO POR PARÂMETROS (sempre ligado, sem dado pessoal), a EXPANDIR.**
