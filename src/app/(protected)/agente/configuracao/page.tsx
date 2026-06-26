@@ -143,7 +143,8 @@ export default async function Page() {
   const routerConfig = {
     routerReformCheckpoint: routerRow?.routerReformCheckpoint ?? "OFF",
     routerReformProvider: routerRow?.routerReformProvider ?? null,
-    routerReformModel: routerRow?.routerReformModel ?? null,
+    // Default da plataforma quando nao configurado: gpt-5.4-mini (barato).
+    routerReformModel: routerRow?.routerReformModel ?? "gpt-5.4-mini",
     routerReformCredentialId: routerRow?.routerReformCredentialId ?? null,
     routerReformNPairs: routerRow?.routerReformNPairs ?? 5,
     routerEmbeddingModel: routerRow?.routerEmbeddingModel ?? null,

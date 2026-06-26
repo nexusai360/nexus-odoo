@@ -5,9 +5,10 @@
 // A tela e a action vivem em agente/configuracao (card), nao numa tela propria.
 import { prisma } from "@/lib/prisma";
 
-/** Default no codigo quando o singleton ainda nao tem config gravada. */
+/** Default no codigo quando o singleton ainda nao tem config gravada.
+ *  Padrao da plataforma: openai/gpt-5.4-mini (barato e com ferramentas/visao). */
 export const DEFAULT_BUILDER_PROVIDER = "openai";
-export const DEFAULT_BUILDER_MODEL = "gpt-5-mini";
+export const DEFAULT_BUILDER_MODEL = "gpt-5.4-mini";
 
 export interface ConfigModeloConstrutor {
   provider: string;

@@ -32,7 +32,7 @@ describe("model-config do construtor", () => {
       credentialId: null,
     });
     expect(DEFAULT_BUILDER_PROVIDER).toBe("openai");
-    expect(DEFAULT_BUILDER_MODEL).toBe("gpt-5-mini");
+    expect(DEFAULT_BUILDER_MODEL).toBe("gpt-5.4-mini");
   });
 
   it("retorna o default quando os campos estao vazios (null)", async () => {
