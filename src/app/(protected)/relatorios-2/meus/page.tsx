@@ -32,6 +32,7 @@ export default async function MeusRelatoriosPage() {
     id: m.id,
     titulo: m.titulo,
     atualizadoEm: m.atualizadoEm.toISOString(),
+    compartilhado: m.status === "publicado",
   }));
   return (
     <PageShell variant="wide">

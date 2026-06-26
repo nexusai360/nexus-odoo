@@ -40,12 +40,77 @@ export async function criarRascunho(criadoPor: string, entry: unknown) {
   });
 }
 
-/** Le um rascunho; super_admin ve de qualquer dono, demais so o proprio. */
+/**
+ * Le um relatorio para CONSUMO. Ve quem: o criador, super_admin, ou um usuario
+ * explicitamente liberado em `visibilidadeConsumo` (compartilhamento, P3).
+ */
 export async function obterRascunho(id: string, ctx: Ctx) {
+  const r = await prisma.savedReport.findUnique({ where: { id } });
+  if (!r) return null;
+  const liberado =
+    r.criadoPor === ctx.userId ||
+    ctx.role === "super_admin" ||
+    (r.visibilidadeConsumo ?? []).includes(ctx.userId);
+  if (!liberado) return null;
+  return r;
+}
+
+/** Quem pode GERENCIAR (renomear/compartilhar) um relatorio: criador ou super_admin. */
+async function carregarSeGerenciavel(id: string, ctx: Ctx) {
   const r = await prisma.savedReport.findUnique({ where: { id } });
   if (!r) return null;
   if (r.criadoPor !== ctx.userId && ctx.role !== "super_admin") return null;
   return r;
+}
+
+/** Detalhe para o painel de gerenciar (so criador/super_admin). */
+export async function obterDetalheGerenciavel(id: string, ctx: Ctx) {
+  return carregarSeGerenciavel(id, ctx);
+}
+
+/**
+ * Renomeia um relatorio (criador/super_admin). Atualiza o `titulo` do SavedReport
+ * E o `entry.titulo` (renderizado dentro do relatorio), para nao divergirem.
+ */
+export async function renomear(id: string, ctx: Ctx, titulo: string) {
+  const atual = await carregarSeGerenciavel(id, ctx);
+  if (!atual) return null;
+  const t = titulo.trim().slice(0, 120);
+  if (!t) throw new Error("titulo_vazio");
+  const entry = (atual.entry ?? {}) as Record<string, unknown>;
+  const novoEntry = { ...entry, titulo: t };
+  return prisma.savedReport.update({
+    where: { id },
+    data: { titulo: t, entry: novoEntry as object, etag: randomUUID() },
+    select: { id: true, titulo: true, etag: true },
+  });
+}
+
+/**
+ * Define a visibilidade de CONSUMO. `compartilhar=false` -> privado (rascunho,
+ * lista vazia). `compartilhar=true` -> publicado + lista final de userIds (o
+ * criador e sempre removido da lista; ele ve sempre por ser dono).
+ */
+export async function definirVisibilidade(
+  id: string,
+  ctx: Ctx,
+  opcoes: { compartilhar: boolean; userIds: string[] },
+) {
+  const atual = await carregarSeGerenciavel(id, ctx);
+  if (!atual) return null;
+  const lista = opcoes.compartilhar
+    ? Array.from(new Set(opcoes.userIds.filter(Boolean))).filter(
+        (uid) => uid !== atual.criadoPor,
+      )
+    : [];
+  return prisma.savedReport.update({
+    where: { id },
+    data: {
+      status: opcoes.compartilhar ? "publicado" : "rascunho",
+      visibilidadeConsumo: lista,
+    },
+    select: { id: true, status: true, visibilidadeConsumo: true },
+  });
 }
 
 /** Atualiza um rascunho do proprio usuario, com etag otimista. */

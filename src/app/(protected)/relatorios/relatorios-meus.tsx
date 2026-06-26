@@ -1,14 +1,20 @@
+"use client";
+
 // src/app/(protected)/relatorios/relatorios-meus.tsx
-// F3 , Secao "Meus relatorios": lista os rascunhos do usuario (SavedReport) como
-// cards que abrem a rota dinamica, e oferece o atalho "Novo relatorio" para o
-// construtor (so para quem pode construir: admin/super_admin).
+// F3/F6 (P3) , Secao "Meus relatorios": cards dos SavedReport. Clicar no card
+// abre o painel de detalhe (editar nome + compartilhar). Badge mostra se o
+// relatorio e Privado ou Compartilhado. "Novo relatorio" leva ao construtor.
+import { useState } from "react";
 import Link from "next/link";
-import { FileBarChart, Plus } from "lucide-react";
+import { FileBarChart, Lock, Plus, Users } from "lucide-react";
+import { ReportDetailModal } from "@/components/reports/builder/report-detail-modal";
 
 export interface RelatorioMeuItem {
   id: string;
   titulo: string;
   atualizadoEm: string;
+  /** true quando o relatorio esta publicado/compartilhado. */
+  compartilhado: boolean;
 }
 
 interface RelatoriosMeusProps {
@@ -23,6 +29,23 @@ function formatarData(iso: string): string {
 }
 
 export function RelatoriosMeus({ itens, podeConstruir }: RelatoriosMeusProps) {
+  const [lista, setLista] = useState<RelatorioMeuItem[]>(itens);
+  const [aberto, setAberto] = useState<string | null>(null);
+
+  function aplicarPatch(id: string, patch: { titulo?: string; compartilhado?: boolean }) {
+    setLista((prev) =>
+      prev.map((it) =>
+        it.id === id
+          ? {
+              ...it,
+              ...(patch.titulo !== undefined ? { titulo: patch.titulo } : {}),
+              ...(patch.compartilhado !== undefined ? { compartilhado: patch.compartilhado } : {}),
+            }
+          : it,
+      ),
+    );
+  }
+
   return (
     <section className="mt-8">
       <div className="mb-3 flex items-center justify-between gap-3">
@@ -43,7 +66,7 @@ export function RelatoriosMeus({ itens, podeConstruir }: RelatoriosMeusProps) {
         ) : null}
       </div>
 
-      {itens.length === 0 ? (
+      {lista.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-card/50 px-6 py-10 text-center">
           <FileBarChart className="mx-auto h-9 w-9 text-muted-foreground/50" aria-hidden />
           <p className="mt-2 text-sm text-muted-foreground">
@@ -53,25 +76,48 @@ export function RelatoriosMeus({ itens, podeConstruir }: RelatoriosMeusProps) {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {itens.map((it) => (
-            <Link
+          {lista.map((it) => (
+            <button
               key={it.id}
-              href={`/relatorios-2/d/${it.id}`}
-              className="group flex flex-col gap-2 rounded-xl border border-border bg-card p-4 transition-colors hover:border-violet-500/50 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-violet-400/50 focus-visible:outline-none"
+              type="button"
+              onClick={() => setAberto(it.id)}
+              className="group flex cursor-pointer flex-col gap-2 rounded-xl border border-border bg-card p-4 text-left transition-colors hover:border-violet-500/50 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-violet-400/50 focus-visible:outline-none"
             >
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-500/15 text-violet-500">
-                <FileBarChart className="h-5 w-5" aria-hidden />
+              <div className="flex items-center justify-between">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-500/15 text-violet-500">
+                  <FileBarChart className="h-5 w-5" aria-hidden />
+                </div>
+                <span
+                  className={
+                    it.compartilhado
+                      ? "flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300"
+                      : "flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground"
+                  }
+                >
+                  {it.compartilhado ? (
+                    <Users className="h-3 w-3" aria-hidden />
+                  ) : (
+                    <Lock className="h-3 w-3" aria-hidden />
+                  )}
+                  {it.compartilhado ? "Compartilhado" : "Privado"}
+                </span>
               </div>
-              <span className="line-clamp-2 text-sm font-medium text-foreground">
-                {it.titulo}
-              </span>
+              <span className="line-clamp-2 text-sm font-medium text-foreground">{it.titulo}</span>
               <span className="text-xs text-muted-foreground">
                 Atualizado em {formatarData(it.atualizadoEm)}
               </span>
-            </Link>
+            </button>
           ))}
         </div>
       )}
+
+      {aberto ? (
+        <ReportDetailModal
+          reportId={aberto}
+          onClose={() => setAberto(null)}
+          onChanged={(patch) => aplicarPatch(aberto, patch)}
+        />
+      ) : null}
     </section>
   );
 }
