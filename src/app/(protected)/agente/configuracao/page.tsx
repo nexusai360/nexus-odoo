@@ -35,6 +35,8 @@ import { loadEffectiveModelsByProvider } from "@/lib/agent/llm/effective-catalog
 import type { ModelEntry } from "@/lib/agent/llm/catalog";
 import type { LlmProvider } from "@/lib/agent/llm/types";
 import { getUsdBrlRate } from "@/lib/agent/llm/exchange-rate";
+import { BuilderModelCard } from "@/components/agent/builder-model-card";
+import { obterConfigModeloConstrutor } from "@/lib/reports/builder/agent/model-config";
 
 export const metadata = {
   title: "Configuração do Agente | Matrix Fitness Group",
@@ -158,6 +160,17 @@ export default async function Page() {
     openrouter: modelEntries[3],
   };
 
+  // F6 , config de modelo do construtor (card; default openai/gpt-5-mini).
+  const builderModelo = await obterConfigModeloConstrutor();
+  const builderModelsByProvider: Record<string, { value: string; label: string }[]> = {};
+  for (const p of PROVIDERS) {
+    builderModelsByProvider[p] = modelsByProvider[p].map((m) => ({
+      value: m.id,
+      label: m.label,
+    }));
+  }
+  const builderProviders = reformProviders.length > 0 ? reformProviders : PROVIDERS;
+
   return (
     <PageShell variant="form">
       <PageHeader
@@ -204,6 +217,20 @@ export default async function Page() {
               chatModelsByProvider={modelsByProvider}
               embeddingActiveId={embeddingStatus.active?.id ?? null}
               embeddingOptions={embeddingOptions}
+            />
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-2xl border border-border bg-muted/30 p-2">
+          <CardHeader className="pt-5 pb-5">
+            <CardTitle>Construtor de relatorios</CardTitle>
+          </CardHeader>
+          <CardContent className="pb-5">
+            <BuilderModelCard
+              initialProvider={builderModelo.provider}
+              initialModel={builderModelo.model}
+              providers={builderProviders}
+              modelsByProvider={builderModelsByProvider}
             />
           </CardContent>
         </Card>
