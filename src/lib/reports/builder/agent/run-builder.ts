@@ -25,6 +25,8 @@ import { construirToolDefs, despachar } from "./tool-bridge";
 import { validarFicha } from "../tools";
 import { obterConfigModeloConstrutor } from "./model-config";
 import { verificarQuota, type ResultadoQuota } from "./quota";
+import { obterRecursosConstrutor } from "./recursos-config";
+import type { ReasoningEffort } from "@/lib/agent/llm/types";
 import { SYSTEM_CONSTRUTOR } from "./prompt";
 
 /** Maximo de iteracoes do loop (cada uma = 1 chamada ao modelo). */
@@ -65,6 +67,8 @@ export interface RunBuilderDeps {
     resumo: string,
     dominio: string | null,
   ) => Promise<void>;
+  /** Config de raciocinio do construtor (liga o reasoning do modelo). */
+  obterReasoning: () => Promise<{ ligado: boolean; effort: string | null }>;
 }
 
 /** Resolve config+credencial e constroi o ProviderClient do construtor. */
@@ -107,6 +111,10 @@ const DEPS_PADRAO: RunBuilderDeps = {
   verificarQuota,
   logUsage,
   registrarFeatureRequest: registrarFeatureRequestPadrao,
+  obterReasoning: async () => {
+    const r = await obterRecursosConstrutor();
+    return { ligado: r.reasoningCheckpoint === "PRODUCTION", effort: r.reasoningEffort };
+  },
 };
 
 /** Uma ficha so e entregavel se tem ao menos 1 secao e passa na validacao. */
@@ -146,6 +154,10 @@ export async function runBuilder(
   }
 
   const toolDefs = construirToolDefs();
+  const reasoning = await deps.obterReasoning();
+  const reasoningEffort: ReasoningEffort | undefined = reasoning.ligado
+    ? ((reasoning.effort as ReasoningEffort | null) ?? "high")
+    : undefined;
   let ficha: BuilderReportEntry | null = input.fichaAtual;
   let reparosRestantes = MAX_REPAIR;
 
@@ -159,7 +171,12 @@ export async function runBuilder(
   messages.push({ role: "user", content: prompt });
 
   for (let i = 0; i < MAX_ITER; i++) {
-    const res = await cliente.chat({ messages, tools: toolDefs, temperature: 0.2 });
+    const res = await cliente.chat({
+      messages,
+      tools: toolDefs,
+      temperature: 0.2,
+      ...(reasoningEffort ? { reasoningEffort } : {}),
+    });
 
     await deps.logUsage({
       provider: cliente.provider,

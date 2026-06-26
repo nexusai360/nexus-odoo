@@ -40,6 +40,7 @@ function deps(cliente: ProviderClient, over: Partial<RunBuilderDeps> = {}): RunB
     verificarQuota: async () => ({ ok: true }),
     logUsage: jest.fn(async () => {}),
     registrarFeatureRequest: jest.fn(async () => {}),
+    obterReasoning: async () => ({ ligado: false, effort: null }),
     ...over,
   };
 }

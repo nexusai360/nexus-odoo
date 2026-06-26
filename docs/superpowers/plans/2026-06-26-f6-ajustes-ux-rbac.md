@@ -4,13 +4,10 @@
 > Decisões: RBAC em campos do `AgentSettings`; label "Relatórios 2.0" num
 > constant compartilhado (provisório). Migrations do F6 SEMPRE manuais. F6 só local.
 
-## Onda 1 , UX global + quick wins
-- [ ] 1. Respiro de rolagem global: padding inferior extra no conteúdo (layout
-      protegido) para a bubble não atrapalhar. Ajustar a altura do construtor
-      (full-height) para continuar cabendo.
-- [ ] 2. Dropdowns (CustomSelect/SearchableSelect/ApiKeySelect) abrem pra cima
-      quando perto do rodapé (auto-flip do popover base-ui).
-- [ ] 3. Renomear submenu "Construtor de relatórios" -> "Construtor" no sidebar.
+## Onda 1 , UX global + quick wins , FEITA (commit a1a856f)
+- [x] 1. Respiro de rolagem global (layout pb-24; construtor recalcula altura).
+- [x] 2. ApiKeySelect abre pra cima (flipUp). Custom/Searchable já flipam (base-ui).
+- [x] 3. Submenu "Construtor" (curto) via constant RELATORIOS2_* (fonte única).
 
 ## Onda 2 , Config do construtor (Agente > Configuração)
 - [ ] 4. Revisar filtro de modelos: só modelos com raciocínio + ferramentas.
@@ -18,11 +15,10 @@
       mas 2 estados (Desativado/Produção). Campos novos no AgentSettings +
       ligar no run-builder/transcribe/visão.
 
-## Onda 3 , Composer do construtor = igual à bubble do Nex
-- [ ] 6. Reescrever composer: anexo (menu imagem/arquivo) + input sutil 1 linha
-      + mic gravando de verdade (animação) + enviar circular; placeholder
-      "Construa com o agente Nex…"; ajuda só "Enter envia · Shift+Enter quebra
-      linha". Copiar componentes da bubble.
+## Onda 3 , Composer do construtor = igual à bubble do Nex , FEITA (commit ee40135)
+- [x] 6. Reusa MessageInput + AttachMenu + AudioRecorder persistente + enviar
+      arredondado. Áudio corrigido (instância única). Placeholder/ajuda Nex.
+      Anexo gated por config de imagem (chips staged; envio ao agente = Onda 2).
 
 ## Onda 4 , Controle de acesso do menu Relatórios 2.0 (tela Configuração)
 - [ ] 7. Fonte única do nome "Relatórios 2.0" (constant compartilhado nav+config).

@@ -2962,6 +2962,11 @@ model AgentSettings {
   builderModelId           String? @map("builder_model_id")
   /// Credencial (chave de API) usada pelo modelo do construtor.
   builderModelCredentialId String? @map("builder_model_credential_id") @db.Uuid
+  /// Recursos do construtor (2 estados na UI: OFF/PRODUCTION).
+  builderReasoningCheckpoint FeatureCheckpoint @default(OFF) @map("builder_reasoning_checkpoint")
+  builderReasoningEffort     String?           @map("builder_reasoning_effort")
+  builderAudioCheckpoint     FeatureCheckpoint @default(OFF) @map("builder_audio_checkpoint")
+  builderAnexoCheckpoint     FeatureCheckpoint @default(OFF) @map("builder_anexo_checkpoint")
 
   /// R1 router de catalogo (sub-projeto do roadmap de cobertura completa).
   /// Ver docs/superpowers/specs/2026-05-28-router-catalogo-design.md.

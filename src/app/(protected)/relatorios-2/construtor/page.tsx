@@ -26,20 +26,25 @@ export default async function ConstrutorPage() {
       select: {
         audioProvider: true,
         audioModel: true,
-        audioCheckpoint: true,
         imageProvider: true,
         imageModel: true,
-        imageCheckpoint: true,
+        builderAudioCheckpoint: true,
+        builderAnexoCheckpoint: true,
       },
     })
     .catch(() => null);
+  // Audio do construtor: toggle do construtor LIGADO + modelo de transcricao
+  // (compartilhado com o Nex) configurado.
   const audioEnabled = Boolean(
-    settings?.audioProvider && settings?.audioModel && settings?.audioCheckpoint !== "OFF",
+    settings?.builderAudioCheckpoint === "PRODUCTION" &&
+      settings?.audioProvider &&
+      settings?.audioModel,
   );
-  // Anexo (imagem) reusa a config de entendimento de imagem do Nex como
-  // pre-requisito de visao. O envio ao agente construtor entra na Onda 2.
+  // Anexo: toggle do construtor LIGADO + modelo de visao (imagem) configurado.
   const anexoEnabled = Boolean(
-    settings?.imageProvider && settings?.imageModel && settings?.imageCheckpoint !== "OFF",
+    settings?.builderAnexoCheckpoint === "PRODUCTION" &&
+      settings?.imageProvider &&
+      settings?.imageModel,
   );
 
   return (

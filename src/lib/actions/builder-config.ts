@@ -6,6 +6,10 @@
 // super_admin (mesma regra dos demais cards de modelo da config).
 import { requireSuperAdmin } from "./_helpers";
 import { definirConfigModeloConstrutor } from "@/lib/reports/builder/agent/model-config";
+import {
+  definirRecursosConstrutor,
+  type PatchRecursosConstrutor,
+} from "@/lib/reports/builder/agent/recursos-config";
 
 export interface SalvarModeloConstrutorInput {
   provider: string;
@@ -37,5 +41,18 @@ export async function salvarModeloConstrutor(
     model,
     credentialId: input.credentialId ?? null,
   });
+  return { ok: true };
+}
+
+/** Salva (parcialmente) os recursos do construtor (raciocinio/audio/anexo). */
+export async function salvarRecursoConstrutor(
+  patch: PatchRecursosConstrutor,
+): Promise<SalvarModeloConstrutorResult> {
+  try {
+    await requireSuperAdmin();
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Acesso negado" };
+  }
+  await definirRecursosConstrutor(patch);
   return { ok: true };
 }
