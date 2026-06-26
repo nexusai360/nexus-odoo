@@ -109,5 +109,5 @@ export interface BuilderReportEntry
 /** Reexport conveniente para os consumidores do builder. */
 export type { ReportTemplate };
 
-/** Templates que efetivamente renderizam na onda 1. */
-export const TEMPLATES_ONDA1: ReportTemplate[] = ["DataTable"];
+/** Templates que efetivamente renderizam (compostos num relatorio rico). */
+export const TEMPLATES_ONDA1: ReportTemplate[] = ["KPIRow", "BarChart", "DataTable"];

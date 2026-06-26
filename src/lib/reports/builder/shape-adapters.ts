@@ -3,7 +3,7 @@
 // shape que cada template consome. A derivacao especifica (qual query roda
 // por shape) vive no produtor do registry (B3); aqui ficam as transformacoes
 // genericas e testaveis.
-import type { RawSourceData } from "./types";
+import type { CampoMeta, RawSourceData } from "./types";
 
 /** Linha de tabela: as proprias linhas da fonte. */
 export type LinhaTabela = Record<string, unknown>;
@@ -14,9 +14,20 @@ export interface ItemCategorico {
   valor: number;
 }
 
-/** Shape "tabela": passa as linhas adiante. */
-export function adaptarTabela(raw: RawSourceData): LinhaTabela[] {
-  return raw.linhas;
+/**
+ * Shape "tabela": quando `campos` e fornecido (contrato da fonte), PROJETA cada
+ * linha para SOMENTE essas chaves, na ordem declarada. Isso evita vazar campos
+ * crus aninhados (ex.: `detalhePorLocal`, um array de objetos) para a tabela ,
+ * que apareceriam como "[object Object]". Sem `campos`, passa as linhas como vem.
+ */
+export function adaptarTabela(raw: RawSourceData, campos?: CampoMeta[]): LinhaTabela[] {
+  if (!campos || campos.length === 0) return raw.linhas;
+  const keys = campos.map((c) => c.key);
+  return raw.linhas.map((linha) => {
+    const proj: LinhaTabela = {};
+    for (const k of keys) proj[k] = linha[k];
+    return proj;
+  });
 }
 
 /** Shape "kpis": os escalares ja calculados pela fonte. */

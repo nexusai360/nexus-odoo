@@ -178,6 +178,7 @@ export function ReportDetailModal({ reportId, onClose, onChanged }: ReportDetail
   return (
     <AnimatePresence>
       <motion.div
+        key="scrim"
         aria-hidden
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -187,6 +188,7 @@ export function ReportDetailModal({ reportId, onClose, onChanged }: ReportDetail
         onClick={onClose}
       />
       <motion.div
+        key="dialog"
         role="dialog"
         aria-modal="true"
         aria-label="Detalhes do relatorio"

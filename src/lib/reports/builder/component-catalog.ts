@@ -23,6 +23,34 @@ export interface ComponentEntry {
 
 export const COMPONENT_CATALOG: ComponentEntry[] = [
   {
+    chave: "KPIRow",
+    nome: "Faixa de indicadores",
+    paraQueServe:
+      "Mostrar 2 a 6 numeros-chave (totais, valor, contagens) em destaque no topo do relatorio.",
+    quandoUsar:
+      "Sempre que a fonte oferecer o shape 'kpis'. Use no TOPO, antes do grafico e da tabela, para dar o panorama.",
+    quandoNaoUsar:
+      "Detalhe linha a linha (use tabela) ou comparar muitas categorias (use barra).",
+    shapeDerivadoExigido: "kpis",
+    parametros: [{ chave: "titulo", descricao: "Titulo curto opcional da faixa." }],
+    interacao: ["destaque_numerico"],
+    tokensVisuais: { cartao: "kpi.card", icone: "kpi.tone" },
+  },
+  {
+    chave: "BarChart",
+    nome: "Grafico de barras",
+    paraQueServe:
+      "Comparar um valor entre categorias (ex.: valor por familia, saldo por armazem).",
+    quandoUsar:
+      "Quando a fonte oferecer 'agregacaoCategorica'. Use entre os KPIs e a tabela para uma leitura visual rapida.",
+    quandoNaoUsar:
+      "Muitos itens sem ranking (use tabela) ou serie no tempo (use linha).",
+    shapeDerivadoExigido: "agregacaoCategorica",
+    parametros: [{ chave: "titulo", descricao: "Titulo curto opcional do grafico." }],
+    interacao: ["tooltip", "topN"],
+    tokensVisuais: { barra: "chart.bar", grade: "chart.grid" },
+  },
+  {
     chave: "DataTable",
     nome: "Tabela de dados",
     paraQueServe:

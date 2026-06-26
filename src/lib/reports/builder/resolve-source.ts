@@ -8,7 +8,7 @@ import {
   adaptarKpis,
   adaptarAgregacaoCategorica,
 } from "./shape-adapters";
-import type { BuilderSection, RawSourceData } from "./types";
+import type { BuilderSection, CampoMeta, RawSourceData } from "./types";
 import type { FiltrosFonte } from "./source-registry";
 
 export interface SecaoResolvida {
@@ -16,12 +16,18 @@ export interface SecaoResolvida {
   estado: "ok" | "vazio" | "erro";
   freshness?: Date | null;
   erro?: string;
+  /** Metadados dos campos do shape (rotulos + tipo de formatacao) para o render. */
+  campos?: CampoMeta[];
 }
 
-function aplicarAdaptador(secao: BuilderSection, raw: RawSourceData): unknown {
+function aplicarAdaptador(
+  secao: BuilderSection,
+  raw: RawSourceData,
+  campos?: CampoMeta[],
+): unknown {
   switch (secao.shapeDerivado) {
     case "tabela":
-      return adaptarTabela(raw);
+      return adaptarTabela(raw, campos);
     case "kpis":
       return adaptarKpis(raw);
     case "agregacaoCategorica":
@@ -51,7 +57,14 @@ export async function resolveSecao(
     return { estado: "erro", erro: "fonte_indisponivel" };
   }
   const raw = await produtor(filtros);
-  const dado = aplicarAdaptador(secao, raw);
-  const estado: SecaoResolvida["estado"] = raw.linhas.length === 0 ? "vazio" : "ok";
-  return { dado, estado, freshness: raw.freshness };
+  const campos = contrato.campos?.[secao.shapeDerivado];
+  const dado = aplicarAdaptador(secao, raw, campos);
+  // KPIs nao tem "linhas" (sao escalares na fonte): considera vazio so quando
+  // nao ha nenhum kpi. Demais shapes usam o numero de linhas.
+  const vazio =
+    secao.shapeDerivado === "kpis"
+      ? Object.keys(raw.kpis ?? {}).length === 0
+      : raw.linhas.length === 0;
+  const estado: SecaoResolvida["estado"] = vazio ? "vazio" : "ok";
+  return { dado, estado, freshness: raw.freshness, campos };
 }

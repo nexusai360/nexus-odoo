@@ -20,6 +20,29 @@ describe("shape-adapters", () => {
     ]);
   });
 
+  it("adaptarTabela PROJETA so as colunas do contrato (descarta campos aninhados)", () => {
+    const raw: RawSourceData = {
+      linhas: [
+        {
+          produtoNome: "Esteira",
+          valorTotal: 1000,
+          numLocais: 3,
+          detalhePorLocal: [{ local: "A", saldo: 2 }, { local: "B", saldo: 1 }],
+        },
+      ],
+      freshness: null,
+    };
+    const campos = [
+      { key: "produtoNome", label: "Produto", tipo: "texto" as const },
+      { key: "valorTotal", label: "Valor", tipo: "moeda" as const },
+    ];
+    // So as 2 colunas declaradas; nada de numLocais/detalhePorLocal (que viravam
+    // "[object Object]" na tela).
+    expect(adaptarTabela(raw, campos)).toEqual([
+      { produtoNome: "Esteira", valorTotal: 1000 },
+    ]);
+  });
+
   it("adaptarKpis devolve os escalares (vazio quando ausente)", () => {
     expect(
       adaptarKpis({ linhas: [], kpis: { valorTotal: 1500, totalProdutos: 2 }, freshness: null }),
