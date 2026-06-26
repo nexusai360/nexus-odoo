@@ -2967,6 +2967,12 @@ model AgentSettings {
   builderReasoningEffort     String?           @map("builder_reasoning_effort")
   builderAudioCheckpoint     FeatureCheckpoint @default(OFF) @map("builder_audio_checkpoint")
   builderAnexoCheckpoint     FeatureCheckpoint @default(OFF) @map("builder_anexo_checkpoint")
+  /// Acesso ao menu Relatorios 2.0 e a cada submenu (nivel minimo de perfil;
+  /// "off" = oculto para todos exceto o super_admin dono). Heranca por nivel.
+  relatorios2MenuAccess       ChannelAccessLevel @default(admin) @map("relatorios2_menu_access")
+  relatorios2PaineisAccess    ChannelAccessLevel @default(admin) @map("relatorios2_paineis_access")
+  relatorios2MeusAccess       ChannelAccessLevel @default(admin) @map("relatorios2_meus_access")
+  relatorios2ConstrutorAccess ChannelAccessLevel @default(admin) @map("relatorios2_construtor_access")
 
   /// R1 router de catalogo (sub-projeto do roadmap de cobertura completa).
   /// Ver docs/superpowers/specs/2026-05-28-router-catalogo-design.md.

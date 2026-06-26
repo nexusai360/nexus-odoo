@@ -6,6 +6,10 @@
 import { redirect } from "next/navigation";
 import { LayoutGrid } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
+import {
+  obterAcessoRelatorios2,
+  podeAcessarSubmenu,
+} from "@/lib/reports/acesso-relatorios2";
 import { PageShell } from "@/components/layout/page-shell";
 import { PageHeader } from "@/components/page-header";
 
@@ -15,6 +19,9 @@ export const dynamic = "force-dynamic";
 export default async function PaineisPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  const acesso = await obterAcessoRelatorios2();
+  if (!podeAcessarSubmenu(acesso, "paineis", { platformRole: user.platformRole, isOwner: user.isOwner }))
+    redirect("/dashboard");
 
   return (
     <PageShell variant="wide">

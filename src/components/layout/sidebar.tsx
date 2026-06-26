@@ -26,6 +26,7 @@ import {
   SECTION_LABELS,
   type NavItem,
 } from "@/lib/constants/nav";
+import { RELATORIOS2_MENU, RELATORIOS2_SUBMENUS } from "@/lib/constants/relatorios2";
 import { PLATFORM_ROLE_LABELS } from "@/lib/constants/roles";
 import type { PlatformRole } from "@/generated/prisma/client";
 import {
@@ -42,8 +43,17 @@ interface SidebarUser {
   avatarUrl: string | null;
 }
 
+/** Visibilidade dinamica do menu Relatorios 2.0 (RBAC computado no servidor). */
+export interface Relatorios2Visible {
+  menu: boolean;
+  paineis: boolean;
+  meus: boolean;
+  construtor: boolean;
+}
+
 interface SidebarProps {
   user: SidebarUser;
+  relatorios2Visible?: Relatorios2Visible;
 }
 
 const THEME_ICONS = { dark: Moon, light: Sun, system: Monitor } as const;
@@ -55,7 +65,7 @@ const THEME_LABELS = {
 
 const COLLAPSED_KEY = "nexus-sidebar-collapsed";
 
-export function Sidebar({ user }: SidebarProps) {
+export function Sidebar({ user, relatorios2Visible }: SidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const reduceMotion = useReducedMotion();
@@ -90,7 +100,24 @@ export function Sidebar({ user }: SidebarProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, [mobileOpen]);
 
-  const visibleNav = filterNav(NAV_ITEMS, user);
+  const visibleNav = useMemo(() => {
+    const base = filterNav(NAV_ITEMS, user);
+    if (!relatorios2Visible) return base;
+    return base
+      .map((item) => {
+        if (item.href !== RELATORIOS2_MENU.href) return item;
+        if (!relatorios2Visible.menu) return null;
+        const subKeys = RELATORIOS2_SUBMENUS;
+        const children = (item.children ?? []).filter((c) => {
+          if (c.href === subKeys[0].href) return relatorios2Visible.paineis;
+          if (c.href === subKeys[1].href) return relatorios2Visible.meus;
+          if (c.href === subKeys[2].href) return relatorios2Visible.construtor;
+          return true;
+        });
+        return { ...item, children };
+      })
+      .filter((x): x is NonNullable<typeof x> => x != null);
+  }, [user, relatorios2Visible]);
   const allLeafHrefs = useMemo(() => collectLeafHrefs(visibleNav), [visibleNav]);
 
   // Abre, na montagem, o grupo cujo prefixo de href bate com o pathname atual,

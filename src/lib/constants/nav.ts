@@ -46,29 +46,15 @@ export const NAV_ITEMS: NavItem[] = [
     // Label e rotas vêm de RELATORIOS2_* (fonte única). Grupo expansível (padrão
     // Agente Nex). A visibilidade fina por nível entra na Onda 4 (RBAC dinâmico);
     // por ora admin e super_admin.
+    // Sem visibleTo estatico: a visibilidade (menu + submenus) vem do RBAC
+    // dinamico (relatorios2Visible computado no layout). Ver Sidebar.
     label: RELATORIOS2_MENU.label,
     href: RELATORIOS2_MENU.href,
     icon: LayoutDashboard,
-    visibleTo: ["super_admin", "admin"],
     children: [
-      {
-        label: RELATORIOS2_SUBMENUS[0].label,
-        href: RELATORIOS2_SUBMENUS[0].href,
-        icon: LayoutGrid,
-        visibleTo: ["super_admin", "admin"],
-      },
-      {
-        label: RELATORIOS2_SUBMENUS[1].label,
-        href: RELATORIOS2_SUBMENUS[1].href,
-        icon: FileText,
-        visibleTo: ["super_admin", "admin"],
-      },
-      {
-        label: RELATORIOS2_SUBMENUS[2].label,
-        href: RELATORIOS2_SUBMENUS[2].href,
-        icon: Wrench,
-        visibleTo: ["super_admin", "admin"],
-      },
+      { label: RELATORIOS2_SUBMENUS[0].label, href: RELATORIOS2_SUBMENUS[0].href, icon: LayoutGrid },
+      { label: RELATORIOS2_SUBMENUS[1].label, href: RELATORIOS2_SUBMENUS[1].href, icon: FileText },
+      { label: RELATORIOS2_SUBMENUS[2].label, href: RELATORIOS2_SUBMENUS[2].href, icon: Wrench },
     ],
   },
   {

@@ -9,11 +9,11 @@
 - [x] 2. ApiKeySelect abre pra cima (flipUp). Custom/Searchable já flipam (base-ui).
 - [x] 3. Submenu "Construtor" (curto) via constant RELATORIOS2_* (fonte única).
 
-## Onda 2 , Config do construtor (Agente > Configuração)
-- [ ] 4. Revisar filtro de modelos: só modelos com raciocínio + ferramentas.
-- [ ] 5. Cards Raciocínio + Áudio + Anexo no bloco do construtor, padrão Nex,
-      mas 2 estados (Desativado/Produção). Campos novos no AgentSettings +
-      ligar no run-builder/transcribe/visão.
+## Onda 2 , Config do construtor (Agente > Configuração) , FEITA (commit d18ab86)
+- [x] 4. Filtro = tool-capable (usaFerramentas); raciocínio é toggle separado.
+- [x] 5. Cards Raciocínio(+esforço)/Áudio/Anexo, 2 estados (FeatureCheckpoint
+      allowed). Campos no AgentSettings; run-builder usa reasoningEffort; gates
+      audio/anexo do construtor dependem do toggle + modelo configurado.
 
 ## Onda 3 , Composer do construtor = igual à bubble do Nex , FEITA (commit ee40135)
 - [x] 6. Reusa MessageInput + AttachMenu + AudioRecorder persistente + enviar

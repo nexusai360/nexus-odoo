@@ -6,6 +6,10 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import {
+  obterAcessoRelatorios2,
+  podeAcessarSubmenu,
+} from "@/lib/reports/acesso-relatorios2";
 import { BuilderWorkspace } from "@/components/reports/builder/builder-workspace";
 
 export const metadata = { title: "Construtor de relatórios | Relatórios 2.0" };
@@ -14,7 +18,8 @@ export const dynamic = "force-dynamic";
 export default async function ConstrutorPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (user.platformRole !== "admin" && user.platformRole !== "super_admin") {
+  const acesso = await obterAcessoRelatorios2();
+  if (!podeAcessarSubmenu(acesso, "construtor", { platformRole: user.platformRole, isOwner: user.isOwner })) {
     redirect("/relatorios-2/paineis");
   }
 
