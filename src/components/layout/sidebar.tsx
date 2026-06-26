@@ -136,9 +136,16 @@ export function Sidebar({ user, relatorios2Visible }: SidebarProps) {
     setOpenGroups((prev) => ({ ...prev, [href]: !prev[href] }));
   }
 
+  // A view de um relatorio salvo vive em /relatorios-2/d/<id> (fora da arvore
+  // de submenus). Para o item "Meus relatorios" acender quando o usuario abre um
+  // relatorio, mapeamos esse prefixo para o href de "Meus".
+  const effectivePathname = pathname.startsWith("/relatorios-2/d/")
+    ? RELATORIOS2_SUBMENUS[1].href
+    : pathname;
+
   function isActive(item: NavItem): boolean {
-    if (item.children?.length) return isGroupActive(item.href, pathname);
-    return isLeafActive(item.href, pathname, allLeafHrefs);
+    if (item.children?.length) return isGroupActive(item.href, effectivePathname);
+    return isLeafActive(item.href, effectivePathname, allLeafHrefs);
   }
 
   function renderItem(item: NavItem, depth = 0, isCollapsed = false) {

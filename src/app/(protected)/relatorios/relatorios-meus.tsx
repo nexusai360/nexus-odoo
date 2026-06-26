@@ -56,7 +56,7 @@ export function RelatoriosMeus({ itens, podeConstruir }: RelatoriosMeusProps) {
           {itens.map((it) => (
             <Link
               key={it.id}
-              href={`/relatorios/d/${it.id}`}
+              href={`/relatorios-2/d/${it.id}`}
               className="group flex flex-col gap-2 rounded-xl border border-border bg-card p-4 transition-colors hover:border-violet-500/50 hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-violet-400/50 focus-visible:outline-none"
             >
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-violet-500/15 text-violet-500">

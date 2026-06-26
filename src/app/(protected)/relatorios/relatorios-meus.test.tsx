@@ -14,7 +14,7 @@ describe("RelatoriosMeus", () => {
   it("lista os relatorios do usuario com link para a rota dinamica", () => {
     render(<RelatoriosMeus itens={ITENS} podeConstruir={true} />);
     const link = screen.getByRole("link", { name: /saldo por armazem/i });
-    expect(link).toHaveAttribute("href", "/relatorios/d/sr1");
+    expect(link).toHaveAttribute("href", "/relatorios-2/d/sr1");
     expect(screen.getByText("Valor por familia")).toBeInTheDocument();
   });
 
