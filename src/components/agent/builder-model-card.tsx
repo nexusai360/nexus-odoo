@@ -54,7 +54,6 @@ export function BuilderModelCard({
 }: BuilderModelCardProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
-  const [pending, setPending] = useState(false);
 
   const [provider, setProvider] = useState<LlmProvider | "">(
     (initial.provider as LlmProvider) || providers[0] || "",
@@ -68,7 +67,6 @@ export function BuilderModelCard({
   const creds = provider ? credentialsByProvider[provider] ?? [] : [];
 
   function persist(next: { provider?: string; model?: string; credentialId?: string | null }) {
-    setPending(true);
     startTransition(async () => {
       const r = await salvarModeloConstrutor({
         provider: next.provider ?? provider,
@@ -76,7 +74,6 @@ export function BuilderModelCard({
         credentialId:
           next.credentialId !== undefined ? next.credentialId : credId || null,
       });
-      setPending(false);
       if (!r.ok) {
         toast.error(r.error ?? "Erro ao salvar o modelo do construtor.");
         router.refresh();
@@ -90,13 +87,14 @@ export function BuilderModelCard({
   return (
     <ResourceCard
       id="config-construtor-modelo"
+      collapsible
       hideCheckpoint
       checkpoint="PRODUCTION"
       onCheckpointChange={() => undefined}
       icon={<Wrench className="h-4 w-4 text-violet-500" aria-hidden />}
       title="Configuração do LLM"
       subtitle="Modelo que monta os relatorios a partir da conversa. Independente do modelo de producao do Nex. So aparecem modelos capazes de usar ferramentas."
-      loading={pending}
+      loading={false}
       ariaLabel="Modelo do construtor de relatorios"
     >
       <section className="flex flex-col gap-3">

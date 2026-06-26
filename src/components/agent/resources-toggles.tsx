@@ -263,7 +263,7 @@ export function ResourcesToggles({
           <ImageIcon className={`h-4 w-4 ${checkpointIconClass(imageCp)}`} aria-hidden />
         }
         title="Entrada de anexo"
-        subtitle="Imagens e arquivos enviados pelo usuário (clip de anexo na bubble e WhatsApp). Controle master: PRODUÇÃO libera no chat e no WhatsApp; PLAYGROUND só nas sessões de teste; OFF desativa em todos."
+        subtitle="Imagens e arquivos enviados pelo usuário."
         checkpoint={imageCp}
         onCheckpointChange={(cp) => {
           setImageCp(cp);

@@ -55,18 +55,18 @@ describe("podeAcessarSubmenu , precisa do menu E do submenu", () => {
   });
 });
 
-describe("normalizarComTravas , construtor puxa paineis/meus", () => {
-  it("construtor=admin puxa paineis/meus mais restritos para admin", () => {
+describe("normalizarComTravas , construtor puxa SOMENTE meus (paineis livre)", () => {
+  it("construtor=admin puxa meus mais restrito para admin, NAO mexe em paineis", () => {
     const r = normalizarComTravas({
       menu: "admin",
       paineis: "super_admin",
       meus: "off",
       construtor: "admin",
     });
-    expect(r.paineis).toBe("admin");
+    expect(r.paineis).toBe("super_admin"); // paineis e livre
     expect(r.meus).toBe("admin");
   });
-  it("nao mexe quando paineis/meus ja sao mais permissivos", () => {
+  it("nao mexe quando meus ja e mais permissivo", () => {
     const r = normalizarComTravas({
       menu: "admin",
       paineis: "viewer",

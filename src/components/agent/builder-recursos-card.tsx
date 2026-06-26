@@ -7,10 +7,11 @@
 // (Desativado/Producao). Auto-save por mudanca + toast; sem botao salvar.
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Brain, Mic, Paperclip } from "lucide-react";
+import { Mic, Paperclip } from "lucide-react";
+// (sem spinner de loading: a mudanca e otimista, igual aos recursos do Nex)
 import { toast } from "sonner";
 import { ResourceCard } from "@/components/agent/resource-card";
-import { CustomSelect } from "@/components/ui/custom-select";
+import { ReasoningCard } from "@/components/agent/reasoning-card";
 import { checkpointIconClass, type CheckpointState } from "@/components/ui/feature-checkpoint";
 import { salvarRecursoConstrutor } from "@/lib/actions/builder-config";
 import type {
@@ -19,27 +20,24 @@ import type {
 } from "@/lib/reports/builder/agent/recursos-config";
 
 const DOIS_ESTADOS: CheckpointState[] = ["OFF", "PRODUCTION"];
-const EFFORT_OPCOES = [
-  { value: "minimal", label: "Mínimo" },
-  { value: "low", label: "Baixo" },
-  { value: "medium", label: "Médio" },
-  { value: "high", label: "Alto" },
-];
 
-export function BuilderRecursosCard({ initial }: { initial: RecursosConstrutor }) {
+export function BuilderRecursosCard({
+  initial,
+  modelId,
+}: {
+  initial: RecursosConstrutor;
+  /** Modelo do construtor (para o ReasoningCard calcular niveis + custo). */
+  modelId: string;
+}) {
   const router = useRouter();
   const [, startTransition] = useTransition();
-  const [pending, setPending] = useState(false);
   const [reasoning, setReasoning] = useState<CheckpointState>(initial.reasoningCheckpoint);
-  const [effort, setEffort] = useState(initial.reasoningEffort ?? "high");
   const [audio, setAudio] = useState<CheckpointState>(initial.audioCheckpoint);
   const [anexo, setAnexo] = useState<CheckpointState>(initial.anexoCheckpoint);
 
   function persist(patch: PatchRecursosConstrutor) {
-    setPending(true);
     startTransition(async () => {
       const r = await salvarRecursoConstrutor(patch);
-      setPending(false);
       if (!r.ok) {
         toast.error(r.error ?? "Erro ao salvar o recurso do construtor.");
         router.refresh();
@@ -56,42 +54,20 @@ export function BuilderRecursosCard({ initial }: { initial: RecursosConstrutor }
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Raciocinio */}
-      <ResourceCard
+      {/* Raciocinio , reusa o MESMO card do Nex (esforco + custo/consumo) */}
+      <ReasoningCard
         id="construtor-raciocinio"
-        collapsible
-        defaultCollapsed
-        icon={<Brain className={`h-4 w-4 ${checkpointIconClass(reasoning)}`} aria-hidden />}
-        title="Modo raciocínio"
-        subtitle="Deixa o modelo do construtor pensar antes de montar o relatório. A própria IA decide quando usar, conforme a complexidade do pedido."
         checkpoint={reasoning}
+        effort={initial.reasoningEffort}
+        activeModelId={modelId}
         onCheckpointChange={(next) => {
           setReasoning(next);
           persist({ reasoningCheckpoint: asConstrutor(next) });
         }}
-        loading={pending}
-        ariaLabel="Estado do modo raciocínio do construtor"
+        onEffortChange={(lvl) => persist({ reasoningEffort: lvl })}
+        loading={false}
         checkpointAllowed={DOIS_ESTADOS}
-      >
-        {reasoning === "PRODUCTION" ? (
-          <div className="flex max-w-xs flex-col gap-1.5">
-            <span className="text-xs font-medium text-muted-foreground">Nível de esforço</span>
-            <CustomSelect
-              aria-label="Nível de esforço do raciocínio"
-              value={effort}
-              onChange={(v) => {
-                setEffort(v);
-                persist({ reasoningEffort: v });
-              }}
-              options={EFFORT_OPCOES}
-            />
-          </div>
-        ) : (
-          <p className="text-xs text-muted-foreground/80">
-            Ative em Produção para escolher o nível de esforço.
-          </p>
-        )}
-      </ResourceCard>
+      />
 
       {/* Audio */}
       <ResourceCard
@@ -106,7 +82,7 @@ export function BuilderRecursosCard({ initial }: { initial: RecursosConstrutor }
           setAudio(next);
           persist({ audioCheckpoint: asConstrutor(next) });
         }}
-        loading={pending}
+        loading={false}
         ariaLabel="Estado da entrada de áudio do construtor"
         checkpointAllowed={DOIS_ESTADOS}
       >
@@ -131,7 +107,7 @@ export function BuilderRecursosCard({ initial }: { initial: RecursosConstrutor }
           setAnexo(next);
           persist({ anexoCheckpoint: asConstrutor(next) });
         }}
-        loading={pending}
+        loading={false}
         ariaLabel="Estado da entrada de anexo do construtor"
         checkpointAllowed={DOIS_ESTADOS}
       >

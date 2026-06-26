@@ -231,7 +231,7 @@ export default async function Page() {
               credentialsByProvider={credentialsByProvider}
               modelsByProvider={modelsByProvider}
             />
-            <BuilderRecursosCard initial={builderRecursos} />
+            <BuilderRecursosCard initial={builderRecursos} modelId={builderModelo.model} />
           </CardContent>
         </Card>
       </div>

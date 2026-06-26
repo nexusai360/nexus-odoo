@@ -1,15 +1,14 @@
 "use client";
 
 // src/components/configuracao/relatorios2-access-card.tsx
-// Onda 4 (v2) , Bloco "Relatorios 2.0" na tela de Configuracao, no MESMO padrao
-// visual do bloco "Intervalos de sincronizacao" (Card + CardHeader). O nivel do
-// MENU vive no cabecalho (seletor a direita + descricao mutavel); os submenus
-// (Paineis/Meus/Construtor) ficam no corpo, separados por divisorias e com bom
-// respiro. Sem linha roxa. Submenus ficam cinza quando o menu esta desativado.
-// Travas de coerencia aplicadas no servidor (Construtor puxa Paineis/Meus).
+// Onda 4 (v3) , Bloco "Relatorios 2.0" na tela de Configuracao, no padrao do
+// bloco "Intervalos de sincronizacao". Nivel do MENU no cabecalho (seletor a
+// direita + descricao mutavel); submenus no corpo, separados e com respiro.
+// Sem spinner (otimista + toast). Icone acende (violeta) quando != off, cinza
+// quando off. Trava: Construtor puxa SOMENTE Meus (servidor); toast avisa.
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, LayoutDashboard, LayoutGrid, FileText, Wrench } from "lucide-react";
+import { LayoutDashboard, LayoutGrid, FileText, Wrench } from "lucide-react";
 import { toast } from "sonner";
 import {
   Card,
@@ -31,52 +30,54 @@ import { cn } from "@/lib/utils";
 
 const LEVEL_OPTIONS = channelLevelOptions();
 
+function iconeClasse(value: ChannelAccessLevel): string {
+  return value === "off" ? "text-muted-foreground/50" : "text-violet-500";
+}
+
 export function Relatorios2AccessCard({ initial }: { initial: AcessoRelatorios2 }) {
   const router = useRouter();
   const [acesso, setAcesso] = useState<AcessoRelatorios2>(initial);
-  const [pending, setPending] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
   const menuOff = acesso.menu === "off";
 
-  function salvar(next: AcessoRelatorios2, campo: string) {
-    setPending(campo);
+  function salvar(next: AcessoRelatorios2, campo: keyof AcessoRelatorios2) {
     setAcesso(next);
     startTransition(async () => {
       const r = await salvarAcessoRelatorios2(next);
-      setPending(null);
       if (!r.ok) {
         toast.error(r.error ?? "Erro ao salvar o acesso.");
+        setAcesso(initial);
         router.refresh();
         return;
       }
       setAcesso(r.acesso);
-      toast.success("Acesso do Relatorios 2.0 atualizado.");
+      if (r.acesso[campo] !== next[campo]) {
+        toast.info(
+          "Meus relatórios acompanha o Construtor: precisa ter no mínimo o mesmo acesso.",
+        );
+      } else {
+        toast.success("Acesso atualizado.");
+      }
       router.refresh();
     });
   }
 
   return (
     <Card>
-      {/* Cabecalho = nivel do MENU (igual ao bloco de sincronizacao) */}
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
         <div className="flex min-w-0 flex-col gap-1">
           <CardTitle className="flex items-center gap-2">
-            <LayoutDashboard className="h-4 w-4 text-violet-500" aria-hidden />
+            <LayoutDashboard className={cn("h-4 w-4", iconeClasse(acesso.menu))} aria-hidden />
             {RELATORIOS2_MENU.label}
           </CardTitle>
           <CardDescription>
             Quem vê o menu no sidebar. Desativado: some para todos, menos você (dono).
           </CardDescription>
         </div>
-        <Seletor
-          value={acesso.menu}
-          onChange={(v) => salvar({ ...acesso, menu: v }, "menu")}
-          loading={pending === "menu"}
-        />
+        <Seletor value={acesso.menu} onChange={(v) => salvar({ ...acesso, menu: v }, "menu")} />
       </CardHeader>
 
-      {/* Submenus, separados por divisoria e com respiro */}
       <CardContent
         className={cn(
           "divide-y divide-border border-t border-border pt-2 transition-opacity",
@@ -85,30 +86,27 @@ export function Relatorios2AccessCard({ initial }: { initial: AcessoRelatorios2 
         aria-disabled={menuOff}
       >
         <SubmenuRow
-          icon={<LayoutGrid className="h-4 w-4 text-muted-foreground" aria-hidden />}
+          icon={<LayoutGrid className={cn("h-4 w-4", iconeClasse(acesso.paineis))} aria-hidden />}
           title={RELATORIOS2_SUBMENUS[0].label}
           helper="Tela de painéis (dashboards e widgets)."
           value={acesso.paineis}
           onChange={(v) => salvar({ ...acesso, paineis: v }, "paineis")}
-          loading={pending === "paineis"}
           disabled={menuOff}
         />
         <SubmenuRow
-          icon={<FileText className="h-4 w-4 text-muted-foreground" aria-hidden />}
+          icon={<FileText className={cn("h-4 w-4", iconeClasse(acesso.meus))} aria-hidden />}
           title={RELATORIOS2_SUBMENUS[1].label}
-          helper="Relatórios que o usuário montou no construtor."
+          helper="Relatórios que o usuário montou no construtor. Acompanha o Construtor."
           value={acesso.meus}
           onChange={(v) => salvar({ ...acesso, meus: v }, "meus")}
-          loading={pending === "meus"}
           disabled={menuOff}
         />
         <SubmenuRow
-          icon={<Wrench className="h-4 w-4 text-muted-foreground" aria-hidden />}
+          icon={<Wrench className={cn("h-4 w-4", iconeClasse(acesso.construtor))} aria-hidden />}
           title={RELATORIOS2_SUBMENUS[2].label}
-          helper="Construtor de relatórios. Quem constrói precisa ver Painéis e Meus (puxa o nível)."
+          helper="Construtor de relatórios. Quem constrói sempre enxerga Meus relatórios."
           value={acesso.construtor}
           onChange={(v) => salvar({ ...acesso, construtor: v }, "construtor")}
-          loading={pending === "construtor"}
           disabled={menuOff}
         />
       </CardContent>
@@ -119,25 +117,20 @@ export function Relatorios2AccessCard({ initial }: { initial: AcessoRelatorios2 
 function Seletor({
   value,
   onChange,
-  loading,
   disabled,
 }: {
   value: ChannelAccessLevel;
   onChange: (v: ChannelAccessLevel) => void;
-  loading: boolean;
   disabled?: boolean;
 }) {
   return (
     <div className="flex shrink-0 flex-col gap-1.5 sm:items-end">
-      <div className="flex items-center gap-2 overflow-x-auto">
-        {loading ? (
-          <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" aria-label="Salvando" />
-        ) : null}
+      <div className="overflow-x-auto">
         <SegmentedControl<ChannelAccessLevel>
           value={value}
           onChange={onChange}
           options={LEVEL_OPTIONS}
-          disabled={disabled || loading}
+          disabled={disabled}
           mutedValue="off"
           aria-label="Nível de acesso"
         />
@@ -160,11 +153,10 @@ interface SubmenuRowProps {
   helper: string;
   value: ChannelAccessLevel;
   onChange: (v: ChannelAccessLevel) => void;
-  loading: boolean;
   disabled?: boolean;
 }
 
-function SubmenuRow({ icon, title, helper, value, onChange, loading, disabled }: SubmenuRowProps) {
+function SubmenuRow({ icon, title, helper, value, onChange, disabled }: SubmenuRowProps) {
   return (
     <div className="flex flex-col gap-2 py-4 first:pt-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
       <div className="min-w-0 flex-1">
@@ -174,7 +166,7 @@ function SubmenuRow({ icon, title, helper, value, onChange, loading, disabled }:
         </div>
         <p className="mt-0.5 text-xs text-muted-foreground">{helper}</p>
       </div>
-      <Seletor value={value} onChange={onChange} loading={loading} disabled={disabled} />
+      <Seletor value={value} onChange={onChange} disabled={disabled} />
     </div>
   );
 }

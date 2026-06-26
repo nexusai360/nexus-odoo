@@ -106,15 +106,15 @@ export async function definirAcessoRelatorios2(
   return norm;
 }
 
+// Trava de coerencia: o Construtor "puxa" SOMENTE "Meus relatorios" para no
+// minimo o mesmo nivel , quem constroi precisa sempre ver os proprios
+// relatorios. "Paineis" NAO entra na trava (tela a parte, pode ficar mais
+// restrita que o construtor). "off" do construtor nao puxa nada.
 export function normalizarComTravas(acesso: AcessoRelatorios2): AcessoRelatorios2 {
   const out = { ...acesso };
   if (out.construtor !== "off") {
     const alvo = LEVEL_RANK[out.construtor];
-    if (out.paineis === "off" || LEVEL_RANK[out.paineis] > alvo) out.paineis = out.construtor;
     if (out.meus === "off" || LEVEL_RANK[out.meus] > alvo) out.meus = out.construtor;
-    // O submenu nunca pode ser mais restrito que o menu... na verdade o menu
-    // controla a entrada; submenu mais permissivo que o menu nao "vaza" porque
-    // podeAcessarSubmenu exige o menu. Sem trava extra aqui.
   }
   return out;
 }
