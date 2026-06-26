@@ -21,7 +21,7 @@ describe("RelatoriosMeus", () => {
   it("mostra o botao Novo relatorio para quem pode construir", () => {
     render(<RelatoriosMeus itens={[]} podeConstruir={true} />);
     const novo = screen.getByRole("link", { name: /novo relatorio/i });
-    expect(novo).toHaveAttribute("href", "/relatorios/construtor");
+    expect(novo).toHaveAttribute("href", "/relatorios-2/construtor");
   });
 
   it("oculta o botao Novo relatorio para quem nao pode construir", () => {

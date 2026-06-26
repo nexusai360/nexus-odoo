@@ -3,15 +3,19 @@ import {
   BarChart3,
   BookOpen,
   Cable,
+  FileText,
   FlaskConical,
   Home,
   KeyRound,
+  LayoutDashboard,
+  LayoutGrid,
   Plug,
   Settings,
   SlidersHorizontal,
   Sparkles,
   TrendingUp,
   Users,
+  Wrench,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { PlatformRole } from "@/generated/prisma/client";
@@ -36,6 +40,34 @@ export const SECTION_LABELS: Record<NavSection, string> = {
 export const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: Home },
   { label: "Relatórios", href: "/relatorios", icon: BarChart3 },
+  {
+    // Relatórios 2.0 , área nova (F6): construtor + meus relatórios + painéis.
+    // Grupo expansível (mesmo padrão do Agente Nex). admin e super_admin.
+    label: "Relatórios 2.0",
+    href: "/relatorios-2",
+    icon: LayoutDashboard,
+    visibleTo: ["super_admin", "admin"],
+    children: [
+      {
+        label: "Painéis",
+        href: "/relatorios-2/paineis",
+        icon: LayoutGrid,
+        visibleTo: ["super_admin", "admin"],
+      },
+      {
+        label: "Meus relatórios",
+        href: "/relatorios-2/meus",
+        icon: FileText,
+        visibleTo: ["super_admin", "admin"],
+      },
+      {
+        label: "Construtor de relatórios",
+        href: "/relatorios-2/construtor",
+        icon: Wrench,
+        visibleTo: ["super_admin", "admin"],
+      },
+    ],
+  },
   {
     // href é o prefixo do grupo , usado como chave de openGroups e por
     // isGroupActive (o item de grupo é um <button>, não navega).

@@ -34,7 +34,7 @@ export function RelatoriosMeus({ itens, podeConstruir }: RelatoriosMeusProps) {
         </div>
         {podeConstruir ? (
           <Link
-            href="/relatorios/construtor"
+            href="/relatorios-2/construtor"
             className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-violet-500 focus-visible:ring-2 focus-visible:ring-violet-400/60 focus-visible:outline-none"
           >
             <Plus className="h-4 w-4" aria-hidden />
