@@ -5,9 +5,10 @@
 // (a resolucao acontece no server) e desenha secao a secao reusando os
 // componentes da plataforma. Templates suportados: KPIRow (indicadores),
 // BarChart (comparacao por categoria) e DataTable (detalhe linha a linha).
-import { Boxes, Coins, TrendingUp } from "lucide-react";
+import { Boxes, Coins, TrendingUp, type LucideIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { DataTable, type ColumnDef } from "@/components/charts/data-table";
-import { KPICard, type NumberFormat } from "@/components/charts/kpi-card";
+import { formatNumber, type NumberFormat } from "@/components/charts/kpi-card";
 import { BarChartCard } from "@/components/charts/bar-chart";
 import { PieChartCard } from "@/components/charts/pie-chart";
 import type {
@@ -74,7 +75,7 @@ function SecaoView({
       return <SemConteudo texto="Sem indicadores para esta secao." />;
     }
     return (
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
         {cards.map((c) => {
           const valor = Number(kpis[c.key] ?? 0);
           const tone =
@@ -85,13 +86,12 @@ function SecaoView({
               : ("default" as const);
           const Icon = c.tipo === "moeda" ? Coins : /produto|item|total/i.test(c.key) ? Boxes : TrendingUp;
           return (
-            <KPICard
+            <BuilderKpi
               key={c.key}
-              valor={valor}
               rotulo={c.label}
-              formato={formatoDoCampo(c.tipo)}
+              valor={formatNumber(valor, formatoDoCampo(c.tipo))}
               tone={tone}
-              icone={Icon}
+              Icon={Icon}
             />
           );
         })}
@@ -151,6 +151,41 @@ function SecaoView({
   return <SemConteudo texto="Este tipo de visual ainda nao e suportado pelo construtor." />;
 }
 
+/** Cartao de indicador COMPACTO do construtor (fontes menores que o KPICard
+ *  compartilhado, que e usado nos dashboards e nao deve encolher). */
+const KPI_TONE_BG: Record<"default" | "danger" | "success", string> = {
+  default: "bg-violet-600/10 text-violet-500",
+  danger: "bg-red-500/10 text-red-500",
+  success: "bg-emerald-500/10 text-emerald-500",
+};
+function BuilderKpi({
+  rotulo,
+  valor,
+  tone,
+  Icon,
+}: {
+  rotulo: string;
+  valor: string;
+  tone: "default" | "danger" | "success";
+  Icon: LucideIcon;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-muted/30 p-3.5 transition-colors hover:border-foreground/20">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="truncate text-[11px] tracking-wide text-muted-foreground uppercase">
+            {rotulo}
+          </p>
+          <div className="mt-1 text-xl font-semibold tabular-nums text-foreground">{valor}</div>
+        </div>
+        <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-lg", KPI_TONE_BG[tone])}>
+          <Icon className="h-4 w-4" aria-hidden />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SemConteudo({ texto }: { texto: string }) {
   return (
     <div className="rounded-lg border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
@@ -176,9 +211,9 @@ export function ReportRenderer({
     <div className="flex flex-col gap-6">
       {entry.titulo ? (
         <div>
-          <h1 className="text-lg font-semibold tracking-tight text-foreground">{entry.titulo}</h1>
+          <h1 className="text-base font-semibold tracking-tight text-foreground">{entry.titulo}</h1>
           {entry.descricao ? (
-            <p className="mt-1 text-[13px] text-muted-foreground">{entry.descricao}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{entry.descricao}</p>
           ) : null}
         </div>
       ) : null}

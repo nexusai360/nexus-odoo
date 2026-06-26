@@ -244,31 +244,25 @@ export function CanvasViewport({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Pinca de zoom: polegar + indicador saindo de um mesmo ponto (o "pulso") e
- * ABRINDO/FECHANDO o angulo entre eles, como o gesto de pinca do trackpad.
+ * Pinca de zoom: duas bolinhas (as pontas dos dedos) que AFASTAM e JUNTAM,
+ * representando o gesto de pinca para dar/tirar zoom. Sem mao (mais limpo).
  */
 function PincaZoom({ reduce }: { reduce: boolean }) {
   const t = reduce
     ? {}
-    : { duration: 1.2, repeat: 1, repeatType: "reverse" as const, ease: "easeInOut" };
+    : { duration: 1.3, repeat: 1, repeatType: "reverse" as const, ease: "easeInOut" };
   return (
-    <div className="relative h-10 w-12">
-      {/* indicador (dedo de cima/esquerda) */}
-      <motion.div
-        className="absolute bottom-1 left-1/2 h-7 w-2 -translate-x-1/2 rounded-full bg-violet-500"
-        style={{ transformOrigin: "50% 100%" }}
-        animate={reduce ? {} : { rotate: [-8, -30] }}
+    <div className="relative flex h-10 w-20 items-center justify-center">
+      <motion.span
+        className="absolute h-4 w-4 rounded-full bg-violet-500 shadow-sm"
+        animate={reduce ? {} : { x: [-6, -22] }}
         transition={t}
       />
-      {/* polegar (dedo de baixo/direita) */}
-      <motion.div
-        className="absolute bottom-1 left-1/2 h-6 w-2 -translate-x-1/2 rounded-full bg-violet-400"
-        style={{ transformOrigin: "50% 100%" }}
-        animate={reduce ? {} : { rotate: [8, 30] }}
+      <motion.span
+        className="absolute h-4 w-4 rounded-full bg-violet-400 shadow-sm"
+        animate={reduce ? {} : { x: [6, 22] }}
         transition={t}
       />
-      {/* pulso (ponto de origem dos dedos) */}
-      <span className="absolute bottom-0 left-1/2 h-2.5 w-2.5 -translate-x-1/2 rounded-full bg-violet-600" />
     </div>
   );
 }

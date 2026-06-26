@@ -104,6 +104,7 @@ export function BuilderChatPanel({
   const [input, setInput] = React.useState("");
   const [pending, setPending] = React.useState(false);
   const [menuOpen, setMenuOpen] = React.useState(false);
+  const menuRef = React.useRef<HTMLDivElement | null>(null);
   const [isRecording, setIsRecording] = React.useState(false);
   const [audioFlight, setAudioFlight] = React.useState(false);
   const [restoring, setRestoring] = React.useState<boolean>(!!conversationId);
@@ -219,6 +220,18 @@ export function BuilderChatPanel({
       abortRef.current?.abort();
     };
   }, []);
+
+  // Menu 3-pontos: permanece aberto e SO fecha ao clicar fora (nao no mouse-leave).
+  React.useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: PointerEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", onDown);
+    return () => document.removeEventListener("pointerdown", onDown);
+  }, [menuOpen]);
 
   // ResizeObserver + listeners de scroll/wheel/touch (stick-to-bottom + FAB +
   // tag de data). Re-roda quando a area de mensagens monta (hasMessages).
@@ -588,7 +601,7 @@ export function BuilderChatPanel({
           <MessagesSquare className="h-3.5 w-3.5" aria-hidden />
           Conversa
         </div>
-        <div className="relative flex items-center">
+        <div ref={menuRef} className="relative flex items-center">
           <button
             type="button"
             aria-label="Mais opcoes"
@@ -601,7 +614,6 @@ export function BuilderChatPanel({
             <div
               role="menu"
               className="absolute top-full right-0 z-10 mt-1.5 w-52 overflow-hidden rounded-lg border border-border bg-card shadow-lg"
-              onMouseLeave={() => setMenuOpen(false)}
             >
               {podeExportar ? (
                 <button
