@@ -14,7 +14,7 @@ import type { SecaoResolvida } from "@/lib/reports/builder/resolve-source";
 interface ColunaConfig {
   key: string;
   header: string;
-  tipo?: string;
+  tipo?: "texto" | "numero" | "moeda" | "percentual";
 }
 
 function SecaoView({
@@ -47,6 +47,7 @@ function SecaoView({
     const columns: ColumnDef<Record<string, unknown>>[] = colunas.map((c) => ({
       key: c.key,
       header: c.header,
+      tipo: c.tipo ?? "texto",
     }));
     const rows = (resolvida.dado as Record<string, unknown>[]) ?? [];
     return <DataTable columns={columns} rows={rows} searchable />;
