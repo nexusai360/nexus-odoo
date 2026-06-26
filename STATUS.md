@@ -1,5 +1,37 @@
 # STATUS — nexus-odoo
 
+> **2026-06-26 (F6 , CONSTRUTOR: qualidade + capacidade , modo autônomo) , branch
+> `feat/nex-reconstrucao`. F6 SÓ LOCAL.** Sessão longa com muitas ondas entregues
+> (tsc 0; ~92 testes builder verdes; E2E real OK). Resumo do que ficou pronto:
+> - **Relatório rico por padrão:** renderer compõe KPIRow + gráfico + tabela; bug
+>   `[object Object]` resolvido (projeção da tabela só nas colunas do contrato +
+>   célula segura). Prompt com "regra de ouro".
+> - **TODOS os fatos de estoque ativados como fontes** (`source-registry`):
+>   `fato_estoque_saldo` (produto), `_armazem` (valor por armazém),
+>   `_local_produto` (ONDE cada produto está, produto×armazém), `_marca`, `_familia`,
+>   `_movimento` (entradas/saídas por mês, serieTemporal→LineChart + detalhe),
+>   `_parados` (kpis + tabela), `_top_movimentados`. E2E real confirma o agente
+>   escolhendo o fato certo e todos resolvendo.
+> - **Gráficos:** BarChart, PieChart (pizza) e LineChart no renderer + catálogo.
+> - **Tools de edição via conversa:** `mover_secao` (reordenar), `definir_titulo`,
+>   `definir_titulo_secao`, além de adicionar/editar/remover/definir_filtro.
+> - **Filtros da ficha aplicados no servidor:** `resolveSecao` monta `FiltrosFonte`
+>   de `secao.filtros` (faixaDias→parados, sentido→top); runtime tem precedência.
+> - **UX do construtor:** canvas de preview com zoom/pan/fit confiável (min-w-0 +
+>   medição real; layout-effect), mãozinha animada (arraste + pinça de 2 bolinhas)
+>   com fundo embaçado e interrupção no 1º gesto; botão TELA CHEIA no preview;
+>   menu 3-pontos persistente (fecha só ao clicar fora); header "Conversa" alinhado
+>   ao "Pré-visualização" (h-11); KPIs/fontes do relatório compactos.
+> - **Chat = Agente Nex** (persistência, tools ao vivo, copiar/timestamp/duração),
+>   abrir relatório em `/relatorios-2/d/[savedId]` + cabeçalho, Meus relatórios
+>   editar/compartilhar (`visibilidadeConsumo`). (Tudo de ondas anteriores.)
+> **PRÓXIMAS ONDAS (pendentes, teed-up):** (1) KPI de MARCA específica (ex.: só
+> Matrix) , precisa de filtro por marca (estender querySaldoProduto/novo produtor +
+> filtro `marca` no schema/enum); (2) FILTROS AVANÇADOS na UI do relatório
+> (controles interativos: armazém/família/marca/faixa, com name→id quando preciso);
+> (3) reordenar seções por drag na UI. F6 não sobe sem aprovação.
+
+
 > **2026-06-26 (F6 , PENDÊNCIAS P1+P2+P3 ENTREGUES) , branch `feat/nex-reconstrucao`.
 > F6 SEGUE SÓ LOCAL (sem merge/deploy; migrations manuais).**
 > As 3 prioridades do handoff (`docs/superpowers/plans/2026-06-26-f6-HANDOFF-pendencias.md`)
