@@ -92,7 +92,7 @@ async function main() {
   js = t2.journeyState ?? js;
   const elegivelAgora = entendimentoElegivel(js).ok;
   console.log(`     [info] fase apos t2 = ${js.fase}; elegivel = ${elegivelAgora}`);
-  check("apos 2 turnos com ficha completa, fica elegivel OU ja foi pro resumo", elegivelAgora || js.fase === "resumo");
+  check("apos 2 turnos com ficha completa, fica elegivel", elegivelAgora);
 
   // (5) A ficha montada le dados do cache real (testa o PRODUTOR direto, sem o
   // guard de dominio do resolveSecao, que exige sessao logada , inexistente em script).

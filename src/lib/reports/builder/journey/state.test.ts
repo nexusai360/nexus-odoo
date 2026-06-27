@@ -5,8 +5,6 @@ import {
   defaultParaConversa,
   entendimentoElegivel,
   marcarDimensaoRelevante,
-  irParaResumo,
-  voltarParaEntrevista,
   type JourneyState,
 } from "./state";
 import type { SeccaoPretendida } from "./intencao";
@@ -98,17 +96,3 @@ describe("defaultParaConversa", () => {
   });
 });
 
-describe("transicoes (resumo , removidas na Task 17)", () => {
-  it("irParaResumo recusa quando inelegivel", () => {
-    const r = irParaResumo(journeyStateInicial());
-    expect("erro" in r).toBe(true);
-  });
-  it("irParaResumo aceita elegivel; voltarParaEntrevista reverte", () => {
-    const r = irParaResumo(elegivel());
-    expect("erro" in r).toBe(false);
-    if (!("erro" in r)) {
-      expect(r.fase).toBe("resumo");
-      expect(voltarParaEntrevista(r).fase).toBe("entrevista");
-    }
-  });
-});

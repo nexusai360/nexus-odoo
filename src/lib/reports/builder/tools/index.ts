@@ -25,8 +25,6 @@ import { checarCompatibilidade } from "../compat";
 import {
   atualizarEntendimento,
   oferecerOpcoes,
-  oferecerGeracao,
-  montarResumo,
   marcarDimensaoRelevante,
   type JourneyState,
   type OpcaoCard,
@@ -79,8 +77,6 @@ export const BUILDER_TOOLS: BuilderToolMeta[] = [
   { name: "marcar_dimensao_relevante", muta: true, modos: ["jornada"], descricao: "Marca uma dimensao OPCIONAL (filtros|layout|periodo) como relevante para este relatorio, quando perceber que o pedido e mais complexo. E aqui que o roteiro de perguntas cresce. Informe o motivo.", inputSchema: z.object({ dimensao: z.enum(["filtros", "layout", "periodo"]), motivo: z.string() }) },
   { name: "declarar_sem_kpi", muta: true, modos: ["jornada"], descricao: "Registra que a pessoa NAO quer indicadores (KPIs) neste relatorio, dispensando o KPIRow.", inputSchema: z.object({}) },
   { name: "oferecer_opcoes", muta: false, modos: ["jornada"], descricao: "Oferece ao usuario 2 a 4 opcoes para ele escolher (ex.: jeitos de visualizar). Cada opcao tem id, rotulo, descricao e tipoVisual opcional (KPIRow|BarChart|PieChart|LineChart|DataTable).", inputSchema: z.object({ titulo: z.string(), opcoes: z.array(z.object({ id: z.string(), rotulo: z.string(), descricao: z.string().optional(), tipoVisual: z.string().optional() })) }) },
-  { name: "oferecer_geracao", muta: true, modos: ["jornada"], descricao: "Sinaliza que voce ja entendeu o suficiente e oferece gerar o relatorio. So sera aceito se houver evidencia suficiente; caso contrario, continue entrevistando.", inputSchema: z.object({ motivo: z.string() }) },
-  { name: "montar_resumo", muta: true, modos: ["jornada"], descricao: "Monta o resumo estruturado das escolhas para a tela de resumo. So apos oferecer_geracao aceito.", inputSchema: z.object({}) },
   { name: "validar", muta: false, descricao: "Valida a ficha atual (schema + compatibilidade de todas as secoes).", inputSchema: z.object({}) },
 ];
 
@@ -132,14 +128,6 @@ export function executarTool(
       const r = oferecerOpcoes(args as { titulo: string; opcoes: OpcaoCard[] });
       return "erro" in r ? { tipo: "erro", erro: r.erro } : { tipo: "opcoes", titulo: r.titulo, opcoes: r.opcoes };
     }
-    case "oferecer_geracao": {
-      if (!journeyState) return { tipo: "erro", erro: "sem_jornada" };
-      const r = oferecerGeracao(journeyState);
-      return "journeyState" in r ? { tipo: "jornada", journeyState: r.journeyState } : { tipo: "erro", erro: `${r.erro}: ${r.falta ?? ""}`.trim() };
-    }
-    case "montar_resumo":
-      if (!journeyState) return { tipo: "erro", erro: "sem_jornada" };
-      return jornadaResult(montarResumo(journeyState));
     case "registrar_seccao_pretendida": {
       if (!journeyState) return { tipo: "erro", erro: "sem_jornada" };
       const r = registrarSeccaoPretendida(journeyState.intencao, args as unknown as SeccaoPretendida);

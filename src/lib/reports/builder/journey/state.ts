@@ -7,7 +7,7 @@ import { intencaoInicial, type IntencaoColeta } from "./intencao";
 import { roteiroDerivado, dimensaoCoberta, NUCLEO } from "./roteiro";
 import type { Blueprint } from "../agent/geracao/blueprint-types";
 
-export type FaseJornada = "entrevista" | "resumo" | "refino";
+export type FaseJornada = "entrevista" | "refino";
 
 export type Dimensao =
   | "objetivo"
@@ -17,10 +17,6 @@ export type Dimensao =
   | "filtros"
   | "layout"
   | "periodo";
-
-export interface ResumoJornada {
-  itens: { dimensao: Dimensao; texto: string }[];
-}
 
 export interface JourneyState {
   fase: FaseJornada;
@@ -34,8 +30,6 @@ export interface JourneyState {
   turnosUsuario: number;
   /** O usuario declarou que NAO quer KPIs (dispensa o KPIRow no gate). */
   semKpiDeclarado?: boolean;
-  /** Snapshot estruturado montado na fase resumo. */
-  resumo?: ResumoJornada;
   /** Intencao estruturada coletada no brainstorm (evidencia objetiva do gate). */
   intencao: IntencaoColeta;
   /** Dimensoes em escopo (roteiro): nucleo + opcionais marcadas pela IA. */
@@ -139,19 +133,7 @@ export function podeOferecerGeracao(s: JourneyState): boolean {
   return entendimentoElegivel(s).ok;
 }
 
-/** entrevista -> resumo (so com elegibilidade). */
-export function irParaResumo(s: JourneyState): JourneyState | { erro: string } {
-  const e = entendimentoElegivel(s);
-  if (!e.ok) return { erro: e.falta ?? "ainda_sem_evidencia" };
-  return { ...s, fase: "resumo" };
-}
-
-/** resumo -> entrevista (usuario quer ajustar algo). */
-export function voltarParaEntrevista(s: JourneyState): JourneyState {
-  return { ...s, fase: "entrevista" };
-}
-
-/** resumo -> refino (apos o Gerar). */
+/** entrevista -> refino (apos o Gerar). */
 export function irParaRefino(s: JourneyState): JourneyState {
   return { ...s, fase: "refino" };
 }
@@ -208,28 +190,3 @@ export function oferecerOpcoes(args: {
   return { titulo, opcoes };
 }
 
-/** A IA sinaliza que da para gerar. So aceita com elegibilidade por evidencia. */
-export function oferecerGeracao(
-  s: JourneyState,
-): { journeyState: JourneyState } | { erro: "ainda_sem_evidencia"; falta?: string } {
-  const r = irParaResumo(s);
-  if ("erro" in r) return { erro: "ainda_sem_evidencia", falta: r.erro };
-  return { journeyState: r };
-}
-
-/** Monta o resumo estruturado (so com elegibilidade), lendo ficha + entendimento. */
-export function montarResumo(
-  s: JourneyState,
-): { journeyState: JourneyState } | { erro: string } {
-  const e = entendimentoElegivel(s);
-  if (!e.ok) return { erro: e.falta ?? "ainda_sem_evidencia" };
-  const ficha = s.fichaRascunho;
-  const itens: ResumoJornada["itens"] = [];
-  if (s.entendimento) itens.push({ dimensao: "objetivo", texto: s.entendimento });
-  for (const sec of ficha?.secoes ?? []) {
-    const titulo = typeof sec.config?.titulo === "string" ? sec.config.titulo : sec.template;
-    const dimensao: Dimensao = sec.template === "KPIRow" ? "indicadores" : "visualizacao";
-    itens.push({ dimensao, texto: `${titulo} (${sec.template}) sobre ${sec.fato}` });
-  }
-  return { journeyState: { ...s, resumo: { itens } } };
-}

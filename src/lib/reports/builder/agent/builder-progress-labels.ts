@@ -23,8 +23,6 @@ const LABELS: Record<string, string> = {
   marcar_dimensao_relevante: "Percebendo mais um recorte",
   declarar_sem_kpi: "Anotando que não precisa de indicador",
   oferecer_opcoes: "Preparando opções",
-  oferecer_geracao: "Conferindo se já dá para montar",
-  montar_resumo: "Organizando o resumo",
   validar: "Validando o relatório",
 };
 

@@ -46,12 +46,10 @@ describe("builder tools index", () => {
         "marcar_dimensao_relevante",
         "declarar_sem_kpi",
         "oferecer_opcoes",
-        "oferecer_geracao",
-        "montar_resumo",
         "validar",
       ]),
     );
-    expect(BUILDER_TOOLS).toHaveLength(21);
+    expect(BUILDER_TOOLS).toHaveLength(19);
   });
 
   it("validarFicha aprova ficha valida e compativel", () => {

@@ -71,32 +71,21 @@ describe("runBuilder modo jornada", () => {
     expect(conteudos.indexOf("oi")).toBeLessThan(conteudos.indexOf("quero ver o estoque"));
   });
 
-  it("intencao coberta torna oferecer_geracao elegivel -> fase resumo", async () => {
+  it("registrar_seccao_pretendida atualiza a intencao e mantem a entrevista", async () => {
     const js = journeyStateInicial();
-    js.turnosUsuario = 2;
-    js.entendimento = "voce quer ver o saldo de estoque com indicadores e detalhe em tabela";
-    // Evidencia objetiva = intencao estruturada (gate novo, nao a ficha).
-    js.intencao = {
-      secoes: [
-        { fato: "fato_estoque_saldo", template: "KPIRow" },
-        { fato: "fato_estoque_saldo", template: "DataTable" },
-      ],
-    };
     const { cliente } = clienteSpy([
       resultado({ toolCalls: [
-        { id: "c", name: "criar_relatorio", arguments: { titulo: "Estoque" } },
-        ...SECOES,
-        { id: "g", name: "oferecer_geracao", arguments: { motivo: "entendi" } },
+        { id: "r", name: "registrar_seccao_pretendida", arguments: { fato: "fato_estoque_saldo", template: "BarChart" } },
       ] }),
-      resultado({ message: "posso gerar quando quiser" }),
+      resultado({ message: "entendi, e como voce quer ver?" }),
     ]);
-    const r = await runBuilder({ prompt: "monta", fichaAtual: null, user: USER, modo: "jornada", journeyState: js }, deps(cliente));
-    expect(r.journeyState?.fase).toBe("resumo");
+    const r = await runBuilder({ prompt: "quero saldo por armazem", fichaAtual: null, user: USER, modo: "jornada", journeyState: js }, deps(cliente));
+    expect((r.journeyState?.intencao.secoes.length ?? 0)).toBeGreaterThan(0);
+    expect(r.journeyState?.fase).toBe("entrevista");
   });
 
-  it("sem evidencia, oferecer_geracao NAO muda de fase (segue entrevista)", async () => {
+  it("turno normal (gera logo sem evidencia) segue na entrevista", async () => {
     const { cliente } = clienteSpy([
-      resultado({ toolCalls: [{ id: "g", name: "oferecer_geracao", arguments: { motivo: "acho que da" } }] }),
       resultado({ message: "ainda preciso entender mais" }),
     ]);
     const r = await runBuilder({ prompt: "gera logo", fichaAtual: null, user: USER, modo: "jornada", journeyState: journeyStateInicial() }, deps(cliente));

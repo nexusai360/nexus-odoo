@@ -36,7 +36,6 @@ import {
   defaultParaConversa,
   podeOferecerGeracao,
   irParaRefino,
-  voltarParaEntrevista,
   type JourneyState,
 } from "@/lib/reports/builder/journey/state";
 import { roteiroDerivado } from "@/lib/reports/builder/journey/roteiro";
@@ -137,12 +136,6 @@ export async function POST(req: Request): Promise<Response> {
 
   // Conta o turno do usuario (piso do gate de entendimento).
   journeyState = { ...journeyState, turnosUsuario: (journeyState.turnosUsuario ?? 0) + 1 };
-
-  // Mensagem normal durante o resumo = "ajustar": volta para a entrevista (so o
-  // clique em Gerar promove). Mantem a tela de resumo contestavel.
-  if (!querGerar && journeyState.fase === "resumo") {
-    journeyState = voltarParaEntrevista(journeyState);
-  }
 
   // Persiste a mensagem do usuario (kind=audio quando veio de voz).
   await persistBuilderMensagem(conversationId, "user", message, {
@@ -290,13 +283,10 @@ export async function POST(req: Request): Promise<Response> {
             : result.toolsCalled;
         const durationMs = result.reasoningMs;
 
-        // Promove a ficha a SavedReport (abrivel/listavel) SOMENTE no refino ou
-        // quando o usuario clica Gerar com evidencia suficiente. Na entrevista/
-        // resumo a ficha vive so no rascunho do journeyState (nao abrivel ainda).
-        const promover =
-          modo === "refino" ||
-          (querGerar && (podeOferecerGeracao(journeyState) || journeyState.fase === "resumo"));
-        if (querGerar && promover) journeyState = irParaRefino(journeyState);
+        // Promove a ficha a SavedReport (abrivel/listavel) SOMENTE no refino. O
+        // clique em Gerar elegivel ja foi tratado acima (pipeline). Na entrevista a
+        // ficha nem existe (so a intencao); nada a promover aqui.
+        const promover = modo === "refino";
 
         let savedId: string | undefined = savedReportId ?? undefined;
         let etag: string | undefined;
