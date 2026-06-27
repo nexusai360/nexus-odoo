@@ -2,9 +2,9 @@ import { builderProgressLabel } from "./builder-progress-labels";
 
 describe("builderProgressLabel", () => {
   it("traduz as tools mutadoras em frases de acao", () => {
-    expect(builderProgressLabel("criar_relatorio")).toBe("Criando o relatorio");
-    expect(builderProgressLabel("adicionar_secao")).toBe("Adicionando uma secao");
-    expect(builderProgressLabel("validar")).toBe("Validando o relatorio");
+    expect(builderProgressLabel("criar_relatorio")).toBe("Criando o relatório");
+    expect(builderProgressLabel("adicionar_secao")).toBe("Adicionando uma seção");
+    expect(builderProgressLabel("validar")).toBe("Validando o relatório");
   });
 
   it("traduz as tools de leitura", () => {
@@ -13,6 +13,6 @@ describe("builderProgressLabel", () => {
   });
 
   it("usa fallback neutro para tool desconhecida (nunca o id cru)", () => {
-    expect(builderProgressLabel("tool_que_nao_existe")).toBe("Montando o relatorio");
+    expect(builderProgressLabel("tool_que_nao_existe")).toBe("Montando o relatório");
   });
 });

@@ -97,12 +97,12 @@ describe("runBuilder , eventos de tool ao vivo + resumo", () => {
       "tool_call",
       "tool_result",
     ]);
-    expect(eventos[0]).toMatchObject({ toolName: "criar_relatorio", label: "Criando o relatorio" });
-    expect(eventos[2]).toMatchObject({ toolName: "adicionar_secao", label: "Adicionando uma secao" });
+    expect(eventos[0]).toMatchObject({ toolName: "criar_relatorio", label: "Criando o relatório" });
+    expect(eventos[2]).toMatchObject({ toolName: "adicionar_secao", label: "Adicionando uma seção" });
     // Resumo do turno: rotulos das tools + duracao numerica.
     expect(r.toolsCalled).toEqual([
-      { label: "Criando o relatorio" },
-      { label: "Adicionando uma secao" },
+      { label: "Criando o relatório" },
+      { label: "Adicionando uma seção" },
     ]);
     expect(typeof r.reasoningMs).toBe("number");
     expect(r.reasoningMs).toBeGreaterThanOrEqual(0);

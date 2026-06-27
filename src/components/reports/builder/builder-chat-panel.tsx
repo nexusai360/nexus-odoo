@@ -813,7 +813,7 @@ export function BuilderChatPanel({
         <div className="flex flex-1 flex-col items-center justify-center px-4 pb-10">
           <div className="w-full max-w-2xl">
             <h2 className="mb-3 text-center text-[1.7rem] font-semibold leading-snug tracking-tight text-foreground">
-              O que você quer <span className="text-violet-500">construir</span> hoje?
+              O que você quer construir hoje?
             </h2>
             <p className="mb-6 text-center text-sm text-muted-foreground">
               Me descreva que eu te ajudo a montar do seu jeito.
