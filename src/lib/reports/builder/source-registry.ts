@@ -25,6 +25,8 @@ export type FiltrosFonte = {
   faixaDias?: number;
   /** Sentido do movimento: "entrada" | "saida" (fato_estoque_top_movimentados). */
   sentido?: string;
+  /** Nome (ou parte) da marca para recortar um KPI por marca (ex.: "Matrix"). */
+  marca?: string;
 };
 
 type Produtor = (filtros: FiltrosFonte) => Promise<RawSourceData>;
@@ -157,11 +159,15 @@ const fatoEstoqueMarca: FonteDef = {
     fato: "fato_estoque_marca",
     modeloFonte: "estoque.saldo.hoje",
     dominio: "estoque",
-    shapes: ["agregacaoCategorica", "tabela"],
+    shapes: ["agregacaoCategorica", "kpis", "tabela"],
     campos: {
       agregacaoCategorica: [
         { key: "rotulo", label: "Marca", tipo: "texto" },
         { key: "valor", label: "Valor", tipo: "moeda" },
+      ],
+      kpis: [
+        { key: "valorMarca", label: "Valor em estoque (marca)", tipo: "moeda" },
+        { key: "marcasTotal", label: "Marcas no estoque", tipo: "numero" },
       ],
       tabela: [
         { key: "marca", label: "Marca", tipo: "texto" },
@@ -173,6 +179,18 @@ const fatoEstoqueMarca: FonteDef = {
     agregacaoCategorica: async () => {
       const d = await queryConcentracao(prisma);
       return { linhas: d.marcasBruto, freshness: null };
+    },
+    // KPI recortado por marca: usa filtros.marca (match por trecho, case-insensitive).
+    // Sem filtro, o valorMarca soma todas as marcas (total geral).
+    kpis: async (filtros) => {
+      const d = await queryConcentracao(prisma);
+      const alvo = (filtros.marca ?? "").trim().toLowerCase();
+      const valorMarca = alvo
+        ? d.marcasBruto
+            .filter((m) => m.rotulo.toLowerCase().includes(alvo))
+            .reduce((acc, m) => acc + m.valor, 0)
+        : d.marcasBruto.reduce((acc, m) => acc + m.valor, 0);
+      return { linhas: [], kpis: { valorMarca, marcasTotal: d.marcasBruto.length }, freshness: null };
     },
     tabela: async () => {
       const d = await queryConcentracao(prisma);

@@ -46,6 +46,8 @@ function filtrosDaSecao(secao: BuilderSection): FiltrosFonte {
       if (!Number.isNaN(n)) out.faixaDias = n;
     } else if (f.tipo === "sentido" && f.default) {
       out.sentido = f.default;
+    } else if (f.tipo === "marca" && f.default) {
+      out.marca = f.default;
     }
   }
   return out;

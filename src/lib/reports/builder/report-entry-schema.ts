@@ -13,7 +13,7 @@ const REPORT_TEMPLATES = [
   "PieChart",
 ] as const;
 
-const FILTER_TIPOS = ["armazem", "familia", "sentido", "faixaDias"] as const;
+const FILTER_TIPOS = ["armazem", "familia", "marca", "sentido", "faixaDias"] as const;
 
 const filtroSchema = z.object({
   tipo: z.enum(FILTER_TIPOS),

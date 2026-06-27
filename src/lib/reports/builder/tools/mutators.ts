@@ -141,7 +141,7 @@ export function definirTituloSecao(
 }
 
 interface FiltroArg {
-  tipo: "armazem" | "familia" | "sentido" | "faixaDias";
+  tipo: "armazem" | "familia" | "marca" | "sentido" | "faixaDias";
   default?: string;
 }
 

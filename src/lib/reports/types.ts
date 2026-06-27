@@ -6,6 +6,7 @@ import type { PeriodoPresetPadrao } from "@/lib/reports/periodo";
 export type ReportFilterTipo =
   | "armazem"
   | "familia"
+  | "marca"
   | "sentido"
   | "faixaDias";
 

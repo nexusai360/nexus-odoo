@@ -32,7 +32,7 @@ export interface BuilderToolMeta {
 }
 
 const filtroSchema = z.object({
-  tipo: z.enum(["armazem", "familia", "sentido", "faixaDias"]),
+  tipo: z.enum(["armazem", "familia", "marca", "sentido", "faixaDias"]),
   default: z.string().optional(),
 });
 
