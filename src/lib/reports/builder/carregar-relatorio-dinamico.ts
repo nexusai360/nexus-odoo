@@ -23,10 +23,12 @@ export type CarregamentoRelatorio =
       meta: RelatorioMeta;
     };
 
-/** Carrega, valida e resolve um relatorio dinamico para render. */
+/** Carrega, valida e resolve um relatorio dinamico para render. `filtros` de
+ *  runtime (barra de filtros da UI) tem precedencia sobre os filtros da ficha. */
 export async function carregarRelatorioDinamico(
   savedId: string,
   user: { userId: string; role: string },
+  filtros: import("./source-registry").FiltrosFonte = {},
 ): Promise<CarregamentoRelatorio> {
   const saved = await obterRascunho(savedId, user);
   if (!saved) return { tipo: "notfound" };
@@ -45,7 +47,7 @@ export async function carregarRelatorioDinamico(
 
   const dados: Record<string, SecaoResolvida> = {};
   for (const secao of v.entry.secoes) {
-    dados[secao.id] = await resolveSecao(secao, {});
+    dados[secao.id] = await resolveSecao(secao, filtros);
   }
   return { tipo: "ok", entry: v.entry, dados, meta };
 }

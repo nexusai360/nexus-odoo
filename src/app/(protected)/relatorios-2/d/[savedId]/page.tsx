@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { carregarRelatorioDinamico } from "@/lib/reports/builder/carregar-relatorio-dinamico";
-import { ReportRenderer } from "@/components/reports/builder/report-renderer";
+import { ReportViewInteractive } from "@/components/reports/builder/report-view-interactive";
 import { ReportViewHeader } from "@/components/reports/builder/report-view-header";
 import { PageShell } from "@/components/layout/page-shell";
 
@@ -61,7 +61,7 @@ export default async function RelatorioDinamicoPage({ params }: PageProps) {
         atualizadoEm={r.meta.atualizadoEm}
         criador={criador}
       />
-      <ReportRenderer entry={r.entry} dados={r.dados} />
+      <ReportViewInteractive savedId={savedId} entry={r.entry} dadosIniciais={r.dados} />
     </PageShell>
   );
 }
