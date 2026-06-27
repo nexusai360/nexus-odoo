@@ -27,6 +27,7 @@ import { arquivarBuilderConversaAction } from "@/lib/actions/builder-conversatio
 import { exportarBuilderConversaTxt } from "@/lib/actions/builder-conversation";
 import type { BuilderReportEntry } from "@/lib/reports/builder/types";
 import type { JourneyState, FaseJornada, OpcaoCard } from "@/lib/reports/builder/journey/state";
+import { OptionCards } from "./journey/option-cards";
 
 /** Payload entregue ao workspace quando um turno conclui (atualiza o preview). */
 export interface BuilderDonePayload {
@@ -75,6 +76,8 @@ interface UiMsg {
   isAudio?: boolean;
   transcribing?: boolean;
   kind?: "text" | "audio";
+  /** Cards de opcao oferecidos pela IA neste turno (jornada). */
+  opcoes?: { titulo: string; opcoes: OpcaoCard[] };
 }
 
 type SseEvent =
@@ -458,6 +461,14 @@ export function BuilderChatPanel({
                   return { ...m, steps };
                 }),
               );
+            } else if (evt.type === "choices") {
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantId
+                    ? { ...m, opcoes: { titulo: evt.titulo, opcoes: evt.opcoes } }
+                    : m,
+                ),
+              );
             } else if (evt.type === "done") {
               if (evt.conversationId && !conversationIdRef.current) {
                 conversationIdRef.current = evt.conversationId;
@@ -741,6 +752,18 @@ export function BuilderChatPanel({
                       });
                     }}
                   />
+                  {m.role === "assistant" && m.opcoes && !pending ? (
+                    <OptionCards
+                      titulo={m.opcoes.titulo}
+                      opcoes={m.opcoes.opcoes}
+                      onSelecionar={(_id, rotulo) => {
+                        setMessages((prev) =>
+                          prev.map((x) => (x.id === m.id ? { ...x, opcoes: undefined } : x)),
+                        );
+                        void handleSend(`Prefiro: ${rotulo}`);
+                      }}
+                    />
+                  ) : null}
                 </div>
               );
             })}
