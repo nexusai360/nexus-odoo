@@ -26,6 +26,7 @@ import { getBuilderConversationMessages } from "@/lib/actions/builder-conversati
 import { arquivarBuilderConversaAction } from "@/lib/actions/builder-conversation";
 import { exportarBuilderConversaTxt } from "@/lib/actions/builder-conversation";
 import type { BuilderReportEntry } from "@/lib/reports/builder/types";
+import type { JourneyState, FaseJornada, OpcaoCard } from "@/lib/reports/builder/journey/state";
 
 /** Payload entregue ao workspace quando um turno conclui (atualiza o preview). */
 export interface BuilderDonePayload {
@@ -34,6 +35,10 @@ export interface BuilderDonePayload {
   etag?: string;
   recusa?: boolean;
   bloqueado?: boolean;
+  /** Estado da jornada apos o turno (fase, rascunho, resumo). */
+  journeyState?: JourneyState;
+  /** Fase atual (atalho de journeyState.fase). */
+  fase?: FaseJornada;
 }
 
 interface BuilderChatPanelProps {
@@ -86,7 +91,10 @@ type SseEvent =
       recusa?: boolean;
       bloqueado?: boolean;
       erro?: boolean;
+      fase?: FaseJornada;
+      journeyState?: JourneyState;
     }
+  | { type: "choices"; titulo: string; opcoes: OpcaoCard[] }
   | { type: "error"; error: string };
 
 export function BuilderChatPanel({
@@ -475,6 +483,8 @@ export function BuilderChatPanel({
                 etag: evt.etag,
                 recusa: evt.recusa,
                 bloqueado: evt.bloqueado,
+                fase: evt.fase,
+                journeyState: evt.journeyState,
               });
             } else if (evt.type === "error") {
               setMessages((prev) =>
