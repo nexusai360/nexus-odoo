@@ -1,85 +1,85 @@
+jest.mock("@/lib/prisma", () => ({ prisma: {} }));
+
 import {
   journeyStateInicial,
   defaultParaConversa,
   entendimentoElegivel,
+  marcarDimensaoRelevante,
   irParaResumo,
   voltarParaEntrevista,
+  type JourneyState,
 } from "./state";
-import type { BuilderReportEntry } from "../types";
+import type { SeccaoPretendida } from "./intencao";
 
-jest.mock("@/lib/prisma", () => ({ prisma: {} }));
-
-/* eslint-disable @typescript-eslint/no-explicit-any */
-function ficha(secoes: any[]): BuilderReportEntry {
-  return {
-    id: "r",
-    titulo: "t",
-    dominio: "estoque",
-    schemaVersion: 1,
-    tipo: "tela_cheia",
-    parametros: [],
-    secoes: secoes.map((s, i) => ({
-      id: `s${i}`,
-      template: "DataTable",
-      fato: "fato_estoque_saldo",
-      shapeDerivado: "tabela",
-      config: {},
-      filtros: [],
-      ...s,
-    })),
-  } as any;
+/** Estado com evidencia objetiva (intencao estruturada) coberto no nucleo. */
+function elegivel(over: Partial<JourneyState> = {}): JourneyState {
+  const s = journeyStateInicial();
+  s.turnosUsuario = 2;
+  s.entendimento = "quero ver o saldo por armazem para repor o estoque";
+  s.intencao = {
+    secoes: [
+      { fato: "fato_estoque_saldo", template: "KPIRow" },
+      { fato: "fato_estoque_saldo", template: "BarChart" },
+    ] as SeccaoPretendida[],
+  };
+  return { ...s, ...over };
 }
 
 describe("entendimentoElegivel", () => {
   it("vazio nao elegivel", () => {
     expect(entendimentoElegivel(journeyStateInicial()).ok).toBe(false);
   });
-  it("completo + 2 turnos elegivel", () => {
-    const s = journeyStateInicial();
-    s.turnosUsuario = 2;
-    s.fichaRascunho = ficha([
-      { template: "KPIRow", shapeDerivado: "kpis" },
-      { template: "BarChart", fato: "fato_estoque_marca", shapeDerivado: "agregacaoCategorica" },
-    ]);
-    expect(entendimentoElegivel(s).ok).toBe(true);
+
+  it("nucleo coberto + 2 turnos = elegivel", () => {
+    expect(entendimentoElegivel(elegivel()).ok).toBe(true);
   });
-  it("completo em 1 turno SEM entendimento NAO elegivel (floor binding)", () => {
-    const s = journeyStateInicial();
-    s.turnosUsuario = 1;
-    s.fichaRascunho = ficha([
-      { template: "KPIRow", shapeDerivado: "kpis" },
-      { template: "BarChart", fato: "fato_estoque_marca", shapeDerivado: "agregacaoCategorica" },
-    ]);
-    expect(entendimentoElegivel(s).ok).toBe(false);
+
+  it("1 turno NAO elegivel (objetivo exige >=2 turnos)", () => {
+    expect(entendimentoElegivel(elegivel({ turnosUsuario: 1 })).ok).toBe(false);
   });
-  it("1 turno COM entendimento reflexivo -> elegivel (atalho)", () => {
-    const s = journeyStateInicial();
-    s.turnosUsuario = 1;
-    s.entendimento = "voce quer o estoque parado por marca com valor imobilizado";
-    s.fichaRascunho = ficha([
-      { template: "KPIRow", shapeDerivado: "kpis" },
-      { template: "DataTable", shapeDerivado: "tabela" },
-    ]);
-    expect(entendimentoElegivel(s).ok).toBe(true);
-  });
+
   it("so KPIRow nao satisfaz visualizacao", () => {
-    const s = journeyStateInicial();
-    s.turnosUsuario = 3;
-    s.fichaRascunho = ficha([{ template: "KPIRow", shapeDerivado: "kpis" }]);
+    const s = elegivel({
+      intencao: { secoes: [{ fato: "fato_estoque_saldo", template: "KPIRow" }] as SeccaoPretendida[] },
+    });
     expect(entendimentoElegivel(s).ok).toBe(false);
   });
+
   it("semKpiDeclarado dispensa KPIRow", () => {
-    const s = journeyStateInicial();
-    s.turnosUsuario = 2;
-    s.semKpiDeclarado = true;
-    s.fichaRascunho = ficha([{ template: "DataTable", shapeDerivado: "tabela" }]);
+    const s = elegivel({
+      intencao: {
+        secoes: [{ fato: "fato_estoque_saldo", template: "DataTable" }] as SeccaoPretendida[],
+        semKpiDeclarado: true,
+      },
+    });
     expect(entendimentoElegivel(s).ok).toBe(true);
   });
-  it("fato inexistente nao conta como dados", () => {
-    const s = journeyStateInicial();
-    s.turnosUsuario = 3;
-    s.fichaRascunho = ficha([{ fato: "fato_x", template: "DataTable", shapeDerivado: "tabela" }]);
+
+  it("sem secao registrada nao conta como dados", () => {
+    const s = elegivel({ intencao: { secoes: [] } });
     expect(entendimentoElegivel(s).ok).toBe(false);
+  });
+
+  it("dimensao opcional relevante mas nao coberta segura o gate (roteiro nao cumprido)", () => {
+    const s = elegivel({ dimensoesRelevantes: ["objetivo", "dados", "visualizacao", "indicadores", "filtros"] });
+    // filtros relevante mas nao tocada -> respondidas(4) < total(5) -> nao elegivel
+    expect(entendimentoElegivel(s).ok).toBe(false);
+  });
+});
+
+describe("marcarDimensaoRelevante", () => {
+  it("adiciona opcional e cresce o roteiro", () => {
+    const s = marcarDimensaoRelevante(journeyStateInicial(), "filtros");
+    expect(s.dimensoesRelevantes).toContain("filtros");
+  });
+  it("congela apos elegivel (nao retrai o Gerar)", () => {
+    const s = marcarDimensaoRelevante(elegivel(), "filtros");
+    expect(s.dimensoesRelevantes).not.toContain("filtros");
+  });
+  it("idempotente", () => {
+    const s1 = marcarDimensaoRelevante(journeyStateInicial(), "filtros");
+    const s2 = marcarDimensaoRelevante(s1, "filtros");
+    expect(s2.dimensoesRelevantes.filter((d) => d === "filtros")).toHaveLength(1);
   });
 });
 
@@ -90,30 +90,21 @@ describe("defaultParaConversa", () => {
   it("conversa nova -> entrevista", () => {
     expect(defaultParaConversa({ temSavedReport: false }).fase).toBe("entrevista");
   });
-  it("journeyState existente e respeitado", () => {
-    const s = journeyStateInicial();
-    s.fase = "resumo";
-    expect(defaultParaConversa({ temSavedReport: true, journeyState: s }).fase).toBe("resumo");
+  it("journeyState legado SEM intencao recebe backfill", () => {
+    const legado = { fase: "entrevista", turnosUsuario: 3, dimensoesTocadas: {} } as unknown as JourneyState;
+    const r = defaultParaConversa({ temSavedReport: false, journeyState: legado });
+    expect(r.intencao).toEqual({ secoes: [] });
+    expect(r.dimensoesRelevantes).toEqual(["objetivo", "dados", "visualizacao", "indicadores"]);
   });
 });
 
-describe("transicoes", () => {
-  function fichaElegivel() {
-    const s = journeyStateInicial();
-    s.turnosUsuario = 2;
-    s.entendimento = "x".repeat(20);
-    s.fichaRascunho = ficha([
-      { template: "KPIRow", shapeDerivado: "kpis" },
-      { template: "DataTable", shapeDerivado: "tabela" },
-    ]);
-    return s;
-  }
+describe("transicoes (resumo , removidas na Task 17)", () => {
   it("irParaResumo recusa quando inelegivel", () => {
     const r = irParaResumo(journeyStateInicial());
     expect("erro" in r).toBe(true);
   });
   it("irParaResumo aceita elegivel; voltarParaEntrevista reverte", () => {
-    const r = irParaResumo(fichaElegivel());
+    const r = irParaResumo(elegivel());
     expect("erro" in r).toBe(false);
     if (!("erro" in r)) {
       expect(r.fase).toBe("resumo");

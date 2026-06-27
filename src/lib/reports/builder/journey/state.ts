@@ -1,9 +1,11 @@
 // src/lib/reports/builder/journey/state.ts
 // Estado da jornada de construcao + gate de entendimento POR EVIDENCIA da ficha
 // (nao por auto-relato do modelo) + transicoes puras de fase. Tudo puro/testavel.
-import { obterContrato } from "../source-registry";
 import type { BuilderReportEntry } from "../types";
 import type { ReportTemplate } from "@/lib/reports/types";
+import { intencaoInicial, type IntencaoColeta } from "./intencao";
+import { roteiroDerivado, dimensaoCoberta, NUCLEO } from "./roteiro";
+import type { Blueprint } from "../agent/geracao/blueprint-types";
 
 export type FaseJornada = "entrevista" | "resumo" | "refino";
 
@@ -34,17 +36,15 @@ export interface JourneyState {
   semKpiDeclarado?: boolean;
   /** Snapshot estruturado montado na fase resumo. */
   resumo?: ResumoJornada;
+  /** Intencao estruturada coletada no brainstorm (evidencia objetiva do gate). */
+  intencao: IntencaoColeta;
+  /** Dimensoes em escopo (roteiro): nucleo + opcionais marcadas pela IA. */
+  dimensoesRelevantes: Dimensao[];
+  /** Ultimo blueprint gerado (reaproveitado no "regenerar" pos-reveal). */
+  ultimoBlueprint?: Blueprint;
 }
 
 export const TETO_TURNOS = 8;
-
-/** Templates renderaveis que contam como "visualizacao" (NAO inclui KPIRow). */
-const TEMPLATES_VISUALIZACAO: ReadonlySet<ReportTemplate> = new Set([
-  "BarChart",
-  "PieChart",
-  "LineChart",
-  "DataTable",
-]);
 
 const DIMENSOES: Dimensao[] = [
   "objetivo",
@@ -64,7 +64,13 @@ function dimensoesZeradas(): Record<Dimensao, boolean> {
 }
 
 export function journeyStateInicial(): JourneyState {
-  return { fase: "entrevista", dimensoesTocadas: dimensoesZeradas(), turnosUsuario: 0 };
+  return {
+    fase: "entrevista",
+    dimensoesTocadas: dimensoesZeradas(),
+    turnosUsuario: 0,
+    intencao: intencaoInicial(),
+    dimensoesRelevantes: [...NUCLEO],
+  };
 }
 
 /**
@@ -76,9 +82,20 @@ export function defaultParaConversa(args: {
   temSavedReport: boolean;
   journeyState?: JourneyState | null;
 }): JourneyState {
-  if (args.journeyState) return args.journeyState;
+  if (args.journeyState) return backfillCampos(args.journeyState);
   if (args.temSavedReport) return { ...journeyStateInicial(), fase: "refino" };
   return journeyStateInicial();
+}
+
+/** Backfill aditivo para journeyState legado (sem intencao/dimensoesRelevantes). */
+function backfillCampos(st: JourneyState): JourneyState {
+  return {
+    ...st,
+    intencao: st.intencao ?? intencaoInicial(),
+    dimensoesRelevantes: st.dimensoesRelevantes ?? [...NUCLEO],
+    dimensoesTocadas: st.dimensoesTocadas ?? dimensoesZeradas(),
+    turnosUsuario: st.turnosUsuario ?? 0,
+  };
 }
 
 /**
@@ -86,19 +103,36 @@ export function defaultParaConversa(args: {
  * objetiva das 4 dimensoes do nucleo. `objetivo` e binding: ficha completa em 1
  * turno SEM reflexao de entendimento NAO basta.
  */
+/**
+ * Gate por EVIDENCIA OBJETIVA: as dimensoes-nucleo precisam estar cobertas pela
+ * INTENCAO estruturada (secoes viaveis no catalogo, nao auto-relato do modelo) E o
+ * roteiro derivado tem que estar cumprido (todas as dimensoes relevantes cobertas).
+ */
 export function entendimentoElegivel(s: JourneyState): { ok: boolean; falta?: string } {
-  const secoes = s.fichaRascunho?.secoes ?? [];
-  const dados = secoes.some((sec) => obterContrato(sec.fato) !== undefined);
-  const visualizacao = secoes.some((sec) => TEMPLATES_VISUALIZACAO.has(sec.template));
-  const indicadores = secoes.some((sec) => sec.template === "KPIRow") || s.semKpiDeclarado === true;
-  const temEntendimento = !!s.entendimento && s.entendimento.trim().length >= 20;
-  const objetivo = s.turnosUsuario >= 2 || temEntendimento;
-
-  if (!dados) return { ok: false, falta: "ainda preciso entender qual dado voce quer ver" };
-  if (!visualizacao) return { ok: false, falta: "ainda preciso entender como voce quer visualizar (tabela, grafico)" };
-  if (!indicadores) return { ok: false, falta: "ainda preciso entender quais indicadores mostrar" };
-  if (!objetivo) return { ok: false, falta: "ainda preciso entender melhor o objetivo do relatorio" };
+  if (!dimensaoCoberta(s, "dados"))
+    return { ok: false, falta: "ainda preciso entender qual dado voce quer ver" };
+  if (!dimensaoCoberta(s, "visualizacao"))
+    return { ok: false, falta: "ainda preciso entender como voce quer visualizar (tabela, grafico)" };
+  if (!dimensaoCoberta(s, "indicadores"))
+    return { ok: false, falta: "ainda preciso entender quais indicadores mostrar" };
+  if (!dimensaoCoberta(s, "objetivo"))
+    return { ok: false, falta: "ainda preciso entender melhor o objetivo do relatorio" };
+  const r = roteiroDerivado(s);
+  if (r.respondidas < r.total)
+    return { ok: false, falta: "ainda faltam alguns pontos para eu montar do seu jeito" };
   return { ok: true };
+}
+
+/**
+ * Marca uma dimensao OPCIONAL (filtros/layout/periodo) como relevante , e onde o
+ * roteiro cresce. Congela apos elegivel (nao retrai o botao Gerar) e respeita o
+ * teto de 7.
+ */
+export function marcarDimensaoRelevante(s: JourneyState, d: Dimensao): JourneyState {
+  if (podeOferecerGeracao(s)) return s;
+  if (s.dimensoesRelevantes.includes(d)) return s;
+  if (s.dimensoesRelevantes.length >= 7) return s;
+  return { ...s, dimensoesRelevantes: [...s.dimensoesRelevantes, d] };
 }
 
 export function podeOferecerGeracao(s: JourneyState): boolean {

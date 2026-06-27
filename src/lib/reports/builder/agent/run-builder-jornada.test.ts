@@ -71,10 +71,17 @@ describe("runBuilder modo jornada", () => {
     expect(conteudos.indexOf("oi")).toBeLessThan(conteudos.indexOf("quero ver o estoque"));
   });
 
-  it("ficha montada no mesmo turno torna oferecer_geracao elegivel -> fase resumo", async () => {
+  it("intencao coberta torna oferecer_geracao elegivel -> fase resumo", async () => {
     const js = journeyStateInicial();
     js.turnosUsuario = 2;
     js.entendimento = "voce quer ver o saldo de estoque com indicadores e detalhe em tabela";
+    // Evidencia objetiva = intencao estruturada (gate novo, nao a ficha).
+    js.intencao = {
+      secoes: [
+        { fato: "fato_estoque_saldo", template: "KPIRow" },
+        { fato: "fato_estoque_saldo", template: "DataTable" },
+      ],
+    };
     const { cliente } = clienteSpy([
       resultado({ toolCalls: [
         { id: "c", name: "criar_relatorio", arguments: { titulo: "Estoque" } },

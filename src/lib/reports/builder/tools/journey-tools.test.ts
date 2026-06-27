@@ -19,6 +19,14 @@ function stateElegivel(): JourneyState {
   const s = journeyStateInicial();
   s.turnosUsuario = 2;
   s.entendimento = "voce quer ver o saldo de estoque com indicadores e tabela";
+  // Evidencia objetiva do gate = intencao estruturada (nao mais a ficha).
+  s.intencao = {
+    secoes: [
+      { fato: "fato_estoque_saldo", template: "KPIRow" },
+      { fato: "fato_estoque_saldo", template: "DataTable" },
+    ],
+  };
+  // fichaRascunho ainda alimenta os ITENS do montar_resumo (removido na Task 17).
   s.fichaRascunho = fichaElegivel();
   return s;
 }
