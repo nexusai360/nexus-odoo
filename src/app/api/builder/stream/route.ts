@@ -29,7 +29,14 @@ import {
   assertBuilderConversaOwned,
   persistBuilderMensagem,
   setBuilderSavedReport,
+  carregarBuilderMensagens,
 } from "@/lib/reports/builder/builder-conversation-repo";
+import {
+  defaultParaConversa,
+  podeOferecerGeracao,
+  irParaRefino,
+  type JourneyState,
+} from "@/lib/reports/builder/journey/state";
 import type { BuilderReportEntry } from "@/lib/reports/builder/types";
 
 const encoder = new TextEncoder();
@@ -53,7 +60,7 @@ export async function POST(req: Request): Promise<Response> {
     return jsonError("Acesso negado", 403);
   }
 
-  let body: { conversationId?: string; message?: string; isAudio?: boolean };
+  let body: { conversationId?: string; message?: string; isAudio?: boolean; acao?: "gerar" };
   try {
     body = (await req.json()) as typeof body;
   } catch {
@@ -61,10 +68,12 @@ export async function POST(req: Request): Promise<Response> {
   }
   const message = typeof body.message === "string" ? body.message.trim() : "";
   if (!message) return jsonError("message e obrigatorio", 400);
+  const querGerar = body.acao === "gerar";
 
   // Resolve a conversa: existente (com checagem de dono) ou cria nova.
   let conversationId: string;
   let savedReportId: string | null = null;
+  let journeyStatePersistido: JourneyState | null = null;
   if (body.conversationId) {
     try {
       await assertBuilderConversaOwned(body.conversationId, user.id);
@@ -74,18 +83,28 @@ export async function POST(req: Request): Promise<Response> {
     conversationId = body.conversationId;
     const conv = await prisma.builderConversation.findUnique({
       where: { id: conversationId },
-      select: { savedReportId: true },
+      select: { savedReportId: true, journeyState: true },
     });
     savedReportId = conv?.savedReportId ?? null;
+    journeyStatePersistido = (conv?.journeyState as JourneyState | null) ?? null;
   } else {
     const conv = await criarBuilderConversa(user.id);
     conversationId = conv.id;
   }
 
-  // Ficha atual (autoritativa do servidor): a do SavedReport vinculado, se houver.
+  // Estado da jornada: persistido ou default condicional (legado com SavedReport
+  // entra como refino; conversa nova entra como entrevista).
+  let journeyState: JourneyState = defaultParaConversa({
+    temSavedReport: !!savedReportId,
+    journeyState: journeyStatePersistido,
+  });
+  const modo: "jornada" | "refino" = journeyState.fase === "refino" ? "refino" : "jornada";
+
+  // Ficha atual: no refino vem do SavedReport (autoritativo); na jornada vem do
+  // rascunho do journeyState (a ficha so vira SavedReport no Gerar).
   let fichaAtual: BuilderReportEntry | null = null;
   let etagAtual: string | null = null;
-  if (savedReportId) {
+  if (modo === "refino" && savedReportId) {
     const sr = await prisma.savedReport.findUnique({
       where: { id: savedReportId },
       select: { entry: true, etag: true, criadoPor: true },
@@ -94,10 +113,20 @@ export async function POST(req: Request): Promise<Response> {
       fichaAtual = sr.entry as unknown as BuilderReportEntry;
       etagAtual = sr.etag;
     } else {
-      // Vinculo orfao (ficha removida/de outro dono): recomeca a ficha.
       savedReportId = null;
     }
+  } else {
+    fichaAtual = journeyState.fichaRascunho ?? null;
   }
+
+  // Historico ANTES de persistir o turno atual (evita duplicar a mensagem corrente).
+  const historicoRows = await carregarBuilderMensagens(conversationId);
+  const historico = historicoRows
+    .filter((m) => m.role === "user" || m.role === "assistant")
+    .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+
+  // Conta o turno do usuario (piso do gate de entendimento).
+  journeyState = { ...journeyState, turnosUsuario: (journeyState.turnosUsuario ?? 0) + 1 };
 
   // Persiste a mensagem do usuario (kind=audio quando veio de voz).
   await persistBuilderMensagem(conversationId, "user", message, {
@@ -131,6 +160,8 @@ export async function POST(req: Request): Promise<Response> {
             label: evt.label,
             toolCallId: evt.toolCallId,
           });
+        } else if (evt.type === "choices") {
+          emit({ type: "choices", titulo: evt.titulo, opcoes: evt.opcoes });
         }
       }
 
@@ -140,16 +171,30 @@ export async function POST(req: Request): Promise<Response> {
           fichaAtual,
           user: { id: user.id },
           onEvent,
+          modo,
+          journeyState,
+          historico,
         });
+        // Estado da jornada apos o turno (rascunho mais recente espelhado).
+        journeyState = result.journeyState ?? journeyState;
+        if (modo === "jornada") {
+          journeyState = { ...journeyState, fichaRascunho: result.ficha ?? journeyState.fichaRascunho };
+        }
 
         const steps = result.toolsCalled;
         const durationMs = result.reasoningMs;
 
-        // Persiste/atualiza a ficha quando o turno produziu uma valida e nao
-        // foi recusa/bloqueio/erro tecnico.
+        // Promove a ficha a SavedReport (abrivel/listavel) SOMENTE no refino ou
+        // quando o usuario clica Gerar com evidencia suficiente. Na entrevista/
+        // resumo a ficha vive so no rascunho do journeyState (nao abrivel ainda).
+        const promover =
+          modo === "refino" ||
+          (querGerar && (podeOferecerGeracao(journeyState) || journeyState.fase === "resumo"));
+        if (querGerar && promover) journeyState = irParaRefino(journeyState);
+
         let savedId: string | undefined = savedReportId ?? undefined;
         let etag: string | undefined;
-        if (!result.recusa && !result.bloqueado && !result.erro && result.ficha) {
+        if (promover && !result.recusa && !result.bloqueado && !result.erro && result.ficha) {
           try {
             if (savedReportId && etagAtual) {
               const upd = await atualizarRascunho(
@@ -186,6 +231,14 @@ export async function POST(req: Request): Promise<Response> {
           }
         }
 
+        // Persiste o estado da jornada atualizado (fase, rascunho, entendimento).
+        await prisma.builderConversation
+          .update({
+            where: { id: conversationId },
+            data: { journeyState: journeyState as unknown as object },
+          })
+          .catch(() => {});
+
         // Persiste a resposta do assistant (com a trilha + duracao do turno).
         const messageId = await persistBuilderMensagem(
           conversationId,
@@ -201,6 +254,8 @@ export async function POST(req: Request): Promise<Response> {
           messageId,
           steps,
           durationMs,
+          fase: journeyState.fase,
+          journeyState,
           ...(savedId ? { savedId } : {}),
           ...(etag ? { etag } : {}),
           ...(result.ficha ? { ficha: result.ficha } : {}),
