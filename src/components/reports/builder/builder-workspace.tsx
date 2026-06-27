@@ -7,14 +7,19 @@
 // de cada turno. "Abrir relatorio" navega para a rota dinamica do SavedReport.
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
-import { ExternalLink, FileBarChart, Sparkles } from "lucide-react";
-import { BuilderChatPanel, type BuilderDonePayload } from "./builder-chat-panel";
+import { ExternalLink, FileBarChart, RefreshCw } from "lucide-react";
+import {
+  BuilderChatPanel,
+  type BuilderDonePayload,
+  type ProgressoGeracaoUi,
+  type RoteiroUi,
+} from "./builder-chat-panel";
 import { BuilderPreview } from "./builder-preview";
-import { JourneySummary } from "./journey/journey-summary";
+import { RoteiroIndicador } from "./journey/roteiro-indicador";
+import { GeracaoOverlay } from "./journey/geracao-overlay";
 import { salvarFichaEditada } from "@/lib/actions/builder";
 import type { BuilderReportEntry } from "@/lib/reports/builder/types";
-import type { FaseJornada, JourneyState, Dimensao } from "@/lib/reports/builder/journey/state";
+import type { FaseJornada, JourneyState } from "@/lib/reports/builder/journey/state";
 
 export function BuilderWorkspace({
   audioEnabled = false,
@@ -41,14 +46,22 @@ export function BuilderWorkspace({
   // Fase da jornada: relatorio ja salvo abre direto no refino (2-pane); conversa
   // nova comeca na entrevista (chat centralizado).
   const [fase, setFase] = useState<FaseJornada>(initialSavedId ? "refino" : "entrevista");
-  const [journeyState, setJourneyState] = useState<JourneyState | null>(null);
+  // journeyState e guardado so para repassar entre turnos (nao lido na view).
+  const [, setJourneyState] = useState<JourneyState | null>(null);
   const [gerando, setGerando] = useState(false);
+  const [progresso, setProgresso] = useState<ProgressoGeracaoUi | null>(null);
+  const [roteiro, setRoteiro] = useState<RoteiroUi | null>(null);
+  const [omitidos, setOmitidos] = useState<string[]>([]);
   // Ref do etag para o salvamento async da edicao ler sempre o valor atual.
   const etagRef = useRef<string | null>(initialEtag);
-  // Handle de envio exposto pelo chat (para o botao Gerar e o "ajustar").
-  const enviarRef = useRef<((text: string, opts?: { acao?: "gerar" }) => void) | null>(null);
+  // Handle de envio exposto pelo chat (Gerar e "ajustar e regenerar").
+  const enviarRef = useRef<((text: string, opts?: { acao?: "gerar" | "regenerar" }) => void) | null>(null);
 
-  function handleDone(p: BuilderDonePayload) {
+  // Gerar so fica disponivel quando o roteiro foi cumprido (gate por evidencia,
+  // refletido no evento roteiro: respondidas >= total).
+  const elegivel = !!roteiro && roteiro.respondidas >= roteiro.total;
+
+  function aplicarDados(p: BuilderDonePayload) {
     if (p.ficha !== undefined && p.ficha !== null) setFicha(p.ficha);
     if (p.savedId) setSavedId(p.savedId);
     if (p.etag) {
@@ -56,8 +69,22 @@ export function BuilderWorkspace({
       setEtag(p.etag);
     }
     if (p.journeyState) setJourneyState(p.journeyState);
+  }
+
+  function handleDone(p: BuilderDonePayload) {
+    aplicarDados(p);
+    if (p.omitidos) setOmitidos(p.omitidos);
+    if (p.fase === "refino" && gerando) {
+      // Dwell no 100% antes de revelar o 2-pane (transicao suave do reveal).
+      setProgresso({ fase: "validacao", pct: 100, frase: "" });
+      window.setTimeout(() => {
+        setFase("refino");
+        setGerando(false);
+        setProgresso(null);
+      }, 750);
+      return;
+    }
     if (p.fase) setFase(p.fase);
-    if (p.fase === "refino") setGerando(false);
   }
 
   function handleCleared() {
@@ -68,15 +95,23 @@ export function BuilderWorkspace({
     setJourneyState(null);
     setFase("entrevista");
     setGerando(false);
+    setProgresso(null);
+    setRoteiro(null);
+    setOmitidos([]);
   }
 
   function gerar() {
+    setProgresso({ fase: "blueprint", pct: 2, frase: "" });
+    setOmitidos([]);
     setGerando(true);
     enviarRef.current?.("Pode gerar o relatorio agora.", { acao: "gerar" });
   }
 
-  function ajustar(dimensao: Dimensao) {
-    enviarRef.current?.(`Quero ajustar ${dimensao}.`);
+  function regenerar(texto: string) {
+    setProgresso({ fase: "blueprint", pct: 2, frase: "" });
+    setOmitidos([]);
+    setGerando(true);
+    enviarRef.current?.(texto, { acao: "regenerar" });
   }
 
   function abrir() {
@@ -148,14 +183,20 @@ export function BuilderWorkspace({
       anexoEnabled={anexoEnabled}
       podeExportar={podeExportar}
       enviarRef={enviarRef}
+      onProgress={setProgresso}
+      onRoteiro={setRoteiro}
       imersivo={fase !== "refino"}
     />
   );
 
+  const overlay = gerando ? (
+    <GeracaoOverlay pct={progresso?.pct ?? 0} fase={progresso?.fase} omitidos={omitidos} />
+  ) : null;
+
   // REFINO: layout 2-painoes (chat lateral + preview) dentro do card do workspace.
   if (fase === "refino") {
     return (
-      <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+      <div className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
         <header className="flex items-center justify-between gap-3 border-b border-border px-5 py-3">
           <div className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-violet-500 text-white shadow-md shadow-violet-600/40">
@@ -166,15 +207,26 @@ export function BuilderWorkspace({
               <p className="text-xs text-muted-foreground">Converse para ajustar e veja o resultado ao lado.</p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={abrir}
-            disabled={!savedId}
-            className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-violet-500 focus-visible:ring-2 focus-visible:ring-violet-400/60 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <ExternalLink className="h-4 w-4" aria-hidden />
-            Abrir relatorio
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => regenerar("Refaz o relatorio reaproveitando o que voce ja entendeu, melhorando o que der.")}
+              disabled={gerando}
+              className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-violet-400/60 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <RefreshCw className="h-4 w-4" aria-hidden />
+              Refazer
+            </button>
+            <button
+              type="button"
+              onClick={abrir}
+              disabled={!savedId}
+              className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-violet-500 focus-visible:ring-2 focus-visible:ring-violet-400/60 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <ExternalLink className="h-4 w-4" aria-hidden />
+              Abrir relatorio
+            </button>
+          </div>
         </header>
         <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
           <aside className="flex min-h-0 w-full shrink-0 flex-col border-b border-border lg:h-auto lg:w-[400px] lg:border-r lg:border-b-0">
@@ -184,43 +236,49 @@ export function BuilderWorkspace({
             <BuilderPreview ficha={ficha} editavel={editavel} />
           </section>
         </div>
+        {overlay}
       </div>
     );
   }
 
-  // ENTREVISTA / RESUMO: tela LIMPA e IMERSIVA (uma superficie so, sem cards
-  // aninhados nem header). A IA "abre" a conversa e conduz; no resumo aparece o
-  // cartao de resumo no topo. Gerar dispara a animacao -> transiciona pro refino.
+  // ENTREVISTA: tela LIMPA e IMERSIVA (uma superficie so). No topo, o indicador do
+  // roteiro (X de N). O Gerar so aparece quando a IA cobriu o necessario (elegivel).
+  // Clicar Gerar roda o pipeline nos bastidores -> overlay -> transiciona pro refino.
+  const temConversa = !!conversationId || !!roteiro;
   return (
     <div className="relative flex h-full flex-col bg-background">
-      {fase === "resumo" && journeyState?.resumo ? (
-        <div className="mx-auto w-full max-w-2xl shrink-0 px-4 pt-4">
-          <JourneySummary resumo={journeyState.resumo} onAjustar={ajustar} onGerar={gerar} gerando={gerando} />
+      {temConversa && roteiro && !elegivel ? (
+        <div className="pointer-events-none absolute inset-x-0 top-3 z-30 px-4">
+          <RoteiroIndicador total={roteiro.total} respondidas={roteiro.respondidas} />
         </div>
       ) : null}
+
       <div className="min-h-0 flex-1">{chatPanel}</div>
 
-      <AnimatePresence>
-        {gerando ? (
-          <motion.div
-            key="gerando"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-background/85 backdrop-blur-sm"
-          >
-            <motion.div
-              animate={{ scale: [1, 1.12, 1], rotate: [0, 8, -8, 0] }}
-              transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
-              className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-violet-500 text-white shadow-lg shadow-violet-600/40"
+      {/* Gerar escondido ate elegivel. Aparece com micro-animacao acima do composer. */}
+      {elegivel && !gerando ? (
+        <div className="pointer-events-none absolute inset-x-0 bottom-[92px] z-30">
+          <div className="mx-auto flex w-full max-w-2xl justify-center px-4">
+            <button
+              type="button"
+              onClick={gerar}
+              className="pointer-events-auto flex animate-[fadeInUp_0.3s_ease-out] cursor-pointer items-center gap-2 rounded-full bg-gradient-to-br from-violet-600 to-violet-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-600/30 transition-all hover:from-violet-500 hover:to-violet-400 hover:shadow-xl focus-visible:ring-2 focus-visible:ring-violet-400/50 focus-visible:outline-none"
             >
-              <Sparkles className="h-7 w-7" aria-hidden />
-            </motion.div>
-            <p className="text-sm font-medium text-foreground">Montando seu relatorio...</p>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+              <FileBarChart className="h-4 w-4" aria-hidden />
+              Gerar relatorio
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {overlay}
+
+      <style jsx>{`
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(8px) scale(0.96); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+      `}</style>
     </div>
   );
 }

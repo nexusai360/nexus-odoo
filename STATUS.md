@@ -18,19 +18,20 @@
 > - [x] Task 2 , `journey/roteiro.ts` (`roteiroDerivado`, 5 testes).
 > - [x] Task 3 , `state.ts` gate por intenção/roteiro + backfill + `marcarDimensaoRelevante`
 >   (15 testes) + `agent/geracao/blueprint-types.ts` (Task 5 parte). Suíte builder 153 verdes.
-> - [ ] Task 4a/4b/4c , tools de brainstorm (`registrar_seccao_pretendida`,
->   `marcar_dimensao_relevante`, `declarar_sem_kpi`) + labels; `construirToolDefs(modo)` +
->   guard de reparo (`modo!=="jornada"`); SSE `roteiro`.
-> - [ ] Task 5 (resto) , `agent/geracao/types.ts` (EntradaGeracao/SaidaGeracao/ProgressoGeracao/GeracaoDeps).
-> - [ ] Task 6 blueprint, 7 revisar, 8a ordenarNarrativa, 8b build(via dispatcher), 8c validar.
-> - [ ] Task 9 pipeline (heartbeat onToken/timer, degrade) + 9b progresso (faixas+frases).
-> - [ ] Task 10a gerar→pipeline+progress+quota, 10b regenerar, 10c tipos front+maxDuration=120.
-> - [ ] Task 11 UI indicador roteiro + Gerar escondido (ui-ux-pro-max).
+> - [x] Task 4a/4b/4c , tools de brainstorm + labels; `construirToolDefs(modo)` + guard
+>   de reparo; SSE `roteiro`.
+> - [x] Task 5 , `agent/geracao/types.ts` + `blueprint-types.ts`.
+> - [x] Task 6 blueprint, 7 revisar, 8a ordenarNarrativa, 8b build(dispatcher), 8c validar.
+> - [x] Task 9 pipeline (heartbeat + degrade + omitidos) + 9b progresso (faixas+frases).
+> - [x] Task 10 gerar→pipeline+progress+quota, regenerar, tipos front+maxDuration=120.
+> - [x] Task 13 (jornada) , prompt registra intenção, firmeza, não constrói ficha.
+> - [ ] **Task 11 UI** indicador roteiro + Gerar escondido (ui-ux-pro-max). ← RETOMAR AQUI
 > - [ ] Task 12 UI overlay geração (barra+frases) + canal onProgress + reveal + regenerar.
-> - [ ] Task 13 prompts (jornada registra intenção/firmeza; blueprint/revisão).
-> - [ ] Task 14 E2E real (determinístico semeia intenção + observacional) + latência p50/p95.
+> - [ ] Task 14 E2E real (determinístico semeia intenção + observacional) + latência.
 > - [ ] Task 15 fios do regenerar. Task 16 STATUS/HISTORY. Task 17 remove fase `resumo`
 >   (commit VERDE único: state+route+tools+labels+workspace+journey-summary).
+> **Backend + prompt 100% (tasks 0-10,13): ~210 testes builder/geracao/route verdes; tsc 0.**
+> Falta só a UI (11/12), E2E (14) e a limpeza do resumo (17).
 > **Regra de execução:** cada commit deixa tsc+testes verdes; resumo só sai na Task 17.
 > Gate só fica elegível DEPOIS da Task 4 (quando as tools de intenção existem). F6 não sobe.
 

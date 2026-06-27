@@ -58,8 +58,12 @@ interface BuilderChatPanelProps {
   /** Mostra "Baixar conversa (.txt)" no menu (admin/super_admin do construtor). */
   podeExportar?: boolean;
   /** Handle imperativo: o pai recebe a funcao de enviar (para o botao Gerar e o
-   *  "ajustar" da tela de resumo dispararem um turno). */
-  enviarRef?: React.MutableRefObject<((text: string, opts?: { acao?: "gerar" }) => void) | null>;
+   *  "ajustar e regenerar" dispararem um turno). */
+  enviarRef?: React.MutableRefObject<((text: string, opts?: { acao?: "gerar" | "regenerar" }) => void) | null>;
+  /** Progresso da geracao (alimenta a tela de espera no workspace). */
+  onProgress?: (p: ProgressoGeracaoUi) => void;
+  /** Roteiro de perguntas atualizado (indicador X de N + libera o Gerar). */
+  onRoteiro?: (r: RoteiroUi) => void;
   /** Modo imersivo (entrevista): sem header "Conversa", fundo transparente,
    *  conteudo centralizado e composer limpo (uma superficie so, estilo ChatGPT). */
   imersivo?: boolean;
@@ -134,6 +138,8 @@ export function BuilderChatPanel({
   anexoEnabled = false,
   podeExportar = false,
   enviarRef,
+  onProgress,
+  onRoteiro,
   imersivo = false,
 }: BuilderChatPanelProps) {
   const reduceMotion = useReducedMotion();
@@ -377,9 +383,13 @@ export function BuilderChatPanel({
   }, [reduceMotion, setIsSticky]);
 
   const handleSend = React.useCallback(
-    async (text: string, opts?: { isAudio?: boolean; acao?: "gerar" }) => {
+    async (text: string, opts?: { isAudio?: boolean; acao?: "gerar" | "regenerar" }) => {
       const trimmed = text.trim();
       if (!trimmed || pending) return;
+
+      // No Gerar/Regenerar a experiencia e a OVERLAY (bastidores): nada de bolha de
+      // "Pensando" nem da mensagem sintetica do usuario. So a barra de progresso.
+      const silencioso = opts?.acao === "gerar" || opts?.acao === "regenerar";
 
       setIsSticky(true);
       requestAnimationFrame(() => {
@@ -394,25 +404,29 @@ export function BuilderChatPanel({
       const userId = `u_${crypto.randomUUID()}`;
       const assistantId = `a_${crypto.randomUUID()}`;
 
-      setMessages((prev) => [
-        ...prev,
-        { id: userId, role: "user", content: trimmed, isAudio: opts?.isAudio, createdAt: new Date().toISOString() },
-      ]);
+      if (!silencioso) {
+        setMessages((prev) => [
+          ...prev,
+          { id: userId, role: "user", content: trimmed, isAudio: opts?.isAudio, createdAt: new Date().toISOString() },
+        ]);
+      }
       setInput("");
       setPending(true);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: assistantId,
-          role: "assistant",
-          content: "",
-          steps: [],
-          stepsCollapsed: false,
-          startedAt: Date.now(),
-          streaming: true,
-          reveal: true,
-        },
-      ]);
+      if (!silencioso) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: assistantId,
+            role: "assistant",
+            content: "",
+            steps: [],
+            stepsCollapsed: false,
+            startedAt: Date.now(),
+            streaming: true,
+            reveal: true,
+          },
+        ]);
+      }
 
       try {
         const res = await fetch("/api/builder/stream", {
@@ -495,6 +509,10 @@ export function BuilderChatPanel({
                     : m,
                 ),
               );
+            } else if (evt.type === "progress") {
+              onProgress?.({ fase: evt.fase, pct: evt.pct, frase: evt.frase });
+            } else if (evt.type === "roteiro") {
+              onRoteiro?.({ total: evt.total, respondidas: evt.respondidas, etapas: evt.etapas });
             } else if (evt.type === "done") {
               if (evt.conversationId && !conversationIdRef.current) {
                 conversationIdRef.current = evt.conversationId;
@@ -502,23 +520,44 @@ export function BuilderChatPanel({
                 onConversationCreated(evt.conversationId);
               }
               const doneAt = Date.now();
-              setMessages((prev) =>
-                prev.map((m) => {
-                  if (m.id !== assistantId) return m;
-                  const steps = (m.steps ?? []).map((s) => ({ ...s, state: "done" as const }));
-                  return {
-                    ...m,
-                    content: evt.message,
-                    streaming: false,
-                    steps: steps.length > 0 ? steps : undefined,
-                    stepsCollapsed: true,
-                    startedAt: m.startedAt ?? doneAt,
-                    doneAt,
-                    durationMs: typeof evt.durationMs === "number" ? evt.durationMs : undefined,
-                    createdAt: m.createdAt ?? new Date(doneAt).toISOString(),
-                  };
-                }),
-              );
+              if (silencioso) {
+                // Geracao: nao havia bolha de streaming. Adiciona a mensagem final
+                // ja pronta (sem trilha), para aparecer no chat do refino.
+                if (evt.message) {
+                  setMessages((prev) => [
+                    ...prev,
+                    {
+                      id: assistantId,
+                      role: "assistant",
+                      content: evt.message,
+                      streaming: false,
+                      reveal: false,
+                      stepsCollapsed: true,
+                      startedAt: doneAt,
+                      doneAt,
+                      createdAt: new Date(doneAt).toISOString(),
+                    },
+                  ]);
+                }
+              } else {
+                setMessages((prev) =>
+                  prev.map((m) => {
+                    if (m.id !== assistantId) return m;
+                    const steps = (m.steps ?? []).map((s) => ({ ...s, state: "done" as const }));
+                    return {
+                      ...m,
+                      content: evt.message,
+                      streaming: false,
+                      steps: steps.length > 0 ? steps : undefined,
+                      stepsCollapsed: true,
+                      startedAt: m.startedAt ?? doneAt,
+                      doneAt,
+                      durationMs: typeof evt.durationMs === "number" ? evt.durationMs : undefined,
+                      createdAt: m.createdAt ?? new Date(doneAt).toISOString(),
+                    };
+                  }),
+                );
+              }
               onDone({
                 ficha: evt.ficha ?? undefined,
                 savedId: evt.savedId,
@@ -527,6 +566,7 @@ export function BuilderChatPanel({
                 bloqueado: evt.bloqueado,
                 fase: evt.fase,
                 journeyState: evt.journeyState,
+                omitidos: evt.omitidos,
               });
             } else if (evt.type === "error") {
               setMessages((prev) =>
@@ -559,13 +599,13 @@ export function BuilderChatPanel({
         );
       }
     },
-    [pending, onConversationCreated, onDone, setIsSticky],
+    [pending, onConversationCreated, onDone, onProgress, onRoteiro, setIsSticky],
   );
 
   // Expoe o envio ao pai (botao Gerar e "ajustar" da tela de resumo).
   React.useEffect(() => {
     if (!enviarRef) return;
-    enviarRef.current = (text: string, opts?: { acao?: "gerar" }) => {
+    enviarRef.current = (text: string, opts?: { acao?: "gerar" | "regenerar" }) => {
       void handleSend(text, opts);
     };
     return () => {
