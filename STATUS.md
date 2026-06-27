@@ -25,11 +25,17 @@
 > - **Chat = Agente Nex** (persistência, tools ao vivo, copiar/timestamp/duração),
 >   abrir relatório em `/relatorios-2/d/[savedId]` + cabeçalho, Meus relatórios
 >   editar/compartilhar (`visibilidadeConsumo`). (Tudo de ondas anteriores.)
-> **PRÓXIMAS ONDAS (pendentes, teed-up):** (1) KPI de MARCA específica (ex.: só
-> Matrix) , precisa de filtro por marca (estender querySaldoProduto/novo produtor +
-> filtro `marca` no schema/enum); (2) FILTROS AVANÇADOS na UI do relatório
-> (controles interativos: armazém/família/marca/faixa, com name→id quando preciso);
-> (3) reordenar seções por drag na UI. F6 não sobe sem aprovação.
+> - **Pegada visual = "Consumo do Agente Nex":** renderer usa `KpiCard` (reports)
+>   nos KPIs e envolve cada gráfico/tabela num `Card` (CardHeader/CardTitle com
+>   ícone violeta + título), mesmos tokens/espaçamentos do dashboard de consumo.
+> - **KPI por MARCA (ex.: só Matrix) FEITO:** filtro `marca` (schema/tools/mutador/
+>   ReportFilterTipo) + shape `kpis` em `fato_estoque_marca` (`valorMarca`, recorte
+>   por `filtros.marca`). E2E real: "só da marca Matrix" → R$43,9M.
+> **PRÓXIMAS ONDAS (pendentes, teed-up):** (1) FILTROS AVANÇADOS na UI do relatório
+> , controles interativos no estilo do consumo (chips de período + dropdowns
+> armazém/família/marca/faixa), com `searchParams`→`FiltrosFonte` (name→id quando
+> preciso, ex.: armazém); (2) reordenar seções por drag na UI do construtor;
+> (3) editar título/cor de seção pela UI. F6 não sobe sem aprovação.
 
 
 > **2026-06-26 (F6 , PENDÊNCIAS P1+P2+P3 ENTREGUES) , branch `feat/nex-reconstrucao`.
