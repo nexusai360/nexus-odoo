@@ -1,5 +1,40 @@
 # STATUS — nexus-odoo
 
+> **2026-06-27 (F6 , METODOLOGIA NO CONSTRUTOR , EM EXECUÇÃO AUTÔNOMA) , branch
+> `feat/nex-reconstrucao`. F6 SÓ LOCAL.** Nova feature pedida pelo usuário: brainstorm
+> guiado (roteiro de perguntas X de N ancorado nas dimensões, Gerar escondido até
+> elegível por evidência objetiva) + motor de geração orquestrado que roda SÓ no Gerar,
+> nos bastidores, em 4 fases / 2 chamadas LLM (blueprint → revisão adversarial das 4
+> dimensões → build determinístico → validação), com barra de % real + frases girando,
+> loop de regenerar barato e honestidade visível. Decisões do usuário travadas: bastidores;
+> equilibrado (1 revisão/fase); Gerar escondido; motor orquestrado (Abordagem A); espera
+> com frases+barra real (sem tempo numérico); roteiro reajustável; não titubeia.
+> **Metodologia cumprida:** spec v1 → 2 reviews adversariais → **spec v3**
+> (`docs/superpowers/specs/2026-06-27-f6-construtor-metodologia-design.md`); plano v1 →
+> 2 reviews adversariais → **plano v3** (`docs/superpowers/plans/2026-06-27-f6-construtor-metodologia.md`, 20 tasks TDD).
+> **PROGRESSO (retomar pela próxima task não marcada):**
+> - [x] Task 0 , `journey/viabilidade.ts` (`seccaoViavel`, 6 testes).
+> - [x] Task 1 , `journey/intencao.ts` (intenção estruturada, 5 testes).
+> - [x] Task 2 , `journey/roteiro.ts` (`roteiroDerivado`, 5 testes).
+> - [x] Task 3 , `state.ts` gate por intenção/roteiro + backfill + `marcarDimensaoRelevante`
+>   (15 testes) + `agent/geracao/blueprint-types.ts` (Task 5 parte). Suíte builder 153 verdes.
+> - [ ] Task 4a/4b/4c , tools de brainstorm (`registrar_seccao_pretendida`,
+>   `marcar_dimensao_relevante`, `declarar_sem_kpi`) + labels; `construirToolDefs(modo)` +
+>   guard de reparo (`modo!=="jornada"`); SSE `roteiro`.
+> - [ ] Task 5 (resto) , `agent/geracao/types.ts` (EntradaGeracao/SaidaGeracao/ProgressoGeracao/GeracaoDeps).
+> - [ ] Task 6 blueprint, 7 revisar, 8a ordenarNarrativa, 8b build(via dispatcher), 8c validar.
+> - [ ] Task 9 pipeline (heartbeat onToken/timer, degrade) + 9b progresso (faixas+frases).
+> - [ ] Task 10a gerar→pipeline+progress+quota, 10b regenerar, 10c tipos front+maxDuration=120.
+> - [ ] Task 11 UI indicador roteiro + Gerar escondido (ui-ux-pro-max).
+> - [ ] Task 12 UI overlay geração (barra+frases) + canal onProgress + reveal + regenerar.
+> - [ ] Task 13 prompts (jornada registra intenção/firmeza; blueprint/revisão).
+> - [ ] Task 14 E2E real (determinístico semeia intenção + observacional) + latência p50/p95.
+> - [ ] Task 15 fios do regenerar. Task 16 STATUS/HISTORY. Task 17 remove fase `resumo`
+>   (commit VERDE único: state+route+tools+labels+workspace+journey-summary).
+> **Regra de execução:** cada commit deixa tsc+testes verdes; resumo só sai na Task 17.
+> Gate só fica elegível DEPOIS da Task 4 (quando as tools de intenção existem). F6 não sobe.
+
+
 > **2026-06-27 (F6 , JORNADA: refinamento de UI/UX da entrevista , TROCA DE SESSÃO) ,
 > branch `feat/nex-reconstrucao`. F6 SÓ LOCAL.** A Jornada Guiada está construída e
 > funcional (ver bloco abaixo). Esta sessão refinou a entrevista com base em feedback
