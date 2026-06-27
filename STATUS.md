@@ -1,5 +1,33 @@
 # STATUS — nexus-odoo
 
+> **2026-06-27 (F6 , NOVA FEATURE: JORNADA GUIADA DE CONSTRUÇÃO , em execução) ,
+> branch `feat/nex-reconstrucao`. F6 SÓ LOCAL.** Virada pedida pelo usuário: sair do
+> "manda prompt e recebe relatório" para uma JORNADA conversacional adaptativa (chat
+> centralizado estilo ChatGPT + reflexo de entendimento em linguagem natural; modelo
+> de MATURIDADE por EVIDÊNCIA da ficha que gateia o fim; resumo contestável → Gerar →
+> animação → 2-pane). Escopo: sobre capacidades atuais (estoque), honestidade "ainda
+> não é possível". **Metodologia completa cumprida:** spec v1 → 2 reviews adversariais
+> → **spec v3** (`docs/superpowers/specs/2026-06-27-f6-jornada-construcao-design.md`);
+> plano v1 → 2 reviews adversariais → **plano v3**
+> (`docs/superpowers/plans/2026-06-27-f6-jornada-construcao.md`, 11 tasks TDD).
+> **PROGRESSO da execução (retomar pela próxima task NÃO marcada):**
+> - [x] Task 1 , capability map curado (`builder/capabilities.ts`, 5 testes).
+> - [x] Task 2 , journeyState + gate por evidência + transições (`builder/journey/state.ts`, 12 testes).
+> - [ ] Task 3 , tools de jornada + ToolExec/tool-bridge/serialização.
+> - [ ] Task 4 , runBuilder histórico+journeyState+temperature por modo + prompt jornada.
+> - [ ] Task 5a/5b , migration journeyState + stream (histórico/choices/sinal Gerar).
+> - [ ] Task 6 , tipos de front (SseEvent done+choices, BuilderDonePayload).
+> - [ ] Task 7 , reflexo de entendimento + casca centralizada (UI inline).
+> - [ ] Task 8 , cards de opção (choices) (UI inline).
+> - [ ] Task 9 , resumo contestável + Gerar + animação (UI inline).
+> - [ ] Task 10 , métricas de jornada. [ ] Task 11 , E2E real.
+> **Decisões-chave (das reviews):** gate por evidência da ficha (não auto-relato);
+> trilha de 7 caixas substituída por reflexo natural; prévia-viva-no-chat cortada da
+> v1 (só thumbnails); ficha vira `fichaRascunho` e só promove a SavedReport no Gerar;
+> `runBuilder` ganha histórico; honestidade conversacional separada do SEM_FONTE
+> terminal. F6 não sobe sem aprovação.
+
+
 > **2026-06-27 (F6 , RENDERER AGORA USA OS COMPONENTES REAIS DO CONSUMO) , branch
 > `feat/nex-reconstrucao`. F6 SÓ LOCAL.** Correção do feedback do usuário ("ficou
 > uma merda"): o renderer estava usando charts próprios menores em vez dos
