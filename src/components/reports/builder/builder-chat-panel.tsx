@@ -27,6 +27,7 @@ import { arquivarBuilderConversaAction } from "@/lib/actions/builder-conversatio
 import { exportarBuilderConversaTxt } from "@/lib/actions/builder-conversation";
 import type { BuilderReportEntry } from "@/lib/reports/builder/types";
 import type { JourneyState, FaseJornada, OpcaoCard } from "@/lib/reports/builder/journey/state";
+import { colapsarProgressSteps } from "@/lib/reports/builder/agent/builder-progress-labels";
 import { OptionCards } from "./journey/option-cards";
 
 /** Payload entregue ao workspace quando um turno conclui (atualiza o preview). */
@@ -443,6 +444,7 @@ export function BuilderChatPanel({
                 label: evt.label,
                 state: "running",
                 raw: true,
+                ...(evt.toolName ? { toolName: evt.toolName } : {}),
               };
               setMessages((prev) =>
                 prev.map((m) =>
@@ -838,6 +840,10 @@ export function BuilderChatPanel({
                   : m.startedAt && m.doneAt
                     ? m.doneAt - m.startedAt
                     : undefined;
+              // Dedupe AO VIVO: colapsa passos consecutivos da mesma tool numa
+              // linha no plural (ex.: "Adicionando uma seção" x4 -> "Adicionando
+              // seções"). Steps do historico ja vem deduplicados do backend.
+              const displaySteps = m.steps ? colapsarProgressSteps(m.steps) : m.steps;
               return (
                 <div
                   key={m.id}
@@ -855,7 +861,7 @@ export function BuilderChatPanel({
                     transcribing={m.transcribing}
                     streaming={m.streaming}
                     reveal={m.reveal}
-                    steps={m.steps}
+                    steps={displaySteps}
                     stepsCollapsed={m.stepsCollapsed ?? true}
                     createdAt={m.createdAt}
                     durationMs={durationMs}

@@ -68,3 +68,48 @@ export function rotulosDeduplicados(toolNames: string[]): { label: string }[] {
   }
   return out.map((o) => ({ label: o.label }));
 }
+
+/** Passo da trilha (forma estrutural de ProgressStep, sem acoplar ao componente). */
+type StepLike = {
+  id: string;
+  label: string;
+  state: "running" | "done";
+  raw?: boolean;
+  toolName?: string;
+};
+
+/**
+ * Colapsa AO VIVO os passos consecutivos da MESMA tool numa unica entrada,
+ * pluralizando o rotulo e somando o estado (running se qualquer um do grupo
+ * ainda roda; senao done). Mantem o id e o raw do primeiro do grupo. Passos
+ * sem `toolName` (ex.: trilha do Nex) nunca fundem , a igualdade exige
+ * toolName definido em ambos.
+ */
+export function colapsarProgressSteps(steps: StepLike[]): StepLike[] {
+  const grupos: { primeiro: StepLike; toolName?: string; count: number; algumRodando: boolean }[] = [];
+  for (const s of steps) {
+    const ultimo = grupos[grupos.length - 1];
+    const mesmaTool = !!ultimo && !!s.toolName && ultimo.toolName === s.toolName;
+    if (mesmaTool) {
+      ultimo.count += 1;
+      if (s.state === "running") ultimo.algumRodando = true;
+    } else {
+      grupos.push({
+        primeiro: s,
+        toolName: s.toolName,
+        count: 1,
+        algumRodando: s.state === "running",
+      });
+    }
+  }
+  return grupos.map((g) => {
+    const { id, raw } = g.primeiro;
+    const label =
+      g.count > 1 && g.toolName
+        ? builderProgressLabelPlural(g.toolName)
+        : g.primeiro.label;
+    const out: StepLike = { id, label, state: g.algumRodando ? "running" : "done" };
+    if (raw !== undefined) out.raw = raw;
+    return out;
+  });
+}

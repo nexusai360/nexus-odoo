@@ -23,6 +23,7 @@ jest.mock("@/lib/reports/builder/builder-conversation-repo", () => ({
   assertBuilderConversaOwned: jest.fn(),
   persistBuilderMensagem: jest.fn(),
   setBuilderSavedReport: jest.fn(),
+  carregarBuilderMensagens: jest.fn(),
 }));
 
 const { getCurrentUser } = jest.requireMock("@/lib/auth");
@@ -61,6 +62,7 @@ async function collectSSE(stream: ReadableStream<Uint8Array>) {
 beforeEach(() => {
   jest.clearAllMocks();
   repo.persistBuilderMensagem.mockResolvedValue("msg-id");
+  repo.carregarBuilderMensagens.mockResolvedValue([]);
   prisma.builderConversation.update.mockResolvedValue({});
 });
 
@@ -83,9 +85,12 @@ describe("POST /api/builder/stream", () => {
     expect(res.status).toBe(400);
   });
 
-  it("cria conversa nova, anima tools e emite done com savedId/ficha", async () => {
+  it("turno de refino: anima tools e emite done com savedId/ficha (trilha re-derivada)", async () => {
     getCurrentUser.mockResolvedValue(ADMIN);
-    repo.criarBuilderConversa.mockResolvedValue({ id: "conv-1" });
+    // Conversa existente legado (com SavedReport) entra como REFINO , o unico
+    // modo que promove a ficha a SavedReport (a jornada so promove no Gerar).
+    prisma.builderConversation.findUnique.mockResolvedValue({ savedReportId: "sr-old", journeyState: null });
+    prisma.savedReport.findUnique.mockResolvedValue(null); // forca o caminho criarRascunho
     criarRascunho.mockResolvedValue({ id: "sr-1", etag: "etag-1" });
     const ficha = { titulo: "Estoque por armazem", tipo: "tela_cheia", schemaVersion: 1, secoes: [{}] };
     runBuilder.mockImplementation(
@@ -101,7 +106,7 @@ describe("POST /api/builder/stream", () => {
       },
     );
 
-    const res = await POST(reqBody({ message: "estoque por armazem" }));
+    const res = await POST(reqBody({ message: "estoque por armazem", conversationId: "conv-1" }));
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toContain("text/event-stream");
 
@@ -114,7 +119,9 @@ describe("POST /api/builder/stream", () => {
     expect(done.message).toBe("Pronto, montei.");
     expect(done.savedId).toBe("sr-1");
     expect(done.etag).toBe("etag-1");
-    expect(done.steps).toEqual([{ label: "Criando o relatorio" }]);
+    // A trilha persistida e RE-DERIVADA dos toolNames (dedupe + plural),
+    // entao vem com acento do mapa real, mesmo que o mock use label sem acento.
+    expect(done.steps).toEqual([{ label: "Criando o relatório" }]);
     expect(done.durationMs).toBe(1234);
     expect((done.ficha as { titulo: string }).titulo).toBe("Estoque por armazem");
 

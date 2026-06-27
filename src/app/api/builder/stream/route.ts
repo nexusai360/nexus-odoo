@@ -19,6 +19,7 @@
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { runBuilder, type BuilderRunEvent } from "@/lib/reports/builder/agent/run-builder";
+import { rotulosDeduplicados } from "@/lib/reports/builder/agent/builder-progress-labels";
 import {
   criarRascunho,
   atualizarRascunho,
@@ -152,8 +153,12 @@ export async function POST(req: Request): Promise<Response> {
 
       emit({ type: "status", status: "thinking" });
 
+      // Ordem das tools chamadas no turno , base do dedupe da trilha persistida.
+      const toolNamesNaOrdem: string[] = [];
+
       function onEvent(evt: BuilderRunEvent) {
         if (evt.type === "tool_call") {
+          toolNamesNaOrdem.push(evt.toolName);
           emit({
             type: "tool_call",
             toolName: evt.toolName,
@@ -188,7 +193,13 @@ export async function POST(req: Request): Promise<Response> {
           journeyState = { ...journeyState, fichaRascunho: result.ficha ?? journeyState.fichaRascunho };
         }
 
-        const steps = result.toolsCalled;
+        // Dedupe da trilha persistida: colapsa tools repetidas em sequencia
+        // numa unica linha no plural (ex.: "Adicionando uma seção" x4 ->
+        // "Adicionando seções"). Cai no toolsCalled cru se nao houver toolNames.
+        const steps =
+          toolNamesNaOrdem.length > 0
+            ? rotulosDeduplicados(toolNamesNaOrdem)
+            : result.toolsCalled;
         const durationMs = result.reasoningMs;
 
         // Promove a ficha a SavedReport (abrivel/listavel) SOMENTE no refino ou

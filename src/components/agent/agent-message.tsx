@@ -181,15 +181,17 @@ export function AgentMessage({
               <span>Áudio transcrito</span>
             </div>
             <span className="whitespace-pre-wrap">{content}</span>
+            {/* Data DENTRO da bolha (mesmo padrao das mensagens de texto):
+                rodape alinhado a direita, dentro do balao violeta. */}
+            {createdAt ? (
+              <div
+                className="mt-1 pr-1.5 text-right text-[10px] tabular-nums text-muted-foreground/70"
+                suppressHydrationWarning
+              >
+                {formatRelativeDateTime(createdAt)}
+              </div>
+            ) : null}
           </div>
-          {createdAt ? (
-            <div
-              className="mt-1 pr-3.5 text-right text-[10px] tabular-nums text-muted-foreground/70"
-              suppressHydrationWarning
-            >
-              {formatRelativeDateTime(createdAt)}
-            </div>
-          ) : null}
           {content.length > 0 ? <CopyButton text={content} /> : null}
         </div>
       </div>

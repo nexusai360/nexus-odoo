@@ -27,6 +27,12 @@ export interface ProgressStep {
    * nunca seta este flag, então o comportamento dele fica inalterado.
    */
   raw?: boolean;
+  /**
+   * Nome cru da tool (ex.: "adicionar_secao"). Usado pelo Construtor (F6) para
+   * colapsar AO VIVO passos consecutivos da MESMA tool numa linha no plural
+   * (ver colapsarProgressSteps). O Nex não seta este campo.
+   */
+  toolName?: string;
 }
 
 /** Acima deste total, os passos do meio são colapsados. */
