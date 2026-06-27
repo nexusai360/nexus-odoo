@@ -263,6 +263,9 @@ model BuilderConversation {
   updatedAt     DateTime         @updatedAt @map("updated_at")
   /// "Limpar conversa": arquiva (nao deleta). null = ativa.
   endedAt       DateTime?        @map("ended_at")
+  /// Estado da jornada guiada (fase, fichaRascunho, entendimento, resumo). null =
+  /// conversa legada (tratada como refino se houver savedReportId). F6 so dev.
+  journeyState  Json?            @map("journey_state")
   messages      BuilderMessage[]
 
   @@index([userId, endedAt, updatedAt])
