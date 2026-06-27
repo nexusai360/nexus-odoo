@@ -1,5 +1,38 @@
 # STATUS — nexus-odoo
 
+> **2026-06-27 (F6 , JORNADA: refinamento de UI/UX da entrevista , TROCA DE SESSÃO) ,
+> branch `feat/nex-reconstrucao`. F6 SÓ LOCAL.** A Jornada Guiada está construída e
+> funcional (ver bloco abaixo). Esta sessão refinou a entrevista com base em feedback
+> visual do usuário (tudo commitado; dev no ar):
+> - Entrevista virou tela LIMPA e IMERSIVA (sem cards aninhados/header do workspace).
+> - Estado inicial estilo ChatGPT: **hero** "O que você quer construir hoje?" (texto
+>   branco) + input logo abaixo, centralizados; sem 3-pontos/tag/bubble no estado vazio.
+> - Após a 1ª mensagem: conversa normal; 3-pontos e setinha de scroll alinhados ao
+>   limite direito da COLUNA (max-w-2xl), não ao canto da tela; tag "hoje" subiu e a 1ª
+>   mensagem desceu (sem sobreposição).
+> - Prompt da jornada: mensagens CURTAS, UMA pergunta por vez, proibido recapitular a
+>   estrutura / "próxima camada"; preferir `oferecer_opcoes` (cards) nas alternativas;
+>   a IA NÃO anuncia que "já criou/montou".
+> - Rótulos das tools com ACENTO/cedilha + helper `rotulosDeduplicados` (pronto).
+> - Raciocínio: RESPEITA o modo configurado na tela do Agente Nex (revertido o force).
+> **PENDENTE (retomar por aqui na nova sessão):**
+> 1. **Dedupe AO VIVO** das tools repetidas na trilha do chat (colapsar "Adicionando
+>    uma seção" x4 → "Adicionando seções"). Helper `rotulosDeduplicados`/
+>    `builderProgressLabelPlural` já existe em `agent/builder-progress-labels.ts`;
+>    falta ligar no `builder-chat-panel.tsx` (handler do evento `tool_call`) e no
+>    rebuild da trilha; provavelmente add `toolName` ao `ProgressStep`.
+> 2. **Data/hora DENTRO da bubble** nas mensagens de ÁUDIO transcrito (hoje fica fora;
+>    nas de texto já fica dentro). Investigar `src/components/agent/agent-message.tsx`.
+> 3. **Ideia grande a SPECAR (discussão):** usar a metodologia Superpowers DENTRO do
+>    agente construtor (brainstorm → spec → double-check → plano → double-check →
+>    implementação nos bastidores → entrega o relatório). É praticamente uma nova
+>    feature; brainstorm + spec antes de codar.
+> Arquivos-chave: `src/components/reports/builder/builder-chat-panel.tsx` (imersivo,
+> hero, composerNode, choices), `builder-workspace.tsx` (fases), `journey/*`,
+> `agent/prompt-jornada.ts`, `agent/run-builder.ts`, `agent/builder-progress-labels.ts`.
+> F6 NÃO sobe sem aprovação.
+
+
 > **2026-06-27 (F6 , NOVA FEATURE: JORNADA GUIADA DE CONSTRUÇÃO , em execução) ,
 > branch `feat/nex-reconstrucao`. F6 SÓ LOCAL.** Virada pedida pelo usuário: sair do
 > "manda prompt e recebe relatório" para uma JORNADA conversacional adaptativa (chat
