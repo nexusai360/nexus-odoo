@@ -39,6 +39,7 @@ import {
   voltarParaEntrevista,
   type JourneyState,
 } from "@/lib/reports/builder/journey/state";
+import { roteiroDerivado } from "@/lib/reports/builder/journey/roteiro";
 import type { BuilderReportEntry } from "@/lib/reports/builder/types";
 
 const encoder = new TextEncoder();
@@ -264,6 +265,17 @@ export async function POST(req: Request): Promise<Response> {
           result.mensagem,
           { steps, durationMs },
         );
+
+        // Roteiro de perguntas (X de N) , atualiza o indicador da entrevista.
+        if (modo === "jornada") {
+          const roteiro = roteiroDerivado(journeyState);
+          emit({
+            type: "roteiro",
+            total: roteiro.total,
+            respondidas: roteiro.respondidas,
+            etapas: roteiro.etapas,
+          });
+        }
 
         emit({
           type: "done",

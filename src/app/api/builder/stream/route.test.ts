@@ -148,4 +148,22 @@ describe("POST /api/builder/stream", () => {
     expect(done.savedId).toBeUndefined();
     expect(criarRascunho).not.toHaveBeenCalled();
   });
+
+  it("turno de brainstorm (jornada) emite evento roteiro com total/respondidas", async () => {
+    getCurrentUser.mockResolvedValue(ADMIN);
+    repo.criarBuilderConversa.mockResolvedValue({ id: "conv-3" });
+    runBuilder.mockResolvedValue({
+      ficha: null,
+      mensagem: "o que voce quer ver?",
+      toolsCalled: [],
+      reasoningMs: 20,
+    });
+
+    const res = await POST(reqBody({ message: "quero um relatorio de estoque" }));
+    const evts = await collectSSE(res.body as ReadableStream<Uint8Array>);
+    const roteiro = evts.find((e) => e.type === "roteiro");
+    expect(roteiro).toBeDefined();
+    expect(roteiro!.total).toBeGreaterThanOrEqual(4);
+    expect(typeof roteiro!.respondidas).toBe("number");
+  });
 });
