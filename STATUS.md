@@ -22,10 +22,18 @@
 >   Produtores `local_produto`/`movimento`/`parados` passam `armazemId`; `saldo` já
 >   passava ambos. E2E real: 68 armazéns, 8 famílias; recorte confere (Cs-Matriz DF
 >   69/1894 produtos; família ACESSÓRIOS 840).
-> **PRÓXIMAS ONDAS (teed-up, não obrigatórias):** (a) tool de conversa
-> `definir_cor_secao` (o agente pinta um gráfico a pedido, complementando a UI);
-> (b) DRY: `ReportViewInteractive` reimplementa a barra em vez de reusar
-> `ReportFilterBar` , unificar. F6 não sobe sem aprovação explícita do usuário.
+> **(3) Tool de conversa `definir_cor_secao`:** complementa a cor pela UI , o
+>   agente do construtor pinta uma seção de gráfico a pedido ("deixa o gráfico
+>   verde"). `definirCorSecao` (mutators) valida token/hex via `corResolvida`,
+>   "padrão"/vazio limpa, recusa template sem cor; `BUILDER_TOOLS` + dispatch +
+>   prompt do agente documentam a paleta de tokens. (14 tools agora.)
+> **(4) DRY:** `ReportViewInteractive` agora REUSA `ReportFilterBar` (a mesma do
+>   preview) em vez de reimplementar inputs/Pill , paridade view↔preview garantida.
+> **Validação:** tsc 0; 165 testes reports/builder verdes; E2E real do filtro OK;
+> dev compila sem erro. **NADA material pendente teed-up.** Possíveis melhorias
+> futuras (não pedidas): aplicar cor também no preview da view em tempo real já
+> funciona via config.cor; novos domínios de fato; mais shapes. **F6 não sobe sem
+> aprovação explícita do usuário (merge = auto-deploy via Shepherd = produção).**
 
 
 > **2026-06-26 (F6 , CONSTRUTOR: qualidade + capacidade , modo autônomo) , branch
