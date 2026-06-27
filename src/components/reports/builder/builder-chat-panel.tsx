@@ -710,9 +710,12 @@ export function BuilderChatPanel({
           Altura fixa (h-11) casada com o header da pre-visualizacao ao lado.
           No modo imersivo (entrevista) o header some , so o 3-pontos flutua. */}
       {imersivo ? (
-        // Hero inicial = tela limpa, SEM 3-pontos. So aparece quando ha conversa.
+        // Hero inicial = tela limpa, SEM 3-pontos. So aparece quando ha conversa,
+        // alinhado ao limite direito da COLUNA da conversa (nao ao canto da tela).
         !heroInicial ? (
-        <div ref={menuRef} className="absolute top-3 right-3 z-40">
+        <div className="pointer-events-none absolute inset-x-0 top-3 z-40">
+        <div className="mx-auto flex max-w-2xl justify-end px-2 sm:px-3">
+        <div ref={menuRef} className="pointer-events-auto relative">
           <button
             type="button"
             aria-label="Mais opcoes"
@@ -735,6 +738,8 @@ export function BuilderChatPanel({
               </button>
             </div>
           )}
+        </div>
+        </div>
         </div>
         ) : null
       ) : (
@@ -788,7 +793,7 @@ export function BuilderChatPanel({
 
       {/* Tag de data flutuante */}
       {!showWelcome && dateLabel ? (
-        <div className="pointer-events-none absolute top-[52px] left-1/2 z-30 -translate-x-1/2">
+        <div className={cn("pointer-events-none absolute left-1/2 z-30 -translate-x-1/2", imersivo ? "top-3" : "top-[52px]")}>
           <span className="block rounded-full bg-violet-500/15 px-3 py-1 text-[11px] font-bold text-violet-700 ring-1 ring-violet-400/25 backdrop-blur-md dark:text-violet-200">
             <motion.span
               key={dateLabel}
@@ -819,7 +824,7 @@ export function BuilderChatPanel({
       ) : (
       <>
       {/* Area de mensagens */}
-      <div ref={scrollRef} className={cn("flex-1 overflow-y-auto overscroll-contain px-4 pt-[17px] pb-3", imersivo && "px-4 sm:px-6")}>
+      <div ref={scrollRef} className={cn("flex-1 overflow-y-auto overscroll-contain pb-3", imersivo ? "px-4 pt-12 sm:px-6" : "px-4 pt-[17px]")}>
         {showWelcome ? (
           <WelcomeBlock />
         ) : showRestoring ? (
@@ -892,25 +897,29 @@ export function BuilderChatPanel({
         )}
       </div>
 
-      {/* FAB voltar-pro-fim */}
-      <button
-        type="button"
-        onClick={scrollToBottomNow}
-        aria-label="Ir para o fim da conversa"
-        aria-hidden={!(showScrollFab && !showWelcome)}
-        tabIndex={showScrollFab && !showWelcome ? 0 : -1}
-        className={cn(
-          "pointer-events-auto absolute right-3 bottom-[88px] z-30 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full",
-          "bg-violet-500/20 text-violet-700 shadow-sm ring-1 ring-violet-400/25 backdrop-blur-md dark:text-violet-200",
-          "transition-all duration-200 hover:bg-violet-500/45 hover:text-white hover:ring-violet-400/50",
-          "focus-visible:ring-2 focus-visible:ring-violet-400/50 focus-visible:outline-none",
-          showScrollFab && !showWelcome
-            ? "translate-y-0 opacity-100"
-            : "pointer-events-none translate-y-2 opacity-0",
-        )}
-      >
-        <ChevronDown className="h-4 w-4" />
-      </button>
+      {/* FAB voltar-pro-fim , alinhado ao limite direito da coluna da conversa. */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-[88px] z-30">
+        <div className="mx-auto flex max-w-2xl justify-end px-2 sm:px-3">
+          <button
+            type="button"
+            onClick={scrollToBottomNow}
+            aria-label="Ir para o fim da conversa"
+            aria-hidden={!(showScrollFab && !showWelcome)}
+            tabIndex={showScrollFab && !showWelcome ? 0 : -1}
+            className={cn(
+              "pointer-events-auto flex h-9 w-9 cursor-pointer items-center justify-center rounded-full",
+              "bg-violet-500/20 text-violet-700 shadow-sm ring-1 ring-violet-400/25 backdrop-blur-md dark:text-violet-200",
+              "transition-all duration-200 hover:bg-violet-500/45 hover:text-white hover:ring-violet-400/50",
+              "focus-visible:ring-2 focus-visible:ring-violet-400/50 focus-visible:outline-none",
+              showScrollFab && !showWelcome
+                ? "translate-y-0 opacity-100"
+                : "pointer-events-none translate-y-2 opacity-0",
+            )}
+          >
+            <ChevronDown className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
 
       {/* Composer fixo embaixo (quando ja ha conversa). */}
       <footer className={cn("px-3 pt-2 pb-3", imersivo ? "bg-transparent" : "border-t border-border bg-card")}>
