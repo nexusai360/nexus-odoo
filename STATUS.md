@@ -1,5 +1,29 @@
 # STATUS — nexus-odoo
 
+> **2026-06-27 (F6 , METODOLOGIA NO CONSTRUTOR , IMPLEMENTAÇÃO COMPLETA) , branch
+> `feat/nex-reconstrucao`. F6 SÓ LOCAL.** Feature nova entregue de ponta a ponta
+> (spec v3 + plano v3 + 20 tasks TDD, todas as Tasks 0-17 commitadas). O construtor
+> agora faz **brainstorm guiado** (roteiro de perguntas X de N ancorado nas
+> dimensões reais; Gerar **escondido** até elegível por **evidência objetiva** , a
+> intenção estruturada validada no catálogo, não auto-relato) e, no clique do Gerar,
+> roda um **motor orquestrado nos bastidores** (blueprint LLM médio → revisão
+> adversarial LLM alta das 4 dimensões → build determinístico via dispatcher →
+> validação), com **barra de % real + frases girando** (sem tempo), **degrade
+> elegante**, **honestidade visível** (omitidos no reveal), **loop de regenerar
+> barato** (reusa o blueprint) e **dwell no 100%** antes do 2-pane. A fase `resumo`
+> foi removida (fluxo direto entrevista → Gerar → refino). Raciocínio: jornada força
+> ALTO; pipeline usa médio no blueprint e alto na revisão. Quota/billing preservados
+> (logUsage por chamada). **Validação: projeto inteiro typecheca (tsc 0); suíte
+> completa 3451 testes verdes (0 falhas); dev compila e a rota do construtor
+> responde.** Arquivos-chave novos: `journey/{viabilidade,intencao,roteiro}.ts`,
+> `agent/geracao/{blueprint-types,types,blueprint,revisar,ordenar-narrativa,build,
+> validar,progresso,pipeline}.ts`, `journey/{roteiro-indicador,geracao-overlay}.tsx`.
+> **PENDÊNCIA ÚNICA (checkpoint humano): passe visual do usuário na UI**
+> (`/relatorios-2/construtor`) , conduzir um brainstorm real, ver o roteiro crescer,
+> o Gerar aparecer, a overlay com barra+frases, o reveal e o Refazer; e medir a
+> latência real do pipeline (~12-25s esperado). Ajustar reasoning se passar de ~25s.
+> F6 NÃO sobe sem aprovação.
+
 > **2026-06-27 (F6 , METODOLOGIA NO CONSTRUTOR , EM EXECUÇÃO AUTÔNOMA) , branch
 > `feat/nex-reconstrucao`. F6 SÓ LOCAL.** Nova feature pedida pelo usuário: brainstorm
 > guiado (roteiro de perguntas X de N ancorado nas dimensões, Gerar escondido até
