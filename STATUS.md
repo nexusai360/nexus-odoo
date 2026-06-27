@@ -1,5 +1,29 @@
 # STATUS — nexus-odoo
 
+> **2026-06-27 (F6 , RENDERER AGORA USA OS COMPONENTES REAIS DO CONSUMO) , branch
+> `feat/nex-reconstrucao`. F6 SÓ LOCAL.** Correção do feedback do usuário ("ficou
+> uma merda"): o renderer estava usando charts próprios menores em vez dos
+> componentes reais e animados do dashboard **Consumo do Agente Nex**
+> (`src/components/agent/consumo/` + `src/components/charts/interactive/`). Reescrito
+> para compor EXATAMENTE os mesmos componentes:
+> - **BarChart → `InteractiveBarChart`** (barras animadas, layout horizontal quando
+>   >6 categorias, yAxis com label largo).
+> - **LineChart → `InteractiveAreaChart`** (linha/área animada com gradiente, multi-série).
+> - **PieChart → `DonutWithCenter`** (rosca com valor total no centro).
+> - **KPIRow → `KpiCard`** com entrada animada (stagger), mesmos tokens.
+> - **DataTable → `ReportDataTable`** (novo, `src/components/reports/builder/`):
+>   primitivas `Table` do Consumo, busca, números `tabular-nums` à direita, e
+>   **rodapé de paginação de 3 zonas** igual ao Histórico de chamadas (Mostrando
+>   X-Y de Z | ‹ + `PageJumpNavigator` + › | `CustomSelect` 10/25/50/100 por página).
+> - **Barra de filtros → `CustomSelect`** (o select list polido do Consumo) para
+>   armazém/família/faixaDias/sentido, com ícone no trigger; marca segue como busca.
+> A cor da seção (`config.cor`) agora viaja como `series[].color`/cor das fatias dos
+> charts reais. Modo de edição (reordenar/remover/renomear/cor) preservado no Card.
+> **Validação:** tsc 0; 247 testes reports/builder/charts verdes; dev compila.
+> **Ver em `/relatorios-2/construtor` e `/relatorios-2/d/[savedId]`.** F6 não sobe
+> sem aprovação.
+
+
 > **2026-06-27 (F6 , COR DE SEÇÃO + FILTROS ARMAZÉM/FAMÍLIA , modo autônomo) ,
 > branch `feat/nex-reconstrucao`. F6 SÓ LOCAL (sem merge/deploy).** As duas ondas
 > que estavam teed-up foram entregues com TDD (tsc 0; 467 testes reports/charts
