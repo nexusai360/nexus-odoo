@@ -41,6 +41,8 @@ export interface BuilderDonePayload {
   journeyState?: JourneyState;
   /** Fase atual (atalho de journeyState.fase). */
   fase?: FaseJornada;
+  /** O que a geracao deixou de fora (fora do catalogo) , visivel no reveal. */
+  omitidos?: string[];
 }
 
 interface BuilderChatPanelProps {
@@ -103,9 +105,25 @@ type SseEvent =
       erro?: boolean;
       fase?: FaseJornada;
       journeyState?: JourneyState;
+      omitidos?: string[];
     }
   | { type: "choices"; titulo: string; opcoes: OpcaoCard[] }
+  | { type: "progress"; fase: string; pct: number; frase: string }
+  | { type: "roteiro"; total: number; respondidas: number; etapas: string[] }
   | { type: "error"; error: string };
+
+/** Progresso da geracao (tela de espera). */
+export interface ProgressoGeracaoUi {
+  fase: string;
+  pct: number;
+  frase: string;
+}
+/** Estado do roteiro de perguntas (indicador X de N). */
+export interface RoteiroUi {
+  total: number;
+  respondidas: number;
+  etapas: string[];
+}
 
 export function BuilderChatPanel({
   conversationId,

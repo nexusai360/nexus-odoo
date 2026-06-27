@@ -18,6 +18,12 @@ jest.mock("@/lib/reports/builder/saved-report-repo", () => ({
   atualizarRascunho: jest.fn(),
   EtagConflitoError: class EtagConflitoError extends Error {},
 }));
+jest.mock("@/lib/reports/builder/agent/geracao/pipeline", () => ({
+  pipelineGeracao: jest.fn(),
+}));
+jest.mock("@/lib/reports/builder/agent/quota", () => ({
+  verificarQuota: jest.fn().mockResolvedValue({ ok: true }),
+}));
 jest.mock("@/lib/reports/builder/builder-conversation-repo", () => ({
   criarBuilderConversa: jest.fn(),
   assertBuilderConversaOwned: jest.fn(),
@@ -30,7 +36,28 @@ const { getCurrentUser } = jest.requireMock("@/lib/auth");
 const { prisma } = jest.requireMock("@/lib/prisma");
 const { runBuilder } = jest.requireMock("@/lib/reports/builder/agent/run-builder");
 const { criarRascunho } = jest.requireMock("@/lib/reports/builder/saved-report-repo");
+const { pipelineGeracao } = jest.requireMock("@/lib/reports/builder/agent/geracao/pipeline");
 const repo = jest.requireMock("@/lib/reports/builder/builder-conversation-repo");
+
+/** journeyState elegivel por evidencia (intencao cobre o nucleo). */
+const JS_ELEGIVEL = {
+  fase: "entrevista",
+  turnosUsuario: 2,
+  dimensoesTocadas: {},
+  entendimento: "quero ver o saldo por armazem para repor o estoque",
+  dimensoesRelevantes: ["objetivo", "dados", "visualizacao", "indicadores"],
+  intencao: {
+    secoes: [
+      { fato: "fato_estoque_saldo", template: "KPIRow" },
+      { fato: "fato_estoque_saldo", template: "BarChart" },
+    ],
+  },
+};
+const FICHA_GERADA = {
+  id: "g", titulo: "Estoque por armazem", dominio: "estoque", schemaVersion: 1,
+  tipo: "tela_cheia", parametros: [],
+  secoes: [{ id: "s0", template: "BarChart", fato: "fato_estoque_saldo", shapeDerivado: "agregacaoCategorica", config: {}, filtros: [] }],
+};
 
 import { POST } from "./route";
 
@@ -165,5 +192,38 @@ describe("POST /api/builder/stream", () => {
     expect(roteiro).toBeDefined();
     expect(roteiro!.total).toBeGreaterThanOrEqual(4);
     expect(typeof roteiro!.respondidas).toBe("number");
+  });
+
+  it("acao gerar ELEGIVEL roda o pipeline (progress + done com omitidos) e NAO usa runBuilder", async () => {
+    getCurrentUser.mockResolvedValue(ADMIN);
+    prisma.builderConversation.findUnique.mockResolvedValue({ savedReportId: null, journeyState: JS_ELEGIVEL });
+    criarRascunho.mockResolvedValue({ id: "sr-g", etag: "etag-g" });
+    pipelineGeracao.mockImplementation(async (_entrada: unknown, onProgresso: (p: unknown) => void) => {
+      onProgresso({ fase: "blueprint", pct: 10, frase: "montando" });
+      onProgresso({ fase: "validacao", pct: 100, frase: "finalizando" });
+      return { ficha: FICHA_GERADA, omitidos: ["LineChart sobre vendas"], blueprint: { titulo: "t", objetivo: "o", secoes: [] } };
+    });
+
+    const res = await POST(reqBody({ message: "gerar", conversationId: "conv-g", acao: "gerar" }));
+    const evts = await collectSSE(res.body as ReadableStream<Uint8Array>);
+
+    expect(pipelineGeracao).toHaveBeenCalled();
+    expect(runBuilder).not.toHaveBeenCalled();
+    expect(evts.some((e) => e.type === "progress")).toBe(true);
+    const done = evts.find((e) => e.type === "done")!;
+    expect(done.savedId).toBe("sr-g");
+    expect(done.omitidos).toEqual(["LineChart sobre vendas"]);
+    expect((done.journeyState as { fase: string }).fase).toBe("refino");
+  });
+
+  it("acao gerar SEM elegibilidade nao roda o pipeline (cai no turno normal)", async () => {
+    getCurrentUser.mockResolvedValue(ADMIN);
+    repo.criarBuilderConversa.mockResolvedValue({ id: "conv-x" });
+    runBuilder.mockResolvedValue({ ficha: null, mensagem: "ainda preciso entender", toolsCalled: [], reasoningMs: 10 });
+
+    const res = await POST(reqBody({ message: "gera logo", acao: "gerar" }));
+    await collectSSE(res.body as ReadableStream<Uint8Array>);
+    expect(pipelineGeracao).not.toHaveBeenCalled();
+    expect(runBuilder).toHaveBeenCalled();
   });
 });

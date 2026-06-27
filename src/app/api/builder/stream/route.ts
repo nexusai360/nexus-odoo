@@ -40,7 +40,14 @@ import {
   type JourneyState,
 } from "@/lib/reports/builder/journey/state";
 import { roteiroDerivado } from "@/lib/reports/builder/journey/roteiro";
+import { pipelineGeracao } from "@/lib/reports/builder/agent/geracao/pipeline";
+import type { EntradaGeracao } from "@/lib/reports/builder/agent/geracao/types";
+import { verificarQuota } from "@/lib/reports/builder/agent/quota";
 import type { BuilderReportEntry } from "@/lib/reports/builder/types";
+
+// O pipeline do Gerar faz ate 2 chamadas LLM (blueprint medio + revisao alta) +
+// build/validacao. maxDuration generoso para nao cortar a funcao no meio.
+export const maxDuration = 120;
 
 const encoder = new TextEncoder();
 
@@ -63,7 +70,7 @@ export async function POST(req: Request): Promise<Response> {
     return jsonError("Acesso negado", 403);
   }
 
-  let body: { conversationId?: string; message?: string; isAudio?: boolean; acao?: "gerar" };
+  let body: { conversationId?: string; message?: string; isAudio?: boolean; acao?: "gerar" | "regenerar" };
   try {
     body = (await req.json()) as typeof body;
   } catch {
@@ -175,6 +182,86 @@ export async function POST(req: Request): Promise<Response> {
           });
         } else if (evt.type === "choices") {
           emit({ type: "choices", titulo: evt.titulo, opcoes: evt.opcoes });
+        }
+      }
+
+      // === Clique do Gerar (ou Regenerar): roda o PIPELINE de geracao em vez do
+      // runBuilder one-shot. So quando elegivel por evidencia (gerar) ou quando ja
+      // ha refino (regenerar). Caso contrario, cai no turno normal abaixo. ===
+      const querRegenerar = body.acao === "regenerar";
+      const deveGerar = (querGerar && podeOferecerGeracao(journeyState)) || querRegenerar;
+      if (deveGerar) {
+        try {
+          const quota = await verificarQuota(user.id);
+          if (!quota.ok) {
+            const mid = await persistBuilderMensagem(conversationId, "assistant", "Voce atingiu o limite de uso por agora. Tente de novo mais tarde.", {});
+            emit({ type: "done", conversationId, message: "Voce atingiu o limite de uso por agora.", messageId: mid, bloqueado: true, fase: journeyState.fase, journeyState });
+            controller.close();
+            return;
+          }
+
+          const entrada: EntradaGeracao = {
+            entendimento: journeyState.entendimento ?? "",
+            intencao: journeyState.intencao,
+            historico,
+            user: { id: user.id },
+            ...(querRegenerar ? { ajuste: message } : {}),
+          };
+
+          const saida = await pipelineGeracao(entrada, (p) =>
+            emit({ type: "progress", fase: p.fase, pct: p.pct, frase: p.frase }),
+          );
+
+          // Promove a ficha a SavedReport (abrivel) e entra no refino.
+          journeyState = irParaRefino({ ...journeyState, ultimoBlueprint: saida.blueprint });
+          let savedId: string | undefined = savedReportId ?? undefined;
+          let etag: string | undefined;
+          try {
+            if (savedReportId && etagAtual) {
+              const upd = await atualizarRascunho(savedReportId, user.id, saida.ficha, etagAtual);
+              if (upd) { savedId = upd.id; etag = upd.etag; }
+            }
+            if (!etag) {
+              const criado = await criarRascunho(user.id, saida.ficha);
+              savedId = criado.id; etag = criado.etag;
+              await setBuilderSavedReport(conversationId, criado.id);
+            }
+          } catch (err) {
+            if (!(err instanceof EtagConflitoError)) throw err;
+            const criado = await criarRascunho(user.id, saida.ficha);
+            savedId = criado.id; etag = criado.etag;
+            await setBuilderSavedReport(conversationId, criado.id);
+          }
+
+          await prisma.builderConversation
+            .update({ where: { id: conversationId }, data: { title: saida.ficha.titulo, savedReportId: savedId, journeyState: journeyState as unknown as object } })
+            .catch(() => {});
+
+          const mensagemFinal =
+            saida.omitidos.length > 0
+              ? `Pronto, montei seu relatorio. So nao incluí ${saida.omitidos.join("; ")}, porque esse dado ainda nao tem fonte por aqui.`
+              : "Pronto, montei seu relatorio do seu jeito.";
+          const messageId = await persistBuilderMensagem(conversationId, "assistant", mensagemFinal, {});
+
+          emit({
+            type: "done",
+            conversationId,
+            message: mensagemFinal,
+            messageId,
+            fase: journeyState.fase,
+            journeyState,
+            omitidos: saida.omitidos,
+            ficha: saida.ficha,
+            ...(savedId ? { savedId } : {}),
+            ...(etag ? { etag } : {}),
+          });
+          controller.close();
+          return;
+        } catch (e) {
+          const mid = await persistBuilderMensagem(conversationId, "assistant", "Nao consegui montar agora. Me da mais um detalhe e tento de novo?", {});
+          emit({ type: "error", error: e instanceof Error ? e.message : "falha_geracao", messageId: mid });
+          controller.close();
+          return;
         }
       }
 

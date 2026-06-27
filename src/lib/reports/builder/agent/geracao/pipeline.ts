@@ -117,5 +117,5 @@ export async function pipelineGeracao(
   validarFichaGerada(ficha);
   onProgresso({ fase: "validacao", pct: 100, frase: frasesDe("validacao")[0] });
 
-  return { ficha, omitidos };
+  return { ficha, omitidos, blueprint };
 }
