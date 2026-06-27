@@ -7,13 +7,15 @@
 // de cada turno. "Abrir relatorio" navega para a rota dinamica do SavedReport.
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ExternalLink, FileBarChart } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { ExternalLink, FileBarChart, Sparkles } from "lucide-react";
 import { BuilderChatPanel, type BuilderDonePayload } from "./builder-chat-panel";
 import { BuilderPreview } from "./builder-preview";
 import { UnderstandingSummary } from "./journey/understanding-summary";
+import { JourneySummary } from "./journey/journey-summary";
 import { salvarFichaEditada } from "@/lib/actions/builder";
 import type { BuilderReportEntry } from "@/lib/reports/builder/types";
-import type { FaseJornada, JourneyState } from "@/lib/reports/builder/journey/state";
+import type { FaseJornada, JourneyState, Dimensao } from "@/lib/reports/builder/journey/state";
 
 export function BuilderWorkspace({
   audioEnabled = false,
@@ -41,8 +43,11 @@ export function BuilderWorkspace({
   // nova comeca na entrevista (chat centralizado).
   const [fase, setFase] = useState<FaseJornada>(initialSavedId ? "refino" : "entrevista");
   const [journeyState, setJourneyState] = useState<JourneyState | null>(null);
+  const [gerando, setGerando] = useState(false);
   // Ref do etag para o salvamento async da edicao ler sempre o valor atual.
   const etagRef = useRef<string | null>(initialEtag);
+  // Handle de envio exposto pelo chat (para o botao Gerar e o "ajustar").
+  const enviarRef = useRef<((text: string, opts?: { acao?: "gerar" }) => void) | null>(null);
 
   function handleDone(p: BuilderDonePayload) {
     if (p.ficha !== undefined && p.ficha !== null) setFicha(p.ficha);
@@ -53,6 +58,7 @@ export function BuilderWorkspace({
     }
     if (p.journeyState) setJourneyState(p.journeyState);
     if (p.fase) setFase(p.fase);
+    if (p.fase === "refino") setGerando(false);
   }
 
   function handleCleared() {
@@ -62,6 +68,16 @@ export function BuilderWorkspace({
     setEtag(null);
     setJourneyState(null);
     setFase("entrevista");
+    setGerando(false);
+  }
+
+  function gerar() {
+    setGerando(true);
+    enviarRef.current?.("Pode gerar o relatorio agora.", { acao: "gerar" });
+  }
+
+  function ajustar(dimensao: Dimensao) {
+    enviarRef.current?.(`Quero ajustar ${dimensao}.`);
   }
 
   function abrir() {
@@ -132,6 +148,7 @@ export function BuilderWorkspace({
       audioEnabled={audioEnabled}
       anexoEnabled={anexoEnabled}
       podeExportar={podeExportar}
+      enviarRef={enviarRef}
     />
   );
 
@@ -176,13 +193,46 @@ export function BuilderWorkspace({
           </section>
         </div>
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col items-center bg-background">
-          <div className="flex min-h-0 w-full max-w-2xl flex-1 flex-col gap-3 px-4 py-4">
-            <UnderstandingSummary texto={journeyState?.entendimento} />
-            <div className="min-h-0 flex-1 overflow-hidden rounded-2xl border border-border bg-card">
+        <div className="relative flex min-h-0 flex-1 flex-col items-center overflow-y-auto bg-background">
+          <div className="flex w-full max-w-2xl flex-1 flex-col gap-3 px-4 py-4">
+            {fase === "resumo" && journeyState?.resumo ? (
+              <JourneySummary
+                resumo={journeyState.resumo}
+                onAjustar={ajustar}
+                onGerar={gerar}
+                gerando={gerando}
+              />
+            ) : (
+              <UnderstandingSummary texto={journeyState?.entendimento} />
+            )}
+            <div className="min-h-[320px] flex-1 overflow-hidden rounded-2xl border border-border bg-card">
               {chatPanel}
             </div>
           </div>
+
+          {/* Animacao de geracao: overlay enquanto monta; sai com fade quando a
+              fase vira refino (a transicao para o 2-pane acontece em seguida). */}
+          <AnimatePresence>
+            {gerando ? (
+              <motion.div
+                key="gerando"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-background/80 backdrop-blur-sm"
+              >
+                <motion.div
+                  animate={{ scale: [1, 1.12, 1], rotate: [0, 8, -8, 0] }}
+                  transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+                  className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-violet-500 text-white shadow-lg shadow-violet-600/40"
+                >
+                  <Sparkles className="h-7 w-7" aria-hidden />
+                </motion.div>
+                <p className="text-sm font-medium text-foreground">Montando seu relatorio...</p>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
         </div>
       )}
     </div>

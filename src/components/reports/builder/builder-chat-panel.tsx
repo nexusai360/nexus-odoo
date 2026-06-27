@@ -53,6 +53,9 @@ interface BuilderChatPanelProps {
   anexoEnabled?: boolean;
   /** Mostra "Baixar conversa (.txt)" no menu (admin/super_admin do construtor). */
   podeExportar?: boolean;
+  /** Handle imperativo: o pai recebe a funcao de enviar (para o botao Gerar e o
+   *  "ajustar" da tela de resumo dispararem um turno). */
+  enviarRef?: React.MutableRefObject<((text: string, opts?: { acao?: "gerar" }) => void) | null>;
 }
 
 interface UiMsg {
@@ -105,6 +108,7 @@ export function BuilderChatPanel({
   audioEnabled = false,
   anexoEnabled = false,
   podeExportar = false,
+  enviarRef,
 }: BuilderChatPanelProps) {
   const reduceMotion = useReducedMotion();
 
@@ -345,7 +349,7 @@ export function BuilderChatPanel({
   }, [reduceMotion, setIsSticky]);
 
   const handleSend = React.useCallback(
-    async (text: string, opts?: { isAudio?: boolean }) => {
+    async (text: string, opts?: { isAudio?: boolean; acao?: "gerar" }) => {
       const trimmed = text.trim();
       if (!trimmed || pending) return;
 
@@ -390,6 +394,7 @@ export function BuilderChatPanel({
             message: trimmed,
             conversationId: conversationIdRef.current ?? undefined,
             isAudio: opts?.isAudio,
+            ...(opts?.acao ? { acao: opts.acao } : {}),
           }),
           signal: controller.signal,
         });
@@ -519,6 +524,17 @@ export function BuilderChatPanel({
     },
     [pending, onConversationCreated, onDone, setIsSticky],
   );
+
+  // Expoe o envio ao pai (botao Gerar e "ajustar" da tela de resumo).
+  React.useEffect(() => {
+    if (!enviarRef) return;
+    enviarRef.current = (text: string, opts?: { acao?: "gerar" }) => {
+      void handleSend(text, opts);
+    };
+    return () => {
+      if (enviarRef) enviarRef.current = null;
+    };
+  }, [enviarRef, handleSend]);
 
   const handleClear = React.useCallback(async () => {
     setMenuOpen(false);

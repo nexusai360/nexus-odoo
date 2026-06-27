@@ -35,6 +35,7 @@ import {
   defaultParaConversa,
   podeOferecerGeracao,
   irParaRefino,
+  voltarParaEntrevista,
   type JourneyState,
 } from "@/lib/reports/builder/journey/state";
 import type { BuilderReportEntry } from "@/lib/reports/builder/types";
@@ -127,6 +128,12 @@ export async function POST(req: Request): Promise<Response> {
 
   // Conta o turno do usuario (piso do gate de entendimento).
   journeyState = { ...journeyState, turnosUsuario: (journeyState.turnosUsuario ?? 0) + 1 };
+
+  // Mensagem normal durante o resumo = "ajustar": volta para a entrevista (so o
+  // clique em Gerar promove). Mantem a tela de resumo contestavel.
+  if (!querGerar && journeyState.fase === "resumo") {
+    journeyState = voltarParaEntrevista(journeyState);
+  }
 
   // Persiste a mensagem do usuario (kind=audio quando veio de voz).
   await persistBuilderMensagem(conversationId, "user", message, {
