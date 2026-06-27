@@ -202,9 +202,11 @@ export async function runBuilder(
     };
   }
 
-  const toolDefs = construirToolDefs();
-  const reasoning = await deps.obterReasoning();
   const modo = input.modo ?? "refino";
+  // Catalogo filtrado por modo: a jornada (brainstorm) so ve as tools de coleta;
+  // ela NAO constroi a ficha (isso passou para o pipeline do Gerar).
+  const toolDefs = construirToolDefs(modo);
+  const reasoning = await deps.obterReasoning();
   // Raciocinio:
   // - JORNADA (fase de brainstorm/entrevista): SEMPRE raciocinio ALTO, qualquer
   //   que seja a config. Aqui a IA tem que entender o usuario a fundo e ja vir
@@ -318,8 +320,9 @@ export async function runBuilder(
       };
     }
 
-    // Reparo: concluiu sem ficha util -> realimenta.
-    if (!fichaUtilizavel(ficha) && reparosRestantes > 0) {
+    // Reparo: concluiu sem ficha util -> realimenta. SO no refino: a jornada
+    // (brainstorm) nao constroi ficha, entao "sem ficha" e o estado normal dela.
+    if (modo !== "jornada" && !fichaUtilizavel(ficha) && reparosRestantes > 0) {
       reparosRestantes--;
       const motivo = ficha
         ? validarFicha(ficha).ok

@@ -21,6 +21,21 @@ describe("tool-bridge , construirToolDefs", () => {
     expect(params.properties).toHaveProperty("chave");
     expect(params.required).toContain("chave");
   });
+
+  it("modo jornada so oferece as tools de coleta (sem construir ficha)", () => {
+    const nomes = construirToolDefs("jornada").map((d) => d.name);
+    expect(nomes).toContain("registrar_seccao_pretendida");
+    expect(nomes).toContain("atualizar_entendimento");
+    expect(nomes).not.toContain("criar_relatorio");
+    expect(nomes).not.toContain("adicionar_secao");
+  });
+
+  it("modo refino so oferece as tools de construcao da ficha", () => {
+    const nomes = construirToolDefs("refino").map((d) => d.name);
+    expect(nomes).toContain("adicionar_secao");
+    expect(nomes).not.toContain("registrar_seccao_pretendida");
+    expect(nomes).not.toContain("oferecer_geracao");
+  });
 });
 
 describe("tool-bridge , despachar", () => {

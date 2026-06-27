@@ -7,11 +7,15 @@ import { z } from "zod";
 import type { ToolCall, ToolDefinition } from "@/lib/agent/llm/types";
 import type { BuilderReportEntry } from "../types";
 import type { JourneyState } from "../journey/state";
-import { BUILDER_TOOLS, executarTool, type ToolExec } from "../tools";
+import { BUILDER_TOOLS, executarTool, type ToolExec, type BuilderModo } from "../tools";
 
-/** Converte o catalogo BUILDER_TOOLS para o formato `tools` do chat. */
-export function construirToolDefs(): ToolDefinition[] {
-  return BUILDER_TOOLS.map((t) => ({
+/**
+ * Converte o catalogo BUILDER_TOOLS para o formato `tools` do chat, filtrando por
+ * modo: a jornada (brainstorm) so ve as tools de coleta; o refino so ve as de
+ * construcao da ficha. Sem `modo`, devolve tudo (compat).
+ */
+export function construirToolDefs(modo?: BuilderModo): ToolDefinition[] {
+  return BUILDER_TOOLS.filter((t) => !modo || !t.modos || t.modos.includes(modo)).map((t) => ({
     name: t.name,
     description: t.descricao,
     parameters: z.toJSONSchema(t.inputSchema) as object,
