@@ -6,6 +6,7 @@
 import { z } from "zod";
 import type { ToolCall, ToolDefinition } from "@/lib/agent/llm/types";
 import type { BuilderReportEntry } from "../types";
+import type { JourneyState } from "../journey/state";
 import { BUILDER_TOOLS, executarTool, type ToolExec } from "../tools";
 
 /** Converte o catalogo BUILDER_TOOLS para o formato `tools` do chat. */
@@ -24,6 +25,7 @@ export function construirToolDefs(): ToolDefinition[] {
 export function despachar(
   toolCall: ToolCall,
   ficha: BuilderReportEntry | null,
+  journeyState?: JourneyState,
 ): ToolExec {
   const meta = BUILDER_TOOLS.find((t) => t.name === toolCall.name);
   if (!meta) return { tipo: "erro", erro: "tool_desconhecida" };
@@ -36,5 +38,5 @@ export function despachar(
     return { tipo: "erro", erro: `args_invalidos: ${detalhe}` };
   }
 
-  return executarTool(toolCall.name, parsed.data as Record<string, unknown>, ficha);
+  return executarTool(toolCall.name, parsed.data as Record<string, unknown>, ficha, journeyState);
 }

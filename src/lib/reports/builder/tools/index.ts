@@ -22,6 +22,15 @@ import {
 } from "./mutators";
 import { validarReportEntry } from "../report-entry-schema";
 import { checarCompatibilidade } from "../compat";
+import {
+  atualizarEntendimento,
+  oferecerOpcoes,
+  oferecerGeracao,
+  montarResumo,
+  type JourneyState,
+  type OpcaoCard,
+  type Dimensao,
+} from "../journey/state";
 import type { BuilderReportEntry } from "../types";
 
 export interface BuilderToolMeta {
@@ -51,6 +60,10 @@ export const BUILDER_TOOLS: BuilderToolMeta[] = [
   { name: "definir_titulo_secao", muta: true, descricao: "Define o titulo de uma secao (config.titulo).", inputSchema: z.object({ secaoId: z.string(), titulo: z.string() }) },
   { name: "definir_cor_secao", muta: true, descricao: "Define a cor de uma secao de grafico (Bar/Pie/Line). cor = token da paleta (violet|blue|cyan|emerald|green|amber|orange|pink|red|slate) ou 'padrao' para limpar.", inputSchema: z.object({ secaoId: z.string(), cor: z.string().nullable() }) },
   { name: "definir_filtro", muta: true, descricao: "Acrescenta um filtro a uma secao.", inputSchema: z.object({ secaoId: z.string(), filtro: filtroSchema }) },
+  { name: "atualizar_entendimento", muta: true, descricao: "Atualiza o reflexo de entendimento mostrado ao usuario (resumo em linguagem natural do que voce ja entendeu). Use sempre que avancar no entendimento.", inputSchema: z.object({ texto: z.string(), dimensoes: z.array(z.enum(["objetivo", "dados", "indicadores", "visualizacao", "filtros", "layout", "periodo"])).optional() }) },
+  { name: "oferecer_opcoes", muta: false, descricao: "Oferece ao usuario 2 a 4 opcoes para ele escolher (ex.: jeitos de visualizar). Cada opcao tem id, rotulo, descricao e tipoVisual opcional (KPIRow|BarChart|PieChart|LineChart|DataTable).", inputSchema: z.object({ titulo: z.string(), opcoes: z.array(z.object({ id: z.string(), rotulo: z.string(), descricao: z.string().optional(), tipoVisual: z.string().optional() })) }) },
+  { name: "oferecer_geracao", muta: true, descricao: "Sinaliza que voce ja entendeu o suficiente e oferece gerar o relatorio. So sera aceito se a ficha tiver evidencia suficiente; caso contrario, continue entrevistando.", inputSchema: z.object({ motivo: z.string() }) },
+  { name: "montar_resumo", muta: true, descricao: "Monta o resumo estruturado das escolhas para a tela de resumo. So apos oferecer_geracao aceito.", inputSchema: z.object({}) },
   { name: "validar", muta: false, descricao: "Valida a ficha atual (schema + compatibilidade de todas as secoes).", inputSchema: z.object({}) },
 ];
 
@@ -70,7 +83,15 @@ export function validarFicha(
 export type ToolExec =
   | { tipo: "leitura"; resultado: unknown }
   | { tipo: "ficha"; ficha: BuilderReportEntry }
+  | { tipo: "jornada"; journeyState: JourneyState }
+  | { tipo: "opcoes"; titulo: string; opcoes: OpcaoCard[] }
   | { tipo: "erro"; erro: string };
+
+function jornadaResult(
+  r: { journeyState: JourneyState } | { erro: string },
+): ToolExec {
+  return "journeyState" in r ? { tipo: "jornada", journeyState: r.journeyState } : { tipo: "erro", erro: r.erro };
+}
 
 function mutResult(
   r: { ficha: BuilderReportEntry } | { erro: string },
@@ -84,8 +105,24 @@ export function executarTool(
   // args ja validados pelo inputSchema da tool no chamador (E1b).
   args: Record<string, unknown>,
   ficha: BuilderReportEntry | null,
+  journeyState?: JourneyState,
 ): ToolExec {
   switch (name) {
+    case "atualizar_entendimento":
+      if (!journeyState) return { tipo: "erro", erro: "sem_jornada" };
+      return jornadaResult(atualizarEntendimento(journeyState, args as { texto: string; dimensoes?: Dimensao[] }));
+    case "oferecer_opcoes": {
+      const r = oferecerOpcoes(args as { titulo: string; opcoes: OpcaoCard[] });
+      return "erro" in r ? { tipo: "erro", erro: r.erro } : { tipo: "opcoes", titulo: r.titulo, opcoes: r.opcoes };
+    }
+    case "oferecer_geracao": {
+      if (!journeyState) return { tipo: "erro", erro: "sem_jornada" };
+      const r = oferecerGeracao(journeyState);
+      return "journeyState" in r ? { tipo: "jornada", journeyState: r.journeyState } : { tipo: "erro", erro: `${r.erro}: ${r.falta ?? ""}`.trim() };
+    }
+    case "montar_resumo":
+      if (!journeyState) return { tipo: "erro", erro: "sem_jornada" };
+      return jornadaResult(montarResumo(journeyState));
     case "listar_componentes":
       return { tipo: "leitura", resultado: toolListarComponentes() };
     case "descrever_componente":

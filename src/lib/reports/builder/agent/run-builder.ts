@@ -143,6 +143,10 @@ function serializarResultadoTool(
 ): string {
   if (r.tipo === "ficha") return JSON.stringify({ ok: true, ficha });
   if (r.tipo === "leitura") return JSON.stringify(r.resultado);
+  if (r.tipo === "jornada")
+    return JSON.stringify({ ok: true, fase: r.journeyState.fase, entendimento: r.journeyState.entendimento });
+  if (r.tipo === "opcoes")
+    return JSON.stringify({ ok: true, opcoesOferecidas: r.opcoes.map((o) => o.rotulo) });
   return JSON.stringify({ erro: r.erro });
 }
 

@@ -121,3 +121,81 @@ export function voltarParaEntrevista(s: JourneyState): JourneyState {
 export function irParaRefino(s: JourneyState): JourneyState {
   return { ...s, fase: "refino" };
 }
+
+// ---------------------------------------------------------------------------
+// Handlers das tools de jornada (puros; mutam o JourneyState, nao a ficha).
+// ---------------------------------------------------------------------------
+
+/** Card de opcao oferecido ao usuario (thumbnail). */
+export interface OpcaoCard {
+  id: string;
+  rotulo: string;
+  descricao?: string;
+  /** Template ilustrado (valida contra TEMPLATES_ONDA1); opcional. */
+  tipoVisual?: ReportTemplate;
+}
+
+const TEMPLATES_VALIDOS: ReadonlySet<ReportTemplate> = new Set([
+  "KPIRow",
+  "BarChart",
+  "PieChart",
+  "LineChart",
+  "DataTable",
+]);
+
+/** Define o reflexo de entendimento e marca as dimensoes tocadas. */
+export function atualizarEntendimento(
+  s: JourneyState,
+  args: { texto: string; dimensoes?: Dimensao[] },
+): { journeyState: JourneyState } | { erro: string } {
+  const texto = args.texto?.trim();
+  if (!texto) return { erro: "texto_vazio" };
+  const dimensoesTocadas = { ...s.dimensoesTocadas };
+  for (const d of args.dimensoes ?? []) {
+    if (d in dimensoesTocadas) dimensoesTocadas[d] = true;
+  }
+  return { journeyState: { ...s, entendimento: texto, dimensoesTocadas } };
+}
+
+/** Valida e devolve as opcoes oferecidas (descarta tipoVisual invalido). */
+export function oferecerOpcoes(args: {
+  titulo: string;
+  opcoes: OpcaoCard[];
+}): { titulo: string; opcoes: OpcaoCard[] } | { erro: string } {
+  const titulo = args.titulo?.trim();
+  if (!titulo) return { erro: "titulo_vazio" };
+  const opcoes = (args.opcoes ?? [])
+    .filter((o) => o && o.id && o.rotulo)
+    .map((o) => {
+      const tipoVisual = o.tipoVisual && TEMPLATES_VALIDOS.has(o.tipoVisual) ? o.tipoVisual : undefined;
+      return { id: o.id, rotulo: o.rotulo, descricao: o.descricao, tipoVisual };
+    });
+  if (opcoes.length === 0) return { erro: "sem_opcoes_validas" };
+  return { titulo, opcoes };
+}
+
+/** A IA sinaliza que da para gerar. So aceita com elegibilidade por evidencia. */
+export function oferecerGeracao(
+  s: JourneyState,
+): { journeyState: JourneyState } | { erro: "ainda_sem_evidencia"; falta?: string } {
+  const r = irParaResumo(s);
+  if ("erro" in r) return { erro: "ainda_sem_evidencia", falta: r.erro };
+  return { journeyState: r };
+}
+
+/** Monta o resumo estruturado (so com elegibilidade), lendo ficha + entendimento. */
+export function montarResumo(
+  s: JourneyState,
+): { journeyState: JourneyState } | { erro: string } {
+  const e = entendimentoElegivel(s);
+  if (!e.ok) return { erro: e.falta ?? "ainda_sem_evidencia" };
+  const ficha = s.fichaRascunho;
+  const itens: ResumoJornada["itens"] = [];
+  if (s.entendimento) itens.push({ dimensao: "objetivo", texto: s.entendimento });
+  for (const sec of ficha?.secoes ?? []) {
+    const titulo = typeof sec.config?.titulo === "string" ? sec.config.titulo : sec.template;
+    const dimensao: Dimensao = sec.template === "KPIRow" ? "indicadores" : "visualizacao";
+    itens.push({ dimensao, texto: `${titulo} (${sec.template}) sobre ${sec.fato}` });
+  }
+  return { journeyState: { ...s, resumo: { itens } } };
+}
