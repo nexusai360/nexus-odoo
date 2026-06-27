@@ -13,7 +13,7 @@
 > **PROGRESSO da execução (retomar pela próxima task NÃO marcada):**
 > - [x] Task 1 , capability map curado (`builder/capabilities.ts`, 5 testes).
 > - [x] Task 2 , journeyState + gate por evidência + transições (`builder/journey/state.ts`, 12 testes).
-> - [ ] Task 3 , tools de jornada + ToolExec/tool-bridge/serialização.
+> - [x] Task 3 , tools de jornada (atualizar_entendimento/oferecer_opcoes/oferecer_geracao/montar_resumo) + ToolExec/tool-bridge/serialização (18 tools; 6 testes).
 > - [ ] Task 4 , runBuilder histórico+journeyState+temperature por modo + prompt jornada.
 > - [ ] Task 5a/5b , migration journeyState + stream (histórico/choices/sinal Gerar).
 > - [ ] Task 6 , tipos de front (SseEvent done+choices, BuilderDonePayload).

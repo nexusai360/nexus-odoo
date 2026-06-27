@@ -28,7 +28,9 @@ import { verificarQuota, type ResultadoQuota } from "./quota";
 import { obterRecursosConstrutor } from "./recursos-config";
 import type { ReasoningEffort } from "@/lib/agent/llm/types";
 import { SYSTEM_CONSTRUTOR } from "./prompt";
+import { montarSystemJornada } from "./prompt-jornada";
 import { builderProgressLabel } from "./builder-progress-labels";
+import type { JourneyState, OpcaoCard } from "../journey/state";
 
 /**
  * Evento emitido ao vivo durante o loop, para o stream SSE animar a trilha de
@@ -36,7 +38,8 @@ import { builderProgressLabel } from "./builder-progress-labels";
  */
 export type BuilderRunEvent =
   | { type: "tool_call"; toolCallId: string; toolName: string; label: string }
-  | { type: "tool_result"; toolCallId: string; toolName: string; label: string; erro: boolean };
+  | { type: "tool_result"; toolCallId: string; toolName: string; label: string; erro: boolean }
+  | { type: "choices"; titulo: string; opcoes: OpcaoCard[] };
 
 /** Maximo de iteracoes do loop (cada uma = 1 chamada ao modelo). */
 export const MAX_ITER = 8;
@@ -55,6 +58,12 @@ export interface RunBuilderInput {
   user: BuilderUser;
   /** Callback ao vivo por tool call/result (alimenta a trilha do stream SSE). */
   onEvent?: (evt: BuilderRunEvent) => void;
+  /** Historico de turnos anteriores (entrevista). Sem isso, a IA nao lembra. */
+  historico?: { role: "user" | "assistant"; content: string }[];
+  /** Estado da jornada (cobertura, fichaRascunho, fase). Modo jornada. */
+  journeyState?: JourneyState;
+  /** "jornada" = entrevistador adaptativo; "refino" = construtor direto (default). */
+  modo?: "jornada" | "refino";
 }
 
 export interface RunBuilderResult {
@@ -70,6 +79,8 @@ export interface RunBuilderResult {
   toolsCalled: { label: string }[];
   /** Duracao total do turno em ms (resumo "Raciocinio . N tools . Xs"). */
   reasoningMs: number;
+  /** Estado da jornada atualizado no turno (modo jornada). */
+  journeyState?: JourneyState;
 }
 
 /** Dependencias injetaveis (default = infra real). Facilita teste sem mock global. */
@@ -137,6 +148,12 @@ function fichaUtilizavel(ficha: BuilderReportEntry | null): boolean {
   return !!ficha && ficha.secoes.length > 0 && validarFicha(ficha).ok;
 }
 
+/** Resumo compacto da ficha para o contexto do modo jornada (contem custo). */
+function resumoFichaCompacto(ficha: BuilderReportEntry): string {
+  const secoes = ficha.secoes.map((s) => `${s.template} sobre ${s.fato}`).join(", ");
+  return `titulo "${ficha.titulo}"; secoes: ${secoes || "(nenhuma ainda)"}`;
+}
+
 function serializarResultadoTool(
   r: ReturnType<typeof despachar>,
   ficha: BuilderReportEntry | null,
@@ -168,6 +185,7 @@ export async function runBuilder(
       bloqueado: true,
       toolsCalled,
       reasoningMs: tempo(),
+      journeyState: input.journeyState,
     };
   }
 
@@ -180,6 +198,7 @@ export async function runBuilder(
       erro: true,
       toolsCalled,
       reasoningMs: tempo(),
+      journeyState: input.journeyState,
     };
   }
 
@@ -188,15 +207,25 @@ export async function runBuilder(
   const reasoningEffort: ReasoningEffort | undefined = reasoning.ligado
     ? ((reasoning.effort as ReasoningEffort | null) ?? "high")
     : undefined;
-  let ficha: BuilderReportEntry | null = input.fichaAtual;
+  const modo = input.modo ?? "refino";
+  let journeyState = input.journeyState;
+  let ficha: BuilderReportEntry | null = input.fichaAtual ?? journeyState?.fichaRascunho ?? null;
   let reparosRestantes = MAX_REPAIR;
 
-  const messages: ChatMessage[] = [{ role: "system", content: SYSTEM_CONSTRUTOR }];
+  const system = modo === "jornada" ? montarSystemJornada() : SYSTEM_CONSTRUTOR;
+  const messages: ChatMessage[] = [{ role: "system", content: system }];
+  // Historico dos turnos anteriores (entrevista). Sem isso a IA nao lembra.
+  for (const h of input.historico ?? []) {
+    messages.push({ role: h.role, content: h.content });
+  }
   if (ficha) {
-    messages.push({
-      role: "user",
-      content: `Ficha atual (em construcao):\n${JSON.stringify(ficha)}`,
-    });
+    // Modo jornada envia a ficha COMPACTA (titulo + secoes) para conter custo;
+    // refino envia o JSON inteiro (precisao para ajustes).
+    const fichaContexto =
+      modo === "jornada"
+        ? `Ficha em construcao (resumo): ${resumoFichaCompacto(ficha)}`
+        : `Ficha atual (em construcao):\n${JSON.stringify(ficha)}`;
+    messages.push({ role: "user", content: fichaContexto });
   }
   messages.push({ role: "user", content: prompt });
 
@@ -204,7 +233,7 @@ export async function runBuilder(
     const res = await cliente.chat({
       messages,
       tools: toolDefs,
-      temperature: 0.2,
+      temperature: modo === "jornada" ? 0.5 : 0.2,
       ...(reasoningEffort ? { reasoningEffort } : {}),
     });
 
@@ -228,8 +257,18 @@ export async function runBuilder(
         const label = builderProgressLabel(tc.name);
         toolsCalled.push({ label });
         onEvent?.({ type: "tool_call", toolCallId: tc.id, toolName: tc.name, label });
-        const r = despachar(tc, ficha);
-        if (r.tipo === "ficha") ficha = r.ficha;
+        // Espelha a ficha de trabalho no rascunho ANTES de despachar, para o gate
+        // de oferecer_geracao enxergar a ficha montada neste mesmo turno.
+        if (journeyState) journeyState = { ...journeyState, fichaRascunho: ficha ?? undefined };
+        const r = despachar(tc, ficha, journeyState);
+        if (r.tipo === "ficha") {
+          ficha = r.ficha;
+          if (journeyState) journeyState = { ...journeyState, fichaRascunho: ficha };
+        } else if (r.tipo === "jornada") {
+          journeyState = r.journeyState;
+        } else if (r.tipo === "opcoes") {
+          onEvent?.({ type: "choices", titulo: r.titulo, opcoes: r.opcoes });
+        }
         onEvent?.({
           type: "tool_result",
           toolCallId: tc.id,
@@ -262,6 +301,7 @@ export async function runBuilder(
         recusa: true,
         toolsCalled,
         reasoningMs: tempo(),
+        journeyState,
       };
     }
 
@@ -281,7 +321,7 @@ export async function runBuilder(
       continue;
     }
 
-    return { ficha, mensagem: msg, toolsCalled, reasoningMs: tempo() };
+    return { ficha, mensagem: msg, toolsCalled, reasoningMs: tempo(), journeyState };
   }
 
   return {
@@ -291,5 +331,6 @@ export async function runBuilder(
     erro: true,
     toolsCalled,
     reasoningMs: tempo(),
+    journeyState,
   };
 }
