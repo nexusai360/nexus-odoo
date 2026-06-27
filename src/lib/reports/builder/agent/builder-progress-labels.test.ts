@@ -19,6 +19,12 @@ describe("builderProgressLabel", () => {
   it("usa fallback neutro para tool desconhecida (nunca o id cru)", () => {
     expect(builderProgressLabel("tool_que_nao_existe")).toBe("Montando o relatório");
   });
+
+  it("tem rotulo proprio (sem fallback) para as tools de brainstorm", () => {
+    expect(builderProgressLabel("registrar_seccao_pretendida")).not.toBe("Montando o relatório");
+    expect(builderProgressLabel("marcar_dimensao_relevante")).not.toBe("Montando o relatório");
+    expect(builderProgressLabel("declarar_sem_kpi")).not.toBe("Montando o relatório");
+  });
 });
 
 describe("rotulosDeduplicados", () => {

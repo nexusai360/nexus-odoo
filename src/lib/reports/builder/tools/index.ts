@@ -27,11 +27,19 @@ import {
   oferecerOpcoes,
   oferecerGeracao,
   montarResumo,
+  marcarDimensaoRelevante,
   type JourneyState,
   type OpcaoCard,
   type Dimensao,
 } from "../journey/state";
+import {
+  registrarSeccaoPretendida,
+  declararSemKpi,
+  type SeccaoPretendida,
+} from "../journey/intencao";
 import type { BuilderReportEntry } from "../types";
+
+export type BuilderModo = "jornada" | "refino";
 
 export interface BuilderToolMeta {
   name: string;
@@ -39,7 +47,11 @@ export interface BuilderToolMeta {
   /** muta a ficha (precisa da ficha atual) ou e leitura pura. */
   muta: boolean;
   inputSchema: z.ZodTypeAny;
+  /** Modos em que a tool e oferecida ao modelo. Ausente = ambos. */
+  modos?: BuilderModo[];
 }
+
+const DIMENSOES_ENUM = ["objetivo", "dados", "indicadores", "visualizacao", "filtros", "layout", "periodo"] as const;
 
 const filtroSchema = z.object({
   tipo: z.enum(["armazem", "familia", "marca", "sentido", "faixaDias"]),
@@ -51,19 +63,24 @@ export const BUILDER_TOOLS: BuilderToolMeta[] = [
   { name: "descrever_componente", muta: false, descricao: "Detalha um componente (shape exigido, parametros, interacao).", inputSchema: z.object({ chave: z.string() }) },
   { name: "listar_fontes", muta: false, descricao: "Lista as fontes de dado disponiveis e os shapes que oferecem.", inputSchema: z.object({}) },
   { name: "prever_dado", muta: false, descricao: "Mostra os campos que uma fonte entrega num dado shape.", inputSchema: z.object({ fato: z.string(), shapeDerivado: z.string() }) },
-  { name: "criar_relatorio", muta: true, descricao: "Cria uma ficha de relatorio vazia.", inputSchema: z.object({ titulo: z.string(), dominio: z.string().optional() }) },
-  { name: "adicionar_secao", muta: true, descricao: "Adiciona uma secao (template + fonte + shape) se compativel.", inputSchema: z.object({ template: z.string(), fato: z.string(), shapeDerivado: z.string(), config: z.record(z.string(), z.unknown()).optional() }) },
-  { name: "editar_secao", muta: true, descricao: "Edita uma secao existente (config/template/shape), re-checa compatibilidade.", inputSchema: z.object({ secaoId: z.string(), patch: z.object({ template: z.string().optional(), shapeDerivado: z.string().optional(), config: z.record(z.string(), z.unknown()).optional() }) }) },
-  { name: "remover_secao", muta: true, descricao: "Remove uma secao pela id.", inputSchema: z.object({ secaoId: z.string() }) },
-  { name: "mover_secao", muta: true, descricao: "Reposiciona uma secao (reordena): por direcao (cima/baixo) ou posicao (1-based).", inputSchema: z.object({ secaoId: z.string(), direcao: z.enum(["cima", "baixo"]).optional(), posicao: z.number().int().positive().optional() }) },
-  { name: "definir_titulo", muta: true, descricao: "Renomeia o relatorio (titulo do topo).", inputSchema: z.object({ titulo: z.string() }) },
-  { name: "definir_titulo_secao", muta: true, descricao: "Define o titulo de uma secao (config.titulo).", inputSchema: z.object({ secaoId: z.string(), titulo: z.string() }) },
-  { name: "definir_cor_secao", muta: true, descricao: "Define a cor de uma secao de grafico (Bar/Pie/Line). cor = token da paleta (violet|blue|cyan|emerald|green|amber|orange|pink|red|slate) ou 'padrao' para limpar.", inputSchema: z.object({ secaoId: z.string(), cor: z.string().nullable() }) },
-  { name: "definir_filtro", muta: true, descricao: "Acrescenta um filtro a uma secao.", inputSchema: z.object({ secaoId: z.string(), filtro: filtroSchema }) },
-  { name: "atualizar_entendimento", muta: true, descricao: "Atualiza o reflexo de entendimento mostrado ao usuario (resumo em linguagem natural do que voce ja entendeu). Use sempre que avancar no entendimento.", inputSchema: z.object({ texto: z.string(), dimensoes: z.array(z.enum(["objetivo", "dados", "indicadores", "visualizacao", "filtros", "layout", "periodo"])).optional() }) },
-  { name: "oferecer_opcoes", muta: false, descricao: "Oferece ao usuario 2 a 4 opcoes para ele escolher (ex.: jeitos de visualizar). Cada opcao tem id, rotulo, descricao e tipoVisual opcional (KPIRow|BarChart|PieChart|LineChart|DataTable).", inputSchema: z.object({ titulo: z.string(), opcoes: z.array(z.object({ id: z.string(), rotulo: z.string(), descricao: z.string().optional(), tipoVisual: z.string().optional() })) }) },
-  { name: "oferecer_geracao", muta: true, descricao: "Sinaliza que voce ja entendeu o suficiente e oferece gerar o relatorio. So sera aceito se a ficha tiver evidencia suficiente; caso contrario, continue entrevistando.", inputSchema: z.object({ motivo: z.string() }) },
-  { name: "montar_resumo", muta: true, descricao: "Monta o resumo estruturado das escolhas para a tela de resumo. So apos oferecer_geracao aceito.", inputSchema: z.object({}) },
+  // --- Tools de construcao da ficha: SO no modo refino (jornada nao constroi). ---
+  { name: "criar_relatorio", muta: true, modos: ["refino"], descricao: "Cria uma ficha de relatorio vazia.", inputSchema: z.object({ titulo: z.string(), dominio: z.string().optional() }) },
+  { name: "adicionar_secao", muta: true, modos: ["refino"], descricao: "Adiciona uma secao (template + fonte + shape) se compativel.", inputSchema: z.object({ template: z.string(), fato: z.string(), shapeDerivado: z.string(), config: z.record(z.string(), z.unknown()).optional() }) },
+  { name: "editar_secao", muta: true, modos: ["refino"], descricao: "Edita uma secao existente (config/template/shape), re-checa compatibilidade.", inputSchema: z.object({ secaoId: z.string(), patch: z.object({ template: z.string().optional(), shapeDerivado: z.string().optional(), config: z.record(z.string(), z.unknown()).optional() }) }) },
+  { name: "remover_secao", muta: true, modos: ["refino"], descricao: "Remove uma secao pela id.", inputSchema: z.object({ secaoId: z.string() }) },
+  { name: "mover_secao", muta: true, modos: ["refino"], descricao: "Reposiciona uma secao (reordena): por direcao (cima/baixo) ou posicao (1-based).", inputSchema: z.object({ secaoId: z.string(), direcao: z.enum(["cima", "baixo"]).optional(), posicao: z.number().int().positive().optional() }) },
+  { name: "definir_titulo", muta: true, modos: ["refino"], descricao: "Renomeia o relatorio (titulo do topo).", inputSchema: z.object({ titulo: z.string() }) },
+  { name: "definir_titulo_secao", muta: true, modos: ["refino"], descricao: "Define o titulo de uma secao (config.titulo).", inputSchema: z.object({ secaoId: z.string(), titulo: z.string() }) },
+  { name: "definir_cor_secao", muta: true, modos: ["refino"], descricao: "Define a cor de uma secao de grafico (Bar/Pie/Line). cor = token da paleta (violet|blue|cyan|emerald|green|amber|orange|pink|red|slate) ou 'padrao' para limpar.", inputSchema: z.object({ secaoId: z.string(), cor: z.string().nullable() }) },
+  { name: "definir_filtro", muta: true, modos: ["refino"], descricao: "Acrescenta um filtro a uma secao.", inputSchema: z.object({ secaoId: z.string(), filtro: filtroSchema }) },
+  // --- Tools de brainstorm: SO no modo jornada (coleta, nao constroi ficha). ---
+  { name: "atualizar_entendimento", muta: true, modos: ["jornada"], descricao: "Atualiza o reflexo de entendimento mostrado ao usuario (resumo em linguagem natural do que voce ja entendeu). Use sempre que avancar no entendimento.", inputSchema: z.object({ texto: z.string(), dimensoes: z.array(z.enum(DIMENSOES_ENUM)).optional() }) },
+  { name: "registrar_seccao_pretendida", muta: true, modos: ["jornada"], descricao: "Anota uma secao que a pessoa quer no relatorio (sem montar nada): fato (fonte), template (KPIRow|BarChart|PieChart|LineChart|DataTable), recorte e rotulo. So aceita se for viavel no catalogo de estoque; se nao for, registra como impossivel por enquanto. E assim que voce confirma que entendeu o que mostrar.", inputSchema: z.object({ fato: z.string(), shapeDerivado: z.string().optional(), template: z.string(), recorte: z.string().optional(), rotulo: z.string().optional() }) },
+  { name: "marcar_dimensao_relevante", muta: true, modos: ["jornada"], descricao: "Marca uma dimensao OPCIONAL (filtros|layout|periodo) como relevante para este relatorio, quando perceber que o pedido e mais complexo. E aqui que o roteiro de perguntas cresce. Informe o motivo.", inputSchema: z.object({ dimensao: z.enum(["filtros", "layout", "periodo"]), motivo: z.string() }) },
+  { name: "declarar_sem_kpi", muta: true, modos: ["jornada"], descricao: "Registra que a pessoa NAO quer indicadores (KPIs) neste relatorio, dispensando o KPIRow.", inputSchema: z.object({}) },
+  { name: "oferecer_opcoes", muta: false, modos: ["jornada"], descricao: "Oferece ao usuario 2 a 4 opcoes para ele escolher (ex.: jeitos de visualizar). Cada opcao tem id, rotulo, descricao e tipoVisual opcional (KPIRow|BarChart|PieChart|LineChart|DataTable).", inputSchema: z.object({ titulo: z.string(), opcoes: z.array(z.object({ id: z.string(), rotulo: z.string(), descricao: z.string().optional(), tipoVisual: z.string().optional() })) }) },
+  { name: "oferecer_geracao", muta: true, modos: ["jornada"], descricao: "Sinaliza que voce ja entendeu o suficiente e oferece gerar o relatorio. So sera aceito se houver evidencia suficiente; caso contrario, continue entrevistando.", inputSchema: z.object({ motivo: z.string() }) },
+  { name: "montar_resumo", muta: true, modos: ["jornada"], descricao: "Monta o resumo estruturado das escolhas para a tela de resumo. So apos oferecer_geracao aceito.", inputSchema: z.object({}) },
   { name: "validar", muta: false, descricao: "Valida a ficha atual (schema + compatibilidade de todas as secoes).", inputSchema: z.object({}) },
 ];
 
@@ -123,6 +140,20 @@ export function executarTool(
     case "montar_resumo":
       if (!journeyState) return { tipo: "erro", erro: "sem_jornada" };
       return jornadaResult(montarResumo(journeyState));
+    case "registrar_seccao_pretendida": {
+      if (!journeyState) return { tipo: "erro", erro: "sem_jornada" };
+      const r = registrarSeccaoPretendida(journeyState.intencao, args as unknown as SeccaoPretendida);
+      if ("erro" in r) return { tipo: "erro", erro: r.erro };
+      return { tipo: "jornada", journeyState: { ...journeyState, intencao: r.intencao } };
+    }
+    case "marcar_dimensao_relevante": {
+      if (!journeyState) return { tipo: "erro", erro: "sem_jornada" };
+      return { tipo: "jornada", journeyState: marcarDimensaoRelevante(journeyState, (args as { dimensao: Dimensao }).dimensao) };
+    }
+    case "declarar_sem_kpi": {
+      if (!journeyState) return { tipo: "erro", erro: "sem_jornada" };
+      return { tipo: "jornada", journeyState: { ...journeyState, intencao: declararSemKpi(journeyState.intencao) } };
+    }
     case "listar_componentes":
       return { tipo: "leitura", resultado: toolListarComponentes() };
     case "descrever_componente":

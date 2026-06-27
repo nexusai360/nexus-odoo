@@ -42,13 +42,16 @@ describe("builder tools index", () => {
         "definir_cor_secao",
         "definir_filtro",
         "atualizar_entendimento",
+        "registrar_seccao_pretendida",
+        "marcar_dimensao_relevante",
+        "declarar_sem_kpi",
         "oferecer_opcoes",
         "oferecer_geracao",
         "montar_resumo",
         "validar",
       ]),
     );
-    expect(BUILDER_TOOLS).toHaveLength(18);
+    expect(BUILDER_TOOLS).toHaveLength(21);
   });
 
   it("validarFicha aprova ficha valida e compativel", () => {
