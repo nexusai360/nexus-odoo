@@ -62,27 +62,6 @@ interface BuilderChatPanelProps {
   imersivo?: boolean;
 }
 
-// Saudacoes canned do construtor: aparecem digitando (mesma animacao da IA) SEM
-// chamada de API, so para o usuario sentir que a conversa ja comecou.
-const SAUDACOES = [
-  "Vamos la! O que voce esta pensando em construir? Me descreve o relatorio que voce quer ver e eu te ajudo a montar do seu jeito.",
-  "Bora montar seu relatorio. Me conta o que voce gostaria de acompanhar, e a gente constroi juntos , do jeitinho que faz sentido pra voce.",
-  "Oi! Me descreve o relatorio que voce tem em mente (o que quer ver, por marca, armazem, parados...) e eu te ajudo a montar.",
-  "Vamos construir algo bacana. O que voce quer enxergar nos seus dados de estoque? Me explica que eu vou te guiando.",
-];
-
-function saudacaoInicial(): UiMsg {
-  const content = SAUDACOES[Math.floor(Math.random() * SAUDACOES.length)];
-  return {
-    id: "saudacao-inicial",
-    role: "assistant",
-    content,
-    reveal: true,
-    streaming: false,
-    createdAt: new Date().toISOString(),
-  };
-}
-
 interface UiMsg {
   id: string;
   role: "user" | "assistant";
@@ -208,9 +187,9 @@ export function BuilderChatPanel({
   React.useEffect(() => {
     conversationIdRef.current = conversationId;
     if (!conversationId) {
-      // Conversa nova: no modo imersivo (entrevista) a IA "abre" com uma saudacao
-      // canned que digita na tela (sem chamada de API).
-      setMessages(imersivo ? [saudacaoInicial()] : []);
+      // Conversa nova: tela limpa (a saudacao da entrevista e um "hero" centralizado,
+      // estilo ChatGPT, renderizado no JSX , nao uma bubble).
+      setMessages([]);
       setRestoring(false);
       return;
     }
@@ -655,6 +634,75 @@ export function BuilderChatPanel({
   const sendDisabled = pending || input.trim().length === 0;
   const showWelcome = !restoring && messages.length === 0;
   const showRestoring = restoring && messages.length === 0;
+  // Estado inicial imersivo (entrevista, sem mensagem ainda) = hero estilo ChatGPT.
+  const heroInicial = imersivo && showWelcome;
+
+  const composerNode = (
+    <>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (isRecording) {
+            recorderRef.current?.sendNow();
+            return;
+          }
+          void handleSend(input);
+        }}
+        className="flex items-center gap-2"
+      >
+        <div className="min-w-0 flex-1">
+          {!isRecording ? (
+            <MessageInput
+              value={input}
+              onChange={setInput}
+              onSend={() => void handleSend(input)}
+              disabled={pending}
+              placeholder="Construa com o Agente Nex…"
+              aria-label="Mensagem para o construtor"
+              maxRows={6}
+              leftSlot={
+                anexoEnabled ? (
+                  <AttachMenu disabled={pending} onPick={() => toast.info("Anexos no construtor chegam em breve.")} />
+                ) : undefined
+              }
+              rightSlot={
+                audioEnabled && !audioFlight ? (
+                  <button
+                    type="button"
+                    onClick={() => void recorderRef.current?.start()}
+                    disabled={pending}
+                    aria-label="Gravar audio"
+                    className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <Mic className="h-4 w-4" aria-hidden />
+                  </button>
+                ) : undefined
+              }
+            />
+          ) : null}
+          {audioEnabled ? (
+            <div
+              className={isRecording ? "flex min-h-9 items-center rounded-2xl border border-violet-500/40 bg-violet-500/5 px-3 py-1" : "sr-only"}
+              aria-hidden={!isRecording}
+            >
+              <AudioRecorder ref={recorderRef} mode="embedded" onSend={(blob) => void handleSendAudio(blob)} onRecordingStateChange={setIsRecording} />
+            </div>
+          ) : null}
+        </div>
+        <button
+          type="submit"
+          disabled={isRecording ? false : sendDisabled || audioFlight}
+          aria-label={isRecording ? "Enviar audio" : "Enviar"}
+          className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center self-center rounded-2xl bg-gradient-to-br from-violet-600 to-violet-500 text-white shadow-md shadow-violet-600/30 transition-all duration-200 hover:from-violet-500 hover:to-violet-400 hover:shadow-lg focus-visible:ring-2 focus-visible:ring-violet-400/50 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
+        >
+          {audioFlight ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Send className="h-4 w-4" strokeWidth={2.25} aria-hidden />}
+        </button>
+      </form>
+      <p className={cn("mt-1.5 px-1 text-[11px] text-muted-foreground", isRecording ? "invisible" : "visible")}>
+        Enter envia · Shift+Enter quebra linha
+      </p>
+    </>
+  );
 
   return (
     <div className={cn("relative flex h-full flex-col", imersivo ? "bg-transparent" : "bg-card")}>
@@ -662,12 +710,14 @@ export function BuilderChatPanel({
           Altura fixa (h-11) casada com o header da pre-visualizacao ao lado.
           No modo imersivo (entrevista) o header some , so o 3-pontos flutua. */}
       {imersivo ? (
-        <div ref={menuRef} className="absolute top-2 right-2 z-40">
+        // Hero inicial = tela limpa, SEM 3-pontos. So aparece quando ha conversa.
+        !heroInicial ? (
+        <div ref={menuRef} className="absolute top-3 right-3 z-40">
           <button
             type="button"
             aria-label="Mais opcoes"
             onClick={() => setMenuOpen((v) => !v)}
-            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-muted-foreground/70 transition-colors duration-200 hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-violet-400/60 focus-visible:outline-none"
+            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-border/60 bg-card/80 text-muted-foreground backdrop-blur transition-colors duration-200 hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-violet-400/60 focus-visible:outline-none"
           >
             <MoreVertical className="h-4 w-4" />
           </button>
@@ -686,6 +736,7 @@ export function BuilderChatPanel({
             </div>
           )}
         </div>
+        ) : null
       ) : (
       <header className="relative z-40 flex h-11 items-center justify-between gap-2 border-b border-border px-5">
         <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
@@ -752,6 +803,21 @@ export function BuilderChatPanel({
         </div>
       ) : null}
 
+      {heroInicial ? (
+        /* HERO estilo ChatGPT: saudacao em destaque + input logo abaixo, centralizados. */
+        <div className="flex flex-1 flex-col items-center justify-center px-4 pb-10">
+          <div className="w-full max-w-2xl">
+            <h2 className="mb-3 text-center text-[1.7rem] font-semibold leading-snug tracking-tight text-foreground">
+              O que você quer <span className="text-violet-500">construir</span> hoje?
+            </h2>
+            <p className="mb-6 text-center text-sm text-muted-foreground">
+              Me descreva que eu te ajudo a montar do seu jeito.
+            </p>
+            {composerNode}
+          </div>
+        </div>
+      ) : (
+      <>
       {/* Area de mensagens */}
       <div ref={scrollRef} className={cn("flex-1 overflow-y-auto overscroll-contain px-4 pt-[17px] pb-3", imersivo && "px-4 sm:px-6")}>
         {showWelcome ? (
@@ -846,89 +912,12 @@ export function BuilderChatPanel({
         <ChevronDown className="h-4 w-4" />
       </button>
 
-      {/* Composer (igual ao Nex) */}
+      {/* Composer fixo embaixo (quando ja ha conversa). */}
       <footer className={cn("px-3 pt-2 pb-3", imersivo ? "bg-transparent" : "border-t border-border bg-card")}>
-        <div className={cn(imersivo && "mx-auto w-full max-w-2xl")}>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (isRecording) {
-              recorderRef.current?.sendNow();
-              return;
-            }
-            void handleSend(input);
-          }}
-          className="flex items-center gap-2"
-        >
-          <div className="min-w-0 flex-1">
-            {!isRecording ? (
-              <MessageInput
-                value={input}
-                onChange={setInput}
-                onSend={() => void handleSend(input)}
-                disabled={pending}
-                placeholder="Construa com o Agente Nex…"
-                aria-label="Mensagem para o construtor"
-                maxRows={6}
-                leftSlot={
-                  anexoEnabled ? (
-                    <AttachMenu
-                      disabled={pending}
-                      onPick={() => toast.info("Anexos no construtor chegam em breve.")}
-                    />
-                  ) : undefined
-                }
-                rightSlot={
-                  audioEnabled && !audioFlight ? (
-                    <button
-                      type="button"
-                      onClick={() => void recorderRef.current?.start()}
-                      disabled={pending}
-                      aria-label="Gravar audio"
-                      className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      <Mic className="h-4 w-4" aria-hidden />
-                    </button>
-                  ) : undefined
-                }
-              />
-            ) : null}
-            {audioEnabled ? (
-              <div
-                className={
-                  isRecording
-                    ? "flex min-h-9 items-center rounded-2xl border border-violet-500/40 bg-violet-500/5 px-3 py-1"
-                    : "sr-only"
-                }
-                aria-hidden={!isRecording}
-              >
-                <AudioRecorder
-                  ref={recorderRef}
-                  mode="embedded"
-                  onSend={(blob) => void handleSendAudio(blob)}
-                  onRecordingStateChange={setIsRecording}
-                />
-              </div>
-            ) : null}
-          </div>
-          <button
-            type="submit"
-            disabled={isRecording ? false : sendDisabled || audioFlight}
-            aria-label={isRecording ? "Enviar audio" : "Enviar"}
-            className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center self-center rounded-2xl bg-gradient-to-br from-violet-600 to-violet-500 text-white shadow-md shadow-violet-600/30 transition-all duration-200 hover:from-violet-500 hover:to-violet-400 hover:shadow-lg focus-visible:ring-2 focus-visible:ring-violet-400/50 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
-          >
-            {audioFlight ? (
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-            ) : (
-              <Send className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-            )}
-          </button>
-        </form>
-        <p className={cn("mt-1.5 px-1 text-[11px] text-muted-foreground", isRecording ? "invisible" : "visible")}>
-          Enter envia · Shift+Enter quebra linha
-        </p>
-        </div>
+        <div className={cn(imersivo && "mx-auto w-full max-w-2xl")}>{composerNode}</div>
       </footer>
+      </>
+      )}
 
       <style jsx global>{`
         @keyframes agentDotBounce {
