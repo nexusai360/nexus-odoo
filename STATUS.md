@@ -1,5 +1,33 @@
 # STATUS — nexus-odoo
 
+> **2026-06-27 (F6 , COR DE SEÇÃO + FILTROS ARMAZÉM/FAMÍLIA , modo autônomo) ,
+> branch `feat/nex-reconstrucao`. F6 SÓ LOCAL (sem merge/deploy).** As duas ondas
+> que estavam teed-up foram entregues com TDD (tsc 0; 467 testes reports/charts
+> verdes; E2E real OK):
+> - **(1) Editar COR de seção/gráfico pela UI:** no preview do construtor (modo
+>   edição), cada seção de gráfico (Bar/Pie/Line) ganha uma bolinha no cabeçalho
+>   que abre uma paleta de 10 cores do design system + "Cor padrão". Persiste em
+>   `config.cor` via `salvarFichaEditada` (mesmo fluxo de reordenar/renomear) e
+>   reflete na view salva. Helpers novos em `charts/colors.ts`: `CORES_SELECIONAVEIS`,
+>   `corResolvida` (token/hex→hex) e `paletaApartirDe` (ancora a paleta na cor
+>   escolhida, rotaciona sem perder cores); BarChart usa `corResolvida(config.cor)`,
+>   Pie/Line usam `paletaApartirDe(config.cor)`. `onCor` em `EditavelFicha`.
+> - **(2) Filtros de ARMAZÉM e FAMÍLIA (name→id) na barra interativa:** dropdowns
+>   com os armazéns/famílias REAIS do estoque (id+nome), derivados do fato de saldo
+>   (`extrairDimensoes` + `dimensoesDisponiveis` em `dimensoes-filtro.ts`; action
+>   `listarDimensoesFiltro`). O usuário escolhe o NOME e o filtro viaja como id
+>   (`localId`/`familiaId`), o produtor recorta no banco sem fuzzy. `FiltrosRuntime`
+>   e `FiltrosUi` ganham `armazemId`/`familiaId`; `ReportViewInteractive`,
+>   `ReportFilterBar` e `BuilderPreview` mostram os selects (Warehouse/Boxes).
+>   Produtores `local_produto`/`movimento`/`parados` passam `armazemId`; `saldo` já
+>   passava ambos. E2E real: 68 armazéns, 8 famílias; recorte confere (Cs-Matriz DF
+>   69/1894 produtos; família ACESSÓRIOS 840).
+> **PRÓXIMAS ONDAS (teed-up, não obrigatórias):** (a) tool de conversa
+> `definir_cor_secao` (o agente pinta um gráfico a pedido, complementando a UI);
+> (b) DRY: `ReportViewInteractive` reimplementa a barra em vez de reusar
+> `ReportFilterBar` , unificar. F6 não sobe sem aprovação explícita do usuário.
+
+
 > **2026-06-26 (F6 , CONSTRUTOR: qualidade + capacidade , modo autônomo) , branch
 > `feat/nex-reconstrucao`. F6 SÓ LOCAL.** Sessão longa com muitas ondas entregues
 > (tsc 0; ~92 testes builder verdes; E2E real OK). Resumo do que ficou pronto:
