@@ -57,6 +57,30 @@ interface BuilderChatPanelProps {
   /** Handle imperativo: o pai recebe a funcao de enviar (para o botao Gerar e o
    *  "ajustar" da tela de resumo dispararem um turno). */
   enviarRef?: React.MutableRefObject<((text: string, opts?: { acao?: "gerar" }) => void) | null>;
+  /** Modo imersivo (entrevista): sem header "Conversa", fundo transparente,
+   *  conteudo centralizado e composer limpo (uma superficie so, estilo ChatGPT). */
+  imersivo?: boolean;
+}
+
+// Saudacoes canned do construtor: aparecem digitando (mesma animacao da IA) SEM
+// chamada de API, so para o usuario sentir que a conversa ja comecou.
+const SAUDACOES = [
+  "Vamos la! O que voce esta pensando em construir? Me descreve o relatorio que voce quer ver e eu te ajudo a montar do seu jeito.",
+  "Bora montar seu relatorio. Me conta o que voce gostaria de acompanhar, e a gente constroi juntos , do jeitinho que faz sentido pra voce.",
+  "Oi! Me descreve o relatorio que voce tem em mente (o que quer ver, por marca, armazem, parados...) e eu te ajudo a montar.",
+  "Vamos construir algo bacana. O que voce quer enxergar nos seus dados de estoque? Me explica que eu vou te guiando.",
+];
+
+function saudacaoInicial(): UiMsg {
+  const content = SAUDACOES[Math.floor(Math.random() * SAUDACOES.length)];
+  return {
+    id: "saudacao-inicial",
+    role: "assistant",
+    content,
+    reveal: true,
+    streaming: false,
+    createdAt: new Date().toISOString(),
+  };
 }
 
 interface UiMsg {
@@ -112,6 +136,7 @@ export function BuilderChatPanel({
   anexoEnabled = false,
   podeExportar = false,
   enviarRef,
+  imersivo = false,
 }: BuilderChatPanelProps) {
   const reduceMotion = useReducedMotion();
 
@@ -183,7 +208,9 @@ export function BuilderChatPanel({
   React.useEffect(() => {
     conversationIdRef.current = conversationId;
     if (!conversationId) {
-      setMessages([]);
+      // Conversa nova: no modo imersivo (entrevista) a IA "abre" com uma saudacao
+      // canned que digita na tela (sem chamada de API).
+      setMessages(imersivo ? [saudacaoInicial()] : []);
       setRestoring(false);
       return;
     }
@@ -227,7 +254,7 @@ export function BuilderChatPanel({
     return () => {
       cancelled = true;
     };
-  }, [conversationId]);
+  }, [conversationId, imersivo]);
 
   // Cleanup on unmount
   React.useEffect(() => {
@@ -630,9 +657,36 @@ export function BuilderChatPanel({
   const showRestoring = restoring && messages.length === 0;
 
   return (
-    <div className="relative flex h-full flex-col bg-card">
+    <div className={cn("relative flex h-full flex-col", imersivo ? "bg-transparent" : "bg-card")}>
       {/* Linha unica "Conversa" com o menu de 3 pontos a direita (sem tarja).
-          Altura fixa (h-11) casada com o header da pre-visualizacao ao lado. */}
+          Altura fixa (h-11) casada com o header da pre-visualizacao ao lado.
+          No modo imersivo (entrevista) o header some , so o 3-pontos flutua. */}
+      {imersivo ? (
+        <div ref={menuRef} className="absolute top-2 right-2 z-40">
+          <button
+            type="button"
+            aria-label="Mais opcoes"
+            onClick={() => setMenuOpen((v) => !v)}
+            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-muted-foreground/70 transition-colors duration-200 hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-violet-400/60 focus-visible:outline-none"
+          >
+            <MoreVertical className="h-4 w-4" />
+          </button>
+          {menuOpen && (
+            <div role="menu" className="absolute top-full right-0 z-10 mt-1.5 w-52 overflow-hidden rounded-lg border border-border bg-card shadow-lg">
+              {podeExportar ? (
+                <button type="button" role="menuitem" onClick={handleExport} className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none">
+                  <Download className="h-3.5 w-3.5 text-muted-foreground" />
+                  Baixar conversa (.txt)
+                </button>
+              ) : null}
+              <button type="button" role="menuitem" onClick={handleClear} className={cn("flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:bg-destructive/10 focus-visible:text-destructive focus-visible:outline-none", podeExportar ? "border-t border-border/50" : "")}>
+                <Trash2 className="h-3.5 w-3.5" />
+                Limpar conversa
+              </button>
+            </div>
+          )}
+        </div>
+      ) : (
       <header className="relative z-40 flex h-11 items-center justify-between gap-2 border-b border-border px-5">
         <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
           <MessagesSquare className="h-3.5 w-3.5" aria-hidden />
@@ -679,6 +733,7 @@ export function BuilderChatPanel({
           )}
         </div>
       </header>
+      )}
 
       {/* Tag de data flutuante */}
       {!showWelcome && dateLabel ? (
@@ -698,13 +753,13 @@ export function BuilderChatPanel({
       ) : null}
 
       {/* Area de mensagens */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain px-4 pt-[17px] pb-3">
+      <div ref={scrollRef} className={cn("flex-1 overflow-y-auto overscroll-contain px-4 pt-[17px] pb-3", imersivo && "px-4 sm:px-6")}>
         {showWelcome ? (
           <WelcomeBlock />
         ) : showRestoring ? (
           <RestoringBlock />
         ) : (
-          <div ref={contentRef} className="space-y-4">
+          <div ref={contentRef} className={cn("space-y-4", imersivo && "mx-auto w-full max-w-2xl")}>
             {messages.map((m, idx) => {
               const durationMs =
                 typeof m.durationMs === "number"
@@ -792,7 +847,8 @@ export function BuilderChatPanel({
       </button>
 
       {/* Composer (igual ao Nex) */}
-      <footer className="border-t border-border bg-card px-3 pt-2 pb-3">
+      <footer className={cn("px-3 pt-2 pb-3", imersivo ? "bg-transparent" : "border-t border-border bg-card")}>
+        <div className={cn(imersivo && "mx-auto w-full max-w-2xl")}>
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -871,6 +927,7 @@ export function BuilderChatPanel({
         <p className={cn("mt-1.5 px-1 text-[11px] text-muted-foreground", isRecording ? "invisible" : "visible")}>
           Enter envia · Shift+Enter quebra linha
         </p>
+        </div>
       </footer>
 
       <style jsx global>{`

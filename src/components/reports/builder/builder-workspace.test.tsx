@@ -32,13 +32,14 @@ beforeAll(() => {
 beforeEach(() => push.mockReset());
 
 describe("BuilderWorkspace", () => {
-  it("conversa nova abre na ENTREVISTA (chat centralizado, sem preview) e 'Abrir relatorio' desabilitado", () => {
+  it("conversa nova abre na ENTREVISTA imersiva (sem card/header, sem preview, sem 'Abrir relatorio')", () => {
     render(<BuilderWorkspace />);
-    expect(screen.getByText(/construa com o agente nex/i)).toBeInTheDocument();
+    // Tela limpa: composer presente (a IA ja saudou via mensagem canned).
+    expect(screen.getByPlaceholderText(/construa com o agente nex/i)).toBeInTheDocument();
     // Fase entrevista: NAO mostra o preview 2-pane.
     expect(screen.queryByText(/o preview do relatorio aparece aqui/i)).not.toBeInTheDocument();
-    const abrir = screen.getByRole("button", { name: /abrir relatorio/i });
-    expect(abrir).toBeDisabled();
+    // Sem o header do workspace (que so existe no refino).
+    expect(screen.queryByRole("button", { name: /abrir relatorio/i })).not.toBeInTheDocument();
   });
 
   it("relatorio salvo abre no REFINO (2-pane com preview), 'Abrir relatorio' navega para /relatorios-2/d/<id>", () => {

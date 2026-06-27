@@ -11,7 +11,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ExternalLink, FileBarChart, Sparkles } from "lucide-react";
 import { BuilderChatPanel, type BuilderDonePayload } from "./builder-chat-panel";
 import { BuilderPreview } from "./builder-preview";
-import { UnderstandingSummary } from "./journey/understanding-summary";
 import { JourneySummary } from "./journey/journey-summary";
 import { salvarFichaEditada } from "@/lib/actions/builder";
 import type { BuilderReportEntry } from "@/lib/reports/builder/types";
@@ -149,92 +148,79 @@ export function BuilderWorkspace({
       anexoEnabled={anexoEnabled}
       podeExportar={podeExportar}
       enviarRef={enviarRef}
+      imersivo={fase !== "refino"}
     />
   );
 
-  return (
-    <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-      {/* Cabecalho */}
-      <header className="flex items-center justify-between gap-3 border-b border-border px-5 py-3">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-violet-500 text-white shadow-md shadow-violet-600/40">
-            <FileBarChart className="h-5 w-5" aria-hidden />
+  // REFINO: layout 2-painoes (chat lateral + preview) dentro do card do workspace.
+  if (fase === "refino") {
+    return (
+      <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+        <header className="flex items-center justify-between gap-3 border-b border-border px-5 py-3">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-violet-500 text-white shadow-md shadow-violet-600/40">
+              <FileBarChart className="h-5 w-5" aria-hidden />
+            </div>
+            <div>
+              <h1 className="text-sm font-semibold text-foreground">Construtor de relatorios</h1>
+              <p className="text-xs text-muted-foreground">Converse para ajustar e veja o resultado ao lado.</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-sm font-semibold text-foreground">Construtor de relatorios</h1>
-            <p className="text-xs text-muted-foreground">
-              Converse para montar o relatorio e veja o resultado ao lado.
-            </p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={abrir}
-          disabled={!savedId}
-          className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-violet-500 focus-visible:ring-2 focus-visible:ring-violet-400/60 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          <ExternalLink className="h-4 w-4" aria-hidden />
-          Abrir relatorio
-        </button>
-      </header>
-
-      {/* Corpo por fase: entrevista/resumo = chat centralizado (estilo ChatGPT);
-          refino = 2-pane (chat lateral + preview). */}
-      {fase === "refino" ? (
+          <button
+            type="button"
+            onClick={abrir}
+            disabled={!savedId}
+            className="flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-violet-500 focus-visible:ring-2 focus-visible:ring-violet-400/60 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <ExternalLink className="h-4 w-4" aria-hidden />
+            Abrir relatorio
+          </button>
+        </header>
         <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
           <aside className="flex min-h-0 w-full shrink-0 flex-col border-b border-border lg:h-auto lg:w-[400px] lg:border-r lg:border-b-0">
             <div className="min-h-[320px] flex-1 lg:min-h-0">{chatPanel}</div>
           </aside>
-          {/* min-w-0: deixa a coluna do preview ENCOLHER abaixo da largura do
-              conteudo (o canvas mede 1040px). Sem isso o flex-1 nao encolhe e o
-              canvas le uma largura grande demais, abrindo o relatorio sem fit. */}
           <section className="min-h-0 min-w-0 flex-1 bg-background">
             <BuilderPreview ficha={ficha} editavel={editavel} />
           </section>
         </div>
-      ) : (
-        <div className="relative flex min-h-0 flex-1 flex-col items-center overflow-y-auto bg-background">
-          <div className="flex w-full max-w-2xl flex-1 flex-col gap-3 px-4 py-4">
-            {fase === "resumo" && journeyState?.resumo ? (
-              <JourneySummary
-                resumo={journeyState.resumo}
-                onAjustar={ajustar}
-                onGerar={gerar}
-                gerando={gerando}
-              />
-            ) : (
-              <UnderstandingSummary texto={journeyState?.entendimento} />
-            )}
-            <div className="min-h-[320px] flex-1 overflow-hidden rounded-2xl border border-border bg-card">
-              {chatPanel}
-            </div>
-          </div>
+      </div>
+    );
+  }
 
-          {/* Animacao de geracao: overlay enquanto monta; sai com fade quando a
-              fase vira refino (a transicao para o 2-pane acontece em seguida). */}
-          <AnimatePresence>
-            {gerando ? (
-              <motion.div
-                key="gerando"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.3 }}
-                className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-background/80 backdrop-blur-sm"
-              >
-                <motion.div
-                  animate={{ scale: [1, 1.12, 1], rotate: [0, 8, -8, 0] }}
-                  transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
-                  className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-violet-500 text-white shadow-lg shadow-violet-600/40"
-                >
-                  <Sparkles className="h-7 w-7" aria-hidden />
-                </motion.div>
-                <p className="text-sm font-medium text-foreground">Montando seu relatorio...</p>
-              </motion.div>
-            ) : null}
-          </AnimatePresence>
+  // ENTREVISTA / RESUMO: tela LIMPA e IMERSIVA (uma superficie so, sem cards
+  // aninhados nem header). A IA "abre" a conversa e conduz; no resumo aparece o
+  // cartao de resumo no topo. Gerar dispara a animacao -> transiciona pro refino.
+  return (
+    <div className="relative flex h-full flex-col bg-background">
+      {fase === "resumo" && journeyState?.resumo ? (
+        <div className="mx-auto w-full max-w-2xl shrink-0 px-4 pt-4">
+          <JourneySummary resumo={journeyState.resumo} onAjustar={ajustar} onGerar={gerar} gerando={gerando} />
         </div>
-      )}
+      ) : null}
+      <div className="min-h-0 flex-1">{chatPanel}</div>
+
+      <AnimatePresence>
+        {gerando ? (
+          <motion.div
+            key="gerando"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="absolute inset-0 z-50 flex flex-col items-center justify-center gap-3 bg-background/85 backdrop-blur-sm"
+          >
+            <motion.div
+              animate={{ scale: [1, 1.12, 1], rotate: [0, 8, -8, 0] }}
+              transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+              className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-violet-500 text-white shadow-lg shadow-violet-600/40"
+            >
+              <Sparkles className="h-7 w-7" aria-hidden />
+            </motion.div>
+            <p className="text-sm font-medium text-foreground">Montando seu relatorio...</p>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }
