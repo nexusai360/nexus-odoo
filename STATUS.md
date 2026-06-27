@@ -31,11 +31,17 @@
 > - **KPI por MARCA (ex.: só Matrix) FEITO:** filtro `marca` (schema/tools/mutador/
 >   ReportFilterTipo) + shape `kpis` em `fato_estoque_marca` (`valorMarca`, recorte
 >   por `filtros.marca`). E2E real: "só da marca Matrix" → R$43,9M.
-> **PRÓXIMAS ONDAS (pendentes, teed-up):** (1) FILTROS AVANÇADOS na UI do relatório
-> , controles interativos no estilo do consumo (chips de período + dropdowns
-> armazém/família/marca/faixa), com `searchParams`→`FiltrosFonte` (name→id quando
-> preciso, ex.: armazém); (2) reordenar seções por drag na UI do construtor;
-> (3) editar título/cor de seção pela UI. F6 não sobe sem aprovação.
+> - **FILTROS INTERATIVOS na view** `/relatorios-2/d/[savedId]`
+>   (`ReportViewInteractive` + `resolverRelatorioComFiltros`): barra estilo consumo
+>   (marca/faixaDias/sentido) derivada dos fatos, re-resolve no servidor.
+> - **EDITAR SEÇÕES pela UI do construtor** (`ReportRenderer editavel`): por seção,
+>   setas subir/descer, remover e título editável inline (lápis no hover);
+>   persiste via `salvarFichaEditada` (atualiza etag). Saved view fica read-only.
+> **PRÓXIMAS ONDAS (pendentes, teed-up):** (1) levar a barra de filtros também ao
+> PREVIEW do construtor (estender `previsualizarSecoes` p/ aceitar filtros);
+> (2) editar COR de seção/gráfico pela UI (threading de cor nos charts via
+> `colorAt`); (3) name→id de armazém/família p/ filtrar essas dimensões.
+> F6 não sobe sem aprovação.
 
 
 > **2026-06-26 (F6 , PENDÊNCIAS P1+P2+P3 ENTREGUES) , branch `feat/nex-reconstrucao`.
