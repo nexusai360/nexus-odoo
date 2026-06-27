@@ -32,15 +32,16 @@ beforeAll(() => {
 beforeEach(() => push.mockReset());
 
 describe("BuilderWorkspace", () => {
-  it("renderiza chat (welcome) + preview vazio e 'Abrir relatorio' desabilitado sem ficha", () => {
+  it("conversa nova abre na ENTREVISTA (chat centralizado, sem preview) e 'Abrir relatorio' desabilitado", () => {
     render(<BuilderWorkspace />);
     expect(screen.getByText(/construa com o agente nex/i)).toBeInTheDocument();
-    expect(screen.getByText(/o preview do relatorio aparece aqui/i)).toBeInTheDocument();
+    // Fase entrevista: NAO mostra o preview 2-pane.
+    expect(screen.queryByText(/o preview do relatorio aparece aqui/i)).not.toBeInTheDocument();
     const abrir = screen.getByRole("button", { name: /abrir relatorio/i });
     expect(abrir).toBeDisabled();
   });
 
-  it("habilita 'Abrir relatorio' e navega para /relatorios-2/d/<id> quando ha ficha salva", () => {
+  it("relatorio salvo abre no REFINO (2-pane com preview), 'Abrir relatorio' navega para /relatorios-2/d/<id>", () => {
     render(
       <BuilderWorkspace
         initialSavedId="sr-1"

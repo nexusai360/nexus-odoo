@@ -10,8 +10,10 @@ import { useRouter } from "next/navigation";
 import { ExternalLink, FileBarChart } from "lucide-react";
 import { BuilderChatPanel, type BuilderDonePayload } from "./builder-chat-panel";
 import { BuilderPreview } from "./builder-preview";
+import { UnderstandingSummary } from "./journey/understanding-summary";
 import { salvarFichaEditada } from "@/lib/actions/builder";
 import type { BuilderReportEntry } from "@/lib/reports/builder/types";
+import type { FaseJornada, JourneyState } from "@/lib/reports/builder/journey/state";
 
 export function BuilderWorkspace({
   audioEnabled = false,
@@ -35,6 +37,10 @@ export function BuilderWorkspace({
   const [ficha, setFicha] = useState<BuilderReportEntry | null>(initialFicha);
   const [savedId, setSavedId] = useState<string | null>(initialSavedId);
   const [, setEtag] = useState<string | null>(initialEtag);
+  // Fase da jornada: relatorio ja salvo abre direto no refino (2-pane); conversa
+  // nova comeca na entrevista (chat centralizado).
+  const [fase, setFase] = useState<FaseJornada>(initialSavedId ? "refino" : "entrevista");
+  const [journeyState, setJourneyState] = useState<JourneyState | null>(null);
   // Ref do etag para o salvamento async da edicao ler sempre o valor atual.
   const etagRef = useRef<string | null>(initialEtag);
 
@@ -45,6 +51,8 @@ export function BuilderWorkspace({
       etagRef.current = p.etag;
       setEtag(p.etag);
     }
+    if (p.journeyState) setJourneyState(p.journeyState);
+    if (p.fase) setFase(p.fase);
   }
 
   function handleCleared() {
@@ -52,6 +60,8 @@ export function BuilderWorkspace({
     setFicha(null);
     setSavedId(null);
     setEtag(null);
+    setJourneyState(null);
+    setFase("entrevista");
   }
 
   function abrir() {
@@ -113,6 +123,18 @@ export function BuilderWorkspace({
     });
   }
 
+  const chatPanel = (
+    <BuilderChatPanel
+      conversationId={conversationId}
+      onConversationCreated={setConversationId}
+      onCleared={handleCleared}
+      onDone={handleDone}
+      audioEnabled={audioEnabled}
+      anexoEnabled={anexoEnabled}
+      podeExportar={podeExportar}
+    />
+  );
+
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
       {/* Cabecalho */}
@@ -139,28 +161,30 @@ export function BuilderWorkspace({
         </button>
       </header>
 
-      {/* Corpo: chat (lateral) + preview (dominante) */}
-      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-        <aside className="flex min-h-0 w-full shrink-0 flex-col border-b border-border lg:h-auto lg:w-[400px] lg:border-r lg:border-b-0">
-          <div className="min-h-[320px] flex-1 lg:min-h-0">
-            <BuilderChatPanel
-              conversationId={conversationId}
-              onConversationCreated={setConversationId}
-              onCleared={handleCleared}
-              onDone={handleDone}
-              audioEnabled={audioEnabled}
-              anexoEnabled={anexoEnabled}
-              podeExportar={podeExportar}
-            />
+      {/* Corpo por fase: entrevista/resumo = chat centralizado (estilo ChatGPT);
+          refino = 2-pane (chat lateral + preview). */}
+      {fase === "refino" ? (
+        <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+          <aside className="flex min-h-0 w-full shrink-0 flex-col border-b border-border lg:h-auto lg:w-[400px] lg:border-r lg:border-b-0">
+            <div className="min-h-[320px] flex-1 lg:min-h-0">{chatPanel}</div>
+          </aside>
+          {/* min-w-0: deixa a coluna do preview ENCOLHER abaixo da largura do
+              conteudo (o canvas mede 1040px). Sem isso o flex-1 nao encolhe e o
+              canvas le uma largura grande demais, abrindo o relatorio sem fit. */}
+          <section className="min-h-0 min-w-0 flex-1 bg-background">
+            <BuilderPreview ficha={ficha} editavel={editavel} />
+          </section>
+        </div>
+      ) : (
+        <div className="flex min-h-0 flex-1 flex-col items-center bg-background">
+          <div className="flex min-h-0 w-full max-w-2xl flex-1 flex-col gap-3 px-4 py-4">
+            <UnderstandingSummary texto={journeyState?.entendimento} />
+            <div className="min-h-0 flex-1 overflow-hidden rounded-2xl border border-border bg-card">
+              {chatPanel}
+            </div>
           </div>
-        </aside>
-        {/* min-w-0: deixa a coluna do preview ENCOLHER abaixo da largura do
-            conteudo (o canvas mede 1040px). Sem isso o flex-1 nao encolhe e o
-            canvas le uma largura grande demais, abrindo o relatorio sem fit. */}
-        <section className="min-h-0 min-w-0 flex-1 bg-background">
-          <BuilderPreview ficha={ficha} editavel={editavel} />
-        </section>
-      </div>
+        </div>
+      )}
     </div>
   );
 }
