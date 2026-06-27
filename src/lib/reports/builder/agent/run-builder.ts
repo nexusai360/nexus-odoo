@@ -211,6 +211,9 @@ export async function runBuilder(
   let journeyState = input.journeyState;
   let ficha: BuilderReportEntry | null = input.fichaAtual ?? journeyState?.fichaRascunho ?? null;
   let reparosRestantes = MAX_REPAIR;
+  // A jornada faz mais tool calls por turno (atualizar_entendimento, oferecer_opcoes,
+  // criar/adicionar secao...), entao precisa de mais iteracoes que o one-shot.
+  const maxIter = modo === "jornada" ? 14 : MAX_ITER;
 
   const system = modo === "jornada" ? montarSystemJornada() : SYSTEM_CONSTRUTOR;
   const messages: ChatMessage[] = [{ role: "system", content: system }];
@@ -229,7 +232,7 @@ export async function runBuilder(
   }
   messages.push({ role: "user", content: prompt });
 
-  for (let i = 0; i < MAX_ITER; i++) {
+  for (let i = 0; i < maxIter; i++) {
     const res = await cliente.chat({
       messages,
       tools: toolDefs,

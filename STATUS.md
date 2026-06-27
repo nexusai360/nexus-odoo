@@ -17,11 +17,16 @@
 > - [x] Task 4 , runBuilder histórico+journeyState+temperature por modo + prompt jornada (4 testes).
 > - [x] Task 5a , migration journeyState (aditiva) + backfill refino p/ legado.
 > - [x] Task 5b , stream com histórico/journeyState/choices/sinal `acao:gerar` (SavedReport só no Gerar).
-> - [ ] Task 6 , tipos de front (SseEvent done+choices, BuilderDonePayload).
-> - [ ] Task 7 , reflexo de entendimento + casca centralizada (UI inline).
-> - [ ] Task 8 , cards de opção (choices) (UI inline).
-> - [ ] Task 9 , resumo contestável + Gerar + animação (UI inline).
-> - [ ] Task 10 , métricas de jornada. [ ] Task 11 , E2E real.
+> - [x] Task 6 , tipos de front (SseEvent done+choices, BuilderDonePayload com journeyState/fase).
+> - [x] Task 7 , reflexo de entendimento (UnderstandingSummary) + casca centralizada da entrevista.
+> - [x] Task 8 , cards de opção (choices: OptionCards + option-thumbs, parser SSE).
+> - [x] Task 9 , resumo contestável (JourneySummary) + Gerar (acao) + animação + transição 2-pane.
+> - [ ] Task 10 , métricas de jornada (instrumentação leve).
+> - [ ] Task 11 , E2E real (jornada contra LLM + cache real).
+> **A jornada está completa de ponta a ponta (backend + UI): nova conversa abre na
+> entrevista centralizada → reflexo de entendimento → resumo contestável → Gerar →
+> animação → refino 2-pane. ~210 testes verdes; tsc 0; dev compila.** Faltam só
+> instrumentação (10) e a validação E2E contra o LLM real (11).
 > **Decisões-chave (das reviews):** gate por evidência da ficha (não auto-relato);
 > trilha de 7 caixas substituída por reflexo natural; prévia-viva-no-chat cortada da
 > v1 (só thumbnails); ficha vira `fichaRascunho` e só promove a SavedReport no Gerar;
