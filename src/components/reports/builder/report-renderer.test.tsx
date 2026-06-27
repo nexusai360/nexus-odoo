@@ -99,7 +99,9 @@ describe("ReportRenderer", () => {
     expect(screen.getByText("Produtos")).toBeInTheDocument();
     expect(screen.getByText("Valor total")).toBeInTheDocument();
     expect(screen.getByLabelText(/gr[aá]fico de barras/i)).toBeInTheDocument();
-    expect(screen.getByText("Indicadores")).toBeInTheDocument();
+    // Cada grafico/tabela vem num Card com titulo (config.titulo ou padrao).
+    expect(screen.getByText("Comparacao por categoria")).toBeInTheDocument();
+    expect(screen.getByText("Detalhe")).toBeInTheDocument();
     expect(screen.getByText("Esteira")).toBeInTheDocument();
     expect(container.textContent).not.toMatch(/\[object Object\]/);
   });

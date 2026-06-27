@@ -1,12 +1,21 @@
 "use client";
 
 // src/components/reports/builder/report-renderer.tsx
-// Motor de render do construtor: recebe a ficha + os dados JA resolvidos
-// (a resolucao acontece no server) e desenha secao a secao reusando os
-// componentes da plataforma. Templates suportados: KPIRow (indicadores),
-// BarChart (comparacao por categoria) e DataTable (detalhe linha a linha).
-import { Boxes, Coins, TrendingUp, type LucideIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
+// Motor de render do construtor, na MESMA pegada visual do dashboard "Consumo do
+// Agente Nex": KPIs em KpiCard (icone em pilula + valor grande), e cada grafico/
+// tabela dentro de um Card com cabecalho (icone violeta + titulo). Espacamentos,
+// cores e cantos seguem o design system (rounded-2xl, border, bg-muted/30).
+import {
+  Boxes,
+  Coins,
+  TrendingUp,
+  BarChart3,
+  PieChart as PieIcon,
+  Table as TableIcon,
+  type LucideIcon,
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { KpiCard } from "@/components/reports/kpi-card";
 import { DataTable, type ColumnDef } from "@/components/charts/data-table";
 import { formatNumber, type NumberFormat } from "@/components/charts/kpi-card";
 import { BarChartCard } from "@/components/charts/bar-chart";
@@ -26,16 +35,51 @@ interface ColunaConfig {
   tipo?: CampoTipo;
 }
 
-/** Mapeia o tipo de campo do contrato para o formato numerico dos componentes. */
 function formatoDoCampo(tipo: CampoTipo | undefined): NumberFormat {
   if (tipo === "moeda") return "moeda";
   if (tipo === "numero") return "inteiro";
-  return "decimal"; // percentual/texto caem aqui (texto nao chega em KPI/chart)
+  return "decimal";
 }
 
-/** Valor escalar simples (nao objeto/array): seguro para exibir em celula. */
 function ehEscalar(v: unknown): boolean {
   return v === null || v === undefined || typeof v !== "object";
+}
+
+/** Icone + titulo padrao do Card de cada template. */
+function metaTemplate(template: string): { Icon: LucideIcon; titulo: string } {
+  switch (template) {
+    case "BarChart":
+      return { Icon: BarChart3, titulo: "Comparacao por categoria" };
+    case "PieChart":
+      return { Icon: PieIcon, titulo: "Distribuicao" };
+    case "LineChart":
+      return { Icon: TrendingUp, titulo: "Evolucao no tempo" };
+    default:
+      return { Icon: TableIcon, titulo: "Detalhe" };
+  }
+}
+
+/** Card com cabecalho (icone violeta + titulo), igual ao dashboard de consumo. */
+function CardSecao({
+  Icon,
+  titulo,
+  children,
+}: {
+  Icon: LucideIcon;
+  titulo: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card className="rounded-2xl border border-border bg-muted/30">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+          <Icon className="h-4 w-4 text-violet-500" aria-hidden />
+          {titulo}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>{children}</CardContent>
+    </Card>
+  );
 }
 
 function SecaoView({
@@ -45,11 +89,14 @@ function SecaoView({
   secao: BuilderSection;
   resolvida?: SecaoResolvida;
 }) {
+  const { Icon, titulo: tituloPadrao } = metaTemplate(secao.template);
+  const titulo = tituloSecao(secao) ?? tituloPadrao;
+
   if (!resolvida || resolvida.estado === "erro") {
     return (
       <div
         role="alert"
-        className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300"
+        className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300"
       >
         Nao foi possivel carregar esta secao
         {resolvida?.erro ? ` (${resolvida.erro})` : ""}.
@@ -58,13 +105,13 @@ function SecaoView({
   }
   if (resolvida.estado === "vazio") {
     return (
-      <div className="rounded-lg border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
-        Sem dados para esta secao.
-      </div>
+      <CardSecao Icon={Icon} titulo={titulo}>
+        <p className="py-6 text-center text-sm text-muted-foreground">Sem dados para esta secao.</p>
+      </CardSecao>
     );
   }
 
-  // KPIRow , faixa de indicadores no topo do relatorio.
+  // KPIRow , faixa de indicadores (cada um e um KpiCard, sem Card externo).
   if (secao.template === "KPIRow") {
     const kpis = (resolvida.dado as Record<string, number>) ?? {};
     const campos = resolvida.campos ?? [];
@@ -72,11 +119,9 @@ function SecaoView({
       ? campos
       : Object.keys(kpis).map((k) => ({ key: k, label: humanizarChave(k), tipo: "numero" as CampoTipo }))
     ).filter((c) => c.key in kpis);
-    if (cards.length === 0) {
-      return <SemConteudo texto="Sem indicadores para esta secao." />;
-    }
+    if (cards.length === 0) return null;
     return (
-      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {cards.map((c) => {
           const valor = Number(kpis[c.key] ?? 0);
           const tone =
@@ -85,14 +130,15 @@ function SecaoView({
                 ? ("danger" as const)
                 : ("success" as const)
               : ("default" as const);
-          const Icon = c.tipo === "moeda" ? Coins : /produto|item|total/i.test(c.key) ? Boxes : TrendingUp;
+          const Ico = c.tipo === "moeda" ? Coins : /produto|item|total|armaz/i.test(c.key) ? Boxes : TrendingUp;
           return (
-            <BuilderKpi
+            <KpiCard
               key={c.key}
-              rotulo={c.label}
-              valor={formatNumber(valor, formatoDoCampo(c.tipo))}
+              icon={Ico}
+              label={c.label}
+              value={formatNumber(valor, formatoDoCampo(c.tipo))}
               tone={tone}
-              Icon={Icon}
+              hint={c.tipo === "moeda" ? "no periodo" : undefined}
             />
           );
         })}
@@ -100,19 +146,16 @@ function SecaoView({
     );
   }
 
-  // BarChart , comparacao por categoria (agregacaoCategorica: {rotulo, valor}).
   if (secao.template === "BarChart") {
     const data = (resolvida.dado as Record<string, unknown>[]) ?? [];
     const campoValor = (resolvida.campos ?? []).find((c) => c.key === "valor");
     return (
-      <BarChartCard
-        data={data}
-        config={{ xKey: "rotulo", yKey: "valor", formato: formatoDoCampo(campoValor?.tipo) }}
-      />
+      <CardSecao Icon={Icon} titulo={titulo}>
+        <BarChartCard data={data} config={{ xKey: "rotulo", yKey: "valor", formato: formatoDoCampo(campoValor?.tipo) }} />
+      </CardSecao>
     );
   }
 
-  // LineChart , serie temporal (ex.: entradas/saidas por mes).
   if (secao.template === "LineChart") {
     const data = (resolvida.dado as Record<string, unknown>[]) ?? [];
     const campos = resolvida.campos ?? [];
@@ -122,33 +165,26 @@ function SecaoView({
       .map((c) => ({ key: c.key, label: c.label }));
     const formatoSerie = campos.find((c) => c.tipo === "numero" || c.tipo === "moeda")?.tipo;
     return (
-      <LineChartCard
-        data={data}
-        config={{ xKey: xCampo?.key ?? "mes", formato: formatoDoCampo(formatoSerie), series }}
-      />
+      <CardSecao Icon={Icon} titulo={titulo}>
+        <LineChartCard data={data} config={{ xKey: xCampo?.key ?? "mes", formato: formatoDoCampo(formatoSerie), series }} />
+      </CardSecao>
     );
   }
 
-  // PieChart , proporcao entre poucas categorias (mesma agregacaoCategorica).
   if (secao.template === "PieChart") {
     const data = (resolvida.dado as Record<string, unknown>[]) ?? [];
     const campoValor = (resolvida.campos ?? []).find((c) => c.key === "valor");
     return (
-      <PieChartCard
-        data={data}
-        config={{ nameKey: "rotulo", valueKey: "valor", formato: formatoDoCampo(campoValor?.tipo) }}
-      />
+      <CardSecao Icon={Icon} titulo={titulo}>
+        <PieChartCard data={data} config={{ nameKey: "rotulo", valueKey: "valor", formato: formatoDoCampo(campoValor?.tipo) }} />
+      </CardSecao>
     );
   }
 
-  // DataTable , detalhe linha a linha.
   if (secao.template === "DataTable") {
     const rows = (resolvida.dado as Record<string, unknown>[]) ?? [];
     const campos = resolvida.campos ?? [];
     let colunas = (secao.config.colunas as ColunaConfig[] | undefined) ?? [];
-    // 1a opcao: colunas que o agente declarou. 2a: campos do contrato (com tipo
-    // certo). 3a: deriva das chaves ESCALARES do dado (nunca objeto/array, pra
-    // nao renderizar "[object Object]").
     if (colunas.length === 0 && campos.length > 0) {
       colunas = campos.map((c: CampoMeta) => ({ key: c.key, header: c.label, tipo: c.tipo }));
     }
@@ -161,54 +197,25 @@ function SecaoView({
       .filter((c) => c && c.key)
       .map((c) => ({ key: c.key, header: c.header ?? c.key, tipo: c.tipo ?? "texto" }));
     if (columns.length === 0) {
-      return <SemConteudo texto="Sem colunas para esta secao." />;
+      return (
+        <CardSecao Icon={Icon} titulo={titulo}>
+          <p className="py-6 text-center text-sm text-muted-foreground">Sem colunas para esta secao.</p>
+        </CardSecao>
+      );
     }
-    return <DataTable columns={columns} rows={rows} searchable />;
+    return (
+      <CardSecao Icon={Icon} titulo={titulo}>
+        <DataTable columns={columns} rows={rows} searchable />
+      </CardSecao>
+    );
   }
 
-  return <SemConteudo texto="Este tipo de visual ainda nao e suportado pelo construtor." />;
-}
-
-/** Cartao de indicador COMPACTO do construtor (fontes menores que o KPICard
- *  compartilhado, que e usado nos dashboards e nao deve encolher). */
-const KPI_TONE_BG: Record<"default" | "danger" | "success", string> = {
-  default: "bg-violet-600/10 text-violet-500",
-  danger: "bg-red-500/10 text-red-500",
-  success: "bg-emerald-500/10 text-emerald-500",
-};
-function BuilderKpi({
-  rotulo,
-  valor,
-  tone,
-  Icon,
-}: {
-  rotulo: string;
-  valor: string;
-  tone: "default" | "danger" | "success";
-  Icon: LucideIcon;
-}) {
   return (
-    <div className="rounded-xl border border-border bg-muted/30 p-3.5 transition-colors hover:border-foreground/20">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="truncate text-[11px] tracking-wide text-muted-foreground uppercase">
-            {rotulo}
-          </p>
-          <div className="mt-1 text-xl font-semibold tabular-nums text-foreground">{valor}</div>
-        </div>
-        <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-lg", KPI_TONE_BG[tone])}>
-          <Icon className="h-4 w-4" aria-hidden />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SemConteudo({ texto }: { texto: string }) {
-  return (
-    <div className="rounded-lg border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
-      {texto}
-    </div>
+    <CardSecao Icon={Icon} titulo={titulo}>
+      <p className="py-6 text-center text-sm text-muted-foreground">
+        Este tipo de visual ainda nao e suportado pelo construtor.
+      </p>
+    </CardSecao>
   );
 }
 
@@ -226,26 +233,18 @@ export function ReportRenderer({
   dados: Record<string, SecaoResolvida>;
 }) {
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       {entry.titulo ? (
-        <div>
+        <div className="mb-1">
           <h1 className="text-base font-semibold tracking-tight text-foreground">{entry.titulo}</h1>
           {entry.descricao ? (
             <p className="mt-0.5 text-xs text-muted-foreground">{entry.descricao}</p>
           ) : null}
         </div>
       ) : null}
-      {entry.secoes.map((secao) => {
-        const titulo = tituloSecao(secao);
-        return (
-          <section key={secao.id} className="flex flex-col gap-2">
-            {titulo ? (
-              <h2 className="text-[13px] font-semibold text-foreground/80">{titulo}</h2>
-            ) : null}
-            <SecaoView secao={secao} resolvida={dados[secao.id]} />
-          </section>
-        );
-      })}
+      {entry.secoes.map((secao) => (
+        <SecaoView key={secao.id} secao={secao} resolvida={dados[secao.id]} />
+      ))}
     </div>
   );
 }
