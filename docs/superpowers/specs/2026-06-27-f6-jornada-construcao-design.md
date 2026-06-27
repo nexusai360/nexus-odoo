@@ -1,296 +1,343 @@
-# F6 , Jornada Guiada de Construção de Relatório (design / spec v1)
+# F6 , Jornada Guiada de Construção de Relatório (design / spec v3)
 
 > Data: 2026-06-27. Branch: `feat/nex-reconstrucao`. Fase: F6 (Construtor).
 > **REGRA DURÁVEL: F6 só local. Nada de merge/deploy sem aprovação explícita do usuário.**
-> Metodologia: esta spec passa por 2 reviews adversariais (v2, v3) antes do plano.
+> Histórico: v1 -> review adversarial #1 (arquitetura/código) -> review adversarial #2
+> (produto/UX/prompt) -> **v3** (este documento). As correções das duas reviews estão
+> aplicadas; a seção 18 lista o que mudou e por quê.
 
 ## 1. Contexto e problema
 
-O construtor atual (Relatórios 2.0) deixa o usuário "pedir um relatório do nada":
-ele manda um prompt e recebe uma ficha pronta, sem acompanhamento. Não há jornada,
-não há mapeamento do que ele quer, não há orientação sobre o que o sistema consegue
-ou não consegue fazer. O usuário fica no escuro: não sabe quais parâmetros existem,
-o que pode pedir, o que dá para sugerir. O resultado é raso e a experiência é ruim.
+O construtor atual deixa o usuário "pedir um relatório do nada": manda um prompt e
+recebe uma ficha, sem acompanhamento, sem entender o que pode pedir, sem saber o que o
+sistema faz ou não. Resultado raso, usuário no escuro.
 
-O objetivo desta feature é substituir esse fluxo por uma **jornada guiada de criação**:
-a IA conduz uma conversa adaptativa, entende a fundo o que o usuário quer (objetivo,
-dados, indicadores, visualização, filtros, layout, período), mostra opções de
-componentes da biblioteca, padroniza as escolhas e só então gera, com muito mais
-assertividade. A sensação alvo é "a IA me entendeu, estamos na mesma sintonia".
+Esta feature substitui isso por uma **jornada guiada**: a IA conduz uma conversa
+adaptativa, entende a fundo o que o usuário quer, orienta sobre o que é possível, e só
+gera quando entendeu o suficiente, com muito mais assertividade. Meta emocional:
+"a IA me entendeu, estamos na mesma sintonia".
 
-## 2. Visão e princípios (regem toda a spec)
+## 2. Princípios (regem toda a spec)
 
-1. **Adaptativo, nunca engessado.** Não é um formulário nem um wizard de passos
-   fixos. Um prompt muito bom decide QUAIS perguntas fazer, em que ordem, mesclando
-   quando o usuário já respondeu, aprofundando quando é complexo, pulando o que não
-   se aplica. O número de perguntas é relativo à complexidade e à clareza (um
-   relatório simples pode fechar em ~4; um complexo pode pedir ~10+). As 7 dimensões
-   de cobertura (seção 6) são um MAPA do que precisa ficar entendido, não um roteiro.
-2. **Maturidade gateia o fim.** Não existe botão "Gerar" sempre visível/desabilitado
-   esperando acender. A IA pergunta até entender o suficiente ("maturidade"). Antes
-   disso o usuário não consegue gerar; se apressar ("gera logo"), a IA não gera: ela
-   desconversa com gentileza e volta às perguntas estruturais. A partir da maturidade,
-   as perguntas passam a oferecer, no próprio enunciado, a saída ("...ou prefere que
-   eu já monte e você ajusta depois?"). Quando o usuário aceita a saída, vai para a
-   **tela de resumo**; é só ali que o botão "Gerar relatório" aparece.
-3. **Honestidade de capacidade.** A IA conhece o catálogo real de capacidades. Para
-   o que não dá, a resposta é sempre "ainda não é possível" (nunca "não dá", "não
-   consigo", "impossível"), explicando o que existe e oferecendo o caminho mais
-   próximo. Hoje o catálogo é só estoque (seção 7).
-4. **Reuso total.** Mesma ficha (`BuilderReportEntry`), mesmas tools de mutação, e
-   exatamente os mesmos componentes visuais do dashboard "Consumo do Agente Nex"
-   (KpiCard, InteractiveAreaChart, InteractiveBarChart, DonutWithCenter, Table +
-   paginação, CustomSelect) que o renderer já usa.
+1. **Adaptativo, nunca engessado.** Não é formulário nem wizard de passos fixos. O
+   prompt decide quais perguntas, em que ordem, mesclando quando o usuário já
+   respondeu, aprofundando quando é complexo, pulando o que não se aplica. Número de
+   perguntas relativo à complexidade/clareza (simples ~3 a 4; complexo ~10+).
+2. **Entendimento (não "maturidade burocrática") gateia a geração.** A IA só leva o
+   usuário a gerar quando entende o suficiente. "Entender o suficiente" é verificado
+   por EVIDÊNCIA OBJETIVA da ficha em construção (seção 6), não por auto-declaração do
+   modelo. Antes disso o usuário não gera; se apressar, a IA não bloqueia secamente:
+   ela reflete o que já entendeu, diz o que ainda falta, e oferece sempre uma saída
+   digna ("posso montar uma primeira versão com o que entendi e você ajusta no
+   editor"). Quem tem um pedido claro de primeira atinge o entendimento rápido.
+3. **Sempre fechar com reflexão de entendimento.** Antes de oferecer a geração, a IA
+   sempre devolve, em linguagem natural, o que entendeu ("deixa eu confirmar: você
+   quer ver X, recortado por Y, com Z, é isso?"). Esse gesto transmite "entendi" tanto
+   no caso rápido quanto no longo, e fecha o interrogatório.
+4. **Honestidade de capacidade, proativa.** A IA declara o escopo logo na abertura
+   (hoje: estoque), de forma convidativa, para o usuário se reorientar antes de pedir
+   o impossível. Para o que não dá: sempre "ainda não é possível" (nunca "não dá"),
+   com o caminho mais próximo. Gaps de capacidade durante a conversa são tratados
+   CONVERSACIONALMENTE (a jornada continua), não encerram o turno.
+5. **Reuso total.** Mesma ficha (`BuilderReportEntry`), mesmas tools de mutação, e os
+   mesmos componentes visuais do "Consumo do Agente Nex" que o renderer já usa.
 
 ## 3. Escopo
 
-**Dentro (esta spec):**
-- A jornada conversacional adaptativa com modelo de maturidade.
-- A trilha de progresso visível (estado de cobertura das dimensões).
-- O catálogo de capacidades (capability map) que alimenta o prompt e as opções.
-- As prévias híbridas (thumbnail para arranjos/layout, prévia viva do componente
-  real para o gráfico/KPI escolhido).
-- A tela de resumo + botão "Gerar relatório" + animação de geração.
-- A transição da tela centralizada (jornada) para o layout 2-painéis (refino),
-  reusando o workspace atual.
-- As novas tools de controle de jornada e a extensão do `runBuilder`/SSE/painel.
+**Dentro (v1):**
+- Conversa adaptativa com histórico (entrevista) + reflexão de entendimento.
+- Gate de entendimento baseado em EVIDÊNCIA da ficha (não auto-relato).
+- Catálogo de capacidades (capability map) com KPIs e visualizações CURADOS por fonte,
+  alimentando prompt e opções; declaração de escopo proativa; lista de "ainda não".
+- Reflexo de entendimento em LINGUAGEM NATURAL (não um checklist de 7 caixas).
+- Cards de OPÇÃO leves (thumbnails estáticos/ilustrativos) para escolha de
+  visualização/arranjo, via tool estruturada + evento SSE.
+- Tela de resumo (com itens contestáveis) + botão "Gerar" + animação + transição para
+  o 2-pane atual (refino).
+- Histórico de conversa threaded no `runBuilder`; tools novas de jornada plumbed pelo
+  `executarTool`/`ToolExec`/loop; estado de jornada persistido na conversa.
 
-**Fora (ondas futuras, decididas com o usuário):**
-- Novos domínios de dado além de estoque (ex.: comercial/vendas/pedidos para o
-  "fluxo de produto" com "em pedido"/"vendido"). A jornada trata isso como
+**Fora (ondas futuras):**
+- **Prévia viva do componente real em miniatura dentro do chat.** Cortada da v1 (cara,
+  arriscada visualmente, e a prévia viva real já existe no 2-pane do refino). Entra
+  numa onda seguinte se provar valor. Decisão tomada apesar da preferência inicial
+  "híbrido": as duas reviews apontaram como o maior risco/custo sem ganho proporcional;
+  o "uau" da v1 vem da conversa fluida + do 2-pane real.
+- Novos domínios de dado além de estoque (vendas/pedidos/financeiro). Tratados como
   "ainda não é possível".
-- Reforma do preview do 2-pane (remover o canvas de zoom/pan, rolagem vertical
-  só, largura 75%, botão expandir com animação de recolher o chat em vez de modal).
-  Será uma onda própria depois desta.
-- Tipos de gráfico novos (3D e afins) e ampliação da biblioteca de componentes.
+- Reforma estética do preview do 2-pane (remover canvas, rolagem vertical, 75%, botão
+  expandir com animação). Onda própria depois.
+- Tipos de gráfico novos (3D etc.).
 
-## 4. Arquitetura (Opção A , blueprint incremental)
+## 4. Arquitetura (Opção A , blueprint incremental, com correções)
 
-A jornada é uma nova **fase conversacional** dentro do construtor, não um sistema
-paralelo. Conforme o usuário responde, a IA vai montando a MESMA ficha
-(`BuilderReportEntry`) que o construtor já usa, chamando as tools de mutação que já
-existem (`criar_relatorio`, `adicionar_secao`, `definir_filtro`, `mover_secao`,
-`definir_cor_secao`, etc.) mais novas **tools de controle de jornada** (seção 8).
+A jornada é uma fase conversacional dentro do construtor. A IA monta a MESMA ficha
+(`BuilderReportEntry`) com as tools existentes (`criar_relatorio`, `adicionar_secao`,
+`definir_filtro`, `mover_secao`, `definir_cor_secao`...) + tools novas de jornada
+(seção 8). Correções estruturais que a v1 não tinha:
 
-Consequências:
-- As prévias vivas saem de graça: a ficha está sempre renderizável pelo
-  `ReportRenderer` que já existe.
-- O "Gerar relatório" no resumo apenas **finaliza/persiste** o que já foi montado e
-  troca a UI da fase de jornada para a fase de refino (2-pane). Não há "geração
-  mágica no fim": a ficha foi sendo construída ao longo da conversa.
-- Reusa `runBuilder`, o SSE `/api/builder/stream`, a persistência em `SavedReport`
-  e o `BuilderChatPanel`.
+- **Histórico threaded.** Hoje `runBuilder({prompt, fichaAtual, user})` é stateless por
+  turno (reconstrói `messages = [system, ficha?, prompt]`). Sem o histórico, não há
+  entrevista. v3: `runBuilder` ganha `historico: {role, content}[]` (lido de
+  `builder_messages`), e o `messages` passa a incluir os turnos anteriores. Muda a
+  assinatura do `runBuilder` e do `/api/builder/stream`.
+- **Ficha não vira SavedReport abrível antes de Gerar.** Hoje todo turno com ficha
+  válida cria/atualiza um `SavedReport` rascunho e o botão "Abrir relatorio" já navega
+  pra ele. Isso esvazia o gate. v3: durante a ENTREVISTA a ficha vive no
+  `journeyState` (rascunho em memória/JSON), NÃO como `SavedReport` abrível. O
+  `SavedReport` (abrível, listável em "Meus relatórios") só é promovido no "Gerar" da
+  tela de resumo. A "animação de geração" passa a ter substância (é a promoção +
+  primeira resolução completa), não é cosmética.
+- **Tools de jornada plumbed.** `executarTool(name, args, ficha, journeyState)` e o
+  tipo `ToolExec` ganham a variante `{ tipo: "jornada"; journeyState }`. O loop do
+  `runBuilder` carrega e devolve `journeyState`; `RunBuilderResult` inclui
+  `journeyState`. (A v1 dizia "despachadas no executarTool" sem reconhecer que o canal
+  não existe.)
 
-A diferença de comportamento vem do **system prompt** (modo entrevistador antes da
-maturidade) e do **estado de jornada** carregado junto da conversa.
+## 5. Fases da conversa
 
-## 5. Modelo de jornada e maturidade
+- **ENTREVISTA (chat centralizado).** A IA conduz a conversa adaptativa, reflete
+  entendimento, monta a ficha por baixo (no journeyState). Gaps de capacidade são
+  conversados, não encerram o turno. A geração não está disponível enquanto o
+  entendimento (seção 6) não for atingido; ao apressar, a IA reflete + oferece a saída
+  digna sem bloquear secamente.
+- **RESUMO.** Disparada quando (a) o entendimento é elegível por evidência E (b) o
+  usuário aceita a oferta de gerar. A IA monta um resumo estruturado, com cada item
+  CONTESTÁVEL ("ajustar isso" devolve a pergunta certa ao chat e volta para
+  ENTREVISTA). Só aqui aparece o botão "Gerar relatório".
+- **REFINO (2-pane atual).** Após "Gerar": animação, promoção a `SavedReport`, e o
+  layout 2-painéis atual (chat à esquerda, preview à direita). Edições manuais aqui
+  (mover/remover/cor/inline) NÃO precisam sincronizar journeyState (o refino não
+  depende mais de cobertura). Transição reversível: pedir mudança estrutural grande
+  pode voltar à conversa, mas isso é tratado pelo fluxo normal de tools.
 
-A conversa tem três fases lógicas (a UI reflete cada uma):
+## 6. Entendimento por evidência (substitui o "gate de maturidade circular")
 
-- **Fase ENTREVISTA (centered chat).** A IA conduz a conversa adaptativa, fazendo
-  perguntas para preencher o mapa de cobertura. Pode (e deve) já ir montando a ficha
-  por baixo (seções provisórias) para alimentar prévias, mas o foco visual é a
-  conversa. Enquanto NÃO houver maturidade: tentativas de "gerar logo" são
-  desconversadas; a IA reconduz às perguntas estruturais.
-- **Fase RESUMO.** Disparada quando (a) a IA sinaliza maturidade E (b) o usuário
-  aceita a saída oferecida no enunciado de uma pergunta. A IA monta um resumo
-  estruturado de tudo que foi escolhido (objetivo, dados, indicadores, visualizações,
-  filtros, layout, período) e a UI mostra esse resumo com o botão "Gerar relatório".
-- **Fase REFINO (2-pane).** Após "Gerar": animação de geração, e a UI passa para o
-  layout atual (chat à esquerda, preview à direita) onde o usuário ajusta com as
-  tools que já existem.
+O problema da v1: quem marcava cobertura E declarava maturidade era o mesmo LLM, então
+o backend validava auto-relato contra auto-relato (não era estrutural). v3 amarra o
+gate a EVIDÊNCIA OBJETIVA da ficha + sinais independentes:
 
-**Maturidade** é um julgamento do próprio modelo, emitido por uma tool de controle
-(`avaliar_maturidade`/`sinalizar_pronto`, seção 8). Critério (no prompt): a IA só
-sinaliza maturidade quando as dimensões do NÚCLEO estão entendidas com clareza
-(Objetivo, Dados, Indicadores, Visualização) e ela tem o necessário para montar um
-relatório bom; dimensões complementares (Filtros, Layout/Cor, Período) podem entrar
-com defaults inteligentes sugeridos por ela. O número de perguntas é livre: a IA
-para de perguntar quando entende, não quando atinge uma contagem.
+**`entendimentoElegivel(journeyState, ficha, historico)` (puro, testável)** retorna
+true só quando TODAS as condições objetivas valem:
+1. **Dados**: a ficha tem ≥1 seção com `fato` que existe no registry (fonte real).
+2. **Visualização**: a ficha tem ≥1 seção com template válido que renderiza.
+3. **Indicadores**: a ficha tem ≥1 `KPIRow` OU o usuário declarou explicitamente não
+   querer KPIs (registrado via tool).
+4. **Objetivo**: houve ≥2 turnos de usuário com conteúdo substantivo (evita "1 clique
+   e pronto") OU o 1º pedido já satura Dados+Visualização+Indicadores (atalho de
+   pedido claro, conciliando o "fecha rápido").
 
-**Guarda anti-geração-precoce.** O backend só permite a transição ENTREVISTA -> RESUMO
-quando o estado de jornada marca `maturidade=true`. Se o cliente pedir o resumo sem
-maturidade (ou o modelo tentar atalhar), o backend recusa e a IA responde reconduzindo.
-É defesa estrutural, não só de prompt.
+A IA só pode chamar `oferecer_geracao` quando `entendimentoElegivel` é true; o backend
+RECUSA a oferta/resumo se a evidência não bate (defesa estrutural real, independente da
+palavra do modelo). A cobertura auto-declarada pela IA (seção 7) serve para a reflexão
+em linguagem natural e para a UX, NÃO como gate.
 
-## 6. Mapa de cobertura (7 dimensões)
+**Anti-loop e anti-pressa:** teto suave , após K turnos (ex.: 8) sem elegibilidade, a
+IA passa a propor ativamente uma primeira versão ("monto com o que entendi?") em vez de
+seguir perguntando. Piso , o atalho do item 4 exige saturar Dados+Visualização (que são
+evidência objetiva), então "pedido claro" não vira relatório vazio.
 
-Estado por conversa, atualizado pela IA via tool `marcar_cobertura`. Cada dimensão
-tem um status: `pendente` | `em_andamento` | `coberta` | `nao_se_aplica`.
+## 7. Reflexo de entendimento (substitui a trilha de 7 caixas)
 
-1. **Objetivo** , a pergunta de negócio que o relatório responde. (núcleo)
-2. **Dados/recorte** , qual(is) fato(s)/dimensão principal (produto, armazém, marca,
-   família, movimento, parados, top movimentados). (núcleo)
-3. **Indicadores (KPIs)** , o que medir; a IA sugere KPIs inteligentes. (núcleo)
-4. **Visualização** , tabela, barras, pizza/rosca, linha, ou combinação. (núcleo)
-5. **Filtros interativos** , marca, armazém, família, dias parado, sentido. (complementar)
-6. **Layout & Cor** , ordem das seções e cor. (complementar)
-7. **Período/temporalidade** , snapshot atual x evolução no tempo; só aparece quando
-   o relatório envolve movimento/entradas-saídas. (complementar/condicional)
+A v1 expunha 7 dimensões nomeadas acendendo de `pendente` a `coberta`. As reviews
+apontaram que isso É o checklist engessado que o dono rejeita (denuncia o esqueleto,
+mata o "ela me entendeu"). v3:
 
-A trilha de progresso na UI reflete esse estado. Maturidade exige o núcleo (1 a 4)
-em `coberta`; complementares podem ficar com default sugerido.
+- **Não há HUD de 7 caixas.** O progresso aparece como um **resumo em linguagem
+  natural que cresce**: um bloco discreto ("Até aqui entendi: você quer o estoque
+  parado, recortado por marca, com valor imobilizado e uma tabela") que a IA atualiza
+  via tool `atualizar_entendimento({ texto })`. É emocional e não-enumerado.
+- Internamente, as 7 dimensões (Objetivo, Dados, Indicadores, Visualização, Filtros,
+  Layout/Cor, Período) seguem existindo como CHECKLIST INVISÍVEL no journeyState, para
+  o prompt saber o que ainda falta perguntar. Mas NÃO viram UI de caixas. O usuário vê
+  conversa + o resumo natural crescendo, nunca rótulos técnicos como "recorte" ou
+  "temporalidade".
 
-## 7. Catálogo de capacidades (capability map)
+## 8. Tools novas de jornada (plumbed pelo executarTool/loop)
 
-Fonte única de verdade do que o construtor sabe fazer hoje, consumida pelo prompt
-(para honestidade) e pela UI (para montar opções). Derivado do que já existe:
-`listarFontes()` (fatos de estoque), `TEMPLATES_ONDA1` (KPIRow, BarChart, PieChart,
-LineChart, DataTable), tipos de filtro (`ReportFilterTipo`), paleta de cores
-(`CORES_SELECIONAVEIS`).
+Todas atuam no `journeyState` (não na ficha). `executarTool` e o loop passam a
+carregar/devolver `journeyState`; `ToolExec` ganha `{ tipo: "jornada"; journeyState }`.
 
-Estrutura proposta (`src/lib/reports/builder/capabilities.ts`):
-- **dominios**: hoje só `estoque` (catálogo declara os demais como "ainda não").
-- **fontes**: lista derivada de `listarFontes()` com rótulo amigável e exemplos de
-  perguntas que cada fonte responde.
-- **visualizacoes**: os 5 templates com "quando usar" e o shape exigido.
-- **filtros**: os 5 tipos com rótulo e quando se aplicam.
+- `atualizar_entendimento({ texto })` , define/atualiza o resumo natural mostrado ao
+  usuário (seção 7). Também marca internamente quais dimensões a IA considera tocadas.
+- `oferecer_opcoes({ titulo, opcoes: [{ id, rotulo, descricao, tipoVisual? }] })` ,
+  emite cards de escolha leves (thumbnails) via evento SSE; o backend VALIDA cada
+  opção contra o capability map e descarta inválidas. (Tool estruturada, não markup
+  inline no texto, que modelos pequenos quebram.)
+- `oferecer_geracao({ motivo })` , a IA sinaliza que dá para gerar. O backend só aceita
+  se `entendimentoElegivel` (seção 6) for true; caso contrário responde ao modelo que
+  ainda falta evidência X, e a conversa continua. Disparar a oferta aceita -> fase
+  RESUMO.
+- `montar_resumo()` , monta o snapshot estruturado (objetivo, dados, indicadores,
+  visualizações, filtros, layout, período) lido da ficha + entendimento, para a tela
+  de resumo. Cada item carrega a "dimensão" que o originou, para o "ajustar isso".
+
+A ficha continua mexida pelas tools existentes.
+
+## 9. Capability map (catálogo de capacidades CURADO)
+
+`src/lib/reports/builder/capabilities.ts`, fonte única consumida pelo prompt (repertório
++ honestidade) e pela UI (opções). Vai ALÉM de derivar `listarFontes()`: é curado.
+
+- **escopoAtual**: frase de abertura honesta ("hoje monto relatórios ricos sobre o seu
+  estoque: saldo, parados, movimentação, por marca/armazém/família; vendas e financeiro
+  estão chegando").
+- **fontes[]**: por fato, além do `SourceContract`: rótulo amigável, exemplos de
+  perguntas, **KPIs sugeridos curados** (ex.: para `fato_estoque_parados`: "valor
+  imobilizado", "itens parados", "dias médio parado") e **visualização recomendada**
+  (ex.: parados -> KPIRow + DataTable; marca -> KPIRow + Pie/Bar). Isso dá ao modelo
+  pequeno munição para "sugerir KPIs inteligentes" sem inventar.
+- **visualizacoes[]**: os 5 templates com "quando usar" + shape exigido.
+- **filtros[]**: os 5 tipos + quando se aplicam.
 - **cores**: tokens da paleta.
-- **naoSuportado**: lista explícita de coisas comuns que o usuário pode pedir e que
-  "ainda não é possível" (ex.: vendas/pedidos, faturamento, 3D, exportar PDF),
-  cada uma com a frase honesta e o caminho mais próximo. Alimenta tanto o prompt
-  quanto a UI (quando o usuário esbarra, a IA explica com clareza).
+- **naoSuportado[]**: pedidos comuns fora do catálogo (vendas, faturamento, pedidos,
+  3D, exportar PDF) cada um com a frase "ainda não é possível" + o caminho próximo.
 
-Este catálogo é a base do prompt: ele para de "supor dados" e passa a orientar.
+## 10. Prompt da jornada (com munição concreta, não "o prompt resolve")
 
-## 8. Tools novas de controle de jornada
+`agent/prompt-jornada.ts`. Além das regras, carrega o capability map e FEW-SHOTS
+concretos (o coração da feature, não pode ficar vago):
 
-Acrescentadas ao `BUILDER_TOOLS` (todas `muta: true` sobre o estado de jornada, não
-sobre a ficha), despachadas no `executarTool`:
+- Few-shot de **reflexão + aprofundamento** ("entendi que... e pra deixar mais útil,
+  você prefere ver por marca ou por armazém?").
+- Few-shot de **abertura com escopo** (declara o que dá hoje, convida).
+- Few-shot de **"ainda não é possível" + redirecionamento** (usuário pede vendas ->
+  reconhece, explica que ainda não, oferece o que dá perto).
+- Few-shot da **reflexão de entendimento final** antes de oferecer gerar.
+- Few-shot do **caso rápido** (pedido claro de primeira -> reflete e já oferece gerar).
+- Instrução para **agrupar perguntas** e **propor defaults** em vez de interrogar uma a
+  uma. Reavaliar `temperature` para a entrevista (a atual 0.2 tende a rígido).
 
-- `marcar_cobertura({ dimensao, status, resumo? })` , atualiza o mapa de cobertura
-  (dimensao ∈ as 7; status ∈ pendente/em_andamento/coberta/nao_se_aplica). `resumo`
-  é a frase curta do que ficou decidido naquela dimensão (alimenta a tela de resumo).
-- `avaliar_maturidade({ pronto, motivo })` , a IA declara se já entende o suficiente.
-  Backend só aceita `pronto=true` se o núcleo (dimensões 1 a 4) estiver `coberta`.
-- `montar_resumo()` , gera o snapshot estruturado das escolhas (lido do estado de
-  cobertura + da ficha) para a fase RESUMO. Só permitido com maturidade.
+## 11. Cards de opção (v1 = thumbnails leves)
 
-A ficha continua sendo mexida pelas tools existentes. O estado de jornada (cobertura,
-maturidade, fase, resumo) vive junto da conversa (seção 9).
+Quando a IA chama `oferecer_opcoes`, o `BuilderChatPanel` renderiza cards selecionáveis
+(ícone + rótulo + 1 linha), via novo evento SSE `choices`. A seleção do usuário volta
+como turno e a IA aplica via tools. v1 NÃO renderiza componente real em miniatura (ver
+seção 3, fora de escopo). Thumbnails ilustrativos vivem em
+`journey/option-thumbs.tsx`. Opções sempre validadas contra o capability map.
 
-## 9. Estado/blueprint e persistência
+## 12. Estado/persistência
 
-Hoje a conversa persiste em `builder_conversations`/`builder_messages` e a ficha em
-`SavedReport`. Acrescentamos o **estado de jornada** por conversa:
+`BuilderConversation` ganha `journeyState` JSON (migration aditiva manual; F6 só dev):
+```
+{
+  fase: "entrevista" | "resumo" | "refino",
+  fichaRascunho?: BuilderReportEntry,   // ficha em construção ANTES do Gerar
+  entendimento?: string,                // resumo natural mostrado (seção 7)
+  dimensoesTocadas: Record<Dimensao, boolean>,  // checklist invisivel
+  resumo?: {...},                       // montado na fase resumo
+}
+```
+- **Default condicional (corrige o legado):** conversa SEM journeyState mas COM
+  `savedReportId` linkado nasce em `fase="refino"` (é relatório já pronto do construtor
+  antigo, não pode cair na entrevista). Conversa nova nasce em `fase="entrevista"`.
+  Migration faz backfill: existentes com savedReport -> refino.
+- O SSE `done` passa a incluir `journeyState` (além de ficha/savedId/etag). O
+  workspace reage a `fase` para escolher o layout (centralizado x 2-pane).
+- A `fichaRascunho` é a fonte da ficha durante a entrevista; no "Gerar" ela é promovida
+  a `SavedReport` (aí sim abrível/listável) e a fase vira `refino`.
 
-- `BuilderConversation` ganha um campo JSON `journeyState` (migration manual aditiva,
-  protocolo de schema; F6 só dev). Shape:
-  ```
-  {
-    fase: "entrevista" | "resumo" | "refino",
-    cobertura: Record<Dimensao, { status, resumo? }>,
-    maturidade: boolean,
-    resumo?: { objetivo, dados, indicadores, visualizacoes, filtros, layout, periodo } // montado na fase resumo
-  }
-  ```
-- O SSE `done` passa a incluir `journeyState` (além de ficha/savedId/etag já
-  existentes). O `BuilderChatPanel`/workspace reage à `fase` para trocar o layout.
-- Defaults: conversa nova começa em `fase="entrevista"`, cobertura toda `pendente`,
-  `maturidade=false`.
+## 13. Honestidade conversacional (separar do SEM_FONTE terminal)
 
-## 10. Fluxo de UI
+Hoje `SEM_FONTE:` no `run-builder` ENCERRA o turno com `recusa=true` + FeatureRequest.
+Numa entrevista, pedir "vendas" no meio NÃO pode encerrar a jornada. v3: o "ainda não é
+possível" é conversacional (a IA responde e segue nas dimensões cobríveis); o
+`SEM_FONTE` terminal continua existindo só para o caso em que NADA do pedido é cobrível
+(ex.: o relatório inteiro é de um domínio inexistente) , aí sim recusa honesta +
+FeatureRequest. Gaps pontuais no meio de um relatório viável são redirecionados, não
+recusados.
 
-**Entrada (tela centralizada, estilo ChatGPT).** Ao abrir "Novo relatório", o chat
-ocupa o centro da tela (sem o split). Mensagem inicial da IA convida: "vamos montar
-seu relatório, me conta o que você gostaria de ver". Trilha de progresso (as 7
-dimensões) visível no topo ou lateral, refletindo a cobertura.
+## 14. Custo (mitigação real)
 
-**Durante a entrevista.** A IA conduz adaptativamente. Quando propõe opções, usa as
-**prévias híbridas** (seção 11). A trilha vai acendendo as dimensões cobertas. Sem
-maturidade, a saída ("quer que eu já monte?") não é oferecida; se o usuário forçar,
-a IA reconduz.
+Threadar histórico (seção 4) faz o custo crescer por turno. Mitigações na spec:
+- **Prompt caching de prefixo**: system + capability map são estáveis -> cacheáveis.
+- **Ficha compacta**: enviar a `fichaRascunho` ao modelo como resumo/diff, não o JSON
+  inteiro a cada turno.
+- **Teto de turnos** (seção 6) também limita custo.
+- Reusa `logUsage origin="construtor"` e o teto de quota existente. Vigiar custo/relatório.
 
-**Maturidade alcançada.** As perguntas da IA passam a oferecer a saída no enunciado.
-Quando o usuário aceita -> a IA chama `montar_resumo` -> a UI entra na **fase RESUMO**:
-um cartão de resumo com tudo que foi escolhido (objetivo, dados, KPIs, visualizações,
-filtros, layout, período) e, só aqui, o botão **"Gerar relatório"**.
+## 15. Métricas de sucesso (a v1 não tinha)
 
-**Gerar.** Clique -> **animação de geração** (tela toda, transição). Ao concluir,
-a UI passa para a **fase REFINO**: layout 2-painéis atual (chat à esquerda, preview à
-direita) com a ficha já montada e persistida. Dali pra frente é o construtor atual
-(ajustes via tools, edição inline, filtros interativos).
+Instrumentar sinais proxy desde o início (sem eles, iterar o prompt é às cegas):
+- **% de relatórios que chegam ao refino sem edição corretiva** (alta = o resumo bateu
+  com o desejo = "ela entendeu"). Sinal primário.
+- **Turnos até elegibilidade** (muito alto = interrogatório).
+- **% de "gera logo" não atendidos por conversa** (alta = gate irritando).
+- **Abandono na entrevista antes do resumo.**
+- **Feedback de 1 clique** após a geração (joinha).
+Reusar a infra de auditoria/usage existente onde der; o resto é evento leve.
 
-Observação: a reforma estética do preview do 2-pane (canvas, 75%, expandir) é onda
-futura; aqui apenas reusamos o 2-pane como está.
+## 16. Estratégia de testes
 
-## 11. Prévias híbridas
-
-Quando a IA oferece opções:
-- **Thumbnails (estruturais)** , para arranjos/layout e ordem das seções: cartões
-  leves (ícone + nome + 1 linha) representando cada arranjo. Vivem numa pequena
-  biblioteca estática (`src/components/reports/builder/journey/option-thumbs.tsx`).
-- **Prévia viva (componente real)** , para o gráfico/KPI escolhido: renderiza o
-  componente REAL em miniatura (os mesmos `InteractiveBarChart`/`DonutWithCenter`/
-  `InteractiveAreaChart`/`KpiCard`/`ReportDataTable`) com dados de amostra do próprio
-  catálogo, como card clicável.
-
-Mecanismo: a IA emite as opções como parte da mensagem (estrutura própria de
-"escolha", renderizada pelo painel como cards selecionáveis); a seleção do usuário
-volta como a resposta dele e a IA aplica via tools. As opções e seus previews saem do
-capability map (seção 7), nunca inventadas.
-
-## 12. Honestidade, RBAC, billing e quota (reuso)
-
-- **Honestidade**: o marcador `SEM_FONTE:`/recusa já existente continua valendo para
-  domínios fora do catálogo; a jornada o usa com a linguagem "ainda não é possível"
-  e o caminho mais próximo, registrando `FeatureRequest` (gap) como hoje.
-- **RBAC**: a página e as actions seguem o gate atual (admin/super_admin) , sem
-  mudança.
-- **Billing/quota**: a jornada consome mais turnos de LLM que o fluxo antigo. Reusa
-  `logUsage origin="construtor"` e o teto de quota já existente; o prompt deve ser
-  econômico (perguntas objetivas, sem enrolar). Risco a vigiar: custo por relatório.
-
-## 13. Estratégia de testes
-
-- **TDD nas unidades puras**: estado de cobertura/maturidade (transições, guarda
-  anti-geração-precoce), capability map (forma + "naoSuportado"), as 3 tools novas
-  (validação + efeito no estado), montagem do resumo.
-- **Componentes (jsdom)**: trilha de progresso (reflete cobertura), cards de opção
-  (thumb + prévia viva renderizam e selecionam), tela de resumo (mostra escolhas +
-  botão Gerar só na fase resumo), troca de fase (entrevista -> resumo -> refino).
-- **E2E real (obrigatório, regra de raiz)**: rodar a jornada contra o LLM real +
-  cache de estoque real, conferindo: a IA entrevista, recusa gerar antes da
-  maturidade, oferece a saída após maturidade, monta resumo coerente, e o "Gerar"
-  produz uma ficha válida que renderiza com os componentes reais. Conferir também a
-  honestidade ("ainda não é possível") num pedido fora do catálogo (ex.: "quantos
-  produtos vendidos").
+- **TDD puro**: `entendimentoElegivel` (todas as condições + atalho + teto), transições
+  de fase (incl. reversível resumo->entrevista e default condicional do legado),
+  capability map (forma + KPIs curados + naoSuportado), as 4 tools novas (validação +
+  efeito no journeyState + recusa de `oferecer_geracao` sem evidência), montagem do
+  resumo + itens contestáveis.
+- **Componentes (jsdom)**: reflexo de entendimento (texto natural, não caixas), cards de
+  opção (renderizam e selecionam, validados), tela de resumo (itens + "ajustar isso" +
+  botão Gerar só na fase resumo), troca de fase no workspace.
+- **E2E real (obrigatório)**: jornada contra o LLM real + cache de estoque real,
+  conferindo: abertura declara escopo; entrevista adaptativa com reflexão; NÃO oferece
+  gerar sem evidência; atalho de pedido claro funciona; "ainda não é possível"
+  conversacional num pedido de vendas (sem encerrar a jornada); resumo coerente e
+  contestável; "Gerar" promove a SavedReport e renderiza com os componentes reais;
+  retomada de conversa (histórico) e reabertura de relatório legado caindo no refino.
 - `tsc` raiz limpo; eslint (sem travessão); jest builder verde.
 
-## 14. Componentes (novos x reuso)
+## 17. Componentes (novos x reuso)
 
-**Reuso (sem reescrever):** `ReportRenderer` e todos os componentes do Consumo,
-`BuilderChatPanel`, `BuilderWorkspace` (ganha as fases), `runBuilder` (ganha o estado
-de jornada), SSE stream, tools de mutação, `SavedReport`/conversa.
+**Reuso:** `ReportRenderer` + componentes do Consumo, `BuilderChatPanel` (ganha o
+evento `choices` + o reflexo de entendimento + a casca centralizada), `BuilderWorkspace`
+(ganha as fases), `runBuilder` (ganha histórico + journeyState), SSE, tools de mutação,
+`SavedReport`/conversa.
 
 **Novos:**
-- `src/lib/reports/builder/capabilities.ts` , capability map + helpers.
-- `src/lib/reports/builder/journey/state.ts` , tipos + transições puras (cobertura,
-  maturidade, fase) com guarda anti-geração-precoce.
-- tools novas em `tools/` (marcar_cobertura, avaliar_maturidade, montar_resumo).
-- prompt da jornada (modo entrevistador) em `agent/prompt.ts` (ou um novo
-  `agent/prompt-jornada.ts`).
-- UI: `journey/progress-trail.tsx`, `journey/option-cards.tsx` (thumb + prévia viva),
-  `journey/journey-summary.tsx` (resumo + Gerar), e a casca centralizada +
+- `capabilities.ts` (capability map curado).
+- `journey/state.ts` (tipos + `entendimentoElegivel` + transições puras).
+- tools novas (`atualizar_entendimento`, `oferecer_opcoes`, `oferecer_geracao`,
+  `montar_resumo`) + extensão de `executarTool`/`ToolExec`/`runBuilder`.
+- `agent/prompt-jornada.ts` (entrevistador + few-shots + capability map).
+- UI: `journey/understanding-summary.tsx`, `journey/option-cards.tsx` (thumbnails),
+  `journey/journey-summary.tsx` (resumo contestável + Gerar), casca centralizada +
   animação de geração no workspace.
 
-## 15. Ordem de implementação (alto nível, detalha no plano)
+## 18. O que as reviews mudaram (v1 -> v3)
 
-1. Capability map + estado de jornada (puro, TDD).
-2. Tools novas + extensão do `runBuilder`/SSE/estado na conversa (migration aditiva).
-3. Prompt da jornada (entrevistador adaptativo + honestidade + maturidade).
-4. UI: casca centralizada + trilha de progresso.
-5. UI: cards de opção (thumb + prévia viva).
-6. UI: tela de resumo + botão Gerar + animação + troca para 2-pane.
-7. Verificação E2E real + ajustes.
+- **Guarda de maturidade circular** -> gate por EVIDÊNCIA da ficha (`entendimentoElegivel`),
+  não auto-relato (seção 6). [crítico, ambas as reviews]
+- **runBuilder stateless** -> histórico threaded; sem isso a entrevista não existe
+  (seção 4). [crítico, review #1]
+- **Ficha abrível antes da maturidade** -> `fichaRascunho` no journeyState; só vira
+  `SavedReport` no Gerar; animação passa a ter substância (seções 4, 12). [crítico, review #1]
+- **Tools de jornada sem canal** -> `ToolExec` variante "jornada", journeyState pelo
+  loop, assinaturas explicitadas (seções 4, 8). [alto, review #1]
+- **Trilha de 7 caixas = checklist odiado** -> reflexo de entendimento em linguagem
+  natural; dimensões viram checklist invisível (seção 7). [alto, review #2]
+- **Sem saída digna sempre-disponível** -> reflexão + oferta "monto e você ajusta",
+  atalho de pedido claro, teto de turnos (seções 2, 5, 6). [alto, review #2]
+- **"O prompt resolve" otimista** -> capability map com KPIs/visualizações curados +
+  few-shots concretos no prompt (seções 9, 10). [alto, review #2]
+- **Prévia viva no chat (cara/arriscada)** -> cortada da v1, só thumbnails; prévia viva
+  real fica no 2-pane (seções 3, 11). [médio, ambas]
+- **SEM_FONTE terminal conflita com jornada** -> honestidade conversacional separada do
+  terminal (seção 13). [alto, review #1]
+- **Legado reabrindo como entrevista** -> default condicional + backfill (seção 12).
+  [alto, review #1]
+- **Resumo sem discordância** -> itens contestáveis "ajustar isso" (seções 5, 8).
+  [médio, review #2]
+- **Custo subestimado** -> caching de prefixo + ficha compacta + teto (seção 14).
+  [médio, review #1]
+- **Sem métrica de sucesso** -> sinais proxy instrumentados (seção 15). [médio, review #2]
+- **Tensão rápido x entrevistou de verdade** -> reflexão de entendimento sempre antes de
+  oferecer gerar (seções 2.3, 10). [médio, review #2]
 
-## 16. Riscos e mitigações
+## 19. Riscos remanescentes
 
-- **Prompt fraco -> experiência engessada ou rasa.** Mitiga: prompt iterado, E2E real
-  conferindo a sensação de condução; o capability map dá repertório à IA.
-- **Geração precoce.** Mitiga: guarda estrutural no backend (não só prompt).
-- **Custo de LLM por relatório.** Mitiga: prompt objetivo; vigiar quota/billing.
-- **Complexidade da UI de fases.** Mitiga: reusar o 2-pane atual no refino; a fase
-  nova de verdade é só a centralizada + resumo.
+- **Prompt do entrevistador é o coração e o maior risco.** Mitiga: few-shots concretos
+  (seção 10), E2E real conferindo a sensação, métricas (seção 15) para iterar com dado.
+- **Modelo pequeno (gpt-5.4-mini) pode não conduzir bem.** Mitiga: gate por evidência
+  (não depende da "inteligência" do modelo para barrar geração rasa); permitir trocar o
+  modelo do construtor (já é configurável) se a condução exigir.
+- **Custo por relatório.** Mitiga seção 14 + métricas.
 ```
