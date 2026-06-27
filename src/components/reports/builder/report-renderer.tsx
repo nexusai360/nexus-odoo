@@ -1,11 +1,14 @@
 "use client";
 
 // src/components/reports/builder/report-renderer.tsx
-// Motor de render do construtor, na MESMA pegada visual do dashboard "Consumo do
-// Agente Nex": KPIs em KpiCard (icone em pilula + valor grande), e cada grafico/
-// tabela dentro de um Card com cabecalho (icone violeta + titulo). Espacamentos,
-// cores e cantos seguem o design system (rounded-2xl, border, bg-muted/30).
+// Motor de render do construtor com EXATAMENTE os componentes do dashboard
+// "Consumo do Agente Nex": KpiCard (faixa de indicadores), InteractiveAreaChart
+// (linha/area animada), InteractiveBarChart (barras animadas), DonutWithCenter
+// (rosca com centro) e ReportDataTable (tabela paginada padrao Consumo). Cada
+// grafico/tabela vive num Card (CardHeader icone violeta + titulo), iguais aos
+// tokens/espacamentos do consumo.
 import * as React from "react";
+import { motion } from "framer-motion";
 import {
   Boxes,
   Coins,
@@ -22,14 +25,24 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { CORES_SELECIONAVEIS, corResolvida } from "@/components/charts/colors";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { KpiCard } from "@/components/reports/kpi-card";
-import { DataTable, type ColumnDef } from "@/components/charts/data-table";
 import { formatNumber, type NumberFormat } from "@/components/charts/kpi-card";
-import { BarChartCard } from "@/components/charts/bar-chart";
-import { PieChartCard } from "@/components/charts/pie-chart";
-import { LineChartCard } from "@/components/charts/line-chart";
+import {
+  InteractiveAreaChart,
+  InteractiveBarChart,
+  DonutWithCenter,
+  type AreaChartData,
+  type BarChartData,
+  type PieChartData,
+} from "@/components/charts/interactive";
+import {
+  CHART_COLORS,
+  corResolvida,
+  paletaApartirDe,
+  CORES_SELECIONAVEIS,
+} from "@/components/charts/colors";
+import { ReportDataTable, type ColunaTabela } from "./report-data-table";
 import type {
   BuilderReportEntry,
   BuilderSection,
@@ -38,16 +51,17 @@ import type {
 } from "@/lib/reports/builder/types";
 import type { SecaoResolvida } from "@/lib/reports/builder/resolve-source";
 
-interface ColunaConfig {
-  key: string;
-  header: string;
-  tipo?: CampoTipo;
-}
-
 function formatoDoCampo(tipo: CampoTipo | undefined): NumberFormat {
   if (tipo === "moeda") return "moeda";
   if (tipo === "numero") return "inteiro";
   return "decimal";
+}
+
+/** Formatador de valor para eixos/tooltip a partir do tipo do campo. */
+function formatadorValor(tipo: CampoTipo | undefined): (v: number) => string {
+  const fmt = formatoDoCampo(tipo);
+  if (tipo === "percentual") return (v) => `${formatNumber(v, "decimal")}%`;
+  return (v) => formatNumber(v, fmt);
 }
 
 function ehEscalar(v: unknown): boolean {
@@ -87,7 +101,7 @@ function CardSecao({
   return (
     <Card className="group/sec rounded-2xl border border-border bg-muted/30">
       <CardHeader className="flex flex-row items-center justify-between gap-2">
-        <CardTitle className="flex min-w-0 items-center gap-2 text-sm font-semibold">
+        <CardTitle className="flex min-w-0 items-center gap-2">
           <Icon className="h-4 w-4 shrink-0 text-violet-500" aria-hidden />
           {tituloNode ?? titulo}
         </CardTitle>
@@ -107,97 +121,13 @@ export interface EditavelFicha {
   onCor: (secaoId: string, cor: string | null) => void;
 }
 
-/** Templates que aceitam escolha de cor pela UI (graficos). */
+/** Templates de grafico que aceitam escolha de cor pela UI. */
 const TEMPLATES_COM_COR = new Set(["BarChart", "PieChart", "LineChart"]);
 
 /** Cor atual da secao (config.cor), normalizada para string|undefined. */
 function corDaSecao(secao: BuilderSection): string | undefined {
   const c = secao.config?.cor;
   return typeof c === "string" && c.trim() ? c.trim() : undefined;
-}
-
-/**
- * Seletor de cor da secao: bolinha que abre uma paleta. Escolher pinta o
- * grafico; "Padrao" remove a cor (volta ao ciclo da paleta).
- */
-function SecaoColorPicker({
-  secaoId,
-  corAtual,
-  onCor,
-}: {
-  secaoId: string;
-  corAtual?: string;
-  onCor: (secaoId: string, cor: string | null) => void;
-}) {
-  const [aberto, setAberto] = React.useState(false);
-  const ref = React.useRef<HTMLDivElement>(null);
-  React.useEffect(() => {
-    if (!aberto) return;
-    const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setAberto(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [aberto]);
-  const hexAtual = corResolvida(corAtual);
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        aria-label="Escolher cor da secao"
-        onClick={() => setAberto((v) => !v)}
-        className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-violet-400/50 focus-visible:outline-none"
-      >
-        {hexAtual ? (
-          <span
-            className="h-3.5 w-3.5 rounded-full ring-1 ring-black/10 dark:ring-white/15"
-            style={{ backgroundColor: hexAtual }}
-          />
-        ) : (
-          <Palette className="h-4 w-4" />
-        )}
-      </button>
-      {aberto ? (
-        <div className="absolute right-0 z-20 mt-1 w-44 rounded-xl border border-border bg-popover p-2 shadow-lg">
-          <div className="grid grid-cols-5 gap-1.5">
-            {CORES_SELECIONAVEIS.map((c) => {
-              const sel = hexAtual?.toLowerCase() === c.hex.toLowerCase();
-              return (
-                <button
-                  key={c.token}
-                  type="button"
-                  title={c.label}
-                  aria-label={c.label}
-                  aria-pressed={sel}
-                  onClick={() => {
-                    onCor(secaoId, c.token);
-                    setAberto(false);
-                  }}
-                  className={cn(
-                    "flex h-7 w-7 cursor-pointer items-center justify-center rounded-full ring-1 ring-black/10 transition hover:scale-110 dark:ring-white/15",
-                    sel && "ring-2 ring-violet-500 ring-offset-1 ring-offset-popover",
-                  )}
-                  style={{ backgroundColor: c.hex }}
-                >
-                  {sel ? <Check className="h-3.5 w-3.5 text-white drop-shadow" /> : null}
-                </button>
-              );
-            })}
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              onCor(secaoId, null);
-              setAberto(false);
-            }}
-            className="mt-2 w-full cursor-pointer rounded-md px-2 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          >
-            Cor padrao
-          </button>
-        </div>
-      ) : null}
-    </div>
-  );
 }
 
 /** Controles de uma secao no modo edicao: subir, descer, remover. */
@@ -278,6 +208,98 @@ function TituloEditavel({ titulo, onSalvar }: { titulo: string; onSalvar: (t: st
   );
 }
 
+/** Seletor de cor da secao: bolinha que abre uma paleta. */
+function SecaoColorPicker({
+  secaoId,
+  corAtual,
+  onCor,
+}: {
+  secaoId: string;
+  corAtual?: string;
+  onCor: (secaoId: string, cor: string | null) => void;
+}) {
+  const [aberto, setAberto] = React.useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    if (!aberto) return;
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setAberto(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [aberto]);
+  const hexAtual = corResolvida(corAtual);
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        aria-label="Escolher cor da secao"
+        onClick={() => setAberto((v) => !v)}
+        className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-violet-400/50 focus-visible:outline-none"
+      >
+        {hexAtual ? (
+          <span className="h-3.5 w-3.5 rounded-full ring-1 ring-black/10 dark:ring-white/15" style={{ backgroundColor: hexAtual }} />
+        ) : (
+          <Palette className="h-4 w-4" />
+        )}
+      </button>
+      {aberto ? (
+        <div className="absolute right-0 z-20 mt-1 w-44 rounded-xl border border-border bg-popover p-2 shadow-lg">
+          <div className="grid grid-cols-5 gap-1.5">
+            {CORES_SELECIONAVEIS.map((c) => {
+              const sel = hexAtual?.toLowerCase() === c.hex.toLowerCase();
+              return (
+                <button
+                  key={c.token}
+                  type="button"
+                  title={c.label}
+                  aria-label={c.label}
+                  aria-pressed={sel}
+                  onClick={() => {
+                    onCor(secaoId, c.token);
+                    setAberto(false);
+                  }}
+                  className={cn(
+                    "flex h-7 w-7 cursor-pointer items-center justify-center rounded-full ring-1 ring-black/10 transition hover:scale-110 dark:ring-white/15",
+                    sel && "ring-2 ring-violet-500 ring-offset-1 ring-offset-popover",
+                  )}
+                  style={{ backgroundColor: c.hex }}
+                >
+                  {sel ? <Check className="h-3.5 w-3.5 text-white drop-shadow" /> : null}
+                </button>
+              );
+            })}
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              onCor(secaoId, null);
+              setAberto(false);
+            }}
+            className="mt-2 w-full cursor-pointer rounded-md px-2 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            Cor padrao
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** Colunas da tabela: do contrato (campos) ou derivadas da 1a linha. */
+function colunasDataTable(secao: BuilderSection, campos: CampoMeta[], rows: Record<string, unknown>[]): ColunaTabela[] {
+  let colunas = (secao.config.colunas as ColunaTabela[] | undefined) ?? [];
+  if (colunas.length === 0 && campos.length > 0) {
+    colunas = campos.map((c) => ({ key: c.key, header: c.label, tipo: c.tipo }));
+  }
+  if (colunas.length === 0 && rows.length > 0) {
+    colunas = Object.keys(rows[0])
+      .filter((k) => ehEscalar(rows[0][k]))
+      .map((k) => ({ key: k, header: humanizarChave(k) }));
+  }
+  return colunas.filter((c) => c && c.key).map((c) => ({ key: c.key, header: c.header ?? c.key, tipo: c.tipo }));
+}
+
 function SecaoView({
   secao,
   resolvida,
@@ -293,13 +315,9 @@ function SecaoView({
 }) {
   const { Icon, titulo: tituloPadrao } = metaTemplate(secao.template);
   const titulo = tituloSecao(secao) ?? tituloPadrao;
-  // Props injetadas em cada CardSecao quando em modo edicao (titulo editavel +
-  // controles de reordenar/remover no canto do cabecalho).
   const editProps: { tituloNode?: React.ReactNode; acao?: React.ReactNode } = editavel
     ? {
-        tituloNode: (
-          <TituloEditavel titulo={titulo} onSalvar={(t) => editavel.onRenomear(secao.id, t)} />
-        ),
+        tituloNode: <TituloEditavel titulo={titulo} onSalvar={(t) => editavel.onRenomear(secao.id, t)} />,
         acao: (
           <div className="flex items-center gap-0.5">
             {TEMPLATES_COM_COR.has(secao.template) ? (
@@ -330,7 +348,7 @@ function SecaoView({
     );
   }
 
-  // KPIRow , faixa de indicadores (cada um e um KpiCard, sem Card externo).
+  // KPIRow , faixa de indicadores (cada um e um KpiCard), com entrada animada.
   if (secao.template === "KPIRow") {
     const kpis = (resolvida.dado as Record<string, number>) ?? {};
     const campos = resolvida.campos ?? [];
@@ -340,7 +358,12 @@ function SecaoView({
     ).filter((c) => c.key in kpis);
     if (cards.length === 0) return null;
     const grid = (
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <motion.div
+        initial="hidden"
+        animate="visible"
+        variants={{ visible: { transition: { staggerChildren: 0.06 } } }}
+        className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
+      >
         {cards.map((c) => {
           const valor = Number(kpis[c.key] ?? 0);
           const tone =
@@ -351,17 +374,21 @@ function SecaoView({
               : ("default" as const);
           const Ico = c.tipo === "moeda" ? Coins : /produto|item|total|armaz/i.test(c.key) ? Boxes : TrendingUp;
           return (
-            <KpiCard
+            <motion.div
               key={c.key}
-              icon={Ico}
-              label={c.label}
-              value={formatNumber(valor, formatoDoCampo(c.tipo))}
-              tone={tone}
-              hint={c.tipo === "moeda" ? "no periodo" : undefined}
-            />
+              variants={{ hidden: { opacity: 0, y: 16 }, visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } } }}
+            >
+              <KpiCard
+                icon={Ico}
+                label={c.label}
+                value={formatNumber(valor, formatoDoCampo(c.tipo))}
+                tone={tone}
+                hint={c.tipo === "moeda" ? "no periodo" : undefined}
+              />
+            </motion.div>
           );
         })}
-      </div>
+      </motion.div>
     );
     if (!editavel) return grid;
     return (
@@ -378,57 +405,89 @@ function SecaoView({
     );
   }
 
+  // BarChart , barras animadas (InteractiveBarChart). 1 serie "valor".
   if (secao.template === "BarChart") {
     const data = (resolvida.dado as Record<string, unknown>[]) ?? [];
     const campoValor = (resolvida.campos ?? []).find((c) => c.key === "valor");
+    const barData: BarChartData[] = data.map((d) => ({ name: String(d.rotulo ?? ""), valor: Number(d.valor ?? 0) }));
+    const cor = corResolvida(corDaSecao(secao)) ?? CHART_COLORS.violet;
     return (
       <CardSecao Icon={Icon} titulo={titulo} {...editProps}>
-        <BarChartCard data={data} config={{ xKey: "rotulo", yKey: "valor", formato: formatoDoCampo(campoValor?.tipo), cor: corDaSecao(secao) }} />
+        <InteractiveBarChart
+          data={barData}
+          series={[{ key: "valor", label: campoValor?.label ?? "Valor", color: cor }]}
+          height={320}
+          layout={barData.length > 6 ? "horizontal" : "vertical"}
+          yAxisWidth={barData.length > 6 ? 160 : undefined}
+          showLegend={false}
+          formatValue={formatadorValor(campoValor?.tipo)}
+          yAxisCurrency={campoValor?.tipo === "moeda" ? "BRL" : undefined}
+          emptyMessage="Sem dados para esta secao."
+        />
       </CardSecao>
     );
   }
 
+  // LineChart , linha/area animada (InteractiveAreaChart) multi-serie.
   if (secao.template === "LineChart") {
     const data = (resolvida.dado as Record<string, unknown>[]) ?? [];
     const campos = resolvida.campos ?? [];
     const xCampo = campos.find((c) => c.tipo === "texto") ?? campos[0];
-    const series = campos
-      .filter((c) => c.tipo === "numero" || c.tipo === "moeda")
-      .map((c) => ({ key: c.key, label: c.label }));
-    const formatoSerie = campos.find((c) => c.tipo === "numero" || c.tipo === "moeda")?.tipo;
+    const numericos = campos.filter((c) => c.tipo === "numero" || c.tipo === "moeda");
+    const paleta = paletaApartirDe(corDaSecao(secao));
+    const series = numericos.map((c, i) => ({ key: c.key, label: c.label, color: paleta[i % paleta.length] }));
+    const areaData: AreaChartData[] = data.map((d) => {
+      const row: AreaChartData = { name: String(d[xCampo?.key ?? "mes"] ?? "") };
+      for (const c of numericos) row[c.key] = Number(d[c.key] ?? 0);
+      return row;
+    });
+    const formatoSerie = numericos[0]?.tipo;
     return (
       <CardSecao Icon={Icon} titulo={titulo} {...editProps}>
-        <LineChartCard data={data} config={{ xKey: xCampo?.key ?? "mes", formato: formatoDoCampo(formatoSerie), series, cor: corDaSecao(secao) }} />
+        <InteractiveAreaChart
+          data={areaData}
+          series={series}
+          height={300}
+          showLegend={series.length > 1}
+          formatValue={formatadorValor(formatoSerie)}
+          yAxisCurrency={formatoSerie === "moeda" ? "BRL" : undefined}
+          emptyMessage="Sem dados para esta secao."
+        />
       </CardSecao>
     );
   }
 
+  // PieChart , rosca com centro (DonutWithCenter).
   if (secao.template === "PieChart") {
     const data = (resolvida.dado as Record<string, unknown>[]) ?? [];
     const campoValor = (resolvida.campos ?? []).find((c) => c.key === "valor");
+    const paleta = paletaApartirDe(corDaSecao(secao));
+    const pieData: PieChartData[] = data.map((d, i) => ({
+      name: String(d.rotulo ?? ""),
+      value: Number(d.valor ?? 0),
+      color: paleta[i % paleta.length],
+    }));
+    const total = pieData.reduce((s, p) => s + p.value, 0);
+    const fmt = formatadorValor(campoValor?.tipo);
     return (
       <CardSecao Icon={Icon} titulo={titulo} {...editProps}>
-        <PieChartCard data={data} config={{ nameKey: "rotulo", valueKey: "valor", formato: formatoDoCampo(campoValor?.tipo), cor: corDaSecao(secao) }} />
+        <DonutWithCenter
+          data={pieData}
+          centerLabel={campoValor?.label ?? "Total"}
+          centerValue={fmt(total)}
+          formatValue={fmt}
+          emptyMessage="Sem dados para esta secao."
+        />
       </CardSecao>
     );
   }
 
+  // DataTable , tabela paginada no padrao Consumo.
   if (secao.template === "DataTable") {
     const rows = (resolvida.dado as Record<string, unknown>[]) ?? [];
     const campos = resolvida.campos ?? [];
-    let colunas = (secao.config.colunas as ColunaConfig[] | undefined) ?? [];
-    if (colunas.length === 0 && campos.length > 0) {
-      colunas = campos.map((c: CampoMeta) => ({ key: c.key, header: c.label, tipo: c.tipo }));
-    }
-    if (colunas.length === 0 && rows.length > 0) {
-      colunas = Object.keys(rows[0])
-        .filter((k) => ehEscalar(rows[0][k]))
-        .map((k) => ({ key: k, header: humanizarChave(k) }));
-    }
-    const columns: ColumnDef<Record<string, unknown>>[] = colunas
-      .filter((c) => c && c.key)
-      .map((c) => ({ key: c.key, header: c.header ?? c.key, tipo: c.tipo ?? "texto" }));
-    if (columns.length === 0) {
+    const colunas = colunasDataTable(secao, campos, rows);
+    if (colunas.length === 0) {
       return (
         <CardSecao Icon={Icon} titulo={titulo} {...editProps}>
           <p className="py-6 text-center text-sm text-muted-foreground">Sem colunas para esta secao.</p>
@@ -437,7 +496,7 @@ function SecaoView({
     }
     return (
       <CardSecao Icon={Icon} titulo={titulo} {...editProps}>
-        <DataTable columns={columns} rows={rows} searchable />
+        <ReportDataTable columns={colunas} rows={rows} />
       </CardSecao>
     );
   }
@@ -464,7 +523,6 @@ export function ReportRenderer({
 }: {
   entry: BuilderReportEntry;
   dados: Record<string, SecaoResolvida>;
-  /** Quando presente, mostra controles de edicao por secao (preview do construtor). */
   editavel?: EditavelFicha;
 }) {
   const total = entry.secoes.length;
@@ -473,9 +531,7 @@ export function ReportRenderer({
       {entry.titulo ? (
         <div className="mb-1">
           <h1 className="text-base font-semibold tracking-tight text-foreground">{entry.titulo}</h1>
-          {entry.descricao ? (
-            <p className="mt-0.5 text-xs text-muted-foreground">{entry.descricao}</p>
-          ) : null}
+          {entry.descricao ? <p className="mt-0.5 text-xs text-muted-foreground">{entry.descricao}</p> : null}
         </div>
       ) : null}
       {entry.secoes.map((secao, i) => (
