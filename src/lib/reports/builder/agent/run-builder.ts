@@ -204,14 +204,12 @@ export async function runBuilder(
 
   const toolDefs = construirToolDefs();
   const reasoning = await deps.obterReasoning();
-  // Na jornada (entrevista), o raciocinio alto e OBRIGATORIO: a IA tem que pensar
-  // bem para fazer a proxima pergunta certa / propor as opcoes, em mensagens curtas.
-  const reasoningEffort: ReasoningEffort | undefined =
-    (input.modo ?? "refino") === "jornada"
-      ? "high"
-      : reasoning.ligado
-        ? ((reasoning.effort as ReasoningEffort | null) ?? "high")
-        : undefined;
+  // Respeita o que esta configurado na tela do Agente Nex (modo raciocinio +
+  // effort). Vale para a jornada tambem: se o usuario setou "alto", a IA raciocina
+  // alto em cada pergunta; nada de forcar por aqui.
+  const reasoningEffort: ReasoningEffort | undefined = reasoning.ligado
+    ? ((reasoning.effort as ReasoningEffort | null) ?? "high")
+    : undefined;
   const modo = input.modo ?? "refino";
   let journeyState = input.journeyState;
   let ficha: BuilderReportEntry | null = input.fichaAtual ?? journeyState?.fichaRascunho ?? null;
