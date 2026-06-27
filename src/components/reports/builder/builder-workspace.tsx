@@ -5,11 +5,12 @@
 // a experiencia do Agente Nex) + preview ao vivo. O chat fala com
 // /api/builder/stream e PERSISTE a conversa; a ficha do preview vem do `onDone`
 // de cada turno. "Abrir relatorio" navega para a rota dinamica do SavedReport.
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ExternalLink, FileBarChart } from "lucide-react";
 import { BuilderChatPanel, type BuilderDonePayload } from "./builder-chat-panel";
 import { BuilderPreview } from "./builder-preview";
+import { salvarFichaEditada } from "@/lib/actions/builder";
 import type { BuilderReportEntry } from "@/lib/reports/builder/types";
 
 export function BuilderWorkspace({
@@ -34,11 +35,16 @@ export function BuilderWorkspace({
   const [ficha, setFicha] = useState<BuilderReportEntry | null>(initialFicha);
   const [savedId, setSavedId] = useState<string | null>(initialSavedId);
   const [, setEtag] = useState<string | null>(initialEtag);
+  // Ref do etag para o salvamento async da edicao ler sempre o valor atual.
+  const etagRef = useRef<string | null>(initialEtag);
 
   function handleDone(p: BuilderDonePayload) {
     if (p.ficha !== undefined && p.ficha !== null) setFicha(p.ficha);
     if (p.savedId) setSavedId(p.savedId);
-    if (p.etag) setEtag(p.etag);
+    if (p.etag) {
+      etagRef.current = p.etag;
+      setEtag(p.etag);
+    }
   }
 
   function handleCleared() {
@@ -50,6 +56,50 @@ export function BuilderWorkspace({
 
   function abrir() {
     if (savedId) router.push(`/relatorios-2/d/${savedId}`);
+  }
+
+  // Edicao da ficha pela UI (reordenar/remover/renomear secao): aplica no estado
+  // e persiste (atualiza o etag). So habilita quando ha rascunho salvo.
+  const editavel =
+    ficha && savedId
+      ? {
+          onMover: (secaoId: string, dir: "cima" | "baixo") =>
+            aplicarEdicao((f) => {
+              const idx = f.secoes.findIndex((s) => s.id === secaoId);
+              const alvo = dir === "cima" ? idx - 1 : idx + 1;
+              if (idx < 0 || alvo < 0 || alvo >= f.secoes.length) return f;
+              const secoes = [...f.secoes];
+              const [s] = secoes.splice(idx, 1);
+              secoes.splice(alvo, 0, s);
+              return { ...f, secoes };
+            }),
+          onRemover: (secaoId: string) =>
+            aplicarEdicao((f) => ({ ...f, secoes: f.secoes.filter((s) => s.id !== secaoId) })),
+          onRenomear: (secaoId: string, titulo: string) =>
+            aplicarEdicao((f) => ({
+              ...f,
+              secoes: f.secoes.map((s) =>
+                s.id === secaoId ? { ...s, config: { ...s.config, titulo } } : s,
+              ),
+            })),
+        }
+      : undefined;
+
+  function aplicarEdicao(fn: (f: BuilderReportEntry) => BuilderReportEntry) {
+    setFicha((atual) => {
+      if (!atual) return atual;
+      const nova = fn(atual);
+      const id = savedId;
+      void (async () => {
+        if (!id) return;
+        const r = await salvarFichaEditada(id, etagRef.current ?? "", nova);
+        if (r.ok) {
+          etagRef.current = r.etag;
+          setEtag(r.etag);
+        }
+      })();
+      return nova;
+    });
   }
 
   return (
@@ -97,7 +147,7 @@ export function BuilderWorkspace({
             conteudo (o canvas mede 1040px). Sem isso o flex-1 nao encolhe e o
             canvas le uma largura grande demais, abrindo o relatorio sem fit. */}
         <section className="min-h-0 min-w-0 flex-1 bg-background">
-          <BuilderPreview ficha={ficha} />
+          <BuilderPreview ficha={ficha} editavel={editavel} />
         </section>
       </div>
     </div>

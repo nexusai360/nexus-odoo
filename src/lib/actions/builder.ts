@@ -100,6 +100,28 @@ export async function construirRelatorio(
   return { ok: true, ficha: r.ficha, mensagem: r.mensagem, savedId, etag };
 }
 
+/**
+ * Persiste uma ficha editada na UI (reordenar/remover/renomear secao). Gate
+ * admin/super_admin + dono (via atualizarRascunho). Devolve o novo etag.
+ */
+export async function salvarFichaEditada(
+  savedId: string,
+  etag: string,
+  ficha: BuilderReportEntry,
+): Promise<{ ok: true; etag: string } | { ok: false; error: string }> {
+  const gate = await gateAdmin();
+  if (!gate.ok) return { ok: false, error: gate.error };
+  const v = validarReportEntry(ficha);
+  if (!v.ok) return { ok: false, error: "Ficha invalida: " + v.erros.join("; ") };
+  try {
+    const upd = await atualizarRascunho(savedId, gate.userId, ficha, etag);
+    if (!upd) return { ok: false, error: "Relatorio nao encontrado ou sem permissao." };
+    return { ok: true, etag: upd.etag };
+  } catch {
+    return { ok: false, error: "Nao foi possivel salvar agora (talvez aberto em outra aba)." };
+  }
+}
+
 export type PrevisualizacaoResult =
   | { tipo: "negado" }
   | { tipo: "invalida"; erros: string[] }

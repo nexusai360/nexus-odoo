@@ -8,7 +8,7 @@
 import { useState, useEffect } from "react";
 import { LayoutDashboard, AlertTriangle, Eye, Maximize2, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ReportRenderer } from "./report-renderer";
+import { ReportRenderer, type EditavelFicha } from "./report-renderer";
 import { CanvasViewport } from "./canvas-viewport";
 import { previsualizarSecoes } from "@/lib/actions/builder";
 import { validarReportEntry } from "@/lib/reports/builder/report-entry-schema";
@@ -34,7 +34,13 @@ function Moldura({
   );
 }
 
-export function BuilderPreview({ ficha }: { ficha: BuilderReportEntry | null }) {
+export function BuilderPreview({
+  ficha,
+  editavel,
+}: {
+  ficha: BuilderReportEntry | null;
+  editavel?: EditavelFicha;
+}) {
   const [estado, setEstado] = useState<EstadoPreview>("vazio");
   const [dados, setDados] = useState<Record<string, SecaoResolvida>>({});
   const [cheia, setCheia] = useState(false);
@@ -163,7 +169,7 @@ export function BuilderPreview({ ficha }: { ficha: BuilderReportEntry | null }) 
             {/* "papel" do relatorio com largura logica fixa (BASE_WIDTH do canvas). */}
             <div className="px-5 pb-10">
               <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-                <ReportRenderer entry={ficha} dados={dados} />
+                <ReportRenderer entry={ficha} dados={dados} editavel={editavel} />
               </div>
             </div>
           </CanvasViewport>
