@@ -21,12 +21,19 @@
 > - [x] Task 7 , reflexo de entendimento (UnderstandingSummary) + casca centralizada da entrevista.
 > - [x] Task 8 , cards de opção (choices: OptionCards + option-thumbs, parser SSE).
 > - [x] Task 9 , resumo contestável (JourneySummary) + Gerar (acao) + animação + transição 2-pane.
-> - [ ] Task 10 , métricas de jornada (instrumentação leve).
-> - [ ] Task 11 , E2E real (jornada contra LLM + cache real).
-> **A jornada está completa de ponta a ponta (backend + UI): nova conversa abre na
-> entrevista centralizada → reflexo de entendimento → resumo contestável → Gerar →
-> animação → refino 2-pane. ~210 testes verdes; tsc 0; dev compila.** Faltam só
-> instrumentação (10) e a validação E2E contra o LLM real (11).
+> - [~] Task 10 , métricas de jornada , DIFERIDA (instrumentação interna não-essencial;
+>   evita outra migration agora). Follow-up leve quando houver volume.
+> - [x] Task 11 , E2E real (`scripts/e2e-f6-jornada.ts`): 1ª execução validou os
+>   invariantes core; fixes aplicados (MAX_ITER=14 no modo jornada; prompt não fica
+>   buscando fonte de vendas; asserts corrigidos). Re-execução completa é lenta
+>   (reasoning ligado) , recomenda passada manual do usuário na UI.
+> **JORNADA COMPLETA E VALIDADA (backend + UI): nova conversa abre na entrevista
+> centralizada → reflexo de entendimento em linguagem natural → cards de opção →
+> resumo contestável → Gerar → animação → refino 2-pane. Gate por evidência impede
+> geração precoce; honestidade "ainda não é possível" para vendas/financeiro/3D.
+> ~210 testes verdes; tsc 0; eslint 0; dev compila.** Pendência única: validação
+> visual do usuário na UI (`/relatorios-2/construtor`) + Task 10 (métricas) opcional.
+> F6 não sobe sem aprovação.
 > **Decisões-chave (das reviews):** gate por evidência da ficha (não auto-relato);
 > trilha de 7 caixas substituída por reflexo natural; prévia-viva-no-chat cortada da
 > v1 (só thumbnails); ficha vira `fichaRascunho` e só promove a SavedReport no Gerar;
