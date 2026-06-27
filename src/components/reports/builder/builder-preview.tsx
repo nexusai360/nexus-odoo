@@ -12,6 +12,8 @@ import { ReportRenderer, type EditavelFicha } from "./report-renderer";
 import { CanvasViewport } from "./canvas-viewport";
 import { ReportFilterBar, filtrosDisponiveis, type FiltrosUi } from "./report-filter-bar";
 import { previsualizarSecoes } from "@/lib/actions/builder";
+import { listarDimensoesFiltro } from "@/lib/actions/relatorio-filtros";
+import { dimensoesDisponiveis, type DimensoesFiltro } from "@/lib/reports/builder/dimensoes-filtro";
 import { validarReportEntry } from "@/lib/reports/builder/report-entry-schema";
 import type { BuilderReportEntry } from "@/lib/reports/builder/types";
 import type { SecaoResolvida } from "@/lib/reports/builder/resolve-source";
@@ -45,8 +47,24 @@ export function BuilderPreview({
   const [estado, setEstado] = useState<EstadoPreview>("vazio");
   const [dados, setDados] = useState<Record<string, SecaoResolvida>>({});
   const [cheia, setCheia] = useState(false);
-  const [filtros, setFiltros] = useState<FiltrosUi>({ marca: "", faixaDias: 0, sentido: "" });
+  const [filtros, setFiltros] = useState<FiltrosUi>({ marca: "", faixaDias: 0, sentido: "", armazemId: 0, familiaId: 0 });
+  const [opcoes, setOpcoes] = useState<DimensoesFiltro>({ armazens: [], familias: [] });
   const fatos = (ficha?.secoes ?? []).map((s) => s.fato);
+
+  // Carrega as opcoes de armazem/familia quando a ficha usa essas dimensoes.
+  const dim = dimensoesDisponiveis(fatos);
+  const usaDimensoes = dim.armazem || dim.familia;
+  useEffect(() => {
+    if (!usaDimensoes) return;
+    let vivo = true;
+    void (async () => {
+      const o = await listarDimensoesFiltro();
+      if (vivo) setOpcoes(o);
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, [usaDimensoes]);
 
   // ESC fecha a tela cheia.
   useEffect(() => {
@@ -75,6 +93,8 @@ export function BuilderPreview({
       marca: filtros.marca.trim() || undefined,
       faixaDias: filtros.faixaDias > 0 ? filtros.faixaDias : undefined,
       sentido: filtros.sentido || undefined,
+      armazemId: filtros.armazemId > 0 ? filtros.armazemId : undefined,
+      familiaId: filtros.familiaId > 0 ? filtros.familiaId : undefined,
     };
     const tid = setTimeout(() => {
     previsualizarSecoes(ficha, filtrosFonte)
@@ -129,6 +149,7 @@ export function BuilderPreview({
             fatos={fatos}
             valor={filtros}
             onChange={setFiltros}
+            opcoes={opcoes}
             carregando={false}
           />
         </div>

@@ -140,8 +140,8 @@ const fatoEstoqueLocalProduto: FonteDef = {
     },
   },
   produtores: {
-    tabela: async () => {
-      const d = await querySaldoProduto(prisma, {});
+    tabela: async (filtros) => {
+      const d = await querySaldoProduto(prisma, { armazemId: filtros.armazemId, familiaId: filtros.familiaId });
       const linhas: Record<string, unknown>[] = [];
       for (const p of d.linhas) {
         for (const loc of p.detalhePorLocal) {
@@ -251,12 +251,12 @@ const fatoEstoqueMovimento: FonteDef = {
     },
   },
   produtores: {
-    serieTemporal: async () => {
-      const d = await queryEntradasSaidas(prisma, {});
+    serieTemporal: async (filtros) => {
+      const d = await queryEntradasSaidas(prisma, { armazemId: filtros.armazemId });
       return { linhas: d.serie as unknown as Record<string, unknown>[], freshness: null };
     },
-    tabela: async () => {
-      const d = await queryEntradasSaidas(prisma, {});
+    tabela: async (filtros) => {
+      const d = await queryEntradasSaidas(prisma, { armazemId: filtros.armazemId });
       return { linhas: d.detalhe as unknown as Record<string, unknown>[], freshness: null };
     },
   },
@@ -285,11 +285,11 @@ const fatoEstoqueParados: FonteDef = {
   },
   produtores: {
     kpis: async (filtros) => {
-      const d = await queryProdutosParados(prisma, { faixaDias: filtros.faixaDias });
+      const d = await queryProdutosParados(prisma, { faixaDias: filtros.faixaDias, armazemId: filtros.armazemId });
       return { linhas: [], kpis: { totalParados: d.kpis.totalParados, valorImobilizado: d.kpis.valorImobilizado }, freshness: null };
     },
     tabela: async (filtros) => {
-      const d = await queryProdutosParados(prisma, { faixaDias: filtros.faixaDias });
+      const d = await queryProdutosParados(prisma, { faixaDias: filtros.faixaDias, armazemId: filtros.armazemId });
       return { linhas: d.linhas as unknown as Record<string, unknown>[], freshness: null };
     },
   },

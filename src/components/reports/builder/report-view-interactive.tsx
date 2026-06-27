@@ -5,10 +5,15 @@
 // dashboard de consumo) + ReportRenderer. Os filtros disponiveis sao derivados
 // dos FATOS usados nas secoes; ao mudar, re-resolve no servidor e re-renderiza.
 import * as React from "react";
-import { Filter, Loader2, Tag, Clock, ArrowLeftRight } from "lucide-react";
+import { Filter, Loader2, Tag, Clock, ArrowLeftRight, Warehouse, Boxes } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ReportRenderer } from "./report-renderer";
-import { resolverRelatorioComFiltros, type FiltrosRuntime } from "@/lib/actions/relatorio-filtros";
+import {
+  resolverRelatorioComFiltros,
+  listarDimensoesFiltro,
+  type FiltrosRuntime,
+} from "@/lib/actions/relatorio-filtros";
+import { dimensoesDisponiveis, type DimensoesFiltro } from "@/lib/reports/builder/dimensoes-filtro";
 import type { BuilderReportEntry } from "@/lib/reports/builder/types";
 import type { SecaoResolvida } from "@/lib/reports/builder/resolve-source";
 
@@ -31,15 +36,28 @@ export function ReportViewInteractive({ savedId, entry, dadosIniciais }: Props) 
   const temMarca = fatos.has("fato_estoque_marca");
   const temFaixa = fatos.has("fato_estoque_parados");
   const temSentido = fatos.has("fato_estoque_top_movimentados");
-  const temFiltros = temMarca || temFaixa || temSentido;
+  const dim = React.useMemo(() => dimensoesDisponiveis(fatos), [fatos]);
+  const temFiltros = temMarca || temFaixa || temSentido || dim.armazem || dim.familia;
 
   const [dados, setDados] = React.useState(dadosIniciais);
   const [marca, setMarca] = React.useState("");
   const [faixaDias, setFaixaDias] = React.useState(0);
   const [sentido, setSentido] = React.useState("");
+  const [armazemId, setArmazemId] = React.useState(0);
+  const [familiaId, setFamiliaId] = React.useState(0);
+  const [opcoes, setOpcoes] = React.useState<DimensoesFiltro>({ armazens: [], familias: [] });
   const [carregando, setCarregando] = React.useState(false);
 
   const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Carrega as opcoes de armazem/familia (id+nome) uma vez, se a ficha as usa.
+  React.useEffect(() => {
+    if (!dim.armazem && !dim.familia) return;
+    void (async () => {
+      const o = await listarDimensoesFiltro();
+      setOpcoes(o);
+    })();
+  }, [dim.armazem, dim.familia]);
 
   const aplicar = React.useCallback(
     (f: FiltrosRuntime) => {
@@ -58,13 +76,13 @@ export function ReportViewInteractive({ savedId, entry, dadosIniciais }: Props) 
     if (!temFiltros) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      aplicar({ marca, faixaDias, sentido });
+      aplicar({ marca, faixaDias, sentido, armazemId, familiaId });
     }, 300);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [marca, faixaDias, sentido]);
+  }, [marca, faixaDias, sentido, armazemId, familiaId]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -86,6 +104,42 @@ export function ReportViewInteractive({ savedId, entry, dadosIniciais }: Props) 
                 className="h-8 w-44 rounded-lg border border-border bg-background py-1 pr-2.5 pl-8 text-sm text-foreground focus-visible:border-violet-500/60 focus-visible:ring-2 focus-visible:ring-violet-400/30 focus-visible:outline-none"
               />
             </label>
+          ) : null}
+
+          {dim.armazem && opcoes.armazens.length > 0 ? (
+            <Pill icon={Warehouse}>
+              <select
+                value={armazemId}
+                onChange={(e) => setArmazemId(Number(e.target.value))}
+                aria-label="Filtrar por armazem"
+                className="cursor-pointer bg-transparent text-sm text-foreground focus:outline-none"
+              >
+                <option value={0} className="bg-card text-foreground">Todos os armazens</option>
+                {opcoes.armazens.map((a) => (
+                  <option key={a.id} value={a.id} className="bg-card text-foreground">
+                    {a.nome}
+                  </option>
+                ))}
+              </select>
+            </Pill>
+          ) : null}
+
+          {dim.familia && opcoes.familias.length > 0 ? (
+            <Pill icon={Boxes}>
+              <select
+                value={familiaId}
+                onChange={(e) => setFamiliaId(Number(e.target.value))}
+                aria-label="Filtrar por familia"
+                className="cursor-pointer bg-transparent text-sm text-foreground focus:outline-none"
+              >
+                <option value={0} className="bg-card text-foreground">Todas as familias</option>
+                {opcoes.familias.map((f) => (
+                  <option key={f.id} value={f.id} className="bg-card text-foreground">
+                    {f.nome}
+                  </option>
+                ))}
+              </select>
+            </Pill>
           ) : null}
 
           {temFaixa ? (

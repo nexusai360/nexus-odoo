@@ -15,6 +15,10 @@ jest.mock("@/lib/actions/builder-conversation", () => ({
 }));
 jest.mock("@/lib/actions/builder", () => ({
   previsualizarSecoes: jest.fn(async () => ({ tipo: "ok", dados: {} })),
+  salvarFichaEditada: jest.fn(async () => ({ ok: true, etag: "v2" })),
+}));
+jest.mock("@/lib/actions/relatorio-filtros", () => ({
+  listarDimensoesFiltro: jest.fn().mockResolvedValue({ armazens: [], familias: [] }),
 }));
 
 beforeAll(() => {

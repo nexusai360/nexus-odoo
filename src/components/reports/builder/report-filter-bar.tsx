@@ -3,12 +3,15 @@
 // src/components/reports/builder/report-filter-bar.tsx
 // F6 , Barra de filtros do relatorio (estilo do dashboard de consumo), derivada
 // dos FATOS usados. Reusada na view e no preview do construtor.
-import { Filter, Loader2, Tag, Clock, ArrowLeftRight } from "lucide-react";
+import { Filter, Loader2, Tag, Clock, ArrowLeftRight, Warehouse, Boxes } from "lucide-react";
+import { dimensoesDisponiveis, type DimensoesFiltro } from "@/lib/reports/builder/dimensoes-filtro";
 
 export interface FiltrosUi {
   marca: string;
   faixaDias: number;
   sentido: string;
+  armazemId: number;
+  familiaId: number;
 }
 
 const FAIXAS = [
@@ -23,24 +26,30 @@ export function filtrosDisponiveis(fatos: Iterable<string>): {
   marca: boolean;
   faixa: boolean;
   sentido: boolean;
+  armazem: boolean;
+  familia: boolean;
   algum: boolean;
 } {
   const set = new Set(fatos);
   const marca = set.has("fato_estoque_marca");
   const faixa = set.has("fato_estoque_parados");
   const sentido = set.has("fato_estoque_top_movimentados");
-  return { marca, faixa, sentido, algum: marca || faixa || sentido };
+  const { armazem, familia } = dimensoesDisponiveis(set);
+  return { marca, faixa, sentido, armazem, familia, algum: marca || faixa || sentido || armazem || familia };
 }
 
 export function ReportFilterBar({
   fatos,
   valor,
   onChange,
+  opcoes = { armazens: [], familias: [] },
   carregando = false,
 }: {
   fatos: Iterable<string>;
   valor: FiltrosUi;
   onChange: (v: FiltrosUi) => void;
+  /** Opcoes de armazem/familia (id+nome) para os dropdowns. */
+  opcoes?: DimensoesFiltro;
   carregando?: boolean;
 }) {
   const disp = filtrosDisponiveis(fatos);
@@ -62,6 +71,42 @@ export function ReportFilterBar({
             className="h-8 w-44 rounded-lg border border-border bg-background py-1 pr-2.5 pl-8 text-sm text-foreground focus-visible:border-violet-500/60 focus-visible:ring-2 focus-visible:ring-violet-400/30 focus-visible:outline-none"
           />
         </label>
+      ) : null}
+      {disp.armazem && opcoes.armazens.length > 0 ? (
+        <span className="flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-2.5">
+          <Warehouse className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+          <select
+            value={valor.armazemId}
+            onChange={(e) => onChange({ ...valor, armazemId: Number(e.target.value) })}
+            aria-label="Filtrar por armazem"
+            className="cursor-pointer bg-transparent text-sm text-foreground focus:outline-none"
+          >
+            <option value={0} className="bg-card text-foreground">Todos os armazens</option>
+            {opcoes.armazens.map((a) => (
+              <option key={a.id} value={a.id} className="bg-card text-foreground">
+                {a.nome}
+              </option>
+            ))}
+          </select>
+        </span>
+      ) : null}
+      {disp.familia && opcoes.familias.length > 0 ? (
+        <span className="flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-2.5">
+          <Boxes className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+          <select
+            value={valor.familiaId}
+            onChange={(e) => onChange({ ...valor, familiaId: Number(e.target.value) })}
+            aria-label="Filtrar por familia"
+            className="cursor-pointer bg-transparent text-sm text-foreground focus:outline-none"
+          >
+            <option value={0} className="bg-card text-foreground">Todas as familias</option>
+            {opcoes.familias.map((f) => (
+              <option key={f.id} value={f.id} className="bg-card text-foreground">
+                {f.nome}
+              </option>
+            ))}
+          </select>
+        </span>
       ) : null}
       {disp.faixa ? (
         <span className="flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-2.5">

@@ -12,6 +12,9 @@ jest.mock("@/lib/prisma", () => ({ prisma: {} }));
 jest.mock("@/lib/actions/builder", () => ({
   previsualizarSecoes: (...a: unknown[]) => previsualizarSecoes(...a),
 }));
+jest.mock("@/lib/actions/relatorio-filtros", () => ({
+  listarDimensoesFiltro: jest.fn().mockResolvedValue({ armazens: [], familias: [] }),
+}));
 
 const FICHA: BuilderReportEntry = {
   id: "rascunho",
