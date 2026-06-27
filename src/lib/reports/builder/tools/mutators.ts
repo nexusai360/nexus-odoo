@@ -3,12 +3,20 @@
 // nova (imutavel) ou um erro. Mutadores que criam/alteram secao re-checam a
 // compatibilidade template x shape x fonte antes de aplicar.
 import { checarCompatibilidade } from "../compat";
+import { corResolvida } from "@/components/charts/colors";
 import type {
   BuilderReportEntry,
   BuilderSection,
   ShapeDerivado,
 } from "../types";
 import type { ReportTemplate } from "@/lib/reports/types";
+
+/** Templates de grafico que aceitam recorte de cor. */
+const TEMPLATES_COM_COR: ReadonlySet<ReportTemplate> = new Set([
+  "BarChart",
+  "PieChart",
+  "LineChart",
+]);
 
 export type MutResult =
   | { ficha: BuilderReportEntry }
@@ -137,6 +145,34 @@ export function definirTituloSecao(
     ...secoes[idx],
     config: { ...secoes[idx].config, titulo: args.titulo.trim() },
   };
+  return { ficha: { ...ficha, secoes } };
+}
+
+/**
+ * Define a cor (config.cor) de uma secao de grafico. `cor` aceita um token da
+ * paleta (ex.: "violet") ou um hex; `null`/""/"padrao" remove a cor (volta ao
+ * ciclo padrao). So vale para Bar/Pie/Line , demais templates retornam erro.
+ */
+export function definirCorSecao(
+  ficha: BuilderReportEntry,
+  args: { secaoId: string; cor: string | null },
+): MutResult {
+  const idx = ficha.secoes.findIndex((s) => s.id === args.secaoId);
+  if (idx < 0) return { erro: "secao_inexistente" };
+  const secao = ficha.secoes[idx];
+  if (!TEMPLATES_COM_COR.has(secao.template)) return { erro: "template_sem_cor" };
+
+  const bruto = (args.cor ?? "").trim();
+  const limpar = bruto === "" || bruto.toLowerCase() === "padrao";
+  const config = { ...secao.config };
+  if (limpar) {
+    delete config.cor;
+  } else {
+    if (corResolvida(bruto) === null) return { erro: "cor_invalida" };
+    config.cor = bruto;
+  }
+  const secoes = [...ficha.secoes];
+  secoes[idx] = { ...secao, config };
   return { ficha: { ...ficha, secoes } };
 }
 

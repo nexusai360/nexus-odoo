@@ -39,11 +39,12 @@ describe("builder tools index", () => {
         "mover_secao",
         "definir_titulo",
         "definir_titulo_secao",
+        "definir_cor_secao",
         "definir_filtro",
         "validar",
       ]),
     );
-    expect(BUILDER_TOOLS).toHaveLength(13);
+    expect(BUILDER_TOOLS).toHaveLength(14);
   });
 
   it("validarFicha aprova ficha valida e compativel", () => {

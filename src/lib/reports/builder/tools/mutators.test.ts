@@ -6,6 +6,7 @@ import {
   moverSecao,
   definirTitulo,
   definirTituloSecao,
+  definirCorSecao,
 } from "./mutators";
 import { validarReportEntry } from "../report-entry-schema";
 import type { BuilderReportEntry } from "../types";
@@ -35,6 +36,29 @@ describe("mutators", () => {
       ],
     };
   }
+
+  describe("definirCorSecao", () => {
+    function ok(r: ReturnType<typeof definirCorSecao>): BuilderReportEntry {
+      if ("erro" in r) throw new Error(`esperava ficha, veio erro ${r.erro}`);
+      return r.ficha;
+    }
+    it("pinta uma secao de grafico com token valido", () => {
+      const f = ok(definirCorSecao(fichaTresSecoes(), { secaoId: "b", cor: "emerald" }));
+      expect(f.secoes.find((s) => s.id === "b")?.config.cor).toBe("emerald");
+    });
+    it("'padrao'/vazio/null remove a cor", () => {
+      const pintada = ok(definirCorSecao(fichaTresSecoes(), { secaoId: "b", cor: "emerald" }));
+      expect(ok(definirCorSecao(pintada, { secaoId: "b", cor: "padrao" })).secoes.find((s) => s.id === "b")?.config.cor).toBeUndefined();
+      expect(ok(definirCorSecao(pintada, { secaoId: "b", cor: "" })).secoes.find((s) => s.id === "b")?.config.cor).toBeUndefined();
+      expect(ok(definirCorSecao(pintada, { secaoId: "b", cor: null })).secoes.find((s) => s.id === "b")?.config.cor).toBeUndefined();
+    });
+    it("recusa cor invalida, template sem cor e secao inexistente", () => {
+      expect(definirCorSecao(fichaTresSecoes(), { secaoId: "b", cor: "roxo" })).toEqual({ erro: "cor_invalida" });
+      expect(definirCorSecao(fichaTresSecoes(), { secaoId: "a", cor: "emerald" })).toEqual({ erro: "template_sem_cor" }); // KPIRow
+      expect(definirCorSecao(fichaTresSecoes(), { secaoId: "c", cor: "emerald" })).toEqual({ erro: "template_sem_cor" }); // DataTable
+      expect(definirCorSecao(fichaTresSecoes(), { secaoId: "x", cor: "emerald" })).toEqual({ erro: "secao_inexistente" });
+    });
+  });
 
   it("moverSecao reordena por direcao e por posicao", () => {
     const f = fichaTresSecoes();

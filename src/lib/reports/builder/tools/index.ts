@@ -18,6 +18,7 @@ import {
   moverSecao,
   definirTitulo,
   definirTituloSecao,
+  definirCorSecao,
 } from "./mutators";
 import { validarReportEntry } from "../report-entry-schema";
 import { checarCompatibilidade } from "../compat";
@@ -48,6 +49,7 @@ export const BUILDER_TOOLS: BuilderToolMeta[] = [
   { name: "mover_secao", muta: true, descricao: "Reposiciona uma secao (reordena): por direcao (cima/baixo) ou posicao (1-based).", inputSchema: z.object({ secaoId: z.string(), direcao: z.enum(["cima", "baixo"]).optional(), posicao: z.number().int().positive().optional() }) },
   { name: "definir_titulo", muta: true, descricao: "Renomeia o relatorio (titulo do topo).", inputSchema: z.object({ titulo: z.string() }) },
   { name: "definir_titulo_secao", muta: true, descricao: "Define o titulo de uma secao (config.titulo).", inputSchema: z.object({ secaoId: z.string(), titulo: z.string() }) },
+  { name: "definir_cor_secao", muta: true, descricao: "Define a cor de uma secao de grafico (Bar/Pie/Line). cor = token da paleta (violet|blue|cyan|emerald|green|amber|orange|pink|red|slate) ou 'padrao' para limpar.", inputSchema: z.object({ secaoId: z.string(), cor: z.string().nullable() }) },
   { name: "definir_filtro", muta: true, descricao: "Acrescenta um filtro a uma secao.", inputSchema: z.object({ secaoId: z.string(), filtro: filtroSchema }) },
   { name: "validar", muta: false, descricao: "Valida a ficha atual (schema + compatibilidade de todas as secoes).", inputSchema: z.object({}) },
 ];
@@ -112,6 +114,9 @@ export function executarTool(
     case "definir_titulo_secao":
       if (!ficha) return { tipo: "erro", erro: "sem_ficha" };
       return mutResult(definirTituloSecao(ficha, args as { secaoId: string; titulo: string }));
+    case "definir_cor_secao":
+      if (!ficha) return { tipo: "erro", erro: "sem_ficha" };
+      return mutResult(definirCorSecao(ficha, args as { secaoId: string; cor: string | null }));
     case "definir_filtro":
       if (!ficha) return { tipo: "erro", erro: "sem_ficha" };
       return mutResult(definirFiltro(ficha, args as unknown as Parameters<typeof definirFiltro>[1]));
