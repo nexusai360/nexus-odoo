@@ -2,8 +2,8 @@
  * @jest-environment jsdom
  */
 import "@testing-library/jest-dom";
-import { render, screen } from "@testing-library/react";
-import { ReportRenderer } from "./report-renderer";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { ReportRenderer, type EditavelFicha } from "./report-renderer";
 import type { BuilderReportEntry } from "@/lib/reports/builder/types";
 import type { SecaoResolvida } from "@/lib/reports/builder/resolve-source";
 
@@ -104,5 +104,51 @@ describe("ReportRenderer", () => {
     expect(screen.getByText("Detalhe")).toBeInTheDocument();
     expect(screen.getByText("Esteira")).toBeInTheDocument();
     expect(container.textContent).not.toMatch(/\[object Object\]/);
+  });
+
+  describe("seletor de cor (modo edicao)", () => {
+    const grafico: BuilderReportEntry = {
+      ...entry,
+      secoes: [
+        { id: "bar", template: "BarChart", fato: "fato_estoque_saldo", shapeDerivado: "agregacaoCategorica", config: {}, filtros: [] },
+      ],
+    };
+    const dados: Record<string, SecaoResolvida> = {
+      bar: {
+        estado: "ok",
+        dado: [{ rotulo: "Cardio", valor: 300 }],
+        campos: [
+          { key: "rotulo", label: "Categoria", tipo: "texto" },
+          { key: "valor", label: "Valor", tipo: "moeda" },
+        ],
+      },
+    };
+    const noopEd = (): EditavelFicha => ({
+      onMover: jest.fn(),
+      onRemover: jest.fn(),
+      onRenomear: jest.fn(),
+      onCor: jest.fn(),
+    });
+
+    it("nao mostra o seletor fora do modo edicao", () => {
+      render(<ReportRenderer entry={grafico} dados={dados} />);
+      expect(screen.queryByLabelText("Escolher cor da secao")).not.toBeInTheDocument();
+    });
+
+    it("abre a paleta e dispara onCor com o token escolhido", () => {
+      const ed = noopEd();
+      render(<ReportRenderer entry={grafico} dados={dados} editavel={ed} />);
+      fireEvent.click(screen.getByLabelText("Escolher cor da secao"));
+      fireEvent.click(screen.getByLabelText("Esmeralda"));
+      expect(ed.onCor).toHaveBeenCalledWith("bar", "emerald");
+    });
+
+    it("\"Cor padrao\" dispara onCor com null", () => {
+      const ed = noopEd();
+      render(<ReportRenderer entry={grafico} dados={dados} editavel={ed} />);
+      fireEvent.click(screen.getByLabelText("Escolher cor da secao"));
+      fireEvent.click(screen.getByText("Cor padrao"));
+      expect(ed.onCor).toHaveBeenCalledWith("bar", null);
+    });
   });
 });

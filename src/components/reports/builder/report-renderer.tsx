@@ -18,9 +18,11 @@ import {
   Trash2,
   Pencil,
   Check,
+  Palette,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CORES_SELECIONAVEIS, corResolvida } from "@/components/charts/colors";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { KpiCard } from "@/components/reports/kpi-card";
 import { DataTable, type ColumnDef } from "@/components/charts/data-table";
@@ -101,6 +103,101 @@ export interface EditavelFicha {
   onMover: (secaoId: string, direcao: "cima" | "baixo") => void;
   onRemover: (secaoId: string) => void;
   onRenomear: (secaoId: string, titulo: string) => void;
+  /** Define a cor da secao (token da paleta); `null` volta ao padrao. */
+  onCor: (secaoId: string, cor: string | null) => void;
+}
+
+/** Templates que aceitam escolha de cor pela UI (graficos). */
+const TEMPLATES_COM_COR = new Set(["BarChart", "PieChart", "LineChart"]);
+
+/** Cor atual da secao (config.cor), normalizada para string|undefined. */
+function corDaSecao(secao: BuilderSection): string | undefined {
+  const c = secao.config?.cor;
+  return typeof c === "string" && c.trim() ? c.trim() : undefined;
+}
+
+/**
+ * Seletor de cor da secao: bolinha que abre uma paleta. Escolher pinta o
+ * grafico; "Padrao" remove a cor (volta ao ciclo da paleta).
+ */
+function SecaoColorPicker({
+  secaoId,
+  corAtual,
+  onCor,
+}: {
+  secaoId: string;
+  corAtual?: string;
+  onCor: (secaoId: string, cor: string | null) => void;
+}) {
+  const [aberto, setAberto] = React.useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    if (!aberto) return;
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setAberto(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [aberto]);
+  const hexAtual = corResolvida(corAtual);
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        aria-label="Escolher cor da secao"
+        onClick={() => setAberto((v) => !v)}
+        className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-violet-400/50 focus-visible:outline-none"
+      >
+        {hexAtual ? (
+          <span
+            className="h-3.5 w-3.5 rounded-full ring-1 ring-black/10 dark:ring-white/15"
+            style={{ backgroundColor: hexAtual }}
+          />
+        ) : (
+          <Palette className="h-4 w-4" />
+        )}
+      </button>
+      {aberto ? (
+        <div className="absolute right-0 z-20 mt-1 w-44 rounded-xl border border-border bg-popover p-2 shadow-lg">
+          <div className="grid grid-cols-5 gap-1.5">
+            {CORES_SELECIONAVEIS.map((c) => {
+              const sel = hexAtual?.toLowerCase() === c.hex.toLowerCase();
+              return (
+                <button
+                  key={c.token}
+                  type="button"
+                  title={c.label}
+                  aria-label={c.label}
+                  aria-pressed={sel}
+                  onClick={() => {
+                    onCor(secaoId, c.token);
+                    setAberto(false);
+                  }}
+                  className={cn(
+                    "flex h-7 w-7 cursor-pointer items-center justify-center rounded-full ring-1 ring-black/10 transition hover:scale-110 dark:ring-white/15",
+                    sel && "ring-2 ring-violet-500 ring-offset-1 ring-offset-popover",
+                  )}
+                  style={{ backgroundColor: c.hex }}
+                >
+                  {sel ? <Check className="h-3.5 w-3.5 text-white drop-shadow" /> : null}
+                </button>
+              );
+            })}
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              onCor(secaoId, null);
+              setAberto(false);
+            }}
+            className="mt-2 w-full cursor-pointer rounded-md px-2 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            Cor padrao
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 /** Controles de uma secao no modo edicao: subir, descer, remover. */
@@ -203,7 +300,14 @@ function SecaoView({
         tituloNode: (
           <TituloEditavel titulo={titulo} onSalvar={(t) => editavel.onRenomear(secao.id, t)} />
         ),
-        acao: <SecaoControls secaoId={secao.id} primeira={primeira} ultima={ultima} ed={editavel} />,
+        acao: (
+          <div className="flex items-center gap-0.5">
+            {TEMPLATES_COM_COR.has(secao.template) ? (
+              <SecaoColorPicker secaoId={secao.id} corAtual={corDaSecao(secao)} onCor={editavel.onCor} />
+            ) : null}
+            <SecaoControls secaoId={secao.id} primeira={primeira} ultima={ultima} ed={editavel} />
+          </div>
+        ),
       }
     : {};
 
@@ -279,7 +383,7 @@ function SecaoView({
     const campoValor = (resolvida.campos ?? []).find((c) => c.key === "valor");
     return (
       <CardSecao Icon={Icon} titulo={titulo} {...editProps}>
-        <BarChartCard data={data} config={{ xKey: "rotulo", yKey: "valor", formato: formatoDoCampo(campoValor?.tipo) }} />
+        <BarChartCard data={data} config={{ xKey: "rotulo", yKey: "valor", formato: formatoDoCampo(campoValor?.tipo), cor: corDaSecao(secao) }} />
       </CardSecao>
     );
   }
@@ -294,7 +398,7 @@ function SecaoView({
     const formatoSerie = campos.find((c) => c.tipo === "numero" || c.tipo === "moeda")?.tipo;
     return (
       <CardSecao Icon={Icon} titulo={titulo} {...editProps}>
-        <LineChartCard data={data} config={{ xKey: xCampo?.key ?? "mes", formato: formatoDoCampo(formatoSerie), series }} />
+        <LineChartCard data={data} config={{ xKey: xCampo?.key ?? "mes", formato: formatoDoCampo(formatoSerie), series, cor: corDaSecao(secao) }} />
       </CardSecao>
     );
   }
@@ -304,7 +408,7 @@ function SecaoView({
     const campoValor = (resolvida.campos ?? []).find((c) => c.key === "valor");
     return (
       <CardSecao Icon={Icon} titulo={titulo} {...editProps}>
-        <PieChartCard data={data} config={{ nameKey: "rotulo", valueKey: "valor", formato: formatoDoCampo(campoValor?.tipo) }} />
+        <PieChartCard data={data} config={{ nameKey: "rotulo", valueKey: "valor", formato: formatoDoCampo(campoValor?.tipo), cor: corDaSecao(secao) }} />
       </CardSecao>
     );
   }

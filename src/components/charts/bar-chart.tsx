@@ -10,7 +10,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { colorAt } from "./colors";
+import { colorAt, corResolvida } from "./colors";
 import { ChartTooltip, type ChartTooltipPayloadItem } from "./chart-tooltip";
 import { ChartPreparing, ChartEmpty, ChartError } from "./chart-states";
 import { formatNumber, type NumberFormat, type ChartState } from "./kpi-card";
@@ -19,6 +19,8 @@ export interface BarChartConfig {
   xKey: string;
   yKey: string;
   formato: NumberFormat;
+  /** Cor da série (token da paleta ou hex). Ausente = cor padrão. */
+  cor?: string;
 }
 
 interface BarChartCardProps {
@@ -114,7 +116,7 @@ export function BarChartCard({
           <Bar
             dataKey={config.yKey}
             name="Valor"
-            fill={colorAt(0)}
+            fill={corResolvida(config.cor) ?? colorAt(0)}
             radius={[6, 6, 0, 0]}
             maxBarSize={64}
             isAnimationActive={!prefersReducedMotion}

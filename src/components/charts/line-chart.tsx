@@ -12,7 +12,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { colorAt } from "./colors";
+import { paletaApartirDe } from "./colors";
 import { ChartTooltip, type ChartTooltipPayloadItem } from "./chart-tooltip";
 import { ChartPreparing, ChartEmpty, ChartError } from "./chart-states";
 import { formatNumber, type NumberFormat, type ChartState } from "./kpi-card";
@@ -26,6 +26,8 @@ export interface LineChartConfig {
   xKey: string;
   formato: NumberFormat;
   series: LineSeries[];
+  /** Cor que ancora a paleta das séries (token ou hex). Ausente = padrão. */
+  cor?: string;
 }
 
 interface LineChartCardProps {
@@ -64,6 +66,8 @@ export function LineChartCard({
 
   const fmt = (v: number) => formatNumber(v, config.formato);
   const allowDecimals = config.formato !== "inteiro";
+  const paleta = paletaApartirDe(config.cor);
+  const corSerie = (i: number) => paleta[i % paleta.length];
 
   return (
     <motion.div
@@ -89,8 +93,8 @@ export function LineChartCard({
                 x2="0"
                 y2="1"
               >
-                <stop offset="0%" stopColor={colorAt(i)} stopOpacity={0.35} />
-                <stop offset="100%" stopColor={colorAt(i)} stopOpacity={0.05} />
+                <stop offset="0%" stopColor={corSerie(i)} stopOpacity={0.35} />
+                <stop offset="100%" stopColor={corSerie(i)} stopOpacity={0.05} />
               </linearGradient>
             ))}
           </defs>
@@ -148,7 +152,7 @@ export function LineChartCard({
             />
           ) : null}
           {config.series.map((s, i) => {
-            const color = colorAt(i);
+            const color = corSerie(i);
             const dim = activeKey !== null && activeKey !== s.key;
             return (
               <Area

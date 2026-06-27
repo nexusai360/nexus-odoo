@@ -82,6 +82,17 @@ export function BuilderWorkspace({
                 s.id === secaoId ? { ...s, config: { ...s.config, titulo } } : s,
               ),
             })),
+          onCor: (secaoId: string, cor: string | null) =>
+            aplicarEdicao((f) => ({
+              ...f,
+              secoes: f.secoes.map((s) => {
+                if (s.id !== secaoId) return s;
+                const config = { ...s.config };
+                if (cor) config.cor = cor;
+                else delete config.cor;
+                return { ...s, config };
+              }),
+            })),
         }
       : undefined;
 
