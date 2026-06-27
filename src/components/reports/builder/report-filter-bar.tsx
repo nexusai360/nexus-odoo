@@ -1,9 +1,11 @@
 "use client";
 
 // src/components/reports/builder/report-filter-bar.tsx
-// F6 , Barra de filtros do relatorio (estilo do dashboard de consumo), derivada
-// dos FATOS usados. Reusada na view e no preview do construtor.
+// F6 , Barra de filtros do relatorio com os MESMOS controles do Consumo do
+// Agente Nex: CustomSelect (select list polido) para as dimensoes e um campo de
+// busca para a marca. Reusada na view e no preview do construtor.
 import { Filter, Loader2, Tag, Clock, ArrowLeftRight, Warehouse, Boxes } from "lucide-react";
+import { CustomSelect } from "@/components/ui/custom-select";
 import { dimensoesDisponiveis, type DimensoesFiltro } from "@/lib/reports/builder/dimensoes-filtro";
 
 export interface FiltrosUi {
@@ -21,6 +23,8 @@ const FAIXAS = [
   { label: "90+ dias", value: 90 },
   { label: "180+ dias", value: 180 },
 ];
+
+const TRIGGER = "h-8 min-h-[34px] text-sm";
 
 export function filtrosDisponiveis(fatos: Iterable<string>): {
   marca: boolean;
@@ -60,6 +64,7 @@ export function ReportFilterBar({
         <Filter className="h-3.5 w-3.5" aria-hidden />
         Filtros
       </span>
+
       {disp.marca ? (
         <label className="relative flex items-center">
           <Tag className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-muted-foreground" aria-hidden />
@@ -72,74 +77,61 @@ export function ReportFilterBar({
           />
         </label>
       ) : null}
+
       {disp.armazem && opcoes.armazens.length > 0 ? (
-        <span className="flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-2.5">
-          <Warehouse className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
-          <select
-            value={valor.armazemId}
-            onChange={(e) => onChange({ ...valor, armazemId: Number(e.target.value) })}
-            aria-label="Filtrar por armazem"
-            className="cursor-pointer bg-transparent text-sm text-foreground focus:outline-none"
-          >
-            <option value={0} className="bg-card text-foreground">Todos os armazens</option>
-            {opcoes.armazens.map((a) => (
-              <option key={a.id} value={a.id} className="bg-card text-foreground">
-                {a.nome}
-              </option>
-            ))}
-          </select>
-        </span>
+        <CustomSelect
+          value={String(valor.armazemId)}
+          onChange={(v) => onChange({ ...valor, armazemId: Number(v) })}
+          icon={<Warehouse className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />}
+          triggerClassName={`${TRIGGER} w-[180px]`}
+          aria-label="Filtrar por armazem"
+          options={[
+            { value: "0", label: "Todos os armazens" },
+            ...opcoes.armazens.map((a) => ({ value: String(a.id), label: a.nome })),
+          ]}
+        />
       ) : null}
+
       {disp.familia && opcoes.familias.length > 0 ? (
-        <span className="flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-2.5">
-          <Boxes className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
-          <select
-            value={valor.familiaId}
-            onChange={(e) => onChange({ ...valor, familiaId: Number(e.target.value) })}
-            aria-label="Filtrar por familia"
-            className="cursor-pointer bg-transparent text-sm text-foreground focus:outline-none"
-          >
-            <option value={0} className="bg-card text-foreground">Todas as familias</option>
-            {opcoes.familias.map((f) => (
-              <option key={f.id} value={f.id} className="bg-card text-foreground">
-                {f.nome}
-              </option>
-            ))}
-          </select>
-        </span>
+        <CustomSelect
+          value={String(valor.familiaId)}
+          onChange={(v) => onChange({ ...valor, familiaId: Number(v) })}
+          icon={<Boxes className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />}
+          triggerClassName={`${TRIGGER} w-[170px]`}
+          aria-label="Filtrar por familia"
+          options={[
+            { value: "0", label: "Todas as familias" },
+            ...opcoes.familias.map((f) => ({ value: String(f.id), label: f.nome })),
+          ]}
+        />
       ) : null}
+
       {disp.faixa ? (
-        <span className="flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-2.5">
-          <Clock className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
-          <select
-            value={valor.faixaDias}
-            onChange={(e) => onChange({ ...valor, faixaDias: Number(e.target.value) })}
-            aria-label="Filtrar por dias parado"
-            className="cursor-pointer bg-transparent text-sm text-foreground focus:outline-none"
-          >
-            {FAIXAS.map((f) => (
-              <option key={f.value} value={f.value} className="bg-card text-foreground">
-                {f.label}
-              </option>
-            ))}
-          </select>
-        </span>
+        <CustomSelect
+          value={String(valor.faixaDias)}
+          onChange={(v) => onChange({ ...valor, faixaDias: Number(v) })}
+          icon={<Clock className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />}
+          triggerClassName={`${TRIGGER} w-[160px]`}
+          aria-label="Filtrar por dias parado"
+          options={FAIXAS.map((f) => ({ value: String(f.value), label: f.label }))}
+        />
       ) : null}
+
       {disp.sentido ? (
-        <span className="flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-2.5">
-          <ArrowLeftRight className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
-          <select
-            value={valor.sentido}
-            onChange={(e) => onChange({ ...valor, sentido: e.target.value })}
-            aria-label="Filtrar por sentido"
-            className="cursor-pointer bg-transparent text-sm text-foreground focus:outline-none"
-          >
-            <option value="" className="bg-card text-foreground">Entradas e saidas</option>
-            <option value="entrada" className="bg-card text-foreground">So entradas</option>
-            <option value="saida" className="bg-card text-foreground">So saidas</option>
-          </select>
-        </span>
+        <CustomSelect
+          value={valor.sentido}
+          onChange={(v) => onChange({ ...valor, sentido: v })}
+          icon={<ArrowLeftRight className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />}
+          triggerClassName={`${TRIGGER} w-[170px]`}
+          aria-label="Filtrar por sentido"
+          options={[
+            { value: "", label: "Entradas e saidas" },
+            { value: "entrada", label: "So entradas" },
+            { value: "saida", label: "So saidas" },
+          ]}
+        />
       ) : null}
+
       {carregando ? <Loader2 className="h-4 w-4 animate-spin text-violet-500" aria-label="Atualizando" /> : null}
     </div>
   );
