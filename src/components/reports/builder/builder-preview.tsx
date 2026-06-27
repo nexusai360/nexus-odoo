@@ -10,6 +10,7 @@ import { LayoutDashboard, AlertTriangle, Eye, Maximize2, X } from "lucide-react"
 import { AnimatePresence, motion } from "framer-motion";
 import { ReportRenderer, type EditavelFicha } from "./report-renderer";
 import { CanvasViewport } from "./canvas-viewport";
+import { ReportFilterBar, filtrosDisponiveis, type FiltrosUi } from "./report-filter-bar";
 import { previsualizarSecoes } from "@/lib/actions/builder";
 import { validarReportEntry } from "@/lib/reports/builder/report-entry-schema";
 import type { BuilderReportEntry } from "@/lib/reports/builder/types";
@@ -44,6 +45,8 @@ export function BuilderPreview({
   const [estado, setEstado] = useState<EstadoPreview>("vazio");
   const [dados, setDados] = useState<Record<string, SecaoResolvida>>({});
   const [cheia, setCheia] = useState(false);
+  const [filtros, setFiltros] = useState<FiltrosUi>({ marca: "", faixaDias: 0, sentido: "" });
+  const fatos = (ficha?.secoes ?? []).map((s) => s.fato);
 
   // ESC fecha a tela cheia.
   useEffect(() => {
@@ -67,7 +70,14 @@ export function BuilderPreview({
     }
     let cancelado = false;
     setEstado("carregando");
-    previsualizarSecoes(ficha)
+    // Debounce (cobre o digitar da marca): so resolve 250ms apos a ultima mudanca.
+    const filtrosFonte = {
+      marca: filtros.marca.trim() || undefined,
+      faixaDias: filtros.faixaDias > 0 ? filtros.faixaDias : undefined,
+      sentido: filtros.sentido || undefined,
+    };
+    const tid = setTimeout(() => {
+    previsualizarSecoes(ficha, filtrosFonte)
       .then((r) => {
         if (cancelado) return;
         if (r.tipo === "ok") {
@@ -80,10 +90,12 @@ export function BuilderPreview({
       .catch(() => {
         if (!cancelado) setEstado("erro");
       });
+    }, 250);
     return () => {
       cancelado = true;
+      clearTimeout(tid);
     };
-  }, [ficha]);
+  }, [ficha, filtros]);
 
   return (
     <div className="flex h-full flex-col">
@@ -109,6 +121,18 @@ export function BuilderPreview({
           </button>
         ) : null}
       </div>
+
+      {/* Barra de filtros (so quando ha relatorio e a fonte oferece filtros). */}
+      {estado === "ok" && ficha && filtrosDisponiveis(fatos).algum ? (
+        <div className="border-b border-border px-4 py-2">
+          <ReportFilterBar
+            fatos={fatos}
+            valor={filtros}
+            onChange={setFiltros}
+            carregando={false}
+          />
+        </div>
+      ) : null}
 
       {/* Canvas , quando ha relatorio, vira um canvas com zoom/pan; nos demais
           estados e uma area pontilhada centralizada. */}

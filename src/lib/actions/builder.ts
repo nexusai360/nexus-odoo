@@ -129,6 +129,7 @@ export type PrevisualizacaoResult =
 
 export async function previsualizarSecoes(
   ficha: BuilderReportEntry,
+  filtros: import("@/lib/reports/builder/source-registry").FiltrosFonte = {},
 ): Promise<PrevisualizacaoResult> {
   const gate = await gateAdmin();
   if (!gate.ok) return { tipo: "negado" };
@@ -138,7 +139,7 @@ export async function previsualizarSecoes(
 
   const dados: Record<string, SecaoResolvida> = {};
   for (const secao of v.entry.secoes) {
-    dados[secao.id] = await resolveSecao(secao, {});
+    dados[secao.id] = await resolveSecao(secao, filtros);
   }
   return { tipo: "ok", dados };
 }
