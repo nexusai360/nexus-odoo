@@ -10,7 +10,8 @@
 > `__detalhe`); **E1a** jornada enxuta; e **EXPANSÃO MULTI-DOMÍNIO , 5 domínios registrados
 > e provados contra DADO REAL: estoque + financeiro (saldo/fluxo de caixa série/DRE) +
 > comercial (pedidos/etapa/vendedor/atrasados) + fiscal (faturamento/cliente/produto) +
-> cadastros (clientes 6427/fornecedores/UF). 36 métricas no catálogo.** O pipeline cobre
+> cadastros (clientes 6427/fornecedores/UF) + contábil (plano de contas) + preços/serviços
+> fiscais. 6 domínios, ~43 métricas no catálogo.** O pipeline cobre
 > todos os domínios registrados por padrão (`dominiosRegistrados()`). **43 suites/211 testes
 > builder verdes, tsc 0.** Recipe em `docs/superpowers/specs/2026-06-28-f6-expansao-dominios-
 > e-componentes.md`. PRÓXIMO (mecânico): demais domínios (contábil-plano, preços, serviços,
