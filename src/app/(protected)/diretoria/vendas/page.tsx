@@ -10,6 +10,7 @@ import {
   queryVendasPorUf,
   queryVendasPorMarca,
   queryFormasPagamento,
+  queryModalidadesEMaiorPedido,
 } from "@/lib/diretoria/queries/vendas";
 import { DiretoriaPeriodBar } from "@/components/diretoria/diretoria-period-bar";
 import { SyncNowButton } from "@/components/diretoria/sync-now-button";
@@ -52,12 +53,14 @@ export default async function DiretoriaVendasPage({
     ufs,
   };
 
-  const [indicadores, vendasUf, vendasMarca, formasPgto] = await Promise.all([
-    queryIndicadoresVendas(prisma, filtros),
-    queryVendasPorUf(prisma, filtros),
-    queryVendasPorMarca(prisma, filtros),
-    queryFormasPagamento(prisma, filtros),
-  ]);
+  const [indicadores, vendasUf, vendasMarca, formasPgto, modalidades] =
+    await Promise.all([
+      queryIndicadoresVendas(prisma, filtros),
+      queryVendasPorUf(prisma, filtros),
+      queryVendasPorMarca(prisma, filtros),
+      queryFormasPagamento(prisma, filtros),
+      queryModalidadesEMaiorPedido(prisma, filtros),
+    ]);
 
   const podeSync = await canDiretoria(user, "diretoria.sync.force");
 
@@ -120,6 +123,46 @@ export default async function DiretoriaVendasPage({
           <section className="rounded-2xl border border-border/60 bg-card/60 p-5">
             <h2 className="mb-4 text-sm font-semibold">Formas de pagamento</h2>
             <FormasPagamentoChart data={formasPgto.linhas} />
+          </section>
+        </div>
+
+        {/* Modalidades + maior pedido (C6) */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <section className="rounded-2xl border border-border/60 bg-card/60 p-5">
+            <h2 className="mb-4 text-sm font-semibold">Modalidades</h2>
+            {modalidades.modalidades.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">Sem dados no período.</p>
+            ) : (
+              <ul className="space-y-2">
+                {modalidades.modalidades.slice(0, 8).map((m) => (
+                  <li key={m.modalidade} className="flex items-center justify-between text-sm">
+                    <span>{m.modalidade}</span>
+                    <span className="tabular-nums text-muted-foreground">
+                      {brl.format(m.valorTotal)}{" "}
+                      <span className="text-xs">({num.format(m.quantidade)})</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+          <section className="rounded-2xl border border-border/60 bg-card/60 p-5">
+            <h2 className="mb-4 text-sm font-semibold">Maior pedido do período</h2>
+            {modalidades.maiorPedido ? (
+              <div className="flex h-full flex-col justify-center">
+                <div className="font-[var(--font-space-grotesk)] text-3xl font-semibold tabular-nums">
+                  {brl.format(modalidades.maiorPedido.valor)}
+                </div>
+                <div className="mt-2 text-sm text-muted-foreground">
+                  Pedido {modalidades.maiorPedido.numero ?? "?"}
+                  {modalidades.maiorPedido.participante
+                    ? ` , ${modalidades.maiorPedido.participante}`
+                    : ""}
+                </div>
+              </div>
+            ) : (
+              <p className="py-6 text-center text-sm text-muted-foreground">Sem pedidos no período.</p>
+            )}
           </section>
         </div>
       </div>

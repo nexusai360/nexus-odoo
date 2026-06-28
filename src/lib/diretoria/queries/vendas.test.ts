@@ -3,6 +3,7 @@ import {
   queryVendasPorMarca,
   queryVendasPorUf,
   queryModalidadesEMaiorPedido,
+  queryIndicadoresVendas,
 } from "./vendas";
 
 function makePrisma(parcelas: { formaPagamentoNome: string | null; valor: number }[]) {
@@ -175,5 +176,29 @@ describe("queryModalidadesEMaiorPedido (C6)", () => {
     expect((await queryModalidadesEMaiorPedido(semOp, {})).modalidades[0].modalidade).toBe("Outras");
     const vazio = makePrismaPedidos([]);
     expect((await queryModalidadesEMaiorPedido(vazio, {})).maiorPedido).toBeNull();
+  });
+});
+
+describe("queryIndicadoresVendas (C2)", () => {
+  it("calcula faturamento, nº de pedidos e ticket médio", async () => {
+    const prisma = {
+      fatoNotaFiscal: {
+        findMany: jest.fn().mockResolvedValue([{ vrNf: 1000 }, { vrNf: 500 }]),
+      },
+      fatoPedido: { count: jest.fn().mockResolvedValue(3) },
+    } as unknown as Parameters<typeof queryIndicadoresVendas>[0];
+    const r = await queryIndicadoresVendas(prisma, {});
+    expect(r.faturamento).toBe(1500);
+    expect(r.numPedidos).toBe(3);
+    expect(r.ticketMedio).toBe(500);
+  });
+
+  it("ticket médio é 0 quando não há pedidos", async () => {
+    const prisma = {
+      fatoNotaFiscal: { findMany: jest.fn().mockResolvedValue([]) },
+      fatoPedido: { count: jest.fn().mockResolvedValue(0) },
+    } as unknown as Parameters<typeof queryIndicadoresVendas>[0];
+    const r = await queryIndicadoresVendas(prisma, {});
+    expect(r.ticketMedio).toBe(0);
   });
 });
