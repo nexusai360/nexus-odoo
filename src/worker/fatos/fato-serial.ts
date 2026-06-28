@@ -40,18 +40,25 @@ export function mapSerialRow(raw: Record<string, unknown>): FatoSerialRow {
   };
 }
 
+const CHUNK = 1000;
+
 export async function rebuildFatoSerial(prisma: PrismaClient): Promise<number> {
+  // select só `data` (o registro raw completo é pesado) e insere em chunks para
+  // não estourar memória , a tabela raw tem milhares de seriais.
   const rawRows = await prisma.rawSpedProdutoLoteSerie.findMany({
     where: { rawDeleted: false },
+    select: { data: true },
   });
   const mapped = rawRows.map((r) => mapSerialRow(r.data as Record<string, unknown>));
   await prisma.$transaction(
     async (tx) => {
       await tx.fatoSerial.deleteMany({});
-      if (mapped.length) await tx.fatoSerial.createMany({ data: mapped });
+      for (let i = 0; i < mapped.length; i += CHUNK) {
+        await tx.fatoSerial.createMany({ data: mapped.slice(i, i + CHUNK) });
+      }
       await markFatoBuilt(tx, "fato_serial");
     },
-    { timeout: 180_000, maxWait: 15_000 },
+    { timeout: 300_000, maxWait: 15_000 },
   );
   return mapped.length;
 }
