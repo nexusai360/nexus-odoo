@@ -22,8 +22,26 @@
 - Entrega em 6 ondas, executar todas.
 
 ## Faseamento (ver §13 da spec)
-- [ ] Onda 0 , Fundação (nav, access RBAC, models, periodbar, mapa spike, sync, cores)
-- [ ] Onda 1 , Vendas (módulo C)
+- [x] Onda 0 , Fundação , COMPLETA (PR #156). 46 testes, tsc 0.
+- [~] Onda 1 , Vendas (módulo C) , EM ANDAMENTO:
+  - queries em `src/lib/diretoria/queries/vendas.ts` (TDD, mock prisma):
+    - [x] C10 queryFormasPagamento (fato_pedido_parcela.formaPagamentoNome)
+    - [x] C4 queryVendasPorMarca (nf_item -> fato_produto.marcaNome, entradaSaida=1)
+    - [x] C3 queryVendasPorUf (nf saida autorizada -> fato_parceiro.uf, UF-scoping)
+    - [ ] C6 modalidades (fato_pedido.operacaoNome) + maior pedido
+    - [ ] C2 indicadores (faturamento/ticket/nº pedidos/margem ESTIMADA)
+    - [ ] C5 ranking vendedor (reusar queryPedidosPorVendedor de comercial.ts)
+    - [ ] C7 itens vendidos (reusar queryProdutosFaturados de fiscal.ts)
+    - [ ] C8/C9 comparativo: feito no componente reusando queryVendasPorUf c/ 2 ufs
+  - [ ] MAPA DO BRASIL: componente novo src/components/diretoria/brazil-map/
+        (27 paths SVG locais, choropleth, animado, ui-ux-pro-max INLINE, hover+
+        tooltip+ranking, seleciona 2 UFs p/ C8/C9). Consome queryVendasPorUf.
+  - [ ] DiretoriaPeriodBar (visual): usar resolverPeriodoDir; padrão period-bar.tsx
+  - [ ] SyncNowButton (visual): chama forcarSyncDiretoria("vendas")
+  - [ ] Tela /diretoria/vendas: montar seções no server (guard + freshness +
+        período + queries) e client (KPIs, charts Recharts, DataTable, mapa)
+  - [ ] E2E contra dado real: subir serviço, conferir números por UF/marca/pgto
+- [ ] Onda 2 , Pedidos & Entregas (módulo B)
 - [ ] Onda 2 , Pedidos & Entregas (módulo B)
 - [ ] Onda 3 , Estoque & Compras (módulo A)
 - [ ] Onda 4 , Visão geral (home executiva)
