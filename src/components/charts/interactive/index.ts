@@ -65,3 +65,5 @@ export {
   valorMedidor,
   type InteractiveGaugeChartProps,
 } from "./gauge-chart";
+export { Sparkline, type SparklineProps } from "./sparkline";
+export { Heatmap, intensidadeHeatmap, type HeatmapCell, type HeatmapProps } from "./heatmap";
