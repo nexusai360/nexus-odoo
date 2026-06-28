@@ -9,6 +9,15 @@ import {
   queryEstoquePorFamilia,
   queryEstoquePorMarca,
 } from "@/lib/diretoria/queries/estoque";
+import {
+  queryIndicadoresVendas,
+  queryMargemEstimada,
+  queryVendasPorUf,
+  queryVendasPorMarca,
+  queryModalidadesEMaiorPedido,
+  queryFormasPagamento,
+  type FiltrosVendas,
+} from "@/lib/diretoria/queries/vendas";
 
 export interface LoaderCtx {
   periodoDe?: string;
@@ -19,12 +28,46 @@ export interface LoaderCtx {
 
 export type Loader = (prisma: PrismaClient, ctx: LoaderCtx) => Promise<unknown>;
 
-/** Componentes com dado pronto na Onda 1 (reusam queries existentes). */
+/** Converte o contexto do relatório nos filtros das queries de Vendas. */
+function filtrosVendas(ctx: LoaderCtx): FiltrosVendas {
+  return { periodoDe: ctx.periodoDe, periodoAte: ctx.periodoAte, ufs: ctx.escopoUfs };
+}
+
+/** Componentes com dado pronto (reusam queries existentes). */
 export const LOADERS: Record<string, Loader> = {
+  // Estoque
   "A-01": (prisma) => queryIndicadoresEstoque(prisma),
   "A-02": (prisma) => queryEstoquePorLocal(prisma),
   "A-03": (prisma) => queryEstoquePorFamilia(prisma),
   "A-04": (prisma) => queryEstoquePorMarca(prisma),
+  // Vendas , normaliza o retorno para o formato que render-componente espera
+  "C-01": async (prisma, ctx) => {
+    const f = filtrosVendas(ctx);
+    const [ind, margem] = await Promise.all([
+      queryIndicadoresVendas(prisma, f),
+      queryMargemEstimada(prisma, f),
+    ]);
+    return { ...ind, margemPct: margem.margemPct, margem: margem.margem };
+  },
+  "C-02": async (prisma, ctx) => {
+    const r = await queryVendasPorUf(prisma, filtrosVendas(ctx));
+    return { linhas: r.linhas.filter((l) => l.uf !== "??").map((l) => ({ chave: l.uf, valorTotal: l.valorTotal })) };
+  },
+  "C-03": async (prisma, ctx) => {
+    const r = await queryVendasPorMarca(prisma, filtrosVendas(ctx));
+    return { linhas: r.linhas.map((l) => ({ chave: l.marca, valorTotal: l.valorTotal })) };
+  },
+  "C-05": async (prisma, ctx) => {
+    const r = await queryModalidadesEMaiorPedido(prisma, filtrosVendas(ctx));
+    return {
+      linhas: r.modalidades.map((l) => ({ chave: l.modalidade, valorTotal: l.valorTotal })),
+      maiorPedido: r.maiorPedido,
+    };
+  },
+  "C-07": async (prisma, ctx) => {
+    const r = await queryFormasPagamento(prisma, filtrosVendas(ctx));
+    return { linhas: r.linhas.map((l) => ({ chave: l.formaPagamento, valorTotal: l.valorTotal })) };
+  },
 };
 
 export interface ResultadoBloco {

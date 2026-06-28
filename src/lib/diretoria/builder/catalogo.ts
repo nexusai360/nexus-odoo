@@ -86,6 +86,12 @@ export const CATALOGO: ComponenteCatalogo[] = [
   comp({ id: "A-02", nome: "Estoque por local", dominio: "A", tipo: "tabela", fonteDado: "real" }),
   comp({ id: "A-03", nome: "Distribuição por família", dominio: "A", tipo: "grafico", fonteDado: "real" }),
   comp({ id: "A-04", nome: "Distribuição por marca", dominio: "A", tipo: "grafico", fonteDado: "real" }),
+  // Vendas (loaders reusam queries/vendas.ts)
+  comp({ id: "C-01", nome: "Indicadores de vendas", dominio: "C", tipo: "kpi", fonteDado: "estimado", consome: ["periodo"] }),
+  comp({ id: "C-02", nome: "Vendas por estado", dominio: "C", tipo: "grafico", fonteDado: "real", publica: ["uf"], consome: ["periodo"] }),
+  comp({ id: "C-03", nome: "Vendas por marca", dominio: "C", tipo: "grafico", fonteDado: "real", consome: ["periodo"] }),
+  comp({ id: "C-05", nome: "Modalidades e maior pedido", dominio: "C", tipo: "grafico", fonteDado: "real", consome: ["periodo"] }),
+  comp({ id: "C-07", nome: "Formas de pagamento", dominio: "C", tipo: "grafico", fonteDado: "real", consome: ["periodo"] }),
 ];
 
 const PORID = new Map(CATALOGO.map((c) => [c.id, c]));

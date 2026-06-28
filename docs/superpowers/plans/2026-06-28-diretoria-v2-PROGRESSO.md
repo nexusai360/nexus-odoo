@@ -32,9 +32,17 @@
         itens/1894 produtos/68 locais; A-03 top JOHNSON; A-04 top MATRIX). Rota compila (302).
   - VALIDAÇÃO VISUAL no browser (logado) pendente p/ o usuário: localhost:3000/diretoria/relatorios.
 
-## PRÓXIMO: Onda 2 (componentes de dado + mapa) , catalogar e construir os componentes
-  definitivos A*/K*/B*/C*/G* com dado real + interatividade; reusar BrazilMap; ReportContext
-  (período/uf/item). Antes de cada métrica estimada/sem-fonte, confirmar por SELECT no cache.
+## ONDA 2 em andamento (componentes de dado)
+- [x] Vendas: C-01 (KPIs+margem est.), C-02 (por estado), C-03 (por marca), C-05
+      (modalidades+maior pedido), C-07 (formas de pagamento) , no catálogo+loaders+render,
+      reusando queries/vendas.ts. E2E real: fat R$364M, margem 33,4%, top SE/MATRIX/Boleto.
+      Vitrine 'estoque-demo' agora tem 9 blocos (estoque+vendas). tsc 0, 21 testes.
+- [ ] PRÓXIMO Onda 2: C-04 (pedidos fechados) e C-06 (itens) , precisam query nova;
+      Demandas B-01..B-07 (reusar queries/pedidos.ts + BrazilMap p/ B-03); Estoque A-05..A-08;
+      Compras K-01..K-06 (reusar FatoCompra); G-01 KPIs executivos. ReportContext (período/uf).
+      Depois Onda 3 (mapa definitivo), 4 (editor), 5 (RBAC nível 2), 6 (agenda), 7 (configs), 8 (polimento).
+- NOTA: gráficos atuais são barras CSS server (consistentes); charts ricos/recharts e o
+      mapa interativo entram no refino/Onda 3. Validação visual no browser pendente p/ o usuário.
 
 ## Catálogo de componentes (índice próprio)
 A=Estoque, K=Compras, B=Demandas, C=Vendas, G=Visão geral. Ver SPEC §5.
