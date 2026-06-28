@@ -3,6 +3,7 @@
 // seguintes. Sem recharts aqui (mantido server-side); gráficos definitivos vêm
 // na Onda 2 com a biblioteca de charts.
 import type { ReactNode } from "react";
+import { BrazilMap } from "@/components/diretoria/brazil-map/brazil-map";
 
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 const num = new Intl.NumberFormat("pt-BR");
@@ -159,6 +160,8 @@ export function renderComponente(id: string, dado: unknown): ReactNode {
       return <BarrasChave linhas={(dado as DadoBarras).linhas} />;
     case "C-05":
       return <Modalidades d={dado as DadoModalidades} />;
+    case "B-03":
+      return <BrazilMap data={(dado as { data: { uf: string; valor: number }[] }).data} metric="Demandas a entregar" />;
     default:
       return <p className="py-6 text-center text-sm text-muted-foreground">Componente em breve.</p>;
   }

@@ -18,6 +18,7 @@ import {
   queryFormasPagamento,
   type FiltrosVendas,
 } from "@/lib/diretoria/queries/vendas";
+import { queryDemandasPorUf } from "@/lib/diretoria/queries/pedidos";
 
 export interface LoaderCtx {
   periodoDe?: string;
@@ -67,6 +68,11 @@ export const LOADERS: Record<string, Loader> = {
   "C-07": async (prisma, ctx) => {
     const r = await queryFormasPagamento(prisma, filtrosVendas(ctx));
     return { linhas: r.linhas.map((l) => ({ chave: l.formaPagamento, valorTotal: l.valorTotal })) };
+  },
+  // Demandas , mapa por estado (dado p/ o BrazilMap)
+  "B-03": async (prisma, ctx) => {
+    const r = await queryDemandasPorUf(prisma, { ufs: ctx.escopoUfs });
+    return { data: r.linhas.filter((l) => l.uf !== "??").map((l) => ({ uf: l.uf, valor: l.valorTotal })) };
   },
 };
 

@@ -10,15 +10,16 @@ const TELA = "estoque-demo";
 // Vitrine do construtor: KPIs no topo + gráficos 2x2 (estoque e vendas).
 // O gating por componente esconde os de Vendas para quem não tem a capability.
 const BLOCOS = [
-  { componenteId: "C-01", ordem: 0, larguraQuartos: 2, alturaU: 2 },
-  { componenteId: "A-01", ordem: 1, larguraQuartos: 2, alturaU: 2 },
-  { componenteId: "C-02", ordem: 2, larguraQuartos: 2, alturaU: 2 },
-  { componenteId: "C-03", ordem: 3, larguraQuartos: 2, alturaU: 2 },
-  { componenteId: "C-05", ordem: 4, larguraQuartos: 2, alturaU: 2 },
-  { componenteId: "C-07", ordem: 5, larguraQuartos: 2, alturaU: 2 },
-  { componenteId: "A-02", ordem: 6, larguraQuartos: 2, alturaU: 2 },
-  { componenteId: "A-03", ordem: 7, larguraQuartos: 2, alturaU: 2 },
-  { componenteId: "A-04", ordem: 8, larguraQuartos: 2, alturaU: 2 },
+  { componenteId: "B-03", ordem: 0, larguraQuartos: 4, alturaU: 4 },
+  { componenteId: "C-01", ordem: 1, larguraQuartos: 2, alturaU: 2 },
+  { componenteId: "A-01", ordem: 2, larguraQuartos: 2, alturaU: 2 },
+  { componenteId: "C-02", ordem: 3, larguraQuartos: 2, alturaU: 2 },
+  { componenteId: "C-03", ordem: 4, larguraQuartos: 2, alturaU: 2 },
+  { componenteId: "C-05", ordem: 5, larguraQuartos: 2, alturaU: 2 },
+  { componenteId: "C-07", ordem: 6, larguraQuartos: 2, alturaU: 2 },
+  { componenteId: "A-02", ordem: 7, larguraQuartos: 2, alturaU: 2 },
+  { componenteId: "A-03", ordem: 8, larguraQuartos: 2, alturaU: 2 },
+  { componenteId: "A-04", ordem: 9, larguraQuartos: 2, alturaU: 2 },
 ];
 
 async function main() {

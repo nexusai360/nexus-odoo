@@ -92,6 +92,8 @@ export const CATALOGO: ComponenteCatalogo[] = [
   comp({ id: "C-03", nome: "Vendas por marca", dominio: "C", tipo: "grafico", fonteDado: "real", consome: ["periodo"] }),
   comp({ id: "C-05", nome: "Modalidades e maior pedido", dominio: "C", tipo: "grafico", fonteDado: "real", consome: ["periodo"] }),
   comp({ id: "C-07", nome: "Formas de pagamento", dominio: "C", tipo: "grafico", fonteDado: "real", consome: ["periodo"] }),
+  // Demandas
+  comp({ id: "B-03", nome: "Mapa de demandas por estado", dominio: "B", tipo: "mapa", fonteDado: "real", publica: ["uf"] }),
 ];
 
 const PORID = new Map(CATALOGO.map((c) => [c.id, c]));
