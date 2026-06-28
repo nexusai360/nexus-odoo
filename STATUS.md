@@ -13,14 +13,38 @@
 > período só no movimento) + entrevista convergente / "gerar já" determinístico +
 > limpeza do canvas (só zoom + rolagem + ampliar-esconde-conversa; tirar pan/animações
 > e barra de filtro fixa).
-> **Metodologia (em curso):** spec v1 → 2 reviews adversariais Opus (ACHARAM erro
-> real: invariantes não matavam os Frankensteins; "reuso" temporal era net-new) →
-> **spec v3** commitada (`docs/superpowers/specs/2026-06-28-f6-arquitetura-gerador-
-> relatorios-design.md`). **PRÓXIMA AÇÃO: plano v1 → 2 reviews → plano v3 → execução
-> TDD** (ui-ux-pro-max OBRIGATÓRIO inline na UI). Decisão-chave da régua: estoque é
-> quase todo SNAPSHOT, então a régua é "interatividade possível para o dado" (KPIs
-> distintos + 1 ranking + tabela; par temporal só no movimento com ≥4 pontos), não
-> paridade temporal universal com o Consumo. F6 NÃO sobe sem aprovação.
+> **Metodologia cumprida:** spec v1 → 2 reviews Opus → **spec v3**; plano v1 → 2 reviews
+> Opus → **plano v3** (`docs/superpowers/plans/2026-06-28-f6-arquitetura-gerador-
+> relatorios.md`, fases A-F, ordem por dependência). Decisão-chave: estoque é quase todo
+> SNAPSHOT, régua = "interatividade possível para o dado"; seção composta NÃO é novo
+> ReportTemplate (expande em 2 irmãs LineChart+PieChart com grupoId).
+>
+> **EXECUÇÃO TDD , PROGRESSO (retomar pela próxima fase não feita):**
+> - [x] **FASE A (cérebro puro)** , `geracao/intencao-curada.ts` (A1), `metric-catalog.ts`
+>   (A2, expansão 1 fato→N métricas por campoKpi + filtro dominios), `plano-types.ts`
+>   (A3, gramática + Zod), `amostra.ts` (A4, escalar por campoKpi), `revisor.ts` (A5+A6:
+>   teto por papel mata as 4 barras; dedup KPI por valor colidente mata os 3 valores
+>   iguais; distintos preservados; donut>6; série<4; arco). Todos TDD verdes.
+> - [x] **FASE B (editorial)** , `build-plano.ts` (B1, seção composta→2 irmãs grupoId,
+>   título derivado da métrica, subtitulos), `template-padrao.ts` (B2, gerar-já 0 LLM),
+>   `compositor.ts` (B3), `critico.ts` (B4, juízo semântico), `pipeline.ts` reescrito
+>   (B5: compositor→amostra→crítico→revisor→build→validar; rename blueprint→plano cobrindo
+>   state.ts/route.ts/types.ts; logUsage 2x/0x; regenerar reusa ultimoPlano), `B6` removeu
+>   o cérebro antigo (blueprint/build/curar/ordenar). tsc 0; 89→ testes geração/jornada
+>   verdes.
+> - [ ] **FASE C (render UI, inline + ui-ux-pro-max)** ← RETOMAR AQUI. C1 renderer agrupar
+>   seções irmãs (área+donut) por grupoId + estados vazio/erro por metade (tocar também
+>   `report-view-interactive.tsx`); C2 subtítulo do KPI (config.subtitulos→subtitle);
+>   C3 título sempre derivado da métrica (fecha backdoor do refino: neutralizar
+>   definirTituloSecao/editarSecao/onRenomear; renderer usa métrica, não config.titulo);
+>   C4 freshness "atualizado há Xs".
+> - [ ] **FASE D** filtros-pílula ao vivo (recorte sempre; período mensal só no temporal),
+>   preview sem savedId (D1), plumbing período mensal (D2), barra fixa fora (D3), navegador
+>   mensal ≥4 pontos (D4), drilldown tabela (D5).
+> - [ ] **FASE E** entrevista convergente + gerar-já determinístico (E1a/b/c), canvas limpo
+>   (E2: tirar pan/animações; zoom+rolagem+ampliar-esconde-conversa).
+> - [ ] **FASE F** E2E real (semente determinística) + latência + régua visual.
+> F6 NÃO sobe sem aprovação.
 
 > **2026-06-28 (F6 , REFORMA DE QUALIDADE/EFICIÊNCIA DO CONSTRUTOR , ANTERIOR) ,
 > branch `feat/nex-reconstrucao`. F6 SÓ LOCAL.** Usuário MUITO insatisfeito com o
