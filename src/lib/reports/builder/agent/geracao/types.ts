@@ -6,7 +6,7 @@ import type { BuilderReportEntry } from "../../types";
 import type { IntencaoColeta } from "../../journey/intencao";
 import type { Blueprint } from "./blueprint-types";
 
-export type FaseGeracao = "blueprint" | "revisao" | "build" | "validacao";
+export type FaseGeracao = "blueprint" | "build" | "validacao";
 
 export interface ProgressoGeracao {
   fase: FaseGeracao;

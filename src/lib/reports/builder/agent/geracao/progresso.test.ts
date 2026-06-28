@@ -11,8 +11,8 @@ describe("progresso , faixas pesadas por duracao", () => {
     expect(FAIXAS[FASES_ORDEM[FASES_ORDEM.length - 1]].ate).toBe(100);
   });
 
-  it("fases LLM (blueprint/revisao) dominam a faixa; build/validacao sao caudas curtas", () => {
-    const llm = (FAIXAS.blueprint.ate - FAIXAS.blueprint.de) + (FAIXAS.revisao.ate - FAIXAS.revisao.de);
+  it("a fase blueprint (a que pensa) domina a faixa; build/validacao sao caudas curtas", () => {
+    const llm = FAIXAS.blueprint.ate - FAIXAS.blueprint.de;
     const cauda = (FAIXAS.build.ate - FAIXAS.build.de) + (FAIXAS.validacao.ate - FAIXAS.validacao.de);
     expect(llm).toBeGreaterThan(cauda * 3);
   });

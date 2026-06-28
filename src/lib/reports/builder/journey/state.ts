@@ -125,7 +125,9 @@ export function entendimentoElegivel(s: JourneyState): { ok: boolean; falta?: st
 export function marcarDimensaoRelevante(s: JourneyState, d: Dimensao): JourneyState {
   if (podeOferecerGeracao(s)) return s;
   if (s.dimensoesRelevantes.includes(d)) return s;
-  if (s.dimensoesRelevantes.length >= 7) return s;
+  // Teto BAIXO (5 = nucleo 4 + 1 opcional): a entrevista tem que ser curta, nao um
+  // interrogatorio infinito. Alem disso o brainstorm nao deve inflar o roteiro.
+  if (s.dimensoesRelevantes.length >= 5) return s;
   return { ...s, dimensoesRelevantes: [...s.dimensoesRelevantes, d] };
 }
 

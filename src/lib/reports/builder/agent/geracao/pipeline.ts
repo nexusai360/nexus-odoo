@@ -11,7 +11,7 @@ import { logUsage as logUsagePadrao } from "@/lib/agent/llm/usage-logger";
 import type { EntradaGeracao, SaidaGeracao, GeracaoDeps, ProgressoGeracao, FaseGeracao } from "./types";
 import type { Blueprint } from "./blueprint-types";
 import { promptBlueprint, parseBlueprint } from "./blueprint";
-import { promptRevisao, parseRevisao } from "./revisar";
+import { curarBlueprint } from "./curar-blueprint";
 import { buildFicha } from "./build";
 import { validarFichaGerada } from "./validar";
 import { FAIXAS, frasesDe } from "./progresso";
@@ -79,9 +79,11 @@ export async function pipelineGeracao(
 
   const omitidos: string[] = [];
 
-  // --- Fase 1: blueprint ---
+  // --- Fase 1: blueprint , UMA chamada de RACIOCINIO ALTO que pensa o relatorio
+  // inteiro (curadoria + design + narrativa). Sem segunda chamada de revisao: o
+  // modelo ja faz a critica internamente; o piso e garantido por curarBlueprint. ---
   const rawBlueprint = await rodarFaseLLM({
-    cliente, messages: promptBlueprint(entrada), effort: "medium",
+    cliente, messages: promptBlueprint(entrada), effort: "high",
     fase: "blueprint", emit: onProgresso, deps, userId: entrada.user.id,
   });
   let blueprint: Blueprint;
@@ -94,20 +96,10 @@ export async function pipelineGeracao(
   }
   if (blueprint.secoes.length === 0) throw new Error("blueprint_vazio");
 
-  // --- Fase 2: revisao (degrade elegante se falhar) ---
-  try {
-    const rawRevisao = await rodarFaseLLM({
-      cliente, messages: promptRevisao(blueprint), effort: "high",
-      fase: "revisao", emit: onProgresso, deps, userId: entrada.user.id,
-    });
-    const r = parseRevisao(rawRevisao, blueprint);
-    if (r.blueprint.secoes.length > 0) blueprint = r.blueprint;
-  } catch {
-    // Critica e melhoria, nao bloqueio: segue com o blueprint da fase 1. A barra
-    // ja avancou pela faixa de revisao; nao anunciamos trabalho que nao ocorreu.
-  }
+  // Curadoria deterministica (rede de seguranca): 1 KPIRow, dedup, teto, narrativa.
+  blueprint = curarBlueprint(blueprint);
 
-  // --- Fase 3: build (deterministico) ---
+  // --- Fase 2: build (deterministico) ---
   onProgresso({ fase: "build", pct: FAIXAS.build.de, frase: frasesDe("build")[0] });
   const { ficha, omitidos: omitidosBuild } = buildFicha(blueprint);
   omitidos.push(...omitidosBuild);

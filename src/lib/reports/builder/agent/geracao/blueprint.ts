@@ -72,10 +72,18 @@ export function promptBlueprint(entrada: EntradaGeracao): ChatMessage[] {
     .map((s, i) => `  ${i + 1}. ${s.template} sobre ${s.fato}${s.recorte ? ` (${s.recorte})` : ""}${s.rotulo ? ` , "${s.rotulo}"` : ""}`)
     .join("\n");
 
-  const system = `Voce monta a ESTRUTURA de um relatorio de estoque da plataforma Nexus a partir do que foi coletado numa entrevista. Devolva SOMENTE um JSON valido (sem texto fora do JSON) com o formato:
-{"titulo": "...", "objetivo": "...", "secoes": [{"template": "KPIRow|BarChart|PieChart|LineChart|DataTable", "fato": "fato_...", "shapeDerivado": "kpis|agregacaoCategorica|serieTemporal|tabela", "config": { "titulo": "..." }, "justificativa": "por que esta secao serve ao objetivo"}], "filtros": {}}
+  const system = `Voce e um DESIGNER de relatorios de estoque da plataforma Nexus. A partir do que foi coletado numa entrevista, voce PENSA com cuidado (use seu raciocinio) e monta a estrutura de UM relatorio coerente, enxuto e bonito. Devolva SOMENTE um JSON valido (sem texto fora do JSON):
+{"titulo": "...", "objetivo": "...", "secoes": [{"template": "KPIRow|BarChart|PieChart|LineChart|DataTable", "fato": "fato_...", "shapeDerivado": "kpis|agregacaoCategorica|serieTemporal|tabela", "config": {"titulo": "...", "recorte": "por armazem|por marca|por familia"}, "justificativa": "por que serve ao objetivo"}], "filtros": {}}
 
-Regras: use SOMENTE fatos e shapes do catalogo abaixo; escolha o template certo para cada metrica; de a cada secao um titulo claro em portugues; conte uma narrativa (panorama -> comparacao -> detalhe). Nao invente fatos fora do catalogo.
+REGRAS DE DESIGN (duras , sao o que separa um relatorio bom de uma salada):
+1. ENXUTO: no maximo 5 secoes. Menos e melhor. Cada secao tem que ganhar o seu lugar; se duas dizem quase a mesma coisa, fique com UMA.
+2. UMA UNICA faixa de indicadores: no maximo 1 secao "KPIRow", no topo, com KPIs DISTINTOS e nao redundantes (nunca repita o mesmo numero com nomes diferentes, ex.: "Valor Total" e "Valor Imobilizado" iguais).
+3. TITULO HONESTO: o titulo de cada secao tem que descrever EXATAMENTE o dado que ela mostra. Se a secao mostra valor por marca, o titulo e "Valor por marca", nunca "Itens com estoque negativo". Titulo que nao bate com o dado e proibido.
+4. GRAFICO CERTO: comparacao entre categorias -> BarChart; evolucao no tempo -> LineChart; proporcao de poucas fatias -> PieChart; detalhe item a item -> DataTable. Nao use o mesmo grafico repetido para a mesma metrica.
+5. NARRATIVA: panorama (KPIs no topo) -> comparacoes (graficos) -> detalhe (1 tabela no fim, se precisar). No maximo 1 tabela.
+6. INTELIGENCIA: priorize o que ajuda a DECIDIR (ex.: estoque negativo e risco no topo). Use SOMENTE fatos e shapes do catalogo abaixo; nunca invente fonte. O que a pessoa pediu mas nao existe no catalogo, simplesmente nao inclua.
+
+Pense antes de responder e entregue a MELHOR versao, nao a maior.
 
 ${capabilityComoTextoPrompt()}`;
 

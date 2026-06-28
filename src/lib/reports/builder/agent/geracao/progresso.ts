@@ -6,35 +6,27 @@
 // tecnicos (o usuario nunca ve blueprint/spec/plano).
 import type { FaseGeracao } from "./types";
 
-export const FASES_ORDEM: FaseGeracao[] = ["blueprint", "revisao", "build", "validacao"];
+export const FASES_ORDEM: FaseGeracao[] = ["blueprint", "build", "validacao"];
 
-/** Faixa de % de cada fase (de..ate). Soma cobre 0..100 sem buraco nem recuo. */
+/** Faixa de % de cada fase (de..ate). A fase blueprint e a que PENSA (1 chamada de
+ *  raciocinio alto), entao domina a barra; build/validacao sao caudas curtas. */
 export const FAIXAS: Record<FaseGeracao, { de: number; ate: number }> = {
-  blueprint: { de: 5, ate: 55 },
-  revisao: { de: 55, ate: 92 },
-  build: { de: 92, ate: 97 },
+  blueprint: { de: 5, ate: 90 },
+  build: { de: 90, ate: 97 },
   validacao: { de: 97, ate: 100 },
 };
 
 /** Frases amigaveis e especificas por fase (giram durante a fase). */
 export const FRASES: Record<FaseGeracao, string[]> = {
   blueprint: [
-    "Entendendo o que vale a pena destacar",
-    "Escolhendo os gráficos certos para cada número",
-    "Montando a estrutura do seu relatório",
+    "Entendendo o que realmente importa no seu pedido",
+    "Escolhendo os indicadores que valem destaque",
+    "Decidindo o gráfico certo para cada número",
+    "Montando a história do relatório (panorama, comparação, detalhe)",
+    "Cortando o que é redundante para ficar limpo",
   ],
-  revisao: [
-    "Conferindo se a história fica clara",
-    "Checando se não falta nada importante",
-    "Deixando os destaques mais inteligentes",
-  ],
-  build: [
-    "Encaixando as seções na ordem certa",
-    "Dando os retoques finais",
-  ],
-  validacao: [
-    "Conferindo os últimos detalhes",
-  ],
+  build: ["Encaixando as seções na ordem certa", "Dando os retoques finais"],
+  validacao: ["Conferindo os últimos detalhes"],
 };
 
 export function pctBase(fase: FaseGeracao): number {

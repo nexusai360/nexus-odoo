@@ -11,16 +11,6 @@ const BLUEPRINT_OK = JSON.stringify({
     { template: "BarChart", fato: "fato_estoque_saldo", config: { titulo: "Por armazem" } },
   ],
 });
-const REVISAO_OK = JSON.stringify({
-  notas: ["narrativa: ok", "insight: destaquei o saldo baixo"],
-  titulo: "Estoque por armazem",
-  objetivo: "repor com base no saldo",
-  secoes: [
-    { template: "KPIRow", fato: "fato_estoque_saldo", config: { titulo: "Visao geral" } },
-    { template: "BarChart", fato: "fato_estoque_saldo", config: { titulo: "Por armazem" } },
-    { template: "DataTable", fato: "fato_estoque_saldo", config: { titulo: "Detalhe" } },
-  ],
-});
 
 const ENTRADA: EntradaGeracao = {
   entendimento: "saldo por armazem para repor",
@@ -40,7 +30,6 @@ function clienteRoteirizado(respostas: (string | Error)[]) {
       reqs.push({ reasoningEffort: req.reasoningEffort });
       req.onToken?.("a");
       req.onToken?.("b");
-      req.onToken?.("c");
       const r = respostas[i++];
       if (r instanceof Error) throw r;
       return { message: r, usage: { tokensInput: 10, tokensOutput: 20, costUsd: 0 } };
@@ -54,38 +43,37 @@ function deps(cliente: unknown, logUsage = jest.fn().mockResolvedValue(undefined
 }
 
 describe("pipelineGeracao", () => {
-  it("encadeia as 4 fases, emite progresso monotonico (com heartbeats) e devolve ficha valida", async () => {
-    const { cliente, reqs } = clienteRoteirizado([BLUEPRINT_OK, REVISAO_OK]);
+  it("UMA chamada de raciocinio ALTO + build + validacao; progresso monotonico ate 100", async () => {
+    const { cliente, reqs } = clienteRoteirizado([BLUEPRINT_OK]);
     const progresso: ProgressoGeracao[] = [];
     const out = await pipelineGeracao(ENTRADA, (p) => progresso.push(p), deps(cliente));
 
     expect(out.ficha.secoes.length).toBeGreaterThanOrEqual(2);
-    // ordem das fases
+    // SO uma chamada LLM (eficiencia): blueprint pensa tudo de uma vez.
+    expect(reqs).toHaveLength(1);
+    expect(reqs[0].reasoningEffort).toBe("high");
     const fases = progresso.map((p) => p.fase);
     expect(fases[0]).toBe("blueprint");
-    expect(fases).toContain("revisao");
-    expect(fases).toContain("build");
+    expect(fases).not.toContain("revisao");
     expect(fases[fases.length - 1]).toBe("validacao");
-    // pct monotonico nao-decrescente, terminando em 100
     const pcts = progresso.map((p) => p.pct);
     for (let k = 1; k < pcts.length; k++) expect(pcts[k]).toBeGreaterThanOrEqual(pcts[k - 1]);
     expect(pcts[pcts.length - 1]).toBe(100);
-    // heartbeats: ha mais de um progresso DENTRO da fase blueprint
     expect(progresso.filter((p) => p.fase === "blueprint").length).toBeGreaterThan(1);
-    // reasoning por fase: blueprint medium, revisao high
-    expect(reqs[0].reasoningEffort).toBe("medium");
-    expect(reqs[1].reasoningEffort).toBe("high");
   });
 
-  it("degrade: revisao falha -> segue com o blueprint da fase 1, sem quebrar", async () => {
-    const { cliente } = clienteRoteirizado([BLUEPRINT_OK, new Error("falha revisao")]);
-    const progresso: ProgressoGeracao[] = [];
-    const out = await pipelineGeracao(ENTRADA, (p) => progresso.push(p), deps(cliente));
-    // ficha = derivada do blueprint da fase 1 (2 secoes), nao da revisao (3)
-    expect(out.ficha.secoes).toHaveLength(2);
-    // ainda emitiu build e validacao
-    expect(progresso.map((p) => p.fase)).toContain("build");
-    expect(progresso[progresso.length - 1].pct).toBe(100);
+  it("curadoria: blueprint com KPIRow duplicada vira UMA so na ficha", async () => {
+    const dup = JSON.stringify({
+      titulo: "t", objetivo: "o",
+      secoes: [
+        { template: "KPIRow", fato: "fato_estoque_saldo", config: {} },
+        { template: "KPIRow", fato: "fato_estoque_parados", config: {} },
+        { template: "BarChart", fato: "fato_estoque_saldo", config: {} },
+      ],
+    });
+    const { cliente } = clienteRoteirizado([dup]);
+    const out = await pipelineGeracao(ENTRADA, () => {}, deps(cliente));
+    expect(out.ficha.secoes.filter((s) => s.template === "KPIRow")).toHaveLength(1);
   });
 
   it("blueprint vazio (tudo fora do catalogo) -> erro limpo", async () => {
@@ -94,7 +82,7 @@ describe("pipelineGeracao", () => {
     await expect(pipelineGeracao(ENTRADA, () => {}, deps(cliente))).rejects.toThrow();
   });
 
-  it("propaga omitidos do blueprint e loga uso por chamada LLM", async () => {
+  it("propaga omitidos e loga uso (uma vez)", async () => {
     const comOmitido = JSON.stringify({
       titulo: "t", objetivo: "o",
       secoes: [
@@ -102,10 +90,10 @@ describe("pipelineGeracao", () => {
         { template: "BarChart", fato: "fato_vendas", config: {} },
       ],
     });
-    const { cliente } = clienteRoteirizado([comOmitido, JSON.stringify({ semReparos: true, notas: ["ok"] })]);
+    const { cliente } = clienteRoteirizado([comOmitido]);
     const logUsage = jest.fn().mockResolvedValue(undefined);
     const out = await pipelineGeracao(ENTRADA, () => {}, deps(cliente, logUsage));
     expect(out.omitidos.length).toBeGreaterThan(0);
-    expect(logUsage).toHaveBeenCalled();
+    expect(logUsage).toHaveBeenCalledTimes(1);
   });
 });
