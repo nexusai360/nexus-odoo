@@ -1,6 +1,28 @@
 # STATUS — nexus-odoo
 
-> **2026-06-28 (F6 , REFORMA DE QUALIDADE/EFICIÊNCIA DO CONSTRUTOR , EM ANDAMENTO) ,
+> **2026-06-28 (F6 , REFORMA ESTRUTURAL DO CÉREBRO DO GERADOR , EM EXECUÇÃO AUTÔNOMA) ,
+> branch `feat/nex-reconstrucao`. F6 SÓ LOCAL.** Usuário FUROSO com o Frankenstein
+> (KPIs com o mesmo número em 3 cards, título que mente sobre o dado, 4 barras quase
+> iguais, filtro fixo morto, entrevista de 9 rodadas). Pediu foco ESTRUTURAL (o
+> cérebro), não um relatório específico, e LIBEROU a contagem de chamadas LLM (desde
+> que cada uma agregue). Alvo de qualidade = dashboard de Consumo do Agente Nex.
+> **Direção aprovada:** gramática de design embutida (blocos opinativos + invariantes
+> que tornam Frankenstein impossível) + processo editorial LLM (compositor + crítico
+> SEMÂNTICO) + revisor determinístico de fecho (resolve valores) + catálogo de
+> métricas DERIVADO do registry + renderer interativo (filtro de recorte ao vivo;
+> período só no movimento) + entrevista convergente / "gerar já" determinístico +
+> limpeza do canvas (só zoom + rolagem + ampliar-esconde-conversa; tirar pan/animações
+> e barra de filtro fixa).
+> **Metodologia (em curso):** spec v1 → 2 reviews adversariais Opus (ACHARAM erro
+> real: invariantes não matavam os Frankensteins; "reuso" temporal era net-new) →
+> **spec v3** commitada (`docs/superpowers/specs/2026-06-28-f6-arquitetura-gerador-
+> relatorios-design.md`). **PRÓXIMA AÇÃO: plano v1 → 2 reviews → plano v3 → execução
+> TDD** (ui-ux-pro-max OBRIGATÓRIO inline na UI). Decisão-chave da régua: estoque é
+> quase todo SNAPSHOT, então a régua é "interatividade possível para o dado" (KPIs
+> distintos + 1 ranking + tabela; par temporal só no movimento com ≥4 pontos), não
+> paridade temporal universal com o Consumo. F6 NÃO sobe sem aprovação.
+
+> **2026-06-28 (F6 , REFORMA DE QUALIDADE/EFICIÊNCIA DO CONSTRUTOR , ANTERIOR) ,
 > branch `feat/nex-reconstrucao`. F6 SÓ LOCAL.** Usuário MUITO insatisfeito com o
 > resultado: relatório saiu "Frankenstein" (KPIs duplicados , "Valor Total" x3 igual;
 > título que mente sobre o dado , "Ranking de itens negativos" mostrando valor por
