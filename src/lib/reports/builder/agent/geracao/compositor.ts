@@ -25,7 +25,15 @@ export function parseCompositor(
   raw: unknown,
   metricas: Metrica[],
 ): { plano: Plano; omitidos: string[] } {
-  const parsed = rawSchema.parse(extrairJson(raw));
+  return validarPlanoCru(extrairJson(raw), metricas);
+}
+
+/** Valida um objeto-plano cru (ja desembrulhado do JSON) contra schema + catalogo. */
+export function validarPlanoCru(
+  cru: unknown,
+  metricas: Metrica[],
+): { plano: Plano; omitidos: string[] } {
+  const parsed = rawSchema.parse(cru);
   const omitidos: string[] = [];
   const blocos: Bloco[] = [];
 
