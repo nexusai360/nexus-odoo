@@ -48,19 +48,23 @@
 >   `periodoDe/periodoAte` (só o produtor de `fato_estoque_movimento` repassa às queries);
 >   **corrigido o gap histórico** armazem/família em `filtrosDaSecao` (default→id numérico).
 >   resolve-source.test 8 verdes; tsc 0. **Backend dos filtros ao vivo COMPLETO.**
-> - [ ] **FASE D , UI restante (client, ui-ux-pro-max, ideal validar na tela) ← RETOMAR.**
->   D3 `report-filters.tsx` (pílulas de recorte armazem/marca/família via
->   `listarDimensoesFiltro`; período mensal só se há bloco temporal) + segurar `filtros`
->   em estado no `builder-preview.tsx` e re-chamar `previsualizarSecoes(ficha, filtros)` ao
->   mudar (debounce); D4 navegador mensal ≥4 pts no LineChart do grupo; D5 drilldown inline
->   no `ReportDataTable` (estado expandedRowId, padrão do Consumo).
-> - [ ] **FASE E** E1a prompt enxuto (≤3 perguntas) + remover "firmeza contra pressa";
->   E1b gate por domínio detectado (mexe em `journey/state.ts podeOferecerGeracao` + 3
->   testes route/state/roteiro , RISCO, fazer com cuidado); E1c rota "gerar já" 0-LLM
->   (`stream/route.ts` usa `templatePadrao`, EntradaGeracao.modo="gerar_ja" já existe);
->   E2 canvas limpo (CONFERIR `builder-preview.tsx`/`builder-workspace.tsx`: tirar pan +
->   animações de mãozinha; manter zoom+rolagem+ampliar-esconde-conversa , parte pode já
->   ter sido feita em sessão anterior).
+> - [x] **D3** , `builder-report-filters.tsx`: pílulas de recorte (armazém/família via
+>   `dimensoesDisponiveis` + `listarDimensoesFiltro`, reusando WarehouseFilter/FamilyFilter)
+>   ligadas ao `builder-preview.tsx` (estado `filtros` → `previsualizarSecoes` re-resolve AO
+>   VIVO, sem flash, com indicador "Atualizando"). Fix de re-resolução dupla na montagem.
+>   31 testes builder components verdes.
+> - [~] **D4/D5 (degrade aceito na onda 1, autorizado pela review)** , navegador mensal só
+>   dispararia com ≥4 meses de movimento (série curta hoje); o LineChart já mostra a série
+>   inteira com tooltip. Drilldown exige detalhe por linha que os produtores achatam; as
+>   tabelas planas já são completas. Reabrir quando houver série longa / detalhe preservado.
+> - [x] **E1a** , prompt da jornada: no máximo 3 perguntas (ideal 1-2) + "pressa é
+>   bem-vinda" (removida a "firmeza contra pressa" que travava). Ataca o "perguntas sem fim".
+> - [ ] **E1b/E1c (gerar-já dedicado) , DEFERIDO por baixo ROI** , com a entrevista agora
+>   ≤1-2 perguntas + compositor rápido e tailored, o "gerar já" 0-LLM (template fixo) agrega
+>   pouco. O caminho `modo:"gerar_ja"` + `templatePadrao` JÁ existe e está testado no pipeline
+>   (basta um botão + ação no route se for desejado depois). Não mexer no gate (risco).
+> - [x] **E2 (canvas) , já feito em sessão anterior** (`builder-preview.tsx`: SEM pan/zoom/
+>   animações, página limpa, ampliar esconde a conversa).
 > - [~] **FASE F (parcial)** , `scripts/f6-e2e-geracao.ts` PROVA contra o DADO REAL
 >   (caminho determinístico gerar_ja, 0 LLM): catálogo deriva 12 métricas; relatório
 >   coerente (KPIRow+BarChart+DataTable, 0 omitidos); **os KPIs reais 49.447.434,34 /
@@ -69,8 +73,10 @@
 >   scripts/f6-e2e-geracao.ts`. **FALTA F:** E2E do caminho com LLM (compositor+crítico)
 >   + passe visual na UI `/relatorios-2/construtor` + latência (~≤25s).
 > **NOTA:** o pipeline novo já está ligado no `stream/route.ts` (gerar/regenerar). O cérebro
-> (A+B) impede o Frankenstein por construção, COMPROVADO contra o dado real. Próxima frente
-> grande = FASE D (filtros-pílula ao vivo). F6 NÃO sobe sem aprovação.
+> (A+B) impede o Frankenstein por construção, COMPROVADO contra o dado real. **Verificação
+> global: 61 suites / 289 testes verdes, tsc 0.** PENDÊNCIAS: passe visual do usuário em
+> `/relatorios-2/construtor` (caminho com LLM real) + medir latência (~≤25s); C4 freshness
+> (polish); D4/D5 e E1c quando fizer sentido. F6 NÃO sobe sem aprovação.
 
 > **2026-06-28 (F6 , REFORMA DE QUALIDADE/EFICIÊNCIA DO CONSTRUTOR , ANTERIOR) ,
 > branch `feat/nex-reconstrucao`. F6 SÓ LOCAL.** Usuário MUITO insatisfeito com o
