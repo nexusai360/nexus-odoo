@@ -13,6 +13,7 @@ import {
   queryModalidadesEMaiorPedido,
 } from "@/lib/diretoria/queries/vendas";
 import { queryPedidosPorVendedor } from "@/lib/reports/queries/comercial";
+import { queryProdutosFaturados } from "@/lib/reports/queries/fiscal";
 import { DiretoriaPeriodBar } from "@/components/diretoria/diretoria-period-bar";
 import { SyncNowButton } from "@/components/diretoria/sync-now-button";
 import { BrazilMap } from "@/components/diretoria/brazil-map/brazil-map";
@@ -54,14 +55,22 @@ export default async function DiretoriaVendasPage({
     ufs,
   };
 
-  const [indicadores, vendasUf, vendasMarca, formasPgto, modalidades, vendedores] =
-    await Promise.all([
+  const [
+    indicadores,
+    vendasUf,
+    vendasMarca,
+    formasPgto,
+    modalidades,
+    vendedores,
+    itens,
+  ] = await Promise.all([
       queryIndicadoresVendas(prisma, filtros),
       queryVendasPorUf(prisma, filtros),
       queryVendasPorMarca(prisma, filtros),
       queryFormasPagamento(prisma, filtros),
       queryModalidadesEMaiorPedido(prisma, filtros),
       queryPedidosPorVendedor(prisma, filtros),
+      queryProdutosFaturados(prisma, { ...filtros, limit: 10, offset: 0 }),
     ]);
 
   const podeSync = await canDiretoria(user, "diretoria.sync.force");
@@ -167,6 +176,35 @@ export default async function DiretoriaVendasPage({
             )}
           </section>
         </div>
+
+        {/* Itens vendidos no período (C7) */}
+        <section className="rounded-2xl border border-border/60 bg-card/60 p-5">
+          <h2 className="mb-4 text-sm font-semibold">Itens mais vendidos</h2>
+          {itens.linhas.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">Sem dados no período.</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
+                  <th className="pb-2 font-medium">#</th>
+                  <th className="pb-2 font-medium">Produto</th>
+                  <th className="pb-2 text-right font-medium">Quantidade</th>
+                  <th className="pb-2 text-right font-medium">Valor</th>
+                </tr>
+              </thead>
+              <tbody>
+                {itens.linhas.map((it, i) => (
+                  <tr key={it.produtoNome ?? i} className="border-b border-border/20">
+                    <td className="py-2 text-muted-foreground tabular-nums">{i + 1}</td>
+                    <td className="py-2">{it.produtoNome ?? "Não informado"}</td>
+                    <td className="py-2 text-right tabular-nums">{num.format(it.quantidadeTotal)}</td>
+                    <td className="py-2 text-right tabular-nums">{brl.format(it.valorTotal)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </section>
 
         {/* Ranking de vendedores (C5) */}
         <section className="rounded-2xl border border-border/60 bg-card/60 p-5">
