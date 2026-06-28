@@ -69,4 +69,14 @@ describe("InteractiveFunnelChart", () => {
     render(<InteractiveFunnelChart data={[]} emptyMessage="Sem etapas." />);
     expect(screen.getByText("Sem etapas.")).toBeInTheDocument();
   });
+
+  it("limita a maxSegments estagios (top por valor), evitando funil-floresta", () => {
+    const muitos = Array.from({ length: 12 }, (_, i) => ({ name: `E${i}`, value: 12 - i }));
+    render(<InteractiveFunnelChart data={muitos} maxSegments={3} />);
+    // top 3 por valor: E0, E1, E2
+    expect(screen.getByText("E0")).toBeInTheDocument();
+    expect(screen.getByText("E2")).toBeInTheDocument();
+    // alem do limite, nao renderiza
+    expect(screen.queryByText("E3")).not.toBeInTheDocument();
+  });
 });

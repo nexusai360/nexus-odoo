@@ -51,6 +51,8 @@ export interface InteractiveFunnelChartProps {
   formatValue?: (v: number) => string;
   /** Cor base (token da paleta ou hex); deriva tons por estagio. */
   color?: string;
+  /** Maximo de estagios (top por valor) , um funil so faz sentido com poucos. */
+  maxSegments?: number;
   height?: number;
   emptyMessage?: string;
   ariaLabel?: string;
@@ -60,11 +62,15 @@ export function InteractiveFunnelChart({
   data,
   formatValue = (v) => String(v),
   color,
+  maxSegments = 8,
   height = 320,
   emptyMessage = "Sem dados para exibir",
   ariaLabel = "Grafico de funil",
 }: InteractiveFunnelChartProps) {
-  const segmentos = React.useMemo(() => buildFunnelSegments(data), [data]);
+  const segmentos = React.useMemo(
+    () => buildFunnelSegments(data).slice(0, maxSegments),
+    [data, maxSegments],
+  );
   if (segmentos.length === 0) {
     return <EmptyChartState message={emptyMessage} icon={Filter} height={height} />;
   }
