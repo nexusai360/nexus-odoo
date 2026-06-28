@@ -1,5 +1,37 @@
 # STATUS — nexus-odoo
 
+> **2026-06-28 (F6 , BOTÃO "GERAR EXEMPLO" + PORTE DA BIBLIOTECA VISUAL DO NEXUS-INSIGHTS) ,
+> branch `feat/nex-reconstrucao`. F6 SÓ LOCAL.** Pedido do usuário: (1) construir o botão
+> "Gerar exemplo"; (2) achar e trazer os componentes lindos do dashboard "Consumo do Agente
+> Nex" (desta repo) e do relatório do projeto vizinho **nexus-insights**
+> (`/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Projetos Internos/nexus-insights`).
+> **ENTREGUE e commitado:**
+> - **Botão "Gerar exemplo" (passe visual GRÁTIS, 0 LLM / 0 API):** chips por domínio
+>   (Estoque/Financeiro/Comercial/Fiscal) no estado inicial do construtor montam um relatório
+>   pronto pelo caminho determinístico (`gerar_ja`), exibindo todos os componentes na hora,
+>   sem gastar a API do cliente. `EntradaGeracao.dominioTemplate` (o `gerar_ja` era fixo em
+>   estoque, pois `intencaoCuradaDeColeta` fixa "estoque"); route `acao:"exemplo"` sem gate
+>   nem quota; `builder-chat-panel` `ExemplosRapidos` (ui-ux-pro-max).
+> - **Mapeamento (2 Explore Opus):** a lib bonita do nexus-insights vive em
+>   `src/components/charts/*`; a maioria JÁ tinha sido portada (Area/Bar/Donut/ChartTooltip/
+>   colors/KpiCard) e nós já adicionamos Funnel/Waterfall/Combo/Treemap. **Faltavam: Gauge
+>   (radial SLA/CSAT), Sparkline, Heatmap.**
+> - **Gauge (5º chart novo), PORTADO do nexus-insights:** medidor radial; shape novo
+>   `medidor` + bloco `Medidor`; métrica honesta `estoque.saude_negativos` (% negativos).
+>   PROVADO real: 172/1894 = 9,08%. Aparece no "Gerar exemplo" de estoque.
+> - **Sparkline + Heatmap PORTADOS** para `charts/interactive/` (faithful, generalizados,
+>   com testes). São componentes DISPONÍVEIS na biblioteca (consumo, relatórios futuros),
+>   ainda NÃO auto-conectados ao gerador por falta de dado honesto nos domínios de negócio
+>   (heatmap = hora-do-dia; sparkline = série por-KPI) , entram quando esse dado existir
+>   (ex.: atividade do agente na F5).
+> **Biblioteca de charts do gerador agora:** KPIRow, BarChart, LineChart, PieChart/Donut,
+> DataTable, Funnel, Waterfall, Combo, Treemap, **Gauge** (+ Sparkline/Heatmap disponíveis).
+> **Verificação: tsc 0; 103 suites/667 testes verdes; Gauge provado real.**
+> **PENDENTE (humano):** passe visual no `/relatorios-2/construtor` , agora dá pra fazer DE
+> GRAÇA via "Gerar exemplo" (não precisa do caminho LLM que bilha a API). F6 NÃO sobe sem
+> aprovação.
+
+
 > **2026-06-28 (F6 , ONDA DE COMPONENTES , EM EXECUÇÃO AUTÔNOMA) , branch
 > `feat/nex-reconstrucao`. F6 SÓ LOCAL.** Após a expansão multi-domínio, entrou a onda de
 > COMPONENTES do gerador. Cada componente = vertical completo com TDD (novo `ReportTemplate`
