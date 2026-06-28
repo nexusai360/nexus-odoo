@@ -44,8 +44,41 @@
 
 ## Status atual
 - [x] Inventário forense do HTML
-- [x] Spec v1 → 2 reviews adversariais → verificação de dado real → v2 → review de
-      convergência → v3 (commitada)
-- [ ] Plano da Onda 0 (writing-plans) → 2 reviews → execução TDD
-- PRÓXIMA AÇÃO: criar o plano detalhado da Onda 0 (cadeia: models→access→guards→
-  nav→rotas/shell; tracks paralelos: periodbar, cores, mapa spike, sync, fatos).
+- [x] Spec v1 → 2 reviews → verificação de dado real → v2 → convergência → v3 (commitada)
+- [x] Plano da Onda 0 + review adversarial + correções (commitado)
+- [~] Onda 0 em execução (TDD, commits atômicos):
+  - [x] Task 1: models RBAC (db via SQL cirúrgico, NÃO db push) , commit
+  - [x] Task 2: capabilities.ts (6 testes verdes) , commit
+  - [x] Task 3: access.ts (7 testes verdes) , commit
+  - [x] Task 4: nav na sidebar + resolvido no layout server (4 testes verdes) , commit
+  - [x] Task 5: rotas e shell das 5 telas com guards , commit
+  - [x] Task 6: resolverPeriodoDir, 10 presets do HTML (9 testes) , commit
+        (componente visual DiretoriaPeriodBar movido p/ Onda 1, junto da 1ª tela)
+  - [x] Task 7: helpers cores/delta/status (8 testes) , commit
+        (paleta CSS exata fica na Onda 1 com ui-ux-pro-max)
+  - [x] Task 9-11: sync manual isolado JOB_ONDEMAND (12 testes) , commit
+        (botão visual SyncNowButton movido p/ Onda 1, junto do header real)
+  - [x] Task 12: status dos fatos no cache , doc em research/
+  - [~] Task 8: spike Mapa do Brasil , MOVIDO para o início da Onda 1
+        (UI complexa; construir inline com ui-ux-pro-max + validar perf com dado
+        real de UF na tela de Vendas C3, em vez de mock + revalidação)
+- TOTAL Onda 0: 46 testes verdes, tsc 0 erros. Fundação completa (RBAC, nav,
+  telas, período, cores, sync). Falta: validação visual no dev + PR.
+- PRÓXIMA AÇÃO: validar visual no dev (menu aparece, telas abrem, gating);
+  depois abrir PR da Onda 0; depois Onda 1 (Vendas), começando pelo Mapa do Brasil.
+
+## Pendências técnicas para a verificação/validação
+- Rebuild do worker (toquei src/worker/**): `docker compose build app && docker
+  compose up -d --force-recreate worker` antes de testar o sync E2E.
+- Validar no dev: item Diretoria na sidebar (super_admin 5 itens; viewer 1);
+  /diretoria redireciona; guards redirecionam por área; telas abrem com header.
+- Componentes movidos p/ Onda 1: DiretoriaPeriodBar (visual), SyncNowButton, Mapa.
+
+## Notas de execução importantes
+- Banco dev compartilhado tem DRIFT da worktree feat/nex-reconstrucao (tabelas
+  builder_*/saved_reports). NUNCA `prisma db push` (dropa o trabalho dela). Aplicar
+  schema novo via SQL cirúrgico (`prisma db execute`), como feito na Task 1.
+- Prisma v7: db execute/migrate diff mudaram de sintaxe (sem --schema/--from-url;
+  usar --from-config-datasource / --to-schema; db execute lê do prisma.config.ts).
+- Convenção do schema: `@db.Uuid` + `@map` snake_case nas colunas.
+- husky pre-commit roda eslint nos arquivos staged; manter sem warnings.
