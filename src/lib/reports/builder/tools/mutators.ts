@@ -77,7 +77,19 @@ export function editarSecao(
 ): MutResult {
   const idx = ficha.secoes.findIndex((s) => s.id === args.secaoId);
   if (idx < 0) return { erro: "secao_inexistente" };
-  const nova: BuilderSection = { ...ficha.secoes[idx], ...args.patch };
+  const antigo = ficha.secoes[idx];
+  const nova: BuilderSection = { ...antigo, ...args.patch };
+  // Se o VINCULO mudou (template/shape), o titulo derivado anterior fica obsoleto e
+  // poderia "mentir" sobre o novo dado. Dropamos o titulo para o renderer cair no
+  // padrao do template (nunca um titulo stale incoerente). Fecha o backdoor do refino.
+  const bindingMudou =
+    (args.patch.template !== undefined && args.patch.template !== antigo.template) ||
+    (args.patch.shapeDerivado !== undefined && args.patch.shapeDerivado !== antigo.shapeDerivado);
+  if (bindingMudou) {
+    const { titulo: _descartado, ...semTitulo } = nova.config ?? {};
+    void _descartado;
+    nova.config = semTitulo;
+  }
   const compat = checarCompatibilidade(nova);
   if (!compat.ok) return { erro: compat.motivo };
   const secoes = [...ficha.secoes];

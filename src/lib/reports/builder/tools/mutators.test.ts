@@ -82,6 +82,36 @@ describe("mutators", () => {
     expect("ficha" in r && r.ficha.secoes[1].config.titulo).toBe("Top categorias");
   });
 
+  it("editarSecao dropa o titulo obsoleto quando o vinculo (template) muda", () => {
+    let ficha = criarRelatorio({ titulo: "Estoque" });
+    const add = adicionarSecao(ficha, {
+      template: "BarChart",
+      fato: "fato_estoque_marca",
+      shapeDerivado: "agregacaoCategorica",
+      config: { titulo: "Valor por marca" },
+    });
+    if (!("ficha" in add)) throw new Error("setup");
+    ficha = add.ficha;
+    const id = ficha.secoes[0].id;
+    const r = editarSecao(ficha, { secaoId: id, patch: { template: "PieChart" } });
+    expect("ficha" in r && r.ficha.secoes[0].config.titulo).toBeUndefined();
+  });
+
+  it("editarSecao mantem o titulo quando muda so o config (sem trocar o vinculo)", () => {
+    let ficha = criarRelatorio({ titulo: "Estoque" });
+    const add = adicionarSecao(ficha, {
+      template: "BarChart",
+      fato: "fato_estoque_marca",
+      shapeDerivado: "agregacaoCategorica",
+      config: { titulo: "Valor por marca", cor: "violet" },
+    });
+    if (!("ficha" in add)) throw new Error("setup");
+    ficha = add.ficha;
+    const id = ficha.secoes[0].id;
+    const r = editarSecao(ficha, { secaoId: id, patch: { config: { titulo: "Valor por marca", cor: "emerald" } } });
+    expect("ficha" in r && r.ficha.secoes[0].config.titulo).toBe("Valor por marca");
+  });
+
   it("adicionarSecao compativel adiciona a secao", () => {
     const ficha = criarRelatorio({ titulo: "Estoque" });
     const r = adicionarSecao(ficha, {
