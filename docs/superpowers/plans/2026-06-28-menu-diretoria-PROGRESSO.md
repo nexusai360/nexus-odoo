@@ -23,7 +23,14 @@
 
 ## Faseamento (ver §13 da spec)
 - [x] Onda 0 , Fundação , COMPLETA (PR #156). 46 testes, tsc 0.
-- [~] Onda 1 , Vendas (módulo C) , EM ANDAMENTO:
+- [x] Onda 1 , Vendas (C) , SUBSTANCIALMENTE COMPLETA: C2/C3/C4/C5/C6/C7/C8-9/C10
+      ligados no dado real + Mapa + comparativo. E2E ok. Falta margem estimada+freshness.
+- [x] Onda 2 , Pedidos & Entregas (B) , SUBSTANCIALMENTE COMPLETA: queries demandas
+      (pedidos.ts: B2/B4/B6) + queryContasAReceber (B3). Tela /diretoria/pedidos:
+      KPIs (pendentes 608, a entregar R$146M, atrasadas 109, a receber) + mapa de
+      demandas por UF + tabela pendentes. E2E ok. Falta B5 drill-in, B7 maquinas, B8.
+- [~] Onda 3 , Estoque & Compras (A) , EM ANDAMENTO (reusar queries de estoque).
+- [~] (detalhe Onda 1 abaixo)
   - queries em `src/lib/diretoria/queries/vendas.ts` (TDD, mock prisma):
     - [x] C10 queryFormasPagamento (fato_pedido_parcela.formaPagamentoNome)
     - [x] C4 queryVendasPorMarca (nf_item -> fato_produto.marcaNome, entradaSaida=1)
