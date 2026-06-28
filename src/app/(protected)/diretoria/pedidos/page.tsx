@@ -18,6 +18,7 @@ import { SyncNowButton } from "@/components/diretoria/sync-now-button";
 import { FreshnessBadge } from "@/components/diretoria/freshness-badge";
 import { ultimaSyncIso } from "@/lib/diretoria/freshness";
 import { BrazilMap } from "@/components/diretoria/brazil-map/brazil-map";
+import { PedidosPendentesTable } from "@/components/diretoria/pedidos-pendentes-table";
 
 export const dynamic = "force-dynamic";
 
@@ -93,55 +94,10 @@ export default async function DiretoriaPedidosPage() {
           <BrazilMap data={mapData} metric="Valor a entregar" />
         </section>
 
-        {/* Lista de pedidos pendentes (B2) */}
+        {/* Lista de pedidos pendentes (B2) + drill-in do pedido (B5) */}
         <section className="rounded-2xl border border-border/60 bg-card/60 p-5">
           <h2 className="mb-4 text-sm font-semibold">Pedidos pendentes</h2>
-          {pendentes.linhas.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">Nenhum pedido pendente.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
-                    <th className="pb-2 font-medium">Pedido</th>
-                    <th className="pb-2 font-medium">Cliente</th>
-                    <th className="pb-2 font-medium">UF</th>
-                    <th className="pb-2 font-medium">Etapa</th>
-                    <th className="pb-2 font-medium">Prazo</th>
-                    <th className="pb-2 text-right font-medium">Valor</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pendentes.linhas.slice(0, 20).map((d, i) => (
-                    <tr key={d.numero ?? i} className="border-b border-border/20">
-                      <td className="py-2 tabular-nums">{d.numero ?? "?"}</td>
-                      <td className="py-2">{d.cliente ?? "Não informado"}</td>
-                      <td className="py-2">{d.uf}</td>
-                      <td className="py-2 text-muted-foreground">{d.etapa ?? "?"}</td>
-                      <td className="py-2">
-                        {d.dataPrevista ? (
-                          <span
-                            className={
-                              d.atrasado ? "text-rose-400" : "text-muted-foreground"
-                            }
-                          >
-                            {d.dataPrevista}
-                            {d.atrasado ? " (atrasado)" : ""}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">,</span>
-                        )}
-                      </td>
-                      <td className="py-2 text-right tabular-nums">{brl.format(d.valor)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          <p className="mt-3 text-xs text-muted-foreground">
-            Mostrando {Math.min(20, pendentes.linhas.length)} de {num.format(pendentes.linhas.length)} pendentes.
-          </p>
+          <PedidosPendentesTable linhas={pendentes.linhas} />
         </section>
       </div>
     </PageShell>
