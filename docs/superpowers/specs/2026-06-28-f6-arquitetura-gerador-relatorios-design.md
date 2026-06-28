@@ -337,9 +337,12 @@ quota/`logUsage`, SSE `stream/route.ts`.
 
 Snapshot: `fato_estoque_saldo` (valor total, produtos, negativos), `*_armazem`
 (valor por armazém), `*_marca`/`*_familia` (valor por marca/família), `*_parados`
-(parados, valor imobilizado). Temporal: `fato_estoque_movimento` (entradas/saídas
-mensal), `*_top_movimentados`. O catálogo expõe cada uma como métrica curada
-(rótulo, pergunta, formato), derivando shape/série/dimensões do contrato.
+(parados, valor imobilizado), `*_top_movimentados` (ranking; shapes
+`agregacaoCategorica`+`kpis`, **não** é série temporal). Temporal (único com shape
+`serieTemporal`): `fato_estoque_movimento` (entradas/saídas mensal). O catálogo expõe
+cada uma como métrica curada (rótulo, pergunta, formato), derivando shape/série/
+dimensões do contrato. **`temSerieTemporal` é verdade só onde o registro tem o shape
+`serieTemporal`** (hoje, somente `fato_estoque_movimento`).
 
 ## 10. Fluxo de execução (alto nível, detalhar no plano)
 

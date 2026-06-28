@@ -1,8 +1,11 @@
-# F6 , Reforma estrutural do gerador de relatórios , Plano de implementação
+# F6 , Reforma estrutural do gerador de relatórios , Plano de implementação (v3)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:executing-plans (execução
-> inline na sessão principal, Opus, conforme CLAUDE.md do projeto). Steps usam
-> checkbox (`- [ ]`). UI nunca delegada: `ui-ux-pro-max` inline em toda task de UI.
+> inline na sessão principal, Opus). Steps usam checkbox (`- [ ]`). UI nunca delegada:
+> `ui-ux-pro-max` inline em toda task de UI.
+>
+> **v3** = plano v1 + 2 reviews adversariais do plano aplicadas (achados de contrato e
+> ordem). O §13 rastreia as correções.
 
 **Goal:** Trocar o cérebro do construtor (que gera Frankenstein) por um gerador
 coerente-por-construção: catálogo de métricas derivado do registry, gramática de
@@ -10,605 +13,560 @@ blocos com invariantes duras, compositor + crítico semântico (LLM) e revisor
 determinístico que resolve valores, renderizado com filtros ao vivo no nível possível
 para o dado.
 
-**Architecture:** Pipeline `intenção → compositor(LLM) → amostra leve → crítico
+**Architecture:** `intenção curada → compositor(LLM) → amostra leve → crítico
 semântico(LLM) → revisor determinístico(código) → build → render interativo`. Coerência
-garantida por invariantes em código (revisor), não pelo gosto do LLM. Estoque é quase
-todo snapshot: filtros de recorte ao vivo; período só no bloco de movimento (mensal).
+garantida por invariantes em código. Estoque é quase todo snapshot: filtros de recorte
+ao vivo; período só no bloco de movimento (mensal). A "seção composta" (tendência +
+distribuição) **não é um novo template**: o build expande em **duas seções irmãs**
+(LineChart + PieChart) com um `grupoId` compartilhado, e o renderer só as posiciona
+lado a lado (não toca a união `ReportTemplate` do F3 nem cria dupla-resolução).
 
-**Tech Stack:** Next.js 16 (App Router), TypeScript, Prisma v7, Zod, Vitest/Jest
-(suíte atual), Recharts (componentes do Consumo), Tailwind v4, dark theme violet.
+**Tech Stack:** Next.js 16, TypeScript, Prisma v7, Zod, Jest, Recharts, Tailwind v4.
 
 ## Global Constraints
 
 - **F6 SÓ LOCAL.** Nunca mergear para `main`, nunca deploy, nunca migration em prod.
 - **Proibido o caractere travessão** (em dash) em UI, código, doc, commit, chat.
 - **Modelo sempre Opus** em qualquer subagente/workflow.
-- **TDD:** cada task fecha com `tsc` limpo + testes verdes; commit atômico por task.
-- **Cada commit deixa a suíte verde.** Rodar `npx tsc --noEmit` e o subset de testes da
-  task antes do commit.
-- **ui-ux-pro-max obrigatório** e inline (sessão principal) em toda task de UI.
-- **Tokens reais do Consumo** (violet #8b5cf6, `components/charts/colors.ts`); reusar os
-  componentes reais, não recriar.
-- **Verdade contra o dado real:** a fase F exige E2E contra o cache real antes de pronto.
-- Spec de referência: `docs/superpowers/specs/2026-06-28-f6-arquitetura-gerador-relatorios-design.md`.
+- **TDD + commit atômico por task.** Antes do commit: `npx tsc --noEmit` no monorepo
+  (não só no subset) + os testes da task verdes. A suíte atual (3451 testes) tem que
+  continuar verde.
+- **ui-ux-pro-max obrigatório** e inline em toda task de UI; tokens reais do Consumo
+  (`components/charts/colors.ts`, violet #8b5cf6); reusar componentes, não recriar.
+- **Sem migration:** `SavedReport.entry` é JSON; seção, `grupoId`, período e subtítulos
+  cabem sem schema novo. (Confirmado no plano, não criar migration.)
+- **Verdade contra o dado real:** a Fase F exige E2E contra o cache real antes de pronto.
+- Spec: `docs/superpowers/specs/2026-06-28-f6-arquitetura-gerador-relatorios-design.md`.
 
-## Mapa de arquivos (decomposição)
+## Grafo de dependências (ordem de execução obrigatória)
 
-Núcleo novo (puro, testável) em `src/lib/reports/builder/agent/geracao/`:
-- `metric-catalog.ts` , catálogo de métricas derivado do registry (A1).
-- `plano-types.ts` , tipos + Zod schema do `Plano` e dos blocos da gramática (A2).
-- `amostra.ts` , resolvedor de amostra leve para o crítico/revisor (A4).
-- `revisor.ts` , revisor determinístico por invariante (A3, A5).
-- `compositor.ts` , reescreve `blueprint.ts` (prompt + parse → Plano) (B1).
-- `critico.ts` , crítico semântico (B2).
-- `template-padrao.ts` , template determinístico por domínio para "gerar já" (B3).
-- `pipeline.ts` , reescrito para a nova ordem (B4).
-- `build-plano.ts` , Plano → `BuilderReportEntry` (adapta `build.ts`) (C1).
+```
+A1 intenção curada ─┐
+A2 catálogo ────────┼─▶ A3 plano-types ─▶ A4 amostra ─▶ A5 revisor(estrut.) ─▶ A6 revisor(KPI valor) ─▶ A7 catálogo RBAC
+                    │
+B1 build-plano (depende de A2,A3) ─▶ B2 template (A2,A3,B1,A5/6) ─▶ B3 compositor (A1,A2,A3) ─▶ B4 crítico (A3,A4) ─▶
+   B5 pipeline (TUDO acima + build) ─▶ B6 limpeza (após B5)
+C* render (depende de B1 p/ a forma das seções) · D* filtros (depende de C, B1, resolve-source) · E* jornada/canvas · F E2E
+```
+**Regra de ordem:** `B5 pipeline` só depois de `B1 build-plano` existir (a review pegou
+a inversão). Render (C) depende do formato de seções que `B1` produz.
 
-Build/render/mutators (existentes, a adaptar):
-- `tools/mutators.ts`, `tool-bridge.ts`, `types.ts` (seção composta) (C1).
-- `components/reports/builder/report-renderer.tsx` (seção composta, subtítulo) (C2, C3).
-- `components/reports/builder/report-data-table.tsx` (drilldown) (D5).
+## Mapa de arquivos
 
-Dados/filtros (existentes, a estender):
-- `source-registry.ts`, `resolve-source.ts`, `shape-adapters.ts` (período + freshness) (C4, D2).
-- `lib/actions/relatorio-filtros.ts`, `carregar-relatorio-dinamico.ts`, preview action (D1).
-- `components/reports/period-pills.tsx` (variante mensal) (D3, D4).
+Núcleo novo em `src/lib/reports/builder/agent/geracao/`: `intencao-curada.ts` (A1),
+`metric-catalog.ts` (A2/A7), `plano-types.ts` (A3), `amostra.ts` (A4), `revisor.ts`
+(A5/A6), `build-plano.ts` (B1), `template-padrao.ts` (B2), `compositor.ts` (B3),
+`critico.ts` (B4); `pipeline.ts`/`progresso.ts`/`types.ts` reescritos (B5); remoção de
+`blueprint.ts`/`build.ts`/`curar-blueprint.ts`/`ordenar-narrativa.ts` (B6).
 
-Jornada/preview (existentes, a ajustar):
-- `agent/prompt-jornada.ts`, `journey/intencao.ts`, gate (E1).
-- `components/reports/builder/builder-workspace.tsx`, `builder-preview.tsx`,
-  `builder-chat-panel.tsx` (canvas) (E2).
+Tocados (existentes): `source-registry.ts`, `resolve-source.ts`, `types.ts`,
+`tools/mutators.ts`, `tool-bridge.ts`, `journey/{intencao,state}.ts`,
+`agent/prompt-jornada.ts`, `api/builder/stream/route.ts`,
+`components/reports/builder/{report-renderer,report-view-interactive,report-data-table,builder-preview,builder-workspace,builder-chat-panel}.tsx`,
+`lib/actions/{builder,relatorio-filtros}.ts`, `components/reports/period-pills.tsx`.
 
 ---
 
-## FASE A , Vocabulário, gramática e revisor (o cérebro puro)
+## FASE A , Vocabulário, gramática e revisor (puro, testável)
 
-### Task A1: Catálogo de métricas derivado do registry
+### Task A1: Tipo de intenção curada
 
-**Files:**
-- Create: `src/lib/reports/builder/agent/geracao/metric-catalog.ts`
-- Test: `src/lib/reports/builder/agent/geracao/__tests__/metric-catalog.test.ts`
+**Files:** Create `agent/geracao/intencao-curada.ts`; Test `__tests__/intencao-curada.test.ts`.
 
 **Interfaces:**
-- Consumes: `listarFontes()`, `obterContrato(fato)` de `source-registry.ts`; o
-  `SourceContract` (campos `dominio`, `shapes`, `campos`, `dimensoes`).
-- Produces:
-  ```ts
-  export interface Metrica {
-    id: string;                 // ex.: "estoque.valor_total"
-    dominio: string;            // do contrato
-    fato: string; shape: string;
-    rotulo: string; descricao: string; pergunta: string;
-    formato: "brl" | "contagem" | "percentual" | "dias";
-    dimensoes: string[];        // derivado do contrato
-    temSerieTemporal: boolean;  // DERIVADO: o fato oferece shape "serieTemporal"
-    chartPreferido: "KPIRow" | "BarChart" | "PieChart" | "LineChart" | "DataTable";
-    chartsValidos: string[];
-  }
-  export function listarMetricas(opts: { dominios: string[]; papel: string }): Metrica[];
-  ```
-- `temSerieTemporal` NUNCA é declarado à mão: vem de o fato ter shape `serieTemporal`.
-  O curado-humano (rotulo/descricao/pergunta/formato/chartPreferido) fica num mapa
-  `CURADORIA_METRICAS` por `id`, mas shape/dimensoes/série derivam do contrato.
-
-- [ ] **Step 1: Write the failing test**
 ```ts
-import { listarMetricas } from "../metric-catalog";
-test("deriva temSerieTemporal do shape do registry (movimento tem serie, saldo nao)", () => {
-  const ms = listarMetricas({ dominios: ["estoque"], papel: "super_admin" });
-  const movimento = ms.find((m) => m.fato === "fato_estoque_movimento");
-  const saldo = ms.find((m) => m.fato === "fato_estoque_saldo");
-  expect(movimento?.temSerieTemporal).toBe(true);
-  expect(saldo?.temSerieTemporal).toBe(false);
-});
-test("filtra por dominio: pede estoque, nao volta metrica de outro dominio", () => {
-  const ms = listarMetricas({ dominios: ["estoque"], papel: "super_admin" });
-  expect(ms.every((m) => m.dominio === "estoque")).toBe(true);
-  expect(ms.length).toBeGreaterThan(0);
-});
+export interface IntencaoCurada {
+  dominio: string;                 // onda 1: sempre "estoque" (detector = onda futura)
+  objetivo: string;
+  recortes: string[];              // dimensoes pedidas: armazem|marca|familia|faixaDias
+  janela?: { de?: string; ate?: string };  // mes "YYYY-MM", so faz sentido em temporal
+}
+export function intencaoCuradaDeColeta(c: IntencaoColeta): IntencaoCurada; // adapta o modelo velho
 ```
-- [ ] **Step 2: Run test, verify it fails** , `npx jest metric-catalog -t "deriva temSerieTemporal"` → FAIL (módulo inexistente).
-- [ ] **Step 3: Implement** , `listarMetricas` itera `listarFontes()`, filtra por `dominio ∈ opts.dominios`, e para cada fato monta `Metrica` derivando `temSerieTemporal = contrato.shapes.includes("serieTemporal")`, `dimensoes = contrato.dimensoes`, e mesclando `CURADORIA_METRICAS[id]` (rotulo/descricao/pergunta/formato/chartPreferido). `papel` reservado para o filtro RBAC (Task A6).
-- [ ] **Step 4: Run tests, verify pass.**
-- [ ] **Step 5: Commit** , `git add ... && git commit -m "feat(f6): catalogo de metricas derivado do registry (A1)"`.
+- Substitui a "pilha de seções" (`IntencaoColeta.secoes`) por intenção curada. `EntradaGeracao.intencao` passa a aceitar `IntencaoCurada` (campo novo, mantendo o antigo até B6).
+- **Onda 1:** `dominio` é `"estoque"` fixo (declarado; detector futuro).
 
-### Task A2: Tipos e schema Zod do Plano (gramática)
+- [ ] **Step 1:** teste: `intencaoCuradaDeColeta` mapeia recortes/objetivo a partir de uma `IntencaoColeta` fixa; `dominio==="estoque"`.
+- [ ] **Step 2:** rodar, falha.
+- [ ] **Step 3:** implementar o tipo + adaptador.
+- [ ] **Step 4:** `npx jest intencao-curada` verde + `tsc`.
+- [ ] **Step 5:** commit `feat(f6): tipo de intencao curada (A1)`.
 
-**Files:**
-- Create: `src/lib/reports/builder/agent/geracao/plano-types.ts`
-- Test: `.../__tests__/plano-types.test.ts`
+### Task A2: Catálogo de métricas derivado (expansão 1 fato → N métricas)
+
+**Files:** Create `agent/geracao/metric-catalog.ts`; Test `__tests__/metric-catalog.test.ts`.
 
 **Interfaces:**
-- Produces:
-  ```ts
-  export type PapelBloco = "panorama" | "analise" | "detalhe";
-  export type TipoBloco = "KpiStrip" | "TendenciaDistribuicao" | "Ranking" | "Tabela";
-  export interface BlocoKpi   { tipo: "KpiStrip"; metricas: string[] }            // ids
-  export interface BlocoTend  { tipo: "TendenciaDistribuicao"; metricaSerie: string; metricaComposicao: string }
-  export interface BlocoRank   { tipo: "Ranking"; metrica: string; recorte: string }
-  export interface BlocoTabela { tipo: "Tabela"; metrica: string }
-  export type Bloco = BlocoKpi | BlocoTend | BlocoRank | BlocoTabela;
-  export interface Plano {
-    titulo: string; objetivo: string; dominio: string;
-    blocos: Bloco[];
-    filtrosIniciais: Record<string, unknown>;
-  }
-  export const planoSchema: z.ZodType<Plano>;
-  export function papelDoBloco(b: Bloco): PapelBloco;  // KpiStrip→panorama, Tend/Rank→analise, Tabela→detalhe
-  ```
-- [ ] **Step 1: Failing test**
 ```ts
-import { planoSchema, papelDoBloco } from "../plano-types";
-test("schema aceita plano valido e papelDoBloco classifica", () => {
-  const p = { titulo: "X", objetivo: "Y", dominio: "estoque",
-    blocos: [{ tipo: "KpiStrip", metricas: ["estoque.valor_total"] }], filtrosIniciais: {} };
-  expect(planoSchema.parse(p).blocos.length).toBe(1);
-  expect(papelDoBloco(p.blocos[0] as any)).toBe("panorama");
+export interface Metrica {
+  id: string;                    // "estoque.valor_total"
+  dominio: string; fato: string; shape: string;
+  campoKpi?: string;             // p/ shape "kpis": chave do objeto kpis (ex.: "valorTotal")
+  rotulo: string; descricao: string; pergunta: string;
+  formato: "brl" | "contagem" | "percentual" | "dias";
+  dimensoes: string[];           // DERIVADO das chaves de campos.agregacaoCategorica/tabela do contrato
+  temSerieTemporal: boolean;     // DERIVADO: contrato.shapes inclui "serieTemporal"
+  chartPreferido: "KPIRow" | "BarChart" | "PieChart" | "LineChart" | "DataTable";
+  chartsValidos: string[];
+}
+export function listarMetricas(opts: { dominiosPermitidos: string[] }): Metrica[];
+```
+- **Expansão 1:N (correção crítica da review):** para `shape:"kpis"`, o catálogo gera
+  UMA `Metrica` por **chave de KPI** do contrato (ex.: `fato_estoque_saldo` →
+  `valor_total` (campoKpi `valorTotal`), `produtos` (`totalProdutos`), `negativos`
+  (`produtosNegativos`)). Para `agregacaoCategorica`/`serieTemporal`/`tabela`, uma
+  métrica por (fato,shape).
+- `dimensoes` deriva das chaves de `contrato.campos.agregacaoCategorica`/`.tabela` (NÃO
+  existe `contrato.dimensoes`). `temSerieTemporal = contrato.shapes.includes("serieTemporal")`.
+- O curado-humano fica em `CURADORIA_METRICAS: Record<string /*id*/, {rotulo,descricao,pergunta,formato,chartPreferido}>`, chaveado por id por-medida.
+
+- [ ] **Step 1:** testes:
+```ts
+test("expande fato_estoque_saldo em 3 metricas escalares distintas com campoKpi", () => {
+  const ms = listarMetricas({ dominiosPermitidos: ["estoque"] });
+  const saldo = ms.filter((m) => m.fato === "fato_estoque_saldo" && m.shape === "kpis");
+  expect(saldo.map((m) => m.campoKpi).sort()).toEqual(["produtosNegativos","totalProdutos","valorTotal"]);
 });
-test("schema rejeita bloco de tipo desconhecido", () => {
-  expect(() => planoSchema.parse({ titulo:"X", objetivo:"Y", dominio:"estoque",
-    blocos:[{ tipo:"Galaxia" }], filtrosIniciais:{} })).toThrow();
+test("temSerieTemporal so para movimento", () => {
+  const ms = listarMetricas({ dominiosPermitidos: ["estoque"] });
+  expect(ms.find((m)=>m.fato==="fato_estoque_movimento")?.temSerieTemporal).toBe(true);
+  expect(ms.find((m)=>m.fato==="fato_estoque_saldo")?.temSerieTemporal).toBe(false);
+});
+test("dimensoes nao vem vazio para um fato com recorte categorico", () => {
+  const ms = listarMetricas({ dominiosPermitidos: ["estoque"] });
+  expect(ms.find((m)=>m.shape==="agregacaoCategorica")?.dimensoes.length).toBeGreaterThan(0);
 });
 ```
-- [ ] **Step 2: Run, verify fails.**
-- [ ] **Step 3: Implement** , discriminated union por `tipo`, `planoSchema` com `z.discriminatedUnion`, `papelDoBloco` por switch.
-- [ ] **Step 4: Run, pass.**
-- [ ] **Step 5: Commit** , `feat(f6): tipos e schema Zod do Plano (gramatica) (A2)`.
+- [ ] **Step 2:** rodar, falha.
+- [ ] **Step 3:** implementar a expansão + derivações + curadoria.
+- [ ] **Step 4:** verde + `tsc`.
+- [ ] **Step 5:** commit `feat(f6): catalogo de metricas derivado, expansao 1:N por kpi (A2)`.
+
+### Task A3: Tipos e schema Zod do Plano
+
+**Files:** Create `agent/geracao/plano-types.ts`; Test `__tests__/plano-types.test.ts`.
+
+**Interfaces:**
+```ts
+export type PapelBloco = "panorama" | "analise" | "detalhe";
+export interface BlocoKpi   { tipo: "KpiStrip"; metricas: string[] }
+export interface BlocoTend  { tipo: "TendenciaDistribuicao"; metricaSerie: string; metricaComposicao: string }
+export interface BlocoRank  { tipo: "Ranking"; metrica: string; recorte: string }
+export interface BlocoTabela{ tipo: "Tabela"; metrica: string }
+export type Bloco = BlocoKpi | BlocoTend | BlocoRank | BlocoTabela;
+export interface Plano { titulo: string; objetivo: string; dominio: string; blocos: Bloco[]; filtrosIniciais: Record<string, unknown> }
+export const planoSchema: z.ZodType<Plano>;
+export function papelDoBloco(b: Bloco): PapelBloco;  // KpiStrip→panorama; Tend/Rank→analise; Tabela→detalhe
+```
+`TendenciaDistribuicao` é um bloco do **Plano** (gramática), não um template de render;
+o build (B1) o expande em 2 seções.
+
+- [ ] **Step 1:** teste: schema aceita plano válido; `papelDoBloco` classifica; rejeita `tipo` desconhecido. (igual ao snippet do plano v1, mantido)
+- [ ] **Step 2-4:** falha → `z.discriminatedUnion("tipo", ...)` + `papelDoBloco` → verde.
+- [ ] **Step 5:** commit `feat(f6): tipos e schema do Plano (A3)`.
 
 ### Task A4: Resolvedor de amostra leve
 
-**Files:**
-- Create: `src/lib/reports/builder/agent/geracao/amostra.ts`
-- Test: `.../__tests__/amostra.test.ts`
+**Files:** Create `agent/geracao/amostra.ts`; Test `__tests__/amostra.test.ts`.
 
 **Interfaces:**
-- Consumes: `obterProdutor(fato, shape)` de `source-registry.ts`; `Metrica` (A1).
-- Produces:
-  ```ts
-  export interface AmostraMetrica {
-    metricaId: string;
-    escalar?: number;            // p/ shape kpis (valor principal)
-    cardinalidade?: number;      // n categorias (agregacaoCategorica)
-    topN?: { rotulo: string; valor: number }[];
-    nPontosSerie?: number;       // p/ serieTemporal
-  }
-  export function resolverAmostra(
-    metricas: Metrica[],
-    deps: { resolver: (fato: string, shape: string) => Promise<{ linhas: any[]; kpis?: any }> }
-  ): Promise<AmostraMetrica[]>;
-  ```
-  `resolver` é injetado (em prod = wrapper de `resolveSecao`/produtor; em teste = fake).
-  Para `agregacaoCategorica`: `cardinalidade = linhas.length`, `topN = top 5`. Para
-  `kpis`: `escalar = primeiro valor numerico`. Para `serieTemporal`: `nPontosSerie =
-  linhas.length`.
-- [ ] **Step 1: Failing test** , fake `resolver` devolve 8 linhas categóricas e um kpi 49M; assert `cardinalidade===8`, `topN.length===5`, `escalar===49000000`.
-- [ ] **Step 2: Run, fails.**
-- [ ] **Step 3: Implement** sumarização por shape.
-- [ ] **Step 4: Pass.**
-- [ ] **Step 5: Commit** , `feat(f6): resolvedor de amostra leve (A4)`.
-
-### Task A3: Revisor determinístico , invariantes sem valor
-
-**Files:**
-- Create: `src/lib/reports/builder/agent/geracao/revisor.ts`
-- Test: `.../__tests__/revisor.test.ts`
-
-**Interfaces:**
-- Consumes: `Plano`, `Bloco`, `papelDoBloco` (A2); `Metrica`+`listarMetricas` (A1);
-  `AmostraMetrica` (A4).
-- Produces:
-  ```ts
-  export interface AjusteRevisor { regra: string; acao: string }
-  export interface ResultadoRevisor { plano: Plano; ajustes: AjusteRevisor[] }
-  export function revisarPlano(
-    plano: Plano,
-    ctx: { metricas: Metrica[]; amostra: AmostraMetrica[] }
-  ): ResultadoRevisor;
-  ```
-  Invariantes implementadas nesta task (não dependem de valor resolvido):
-  - **1 KpiStrip** no máximo, movido para o topo.
-  - **Título de seção derivado da métrica** (descarta qualquer título livre; o título
-    vem de `metrica.rotulo`/`descricao`). (Garantido no build; aqui o revisor marca.)
-  - **Teto por papel:** no máximo 1 `Ranking` e 1 `TendenciaDistribuicao` (corta o
-    excedente, **ignorando recorte** , mata as 4 barras).
-  - **Arco fixo:** ordena panorama → análise → detalhe.
-  - **donut≤6 / série≥4:** `TendenciaDistribuicao` cuja `metricaComposicao` tem
-    `cardinalidade>6` ⇒ rebaixa a `Ranking`; cuja `metricaSerie` tem `nPontosSerie<4`
-    ⇒ remove a parte temporal (degrada).
-  - **Teto total** de blocos (5): corta detalhe excedente.
-- [ ] **Step 1: Failing tests** (um por invariante), ex.:
 ```ts
-test("teto por papel: 4 Rankings de recortes diferentes viram 1", () => {
-  const blocos = ["armazem","marca","familia","negativos"].map((r) =>
-    ({ tipo:"Ranking", metrica:"estoque.valor_total", recorte:r }));
-  const { plano, ajustes } = revisarPlano(
-    { titulo:"x",objetivo:"y",dominio:"estoque",blocos: blocos as any, filtrosIniciais:{} },
-    { metricas: [], amostra: [] });
-  expect(plano.blocos.filter((b)=>b.tipo==="Ranking").length).toBe(1);
-  expect(ajustes.some((a)=>a.regra==="teto_por_papel")).toBe(true);
-});
-test("donut>6 categorias rebaixa para Ranking", () => {
-  const plano = { titulo:"x",objetivo:"y",dominio:"estoque",
-    blocos:[{tipo:"TendenciaDistribuicao",metricaSerie:"estoque.movimento",metricaComposicao:"estoque.marca"}] as any,
-    filtrosIniciais:{} };
-  const amostra = [{ metricaId:"estoque.marca", cardinalidade: 8 },
-                   { metricaId:"estoque.movimento", nPontosSerie: 6 }];
-  const { plano: out } = revisarPlano(plano, { metricas: [], amostra });
-  expect(out.blocos[0].tipo).toBe("Ranking");
-});
+export interface AmostraMetrica { metricaId: string; escalar?: number; cardinalidade?: number; topN?: {rotulo:string;valor:number}[]; nPontosSerie?: number }
+export function resolverAmostra(
+  metricas: Metrica[],
+  deps: { resolver: (fato: string, shape: string) => Promise<{ linhas: any[]; kpis?: Record<string, number> }> }
+): Promise<AmostraMetrica[]>;
 ```
-- [ ] **Step 2: Run, fail.**
-- [ ] **Step 3: Implement** as invariantes acima (funções puras pequenas, compostas).
-- [ ] **Step 4: Pass.**
-- [ ] **Step 5: Commit** , `feat(f6): revisor deterministico , invariantes estruturais (A3)`.
+- **Correção:** para `shape:"kpis"`, `escalar = raw.kpis[metrica.campoKpi]` (NÃO "primeiro
+  valor numérico"). Para `agregacaoCategorica`: `cardinalidade=linhas.length`,
+  `topN=top 5`. Para `serieTemporal`: `nPontosSerie=linhas.length`.
 
-### Task A5: Revisor , dedup de KPI por VALOR colidente
+- [ ] **Step 1:** teste: 3 métricas do mesmo fato com `campoKpi` distintos e `kpis={valorTotal:49,totalProdutos:1894,produtosNegativos:172}` → 3 `escalar` DISTINTOS (49,1894,172); categórica de 8 linhas → `cardinalidade:8,topN.length:5`.
+- [ ] **Step 2-4:** falha → implementar extração por `campoKpi`/shape → verde.
+- [ ] **Step 5:** commit `feat(f6): amostra leve com escalar por campoKpi (A4)`.
 
-**Files:**
-- Modify: `src/lib/reports/builder/agent/geracao/revisor.ts`
-- Test: `.../__tests__/revisor.test.ts` (novo caso)
+### Task A5: Revisor , invariantes estruturais
+
+**Files:** Create `agent/geracao/revisor.ts`; Test `__tests__/revisor.test.ts`.
 
 **Interfaces:**
-- Usa `ctx.amostra[].escalar` para comparar valores dos KPIs do `KpiStrip` e remover
-  cartões com valor colidente (tolerância relativa 1e-6) ou identidade/rótulo iguais.
-- [ ] **Step 1: Failing test**
 ```ts
-test("KPIs com mesmo valor resolvido (49,4M em 3 metricas) viram 1", () => {
-  const plano = { titulo:"x",objetivo:"y",dominio:"estoque",
-    blocos:[{tipo:"KpiStrip",metricas:["estoque.valor_total","estoque.valor_armazem","estoque.valor_marca"]}] as any,
-    filtrosIniciais:{} };
-  const amostra = ["estoque.valor_total","estoque.valor_armazem","estoque.valor_marca"]
-    .map((id)=>({ metricaId:id, escalar: 49447434.34 }));
-  const { plano: out, ajustes } = revisarPlano(plano, { metricas: [], amostra });
-  expect((out.blocos[0] as any).metricas.length).toBe(1);
-  expect(ajustes.some((a)=>a.regra==="kpi_valor_colidente")).toBe(true);
-});
+export interface AjusteRevisor { regra: string; acao: string }
+export interface ResultadoRevisor { plano: Plano; ajustes: AjusteRevisor[] }
+export function revisarPlano(plano: Plano, ctx: { metricas: Metrica[]; amostra: AmostraMetrica[] }): ResultadoRevisor;
 ```
-- [ ] **Step 2: Run, fail.**
-- [ ] **Step 3: Implement** dedup por valor + identidade no `KpiStrip`.
-- [ ] **Step 4: Pass.**
-- [ ] **Step 5: Commit** , `feat(f6): revisor , dedup de KPI por valor colidente (A5)`.
+Invariantes (sem valor): 1 KpiStrip no topo; **teto por PAPEL** (no máx 1 Ranking e 1
+TendenciaDistribuicao, **ignorando recorte** , mata as 4 barras); arco panorama→análise→
+detalhe; `donut>6` (composicao com `cardinalidade>6`) rebaixa Tend→Ranking;
+`serie<4` (`nPontosSerie<4`) remove a parte temporal (degrada); teto total 5.
 
-### Task A6: Filtro RBAC do catálogo por papel/domínio
+- [ ] **Step 1:** testes por invariante (4 Rankings de recortes distintos → 1 com
+  `regra:"teto_por_papel"`; donut>6 rebaixa; série<4 degrada). (snippets do plano v1)
+- [ ] **Step 2-4:** falha → implementar funções puras compostas → verde.
+- [ ] **Step 5:** commit `feat(f6): revisor , invariantes estruturais (A5)`.
 
-**Files:**
-- Modify: `src/lib/reports/builder/agent/geracao/metric-catalog.ts`
-- Test: `.../__tests__/metric-catalog.test.ts` (novo caso)
+### Task A6: Revisor , dedup de KPI por valor resolvido
 
-**Interfaces:**
-- `listarMetricas({ dominios, papel })` consulta o mapa de domínios permitidos por papel
-  (reusar `guardDominio`/a fonte de RBAC já usada em `resolve-source.ts`); papel sem
-  acesso a um domínio não recebe métricas dele.
-- [ ] **Step 1: Failing test** , papel `user` sem acesso a `estoque` ⇒ `[]`; `super_admin` ⇒ métricas.
-- [ ] **Step 2: Run, fail.**
-- [ ] **Step 3: Implement** filtro por papel (camada 1 do RBAC).
-- [ ] **Step 4: Pass.**
-- [ ] **Step 5: Commit** , `feat(f6): catalogo filtrado por RBAC (camada 1) (A6)`.
+**Files:** Modify `revisor.ts`; Test `__tests__/revisor.test.ts` (novo caso).
+- Usa `ctx.amostra[].escalar` (já correto por `campoKpi`) para remover KPIs com valor
+  colidente (tolerância relativa 1e-6) ou id/rótulo iguais.
+
+- [ ] **Step 1:** teste: 3 métricas com `escalar:49447434.34` → 1 KPI, `regra:"kpi_valor_colidente"`; **e** 3 métricas com valores distintos (49,1894,172) → mantém os 3 (não colapsa o panorama legítimo).
+- [ ] **Step 2-4:** falha → implementar dedup por valor+identidade → verde.
+- [ ] **Step 5:** commit `feat(f6): revisor , dedup de KPI por valor colidente (A6)`.
+
+### Task A7: Filtro RBAC do catálogo (domínios já resolvidos pelo chamador)
+
+**Files:** Modify `metric-catalog.ts`; Test (novo caso).
+- **Correção:** `listarMetricas` permanece **puro/síncrono** e recebe
+  `dominiosPermitidos` já resolvidos. Quem chama (pipeline/route) faz
+  `await getMyDomains()` (`lib/reports/domain-access.ts`) e passa. Não existe mapa
+  `papel→domínios`; a fonte real é `getMyDomains()` por usuário.
+
+- [ ] **Step 1:** teste: `dominiosPermitidos:[]` → `[]`; `["estoque"]` → métricas de estoque.
+- [ ] **Step 2-4:** falha → filtrar por `opts.dominiosPermitidos.includes(m.dominio)` → verde.
+- [ ] **Step 5:** commit `feat(f6): catalogo filtrado por dominios permitidos (RBAC camada 1) (A7)`.
 
 ---
 
-## FASE B , Processo editorial (LLM) + template determinístico
+## FASE B , Build + template + editorial (ordem corrigida)
 
-### Task B3: Template determinístico por domínio ("gerar já")
+### Task B1: build-plano (Plano → BuilderReportEntry, com expansão da seção composta)
 
-> Feito antes do compositor: é o destino do atalho e um Plano de referência válido
-> para testar o build/render sem LLM.
-
-**Files:**
-- Create: `src/lib/reports/builder/agent/geracao/template-padrao.ts`
-- Test: `.../__tests__/template-padrao.test.ts`
+**Files:** Create `agent/geracao/build-plano.ts`; Modify `tools/mutators.ts` (config
+`grupoId` e `subtitulos`), `tool-bridge.ts`; Test `__tests__/build-plano.test.ts`.
 
 **Interfaces:**
-- Produces: `export function templatePadrao(dominio: string, metricas: Metrica[]): Plano;`
-  Para `estoque`: KpiStrip (valor_total, produtos, negativos) + 1 Ranking (valor por
-  armazém) + 1 Tabela (saldo por produto). 0 LLM. Tem que passar `revisarPlano` sem
-  ajuste.
-- [ ] **Step 1: Failing test** , `templatePadrao("estoque", ms)` retorna Plano que
-  `planoSchema.parse` aceita e que `revisarPlano` devolve com `ajustes.length===0`.
-- [ ] **Step 2: Run, fail.**
-- [ ] **Step 3: Implement** o template fixo.
-- [ ] **Step 4: Pass.**
-- [ ] **Step 5: Commit** , `feat(f6): template deterministico de estoque para gerar-ja (B3)`.
+```ts
+export function buildFichaDoPlano(plano: Plano, metricas: Metrica[]): { ficha: BuilderReportEntry; omitidos: string[] };
+```
+- Cada bloco vira `BuilderSection`(s) via os mutators existentes (`adicionar_secao`):
+  - `KpiStrip` → 1 seção `KPIRow` (fato/shape kpis); `config.subtitulos[campoKpi]=metrica.descricao`.
+  - `Ranking` → 1 seção `BarChart` (agregacaoCategorica) com `config.recorte`.
+  - `Tabela` → 1 seção `DataTable`.
+  - **`TendenciaDistribuicao` → DUAS seções irmãs** com `config.grupoId` igual: uma
+    `LineChart` (serieTemporal, `metricaSerie`) + uma `PieChart` (agregacaoCategorica,
+    `metricaComposicao`). **Não cria novo `ReportTemplate`** (usa os 5 existentes), logo
+    não toca `reports/types.ts`, `compat.ts`, `component-catalog.ts`, `viabilidade.ts`,
+    `report-entry-schema.ts`, nem switches exaustivos do F3.
+  - **Título de cada seção SEMPRE derivado da métrica** (`metrica.rotulo`), nunca livre.
+  - `plano.filtrosIniciais` → `ficha.parametros` (não perder ao salvar).
 
-### Task B1: Compositor (reescreve blueprint.ts)
+- [ ] **Step 1:** teste: `buildFichaDoPlano(templatePadraoFake)` produz N seções com
+  títulos = rótulos; um bloco `TendenciaDistribuicao` vira 2 seções com o mesmo
+  `grupoId` (LineChart+PieChart); KPIRow carrega `config.subtitulos`. Assert que o
+  dispatcher **aceita** (não manda p/ `omitidos`).
+- [ ] **Step 2-4:** falha → implementar a expansão por bloco → verde + `tsc`.
+- [ ] **Step 5:** commit `feat(f6): build Plano->ficha (seccao composta vira 2 irmas com grupoId) (B1)`.
 
-**Files:**
-- Create: `src/lib/reports/builder/agent/geracao/compositor.ts`
-- Modify: marca `blueprint.ts` como deprecado (reexporta o compositor onde for usado).
-- Test: `.../__tests__/compositor.test.ts`
+### Task B2: template-padrão determinístico (estoque)
 
-**Interfaces:**
-- Produces:
-  ```ts
-  export function promptCompositor(entrada: EntradaGeracao, metricas: Metrica[]): ChatMessage[];
-  export function parseCompositor(raw: string, metricas: Metrica[]): { plano: Plano; omitidos: string[] };
-  ```
-  `parseCompositor` valida com `planoSchema`, e descarta binds que referenciem métrica
-  fora do catálogo (vai p/ `omitidos`, nunca silêncio).
-- [ ] **Step 1: Failing test** , `parseCompositor` com JSON canônico válido → Plano; com
-  métrica inexistente → entra em `omitidos`.
-- [ ] **Step 2: Run, fail.**
-- [ ] **Step 3: Implement** prompt (gramática + métricas como vocabulário) + parse Zod.
-- [ ] **Step 4: Pass.**
-- [ ] **Step 5: Commit** , `feat(f6): compositor (prompt+parse para Plano) (B1)`.
+**Files:** Create `agent/geracao/template-padrao.ts`; Test `__tests__/template-padrao.test.ts`.
+- `templatePadrao("estoque", metricas): Plano` → KpiStrip(valor_total,produtos,negativos)
+  + Ranking(valor por armazém) + Tabela(saldo por produto). Tem que passar `revisarPlano`
+  com `ajustes.length===0` e `buildFichaDoPlano` sem `omitidos`.
 
-### Task B2: Crítico semântico
+- [ ] **Step 1:** teste: `planoSchema.parse(templatePadrao(...))` ok; `revisarPlano` sem
+  ajuste; `buildFichaDoPlano` sem omitidos.
+- [ ] **Step 2-4:** falha → montar o template fixo → verde.
+- [ ] **Step 5:** commit `feat(f6): template deterministico de estoque (B2)`.
 
-**Files:**
-- Create: `src/lib/reports/builder/agent/geracao/critico.ts`
-- Test: `.../__tests__/critico.test.ts`
+### Task B3: Compositor (consome intenção curada)
 
-**Interfaces:**
-- Produces:
-  ```ts
-  export function promptCritico(entrada: EntradaGeracao, plano: Plano, amostra: AmostraMetrica[]): ChatMessage[];
-  export function parseCritico(raw: string, metricas: Metrica[]): { plano: Plano; justificativa: string };
-  ```
-  Prompt instrui SÓ juízo semântico (responde à intenção? métrica certa p/ a pergunta?
-  narrativa? falta recorte pedido?), proibido reformatar/checar invariante. Saída =
-  Plano ajustado + justificativa.
-- [ ] **Step 1: Failing test** , `parseCritico` valida o Plano de saída com `planoSchema`;
-  rejeita saída malformada.
-- [ ] **Step 2: Run, fail.**
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Pass.**
-- [ ] **Step 5: Commit** , `feat(f6): critico semantico (B2)`.
+**Files:** Create `agent/geracao/compositor.ts`; Test `__tests__/compositor.test.ts`.
+```ts
+export function promptCompositor(intencao: IntencaoCurada, metricas: Metrica[]): ChatMessage[];
+export function parseCompositor(raw: string, metricas: Metrica[]): { plano: Plano; omitidos: string[] };
+```
+- Consome `IntencaoCurada` (A1), não a pilha de seções. `parseCompositor` valida com
+  `planoSchema` e descarta binds com métrica fora do catálogo (→ `omitidos`).
 
-### Task B4: Pipeline reescrito
+- [ ] **Step 1:** teste: JSON canônico válido → Plano; métrica inexistente → `omitidos`.
+- [ ] **Step 2-4:** falha → prompt (gramática+métricas) + parse Zod → verde.
+- [ ] **Step 5:** commit `feat(f6): compositor sobre intencao curada (B3)`.
 
-**Files:**
-- Modify: `src/lib/reports/builder/agent/geracao/pipeline.ts`
-- Modify: `src/lib/reports/builder/agent/geracao/progresso.ts` (faixas para as novas fases)
-- Test: `.../__tests__/pipeline.test.ts`
+### Task B4: Crítico semântico
 
-**Interfaces:**
-- Ordem: `listarMetricas` → `promptCompositor`+chamada LLM → `parseCompositor` →
-  `resolverAmostra` → `promptCritico`+chamada LLM → `parseCritico` → `revisarPlano` →
-  `buildFichaDoPlano` (C1) → `validarFichaGerada`. "Gerar já" usa `templatePadrao` no
-  lugar das 2 chamadas LLM.
-- `pipelineGeracao(entrada, onProgresso, deps)` mantém a assinatura (deps injeta
-  `criarCliente`/`logUsage`/`resolver`).
-- [ ] **Step 1: Failing test** , com `deps` fake (LLM canned para compositor e crítico,
-  resolver fake), `pipelineGeracao` devolve `ficha` cujos KPIs não colidem e cujo nº de
-  Rankings ≤1; e modo "gerar já" não chama o LLM (spy em `criarCliente` = 0).
-- [ ] **Step 2: Run, fail.**
-- [ ] **Step 3: Implement** a orquestração + faixas de progresso (compositor 5→55,
-  amostra 55→62, crítico 62→85, revisor/build/validação 85→100).
-- [ ] **Step 4: Pass.**
-- [ ] **Step 5: Commit** , `feat(f6): pipeline reescrito (compositor+amostra+critico+revisor) (B4)`.
+**Files:** Create `agent/geracao/critico.ts`; Test `__tests__/critico.test.ts`.
+```ts
+export function promptCritico(intencao: IntencaoCurada, plano: Plano, amostra: AmostraMetrica[]): ChatMessage[];
+export function parseCritico(raw: string, metricas: Metrica[]): { plano: Plano; justificativa: string };
+```
+- Prompt: SÓ juízo semântico (responde à intenção? métrica certa p/ a pergunta?
+  narrativa? falta recorte?), proibido reformatar/checar invariante.
+
+- [ ] **Step 1:** teste: `parseCritico` valida saída com `planoSchema`; rejeita malformado.
+- [ ] **Step 2-4:** falha → implementar → verde.
+- [ ] **Step 5:** commit `feat(f6): critico semantico (B4)`.
+
+### Task B5: Pipeline reescrito (+ tipos, progresso, consumidores, quota, regenerar)
+
+**Files:** Modify `agent/geracao/pipeline.ts`, `progresso.ts`, `types.ts`
+(`GeracaoDeps.resolver`, `FaseGeracao` novas fases, `SaidaGeracao.plano`),
+`journey/state.ts` (`ultimoBlueprint`→`ultimoPlano: Plano`), `api/builder/stream/route.ts`
+(linha ~209 `saida.blueprint`→`saida.plano`), `agent/builder-progress-labels.ts` (labels);
+Test `__tests__/pipeline.test.ts`.
+
+**Interfaces / ordem:**
+`listarMetricas(dominiosPermitidos)` → `promptCompositor`+LLM → `parseCompositor` →
+`resolverAmostra` → `promptCritico`+LLM → `parseCritico` → `revisarPlano` →
+`buildFichaDoPlano` → `validarFichaGerada`. **Gerar já:** `templatePadrao` no lugar das
+2 chamadas LLM (0 token). **Regenerar:** se há `ultimoPlano`, pula o compositor e vai
+direto crítico/revisor com o `ajuste`.
+- `SaidaGeracao` passa a expor `plano` (renomeado de `blueprint`); **atualizar os
+  consumidores vivos** (`state.ts:ultimoBlueprint`→`ultimoPlano`, `stream/route.ts`).
+- Faixas (`progresso.ts`): compositor 5→55, amostra 55→62, crítico 62→85, revisor/build/
+  validação 85→100.
+- **Quota/billing:** `verificarQuota` segue gateando o caminho com LLM; `logUsage`
+  emitido nas 2 chamadas (compositor+crítico) e 0 no gerar-já.
+
+- [ ] **Step 1:** teste com `deps` fake (LLM canned p/ compositor e crítico; `resolver`
+  fake): `pipelineGeracao` devolve `ficha` com KPIs não colidentes e ≤1 Ranking;
+  `logUsage` chamado **2x** no caminho feliz e **0x** no gerar-já (spy); `criarCliente`
+  0x no gerar-já.
+- [ ] **Step 2:** rodar, falha.
+- [ ] **Step 3:** implementar orquestração + renomear `SaidaGeracao.plano` + atualizar
+  `state.ts` e `route.ts` + faixas + regenerar.
+- [ ] **Step 4:** `npx jest pipeline` verde + **`npx tsc --noEmit` no monorepo** (pega o
+  route/state).
+- [ ] **Step 5:** commit `feat(f6): pipeline reescrito (compositor+amostra+critico+revisor) + consumidores (B5)`.
+
+### Task B6: Remoção segura do cérebro antigo
+
+**Files:** Delete `blueprint.ts`, `build.ts`, `curar-blueprint.ts`,
+`ordenar-narrativa.ts` (se órfão) e seus testes; ajustar imports remanescentes.
+- Só depois de B5 (quando nada mais importa os antigos). Não "reexportar" (assinaturas
+  divergem).
+
+- [ ] **Step 1:** `grep -rn "blueprint\\|curar-blueprint\\|geracao/build" src` p/ achar imports vivos.
+- [ ] **Step 2:** remover arquivos + testes órfãos; corrigir imports.
+- [ ] **Step 3:** `npx tsc --noEmit` + suíte builder/geração verde.
+- [ ] **Step 4:** commit `chore(f6): remove cerebro antigo (blueprint/build/curar) (B6)`.
 
 ---
 
-## FASE C , Build + render (seção composta, subtítulo, freshness)
+## FASE C , Render (grupo lado-a-lado, subtítulo, título derivado, freshness)
 
-### Task C1: Plano → BuilderReportEntry (seção composta)
+### Task C1: Renderer , agrupar seções irmãs (área+donut) lado a lado + estados
 
-**Files:**
-- Create: `src/lib/reports/builder/agent/geracao/build-plano.ts`
-- Modify: `src/lib/reports/builder/types.ts` (novo template `TendenciaDistribuicao`)
-- Modify: `src/lib/reports/builder/tools/mutators.ts` (mutator da seção composta)
-- Modify: `src/lib/reports/builder/agent/tool-bridge.ts` (schema do novo mutator)
-- Test: `.../__tests__/build-plano.test.ts`
+**Files:** Modify `report-renderer.tsx` e **`report-view-interactive.tsx`** (caminho do
+relatório salvo/interativo, mapeado na review); Test `report-renderer.test.tsx`.
+**ui-ux-pro-max:** quando 2 seções têm o mesmo `config.grupoId`, layout par (área 2/3 +
+donut 1/3) no desktop, empilhado no mobile; tooltip; cores `colors.ts`. Tratar **estado
+por metade** (uma `vazio`/`erro` não quebra a outra; degrade sem buraco visual).
 
-**Interfaces:**
-- Produces: `export function buildFichaDoPlano(plano: Plano, metricas: Metrica[]): { ficha: BuilderReportEntry; omitidos: string[] };`
-  Cada bloco vira `BuilderSection`. `TendenciaDistribuicao` vira UMA seção com
-  `template:"TendenciaDistribuicao"` e `config:{ metricaSerie, metricaComposicao }`. O
-  título de cada seção é **derivado da métrica** (`metrica.rotulo`), nunca livre.
-- [ ] **Step 1: Failing test** , `buildFichaDoPlano(templatePadrao(...))` produz ficha com
-  N seções, títulos = rótulos das métricas, e a seção de tendência com os 2 binds.
-- [ ] **Step 2: Run, fail.**
-- [ ] **Step 3: Implement** dispatcher por bloco + novo mutator/template.
-- [ ] **Step 4: Pass + `npx tsc --noEmit`.**
-- [ ] **Step 5: Commit** , `feat(f6): build Plano->ficha com seccao composta (C1)`.
+- [ ] **Step 1:** testes: 2 seções com mesmo `grupoId` renderizam lado a lado (testid);
+  metade `vazio` mostra placeholder e a outra metade continua; sem `grupoId` cada seção
+  renderiza solo como hoje.
+- [ ] **Step 2-4:** falha → passo de agrupamento por `grupoId` no map de seções + estados → verde.
+- [ ] **Step 5:** commit `feat(f6): render agrupado area+donut por grupoId + estados (C1)`.
 
-### Task C2: Renderer , branch da seção composta (área+donut)
+### Task C2: Subtítulo do KPI por métrica (plumbing da descrição)
 
-**Files:**
-- Modify: `src/components/reports/builder/report-renderer.tsx`
-- Test: `src/components/reports/builder/__tests__/report-renderer.test.tsx`
+**Files:** Modify `report-renderer.tsx` (KPIRow lê `config.subtitulos[campoKpi]`); Test.
+- A descrição viaja via `config.subtitulos` gravado no build (B1); o renderer passa
+  `subtitle` ao `KpiCard` em vez do `hint` fixo "no período".
 
-**ui-ux-pro-max:** layout par lado a lado (área 2/3 + donut 1/3) no desktop, empilhado
-no mobile; tooltip; cores `colors.ts`; sem travessão em rótulos.
-- [ ] **Step 1: Failing test** , render de uma seção `TendenciaDistribuicao` com dados
-  resolvidos mostra o `InteractiveAreaChart` e o `DonutWithCenter` (queries por testid).
-- [ ] **Step 2: Run, fail.**
-- [ ] **Step 3: Implement** o branch `SecaoView` para o template composto.
-- [ ] **Step 4: Pass.**
-- [ ] **Step 5: Commit** , `feat(f6): render da seccao tendencia+distribuicao (C2)`.
+- [ ] **Step 1:** teste: KPI com `config.subtitulos` renderiza `subtitle` != "no período".
+- [ ] **Step 2-4:** falha → ligar `subtitulos`→`subtitle` → verde.
+- [ ] **Step 5:** commit `feat(f6): subtitulo do KPI por metrica (C2)`.
 
-### Task C3: Subtítulo do KPI por métrica
+### Task C3: Título sempre derivado da métrica (fecha o backdoor do refino)
 
-**Files:**
-- Modify: `src/components/reports/builder/report-renderer.tsx` (KPIRow → passa `subtitle`)
-- Test: ajusta o teste de KPIRow.
+**Files:** Modify `tools/mutators.ts` (`definirTituloSecao` neutralizado/derivado;
+`editarSecao` recomputa título ao trocar métrica), `report-renderer.tsx` (título da
+seção vem da métrica vinculada, não de `config.titulo`; remover `onRenomear` livre);
+Test `mutators.test.ts` + `report-renderer.test.tsx`.
 
-- [ ] **Step 1: Failing test** , KPI com `descricao` da métrica renderiza `subtitle`
-  (ex.: "≈ US$ ...") e não o `hint` fixo "no período".
-- [ ] **Step 2: Run, fail.**
-- [ ] **Step 3: Implement** mapeamento `descricao→subtitle`.
-- [ ] **Step 4: Pass.**
-- [ ] **Step 5: Commit** , `feat(f6): subtitulo do KPI por metrica (C3)`.
+- [ ] **Step 1:** teste: após `editarSecao` trocando a métrica, o título muda para o
+  rótulo da nova métrica; refino não consegue gravar título divergente da métrica.
+- [ ] **Step 2-4:** falha → derivar título sempre da métrica → verde.
+- [ ] **Step 5:** commit `feat(f6): titulo de secao sempre derivado da metrica (C3)`.
 
 ### Task C4: Freshness ("atualizado há Xs")
 
-**Files:**
-- Modify: produtores em `source-registry.ts` (popular `freshness` da última sync do fato)
-- Modify: `report-renderer.tsx` (exibe "atualizado há Xs")
-- Test: `.../__tests__/source-registry.freshness.test.ts`
+**Files:** Modify produtores em `source-registry.ts` (popular `freshness` da última sync
+do fato; fonte: `SyncState`/controle do worker, ou `MAX(updatedAt)` da tabela raw do
+fato), `report-renderer.tsx` (exibe "atualizado há Xs"); Test `source-registry.freshness.test.ts`.
 
-**Interfaces:**
-- Consumes: a fonte de timestamp de sync por fato (investigar `SyncState`/tabela de
-  controle do worker; se não houver por-fato, usar o `updatedAt` máximo da tabela raw
-  correspondente).
-- [ ] **Step 1: Failing test** , produtor de `fato_estoque_saldo` retorna `freshness` não-nulo (Date).
-- [ ] **Step 2: Run, fail.**
-- [ ] **Step 3: Implement** leitura do timestamp + exibição.
-- [ ] **Step 4: Pass.**
-- [ ] **Step 5: Commit** , `feat(f6): freshness por fato exibido no relatorio (C4)`.
+- [ ] **Step 1:** teste: produtor de `fato_estoque_saldo` retorna `freshness` Date não-nulo.
+- [ ] **Step 2-4:** falha → ler timestamp + exibir → verde.
+- [ ] **Step 5:** commit `feat(f6): freshness por fato exibido (C4)`.
 
 ---
 
 ## FASE D , Filtros ao vivo + temporal + drilldown
 
-### Task D1: Re-resolução ao vivo do PREVIEW (sem savedId)
+### Task D1: Re-resolução do PREVIEW sem savedId
 
-**Files:**
-- Create: `src/lib/actions/previsualizar-com-filtros.ts` (ou estende `builder.ts`)
-- Modify: `components/reports/builder/builder-preview.tsx` (usa o novo caminho)
-- Test: `.../__tests__/previsualizar-com-filtros.test.ts`
+**Files:** Create `lib/actions/previsualizar-com-filtros.ts`; Modify `builder-preview.tsx`
+(e `report-view-interactive.tsx` se for o renderizador do preview); Test.
+```ts
+export async function previsualizarComFiltros(entry: BuilderReportEntry, filtros: FiltrosRuntime): Promise<{ dados: Record<string, SecaoResolvida> }>;
+```
+Resolve do `entry` em memória (loop `resolveSecao`), sem `obterRascunho`. Gate admin.
 
-**Interfaces:**
-- Produces: `previsualizarComFiltros(entry: BuilderReportEntry, filtros: FiltrosRuntime): Promise<{ dados: Record<string, SecaoResolvida> }>`
-  Resolve a partir do `entry` em memória (loop `resolveSecao`), sem `obterRascunho`.
-- [ ] **Step 1: Failing test** , dado um `entry` e `filtros` (marca="MATRIX"), retorna
-  `dados` por seção; muda filtro → muda dados (com resolver fake).
-- [ ] **Step 2: Run, fail.**
-- [ ] **Step 3: Implement** a action + gate admin.
-- [ ] **Step 4: Pass.**
-- [ ] **Step 5: Commit** , `feat(f6): re-resolucao ao vivo do preview sem savedId (D1)`.
+- [ ] **Step 1:** teste: muda filtro (marca) → muda `dados` (resolver fake).
+- [ ] **Step 2-4:** falha → action + gate → verde.
+- [ ] **Step 5:** commit `feat(f6): re-resolucao do preview sem savedId (D1)`.
 
-### Task D2: Plumbing de período mensal (só movimento)
+### Task D2: Plumbing de período mensal (só movimento) + gap de recorte
 
-**Files:**
-- Modify: `source-registry.ts` (`FiltrosFonte` ganha `periodoDe?/periodoAte?`; produtor de
-  `fato_estoque_movimento` repassa às queries)
-- Modify: `resolve-source.ts` (`FiltrosRuntime` + `filtrosDaSecao` carregam período; corrige
-  de passagem o gap `armazemId/familiaId`)
-- Modify: `lib/actions/relatorio-filtros.ts` (aceita período)
-- Test: `.../__tests__/resolve-source.periodo.test.ts`
+**Files:** Modify `source-registry.ts` (`FiltrosFonte` ganha `periodoDe?/periodoAte?`;
+produtor de `fato_estoque_movimento` repassa), `resolve-source.ts` (`FiltrosRuntime` +
+`filtrosDaSecao` carregam período; **corrige o gap `armazemId/familiaId`**),
+`lib/actions/relatorio-filtros.ts`; Test `resolve-source.periodo.test.ts`.
+- **Semântica:** o seletor mensal manda `periodoDe = periodoAte = mes` (recorte de 1
+  mês); a query filtra `mes: { gte, lte }` (já existe). Refletir em D3/D4.
 
-**Interfaces:**
-- `FiltrosFonte` e `FiltrosRuntime` ganham `periodoDe?: string; periodoAte?: string` (mês "YYYY-MM").
-- [ ] **Step 1: Failing test** , resolver `fato_estoque_movimento` com `periodoDe/Ate`
-  repassa os args à query (spy); fatos snapshot ignoram período.
-- [ ] **Step 2: Run, fail.**
-- [ ] **Step 3: Implement** o encadeamento.
-- [ ] **Step 4: Pass + `tsc`.**
-- [ ] **Step 5: Commit** , `feat(f6): plumbing de periodo mensal no movimento (D2)`.
+- [ ] **Step 1:** teste: resolver `fato_estoque_movimento` com período repassa às queries
+  (spy); fatos snapshot ignoram período; `armazemId/familiaId` chegam em `filtrosDaSecao`.
+- [ ] **Step 2-4:** falha → encadear → verde + `tsc`.
+- [ ] **Step 5:** commit `feat(f6): periodo mensal no movimento + gap de recorte (D2)`.
 
-### Task D3: Filtros-pílula no relatório (recorte sempre; período só temporal)
+### Task D3: Filtros-pílula do relatório (recorte sempre; período condicional)
 
-**Files:**
-- Create: `components/reports/builder/report-filters.tsx` (pílulas de recorte + período mensal condicional)
-- Modify: `report-renderer.tsx`/`builder-preview.tsx` (monta os filtros do relatório; remove a barra fixa)
-- Test: `.../__tests__/report-filters.test.tsx`
+**Files:** Create `components/reports/builder/report-filters.tsx`; Modify
+`report-renderer.tsx`/`report-view-interactive.tsx`/`builder-preview.tsx` (monta os
+filtros; **remove a barra fixa antiga**); Test `report-filters.test.tsx`.
+**ui-ux-pro-max:** pílulas não-fixas; ativo `bg-primary`; período mensal só se há bloco
+temporal (LineChart presente); recorte pelas dimensões presentes.
 
-**ui-ux-pro-max:** pílulas não-fixas (rolam junto), ativo = `bg-primary`; período mensal
-só aparece se o relatório tem bloco temporal; recorte por dimensões presentes.
-- [ ] **Step 1: Failing test** , relatório só-snapshot NÃO mostra pílula de período;
-  relatório com bloco temporal mostra; clicar recorte chama `onFiltro`.
-- [ ] **Step 2: Run, fail.**
-- [ ] **Step 3: Implement** + remover a barra de filtro fixa antiga.
-- [ ] **Step 4: Pass.**
-- [ ] **Step 5: Commit** , `feat(f6): filtros-pilula do relatorio (recorte+periodo condicional) (D3)`.
+- [ ] **Step 1:** teste: relatório só-snapshot NÃO mostra pílula de período; com bloco
+  temporal mostra; clicar recorte chama `onFiltro`.
+- [ ] **Step 2-4:** falha → implementar + remover barra fixa → verde.
+- [ ] **Step 5:** commit `feat(f6): filtros-pilula do relatorio (D3)`.
 
 ### Task D4: Navegador mensal condicional (≥4 pontos)
 
-**Files:**
-- Create: `components/reports/builder/month-navigator.tsx` (seta mês, granularidade mensal)
-- Modify: `report-renderer.tsx` (liga no bloco temporal; só com ≥4 pontos)
-- Test: `.../__tests__/month-navigator.test.tsx`
+**Files:** Create `components/reports/builder/month-navigator.tsx`; Modify
+`report-renderer.tsx` (liga no LineChart do grupo; só com ≥4 pontos); Test.
+- `<4` pontos: navegador não aparece (degrade). `periodoDe=periodoAte=mes` ao navegar.
 
-- [ ] **Step 1: Failing test** , série com <4 pontos: navegador não aparece (degrada);
-  ≥4: setas mudam o mês e disparam `onMes`.
-- [ ] **Step 2: Run, fail.**
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Pass.**
-- [ ] **Step 5: Commit** , `feat(f6): navegador mensal condicional no bloco temporal (D4)`.
+- [ ] **Step 1:** teste: série `<4` pontos não mostra navegador; `≥4` setas disparam `onMes`.
+- [ ] **Step 2-4:** falha → implementar → verde.
+- [ ] **Step 5:** commit `feat(f6): navegador mensal condicional (D4)`.
 
 ### Task D5: Drilldown inline no ReportDataTable
 
-**Files:**
-- Modify: `components/reports/builder/report-data-table.tsx` (expansão de linha)
-- Modify: produtor de tabela (preservar `detalhe` por linha quando houver)
-- Test: `.../__tests__/report-data-table.test.tsx`
+**Files:** Modify `report-data-table.tsx` (expansão de linha, padrão `expandedRowId` do
+Consumo) + produtor de tabela (preservar `detalhe` por linha quando houver); Test.
+> Se o E2E (F1) mostrar produtor sem detalhe por linha viável, rebaixar onda 1 p/ tabela
+> sem drilldown (registrar no STATUS).
 
-> Se o E2E mostrar que o produtor não tem detalhe por linha viável, rebaixar onda 1
-> para tabela sem drilldown (decisão registrada no STATUS).
-- [ ] **Step 1: Failing test** , linha com `detalhe` expande e mostra sub-conteúdo; sem
-  `detalhe`, não há chevron.
-- [ ] **Step 2: Run, fail.**
-- [ ] **Step 3: Implement** estado `expandedRowId` no componente (padrão do Consumo).
-- [ ] **Step 4: Pass.**
-- [ ] **Step 5: Commit** , `feat(f6): drilldown inline na tabela do relatorio (D5)`.
+- [ ] **Step 1:** teste: linha com `detalhe` expande; sem `detalhe`, sem chevron.
+- [ ] **Step 2-4:** falha → estado de expansão → verde.
+- [ ] **Step 5:** commit `feat(f6): drilldown inline na tabela (D5)`.
 
 ---
 
-## FASE E , Entrevista convergente + canvas limpo
+## FASE E , Entrevista convergente + canvas
 
-### Task E1: Entrevista convergente + "gerar já" determinístico + reconciliar firmeza
+### Task E1a: Prompt da jornada enxuto + remover "firmeza contra pressa"
 
-**Files:**
-- Modify: `src/lib/reports/builder/agent/prompt-jornada.ts` (mensagens curtas; ≤3
-  perguntas; remove "firmeza contra pressa"; libera "gerar já")
-- Modify: `journey/intencao.ts` + gate (gate: domínio detectado ⇒ Gerar liberado via
-  template determinístico; entrevista vira refino)
-- Modify: `api/builder/stream/route.ts` (rota "gerar já" usa `templatePadrao`, 0 LLM)
-- Test: `.../__tests__/journey-gate.test.ts`
+**Files:** Modify `agent/prompt-jornada.ts`; Test `prompt-jornada.test.ts` (asserts de conteúdo).
+- ≤3 perguntas de verdade; mensagens curtas; remover a seção "firmeza contra pressa"
+  (`prompt-jornada.ts:34`).
 
-- [ ] **Step 1: Failing test** , com domínio detectado e 0 perguntas respondidas, o gate
-  fica elegível (Gerar liberado); "gerar já" produz ficha via `templatePadrao` sem
-  chamar o LLM.
-- [ ] **Step 2: Run, fail.**
-- [ ] **Step 3: Implement** novo gate + prompt enxuto + rota determinística.
-- [ ] **Step 4: Pass.**
-- [ ] **Step 5: Commit** , `feat(f6): entrevista convergente + gerar-ja deterministico (E1)`.
+- [ ] **Step 1:** teste: o system prompt NÃO contém o texto de "firmeza contra pressa" e
+  instrui ≤3 perguntas.
+- [ ] **Step 2-4:** falha → editar prompt → verde.
+- [ ] **Step 5:** commit `feat(f6): jornada enxuta, sem firmeza-contra-pressa (E1a)`.
+
+### Task E1b: Gate por domínio detectado (libera "gerar já")
+
+**Files:** Modify `journey/state.ts` (`podeOferecerGeracao`: domínio detectado ⇒
+elegível), `journey/intencao.ts`; **atualizar** `route.test.ts`, `journey/state.test.ts`,
+`journey/roteiro.test.ts` (que asseguram o gate antigo); Test.
+
+- [ ] **Step 1:** ajustar os 3 testes existentes para o novo gate + novo caso (domínio
+  detectado, 0 perguntas → elegível).
+- [ ] **Step 2-4:** falha → mudar o gate → verde (os 3 + o novo).
+- [ ] **Step 5:** commit `feat(f6): gate por dominio detectado (E1b)`.
+
+### Task E1c: Rota "gerar já" determinística
+
+**Files:** Modify `api/builder/stream/route.ts` (ação "gerar já" usa `templatePadrao`,
+0 LLM, sem `verificarQuota` de LLM); Test `route.test.ts`.
+
+- [ ] **Step 1:** teste: "gerar já" produz ficha via `templatePadrao` sem chamar o LLM (spy 0).
+- [ ] **Step 2-4:** falha → rota determinística → verde.
+- [ ] **Step 5:** commit `feat(f6): rota gerar-ja deterministica (E1c)`.
 
 ### Task E2: Limpeza do canvas/preview
 
-**Files:**
-- Modify: `components/reports/builder/builder-preview.tsx` (remove pan + animações de mão;
-  mantém zoom + rolagem vertical)
-- Modify: `components/reports/builder/builder-workspace.tsx` (botão ampliar = esconde a
-  conversa; X volta)
-- Test: `.../__tests__/builder-preview.test.tsx`
+**Files:** Modify `builder-preview.tsx` (remove pan + animações de mão; mantém zoom +
+rolagem vertical), `builder-workspace.tsx` (botão ampliar = esconde a conversa; X volta);
+Test `builder-preview.test.tsx`.
+**ui-ux-pro-max:** zoom por botão; rolagem vertical natural; "ampliar" expande sobre a
+coluna da conversa (estado, não modal); `prefers-reduced-motion`.
 
-**ui-ux-pro-max:** zoom com botão/atalho; rolagem vertical natural; "ampliar" expande o
-preview sobre a coluna da conversa (estado, não modal); `prefers-reduced-motion`.
-- [ ] **Step 1: Failing test** , não há handlers de pan; clicar "ampliar" seta o estado
-  que esconde a conversa; X reseta.
-- [ ] **Step 2: Run, fail.**
-- [ ] **Step 3: Implement** remoção do pan/animações + toggle ampliar/esconde.
-- [ ] **Step 4: Pass.**
-- [ ] **Step 5: Commit** , `feat(f6): canvas limpo (zoom+rolagem+ampliar-esconde-conversa) (E2)`.
+- [ ] **Step 1:** teste: sem handlers de pan; "ampliar" seta o estado que esconde a
+  conversa; X reseta.
+- [ ] **Step 2-4:** falha → remover pan/animações + toggle → verde.
+- [ ] **Step 5:** commit `feat(f6): canvas limpo (E2)`.
 
 ---
 
 ## FASE F , Verificação contra o dado real
 
-### Task F1: E2E real + latência + régua visual
+### Task F1: E2E real (semente determinística) + latência + régua visual
 
-**Files:**
-- Create: `scripts/f6-e2e-geracao.ts` (semeia intenções, gera, valida invariantes no
-  resultado, mede latência)
-- Doc: atualiza `STATUS.md` + `docs/agents/HISTORY.md`
+**Files:** Create `scripts/f6-e2e-geracao.ts`; Doc: `STATUS.md` + `docs/agents/HISTORY.md`.
+- **Semente determinística:** montar `IntencaoCurada` fixa em código (sem LLM de
+  entrevista) para várias intenções de estoque (panorama, negativos, por marca,
+  movimento) + o "gerar já". O caminho com 2 LLM não é determinístico; asseverar as
+  **invariantes no resultado** (KPIs sem valor colidente, ≤1 ranking, título↔métrica),
+  não o texto.
+- **Fallback temporal:** se `fato_estoque_movimento` tiver `<4` meses, validar o
+  **degrade** (sem par temporal), não o par.
 
-- [ ] **Step 1:** Rebuildar containers afetados (mcp/app/worker conforme o mapa do
-  CLAUDE.md §2.1) e `npm run dev:fresh`.
-- [ ] **Step 2:** Rodar o script E2E com várias intenções reais de estoque (panorama,
-  negativos, por marca, movimento) e o "gerar já"; conferir no resultado: KPIs sem valor
-  colidente, ≤1 ranking, títulos batendo com a métrica, filtros de recorte mudando os
-  dados, paginação/drilldown, e nada de Frankenstein.
-- [ ] **Step 3:** Passe visual lado a lado com o Consumo (na UI `/relatorios-2/construtor`):
-  KPIs, ranking, tabela, e par temporal quando há série; medir latência (~≤25s).
-- [ ] **Step 4:** Registrar evidências e ajustar reasoning se latência passar.
-- [ ] **Step 5: Commit** , `test(f6): E2E real do gerador + evidencias (F1)`.
+- [ ] **Step 1:** rebuildar containers afetados (mapa §2.1 do CLAUDE.md) + `npm run dev:fresh`; popular fatos.
+- [ ] **Step 2:** rodar o E2E com as intenções semeadas; conferir invariantes no
+  resultado + filtros de recorte ao vivo + paginação/drilldown.
+- [ ] **Step 3:** passe visual lado a lado com o Consumo (`/relatorios-2/construtor`);
+  medir latência (~≤25s).
+- [ ] **Step 4:** registrar evidências; ajustar reasoning se passar.
+- [ ] **Step 5:** commit `test(f6): E2E real do gerador + evidencias (F1)`.
 
 ---
 
-## Self-review (cobertura da spec)
+## Self-review (cobertura)
 
-- §3.1 catálogo derivado/filtrado → A1, A6. §3.2 gramática+invariantes → A2, A3, A5.
-  §3.3 compositor+amostra+crítico → B1, B2, A4, B4. §3.4 revisor+refino → A3, A5 (refino
-  no E1/stream). §3.5 render interativo → C2, C3, C4, D1, D3, D4, D5. §3.6 entrevista+gerar
-  já → B3, E1. §3.7 canvas → E2. §6 pronto → F1. §4 net-new → C1 (composta), D2 (temporal),
-  D1 (preview), D5 (drilldown). §11 todas as correções têm task.
-- Pendência de design a confirmar no E2E: drilldown viável (D5) e ≥4 pontos no movimento
-  (D4) , ambos com degrade especificado.
-- Sem placeholders: cada task tem arquivos, interfaces e testes concretos. Tipos
-  consistentes entre tasks (`Plano`, `Metrica`, `AmostraMetrica`, `FiltrosRuntime`).
+- Spec §3.1 → A2,A7. §3.2 → A3,A5,A6. §3.3 → B3,B4,A4,B5. §3.4 (revisor+refino) → A5,A6,C3.
+  §3.5 → C1,C2,C4,D1,D3,D4,D5. §3.6 → A1,B2,E1a,E1b,E1c. §3.7 → E2. §6 → F1.
+- Net-new corretamente classificado: seção composta dissolvida em 2 irmãs (B1) + render
+  agrupado (C1); temporal (D2); preview sem savedId (D1); drilldown (D5).
+- Ordem por dependência explícita (grafo no topo): build-plano (B1) antes do pipeline (B5).
+- Consumidores vivos cobertos (B5: state.ts, route.ts; tsc monorepo). Limpeza (B6).
+- Tipos consistentes entre tasks: `IntencaoCurada`, `Metrica`(+`campoKpi`), `Plano`,
+  `AmostraMetrica`(`escalar` por `campoKpi`), `FiltrosRuntime`(+período), `grupoId`/
+  `subtitulos` em `config`.
 
-> **Status:** plano v1. Próximo: 2 reviews adversariais do plano (granularidade,
-> integração, testabilidade, ordem de dependência) → plano v3 → execução TDD inline.
+## §13 , Correções da review do plano (v1 → v3, rastreio)
+
+- fato→métrica 1:N + `campoKpi`; A4 escalar por `campoKpi` (não "primeiro numérico"). [A-A1, A-A4]
+- `dimensoes` derivada de `campos.agregacaoCategorica/tabela` (não `contrato.dimensoes`). [A-A1]
+- Seção composta **dissolvida em 2 seções irmãs com `grupoId`** (sem novo ReportTemplate,
+  sem dupla-resolução, sem tocar compat/component-catalog/viabilidade/F3). [A-C1, B-C1]
+- Ordem corrigida: B1 build-plano antes de B5 pipeline. [B-B4]
+- Rename `SaidaGeracao.blueprint`→`plano` cobre `state.ts`/`route.ts`/`types.ts`; tsc monorepo. [B-B4]
+- Backdoor do título no refino vira task C3. [A-A3]
+- RBAC: `listarMetricas(dominiosPermitidos)` puro; chamador resolve via `getMyDomains`. [A-A6]
+- C2 subtítulo: descrição viaja via `config.subtitulos` no build. [A-C3]
+- B5: `GeracaoDeps.resolver` + novas `FaseGeracao` + `builder-progress-labels`. [A-B4]
+- E1 quebrado em E1a/E1b/E1c; E1b atualiza os 3 testes do gate vivo. [A-E1, B-E1]
+- B3 consome `IntencaoCurada` (não pilha de seções). [A-B1]
+- Domínio: onda 1 hardcoda `"estoque"` (declarado em A1). [B-GERAL]
+- B6 remoção segura do cérebro antigo + testes órfãos. [B-B1]
+- C1 cobre estados vazio/erro por metade da seção composta. [B-C2]
+- B5 regenerar reusa `ultimoPlano`. [B-B4]
+- `report-view-interactive.tsx` incluído em C1/D1/D3. [B-D3]
+- `filtrosIniciais`→`parametros` no B1; "sem migration" declarado. [B-C1]
+- B5 asserta `logUsage` 2x/0x + quota. [B-B4]
+- F1 semente determinística + fallback `<4` pontos. [B-F1]
+- Spec §9 corrigida: `top_movimentados` é snapshot/ranking, não temporal. [A-A1 baixo]
+- Seletor mensal = `periodoDe=periodoAte=mes`. [A-D4 baixo]
+
+> **Status:** plano v3 (2 reviews aplicadas). Pronto para execução TDD inline (Opus),
+> começando pela Fase A. F6 não sobe sem aprovação.
