@@ -29,7 +29,12 @@
       (pedidos.ts: B2/B4/B6) + queryContasAReceber (B3). Tela /diretoria/pedidos:
       KPIs (pendentes 608, a entregar R$146M, atrasadas 109, a receber) + mapa de
       demandas por UF + tabela pendentes. E2E ok. Falta B5 drill-in, B7 maquinas, B8.
-- [~] Onda 3 , Estoque & Compras (A) , EM ANDAMENTO (reusar queries de estoque).
+- [x] Onda 3 , Estoque & Compras (A) , SUBSTANCIALMENTE COMPLETA: queries proprias
+      (estoque.ts: A4 indicadores, A2 por local, A5 familia/marca, A8 compras por
+      fornecedor). Tela /diretoria/estoque. E2E ok (estoque R$49M, 28829 itens,
+      1894 produtos, 68 locais; JOHNSON domina). Falta A3 catalogo, A6 seriais
+      (fato_serial), A7 compras ativas (fato_compra) , gaps de dado (builders).
+- [~] Onda 4 , Visao geral executiva , EM ANDAMENTO.
 - [~] (detalhe Onda 1 abaixo)
   - queries em `src/lib/diretoria/queries/vendas.ts` (TDD, mock prisma):
     - [x] C10 queryFormasPagamento (fato_pedido_parcela.formaPagamentoNome)
