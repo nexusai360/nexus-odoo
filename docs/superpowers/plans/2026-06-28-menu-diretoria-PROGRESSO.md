@@ -59,16 +59,16 @@
       "Seriais em estoque" na tela /diretoria/estoque. tsc 0, pushed.
       NOTA: muitos seriais tem valor_custo=0 e data_compra null no raw (dado do
       Odoo); a tabela mostra o que existe.
-- [ ] A7 COMPRAS ATIVAS , PROXIMO (nao iniciado). Construir fato_compra de
-      raw_pedido_documento: filtrar COMPRAS (ehCompra/operacao de compra) NAO
-      recebidas; campos data_prevista (contagem regressiva via diasRestantes de
-      cores.ts), comprador_id, participante=fornecedor, vr_produtos/vr_pago,
-      data_orcamento. Passos: model FatoCompra (SQL cirurgico, NUNCA db push) ->
-      builder fato-compra.ts (padrao chunks+select data, igual fato-serial) ->
-      registrar no registry -> rodar contra dado real (NODE_OPTIONS=--max-old-space
-      -size=8192 npx tsx) -> queryComprasAtivas em estoque.ts (com contagem
-      regressiva/atraso) -> secao "Compras ativas" na tela /diretoria/estoque ->
-      tsc+commit+push. VER campos reais do raw_pedido_documento.data antes (node pg).
+- [x] A7 COMPRAS ATIVAS , COMPLETO (commit fc1ec74d, pushed). model FatoCompra
+      (SQL cirurgico) de raw_pedido_documento onde tipo="compra"; builder
+      fato-compra.ts (chunks+select data) + registry; queryComprasAtivas em
+      estoque.ts; secao "Compras ativas" na tela /diretoria/estoque (3 KPIs +
+      tabela com pilula de prazo). E2E dado real: 24 compras ativas, R$14,35M.
+      ACHADO IMPORTANTE: compras = tipo="compra" (so 24 reg); "nao recebida" =
+      estoque_finalizado=false; "cancelada" = finaliza_pedido_cancelando=true.
+      data_prevista vem SEMPRE false no Odoo (sem previsao nas OCs) -> contagem
+      regressiva fica null/"sem previsao" (a logica diasRestantes/statusPrazo ja
+      esta wired p/ quando houver data). fornecedor = participante_id. 64 testes.
 - Incrementos menores ainda pendentes (baixa prioridade): B7 %reservado (sem fonte),
   A3 catalogo, B5 drill-in, agenda colaboradores/anexos.
 - App rodando em localhost:3000 (agente up / pid em /tmp/diretoria-dev.log).
