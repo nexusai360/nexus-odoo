@@ -13,6 +13,7 @@ const REPORT_TEMPLATES = [
   "PieChart",
   "Funnel",
   "Waterfall",
+  "Combo",
 ] as const;
 
 const FILTER_TIPOS = ["armazem", "familia", "marca", "sentido", "faixaDias"] as const;

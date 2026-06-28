@@ -31,4 +31,10 @@ describe("component-catalog", () => {
     expect(c).toBeDefined();
     expect(c!.shapeDerivadoExigido).toBe("cascata");
   });
+
+  it("descreverComponente(Combo) exige serieTemporal (mesmo shape da linha)", () => {
+    const c = descreverComponente("Combo");
+    expect(c).toBeDefined();
+    expect(c!.shapeDerivadoExigido).toBe("serieTemporal");
+  });
 });

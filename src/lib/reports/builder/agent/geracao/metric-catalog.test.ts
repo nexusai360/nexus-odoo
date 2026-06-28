@@ -69,6 +69,13 @@ describe("listarMetricas , catalogo derivado do registry", () => {
     expect(ms.find((m) => m.id === "comercial.por_etapa")?.chartPreferido).toBe("Funnel");
   });
 
+  it("financeiro.fluxo_caixa prefere o Combo (realizado barra + previsto linha)", () => {
+    const ms = listarMetricas({ dominiosPermitidos: ["financeiro"] });
+    const fluxo = ms.find((m) => m.id === "financeiro.fluxo_caixa");
+    expect(fluxo?.chartPreferido).toBe("Combo");
+    expect(fluxo?.chartsValidos).toEqual(expect.arrayContaining(["LineChart", "Combo"]));
+  });
+
   it("financeiro.dre e uma metrica cascata que prefere o Waterfall", () => {
     const ms = listarMetricas({ dominiosPermitidos: ["financeiro"] });
     const dre = ms.find((m) => m.id === "financeiro.dre");

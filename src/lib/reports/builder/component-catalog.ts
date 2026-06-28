@@ -107,6 +107,20 @@ export const COMPONENT_CATALOG: ComponentEntry[] = [
     tokensVisuais: { sobe: "chart.positive", desce: "chart.negative", total: "chart.bar" },
   },
   {
+    chave: "Combo",
+    nome: "Combinado (barra + linha)",
+    paraQueServe:
+      "Combinar uma serie como barras (o realizado) com outra(s) como linha(s) (previsto/meta) no mesmo eixo de tempo.",
+    quandoUsar:
+      "Serie temporal com 2+ medidas onde uma e o realizado e outra e referencia (ex.: fluxo de caixa realizado x previsto).",
+    quandoNaoUsar:
+      "Uma unica serie (use linha) ou comparacao por categoria sem tempo (use barra).",
+    shapeDerivadoExigido: "serieTemporal",
+    parametros: [{ chave: "titulo", descricao: "Titulo curto opcional do grafico." }],
+    interacao: ["tooltip", "legenda", "barra_mais_linha"],
+    tokensVisuais: { barra: "chart.bar", linha: "chart.line" },
+  },
+  {
     chave: "DataTable",
     nome: "Tabela de dados",
     paraQueServe:

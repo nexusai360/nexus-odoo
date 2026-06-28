@@ -47,3 +47,10 @@ export {
   type BarraCascata,
   type InteractiveWaterfallChartProps,
 } from "./waterfall-chart";
+export {
+  InteractiveComboChart,
+  splitComboSeries,
+  type ComboChartData,
+  type ComboChartSeries,
+  type InteractiveComboChartProps,
+} from "./combo-chart";

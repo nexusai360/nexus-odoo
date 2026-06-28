@@ -49,6 +49,22 @@ describe("buildFichaDoPlano", () => {
     expect(ficha.secoes).toHaveLength(5);
   });
 
+  it("TendenciaDistribuicao honra chartPreferido Combo na metade temporal", () => {
+    const fin = listarMetricas({ dominiosPermitidos: ["financeiro"] });
+    const planoFluxo: Plano = {
+      titulo: "Fluxo de caixa",
+      objetivo: "realizado vs previsto e onde esta o dinheiro",
+      dominio: "financeiro",
+      blocos: [
+        { tipo: "TendenciaDistribuicao", metricaSerie: "financeiro.fluxo_caixa", metricaComposicao: "financeiro.saldo_por_banco" },
+      ],
+      filtrosIniciais: {},
+    };
+    const { ficha } = buildFichaDoPlano(planoFluxo, fin);
+    const temporal = ficha.secoes.find((s) => s.shapeDerivado === "serieTemporal");
+    expect(temporal?.template).toBe("Combo");
+  });
+
   it("bloco Cascata vira secao Waterfall com shape cascata", () => {
     const fin = listarMetricas({ dominiosPermitidos: ["financeiro"] });
     const planoDre: Plano = {

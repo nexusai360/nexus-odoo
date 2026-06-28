@@ -197,7 +197,7 @@ const CURADORIA: Record<string, Curada> = {
     descricao: "Realizado e previsto por mes",
     pergunta: "Como o caixa evolui no tempo?",
     formato: "brl",
-    chartPreferido: "LineChart",
+    chartPreferido: "Combo",
   },
   "fato_financeiro_resultado|kpis|totalReceita": {
     id: "financeiro.receita",
@@ -377,7 +377,7 @@ const TEMPLATES_POR_SHAPE: Record<ShapeDerivado, ReportTemplate[]> = {
   kpis: ["KPIRow"],
   tabela: ["DataTable"],
   agregacaoCategorica: ["BarChart", "PieChart", "Funnel"],
-  serieTemporal: ["LineChart"],
+  serieTemporal: ["LineChart", "Combo"],
   cascata: ["Waterfall"],
 };
 

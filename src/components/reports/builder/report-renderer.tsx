@@ -36,12 +36,15 @@ import {
   DonutWithCenter,
   InteractiveFunnelChart,
   InteractiveWaterfallChart,
+  InteractiveComboChart,
   type AreaChartData,
   type BarChartData,
   type PieChartData,
   type FunnelDatum,
   type PassoCascata,
   type PassoCascataTipo,
+  type ComboChartData,
+  type ComboChartSeries,
 } from "@/components/charts/interactive";
 import {
   CHART_COLORS,
@@ -86,6 +89,8 @@ function metaTemplate(template: string): { Icon: LucideIcon; titulo: string } {
       return { Icon: PieIcon, titulo: "Distribuicao" };
     case "LineChart":
       return { Icon: TrendingUp, titulo: "Evolucao no tempo" };
+    case "Combo":
+      return { Icon: TrendingUp, titulo: "Realizado x previsto" };
     case "Funnel":
       return { Icon: FunnelIcon, titulo: "Funil por etapa" };
     case "Waterfall":
@@ -133,7 +138,7 @@ export interface EditavelFicha {
 }
 
 /** Templates de grafico que aceitam escolha de cor pela UI. */
-const TEMPLATES_COM_COR = new Set(["BarChart", "PieChart", "LineChart", "Funnel"]);
+const TEMPLATES_COM_COR = new Set(["BarChart", "PieChart", "LineChart", "Funnel", "Combo"]);
 
 /** Cor atual da secao (config.cor), normalizada para string|undefined. */
 function corDaSecao(secao: BuilderSection): string | undefined {
@@ -472,6 +477,32 @@ function SecaoView({
           showLegend={series.length > 1}
           formatValue={formatadorValor(formatoSerie)}
           yAxisCurrency={formatoSerie === "moeda" ? "BRL" : undefined}
+          emptyMessage="Sem dados para esta secao."
+        />
+      </CardSecao>
+    );
+  }
+
+  // Combo , barra (1a serie) + linha (demais) sobre serie temporal.
+  if (secao.template === "Combo") {
+    const data = (resolvida.dado as Record<string, unknown>[]) ?? [];
+    const campos = resolvida.campos ?? [];
+    const xCampo = campos.find((c) => c.tipo === "texto") ?? campos[0];
+    const numericos = campos.filter((c) => c.tipo === "numero" || c.tipo === "moeda");
+    const paleta = paletaApartirDe(corDaSecao(secao));
+    const series: ComboChartSeries[] = numericos.map((c, i) => ({ key: c.key, label: c.label, color: paleta[i % paleta.length] }));
+    const comboData: ComboChartData[] = data.map((d) => {
+      const row: ComboChartData = { name: String(d[xCampo?.key ?? "mes"] ?? "") };
+      for (const c of numericos) row[c.key] = Number(d[c.key] ?? 0);
+      return row;
+    });
+    const formatoSerie = numericos[0]?.tipo;
+    return (
+      <CardSecao Icon={Icon} titulo={titulo} {...editProps}>
+        <InteractiveComboChart
+          data={comboData}
+          series={series}
+          formatValue={formatadorValor(formatoSerie)}
           emptyMessage="Sem dados para esta secao."
         />
       </CardSecao>

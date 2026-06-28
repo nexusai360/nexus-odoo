@@ -24,6 +24,12 @@ function templateCategorico(preferido: ReportTemplate): ReportTemplate {
   return TEMPLATES_CATEGORICOS.includes(preferido) ? preferido : "BarChart";
 }
 
+/** Templates que consomem serieTemporal; a metade temporal honra o preferido. */
+const TEMPLATES_TEMPORAIS: ReportTemplate[] = ["LineChart", "Combo"];
+function templateTemporal(preferido: ReportTemplate): ReportTemplate {
+  return TEMPLATES_TEMPORAIS.includes(preferido) ? preferido : "LineChart";
+}
+
 export function buildFichaDoPlano(
   plano: Plano,
   metricas: Metrica[],
@@ -96,7 +102,7 @@ function especificarBloco(
       const grupoId = novoGrupoId();
       return [
         {
-          template: "LineChart",
+          template: templateTemporal(serie.chartPreferido),
           fato: serie.fato,
           shapeDerivado: "serieTemporal",
           config: { titulo: serie.rotulo, grupoId, papelGrupo: "tendencia" },

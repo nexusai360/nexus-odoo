@@ -186,6 +186,34 @@ describe("ReportRenderer", () => {
     expect(screen.getByLabelText(/cascata/i)).toBeInTheDocument();
   });
 
+  it("renderiza um Combo (serie temporal: realizado barra + previsto linha)", () => {
+    const comCombo: BuilderReportEntry = {
+      ...entry,
+      titulo: "Fluxo",
+      dominio: "financeiro",
+      secoes: [
+        { id: "cmb", template: "Combo", fato: "fato_financeiro_movimento", shapeDerivado: "serieTemporal", config: { titulo: "Realizado x Previsto" }, filtros: [] },
+      ],
+    };
+    const dados: Record<string, SecaoResolvida> = {
+      cmb: {
+        estado: "ok",
+        dado: [
+          { mes: "2026-01", realizado: 100, previsto: 120 },
+          { mes: "2026-02", realizado: 130, previsto: 140 },
+        ],
+        campos: [
+          { key: "mes", label: "Mes", tipo: "texto" },
+          { key: "realizado", label: "Realizado", tipo: "moeda" },
+          { key: "previsto", label: "Previsto", tipo: "moeda" },
+        ],
+      },
+    };
+    render(<ReportRenderer entry={comCombo} dados={dados} />);
+    expect(screen.getByText("Realizado x Previsto")).toBeInTheDocument();
+    expect(screen.getByLabelText(/combinado/i)).toBeInTheDocument();
+  });
+
   it("KPIRow mostra o subtitulo por metrica (config.subtitulos)", () => {
     const comSub: BuilderReportEntry = {
       ...entry,

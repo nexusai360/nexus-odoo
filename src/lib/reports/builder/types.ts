@@ -119,4 +119,5 @@ export const TEMPLATES_ONDA1: ReportTemplate[] = [
   "DataTable",
   "Funnel",
   "Waterfall",
+  "Combo",
 ];
