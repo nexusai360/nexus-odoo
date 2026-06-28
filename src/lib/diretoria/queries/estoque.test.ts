@@ -3,6 +3,7 @@ import {
   queryEstoquePorFamilia,
   queryComprasPorFornecedor,
   queryComprasAtivas,
+  queryCatalogoEstoque,
 } from "./estoque";
 
 describe("queryIndicadoresEstoque (A4)", () => {
@@ -59,6 +60,49 @@ describe("queryComprasPorFornecedor (A8)", () => {
     expect(r.valorGeral).toBe(4500);
     expect(r.linhas[0]).toEqual({ fornecedor: "Fornecedor Y", notas: 1, valorTotal: 3000 });
     expect(r.linhas[1]).toEqual({ fornecedor: "Fornecedor X", notas: 2, valorTotal: 1500 });
+  });
+});
+
+describe("queryCatalogoEstoque (A3)", () => {
+  it("agrega por produto: soma qtd/valor e conta locais distintos", async () => {
+    const prisma = {
+      fatoEstoqueSaldo: {
+        findMany: jest.fn().mockResolvedValue([
+          { produtoId: 1, produtoNome: "Esteira X", familiaNome: "Cardio", marcaNome: "Matrix", localId: 10, quantidade: 2, vrSaldo: 1000 },
+          { produtoId: 1, produtoNome: "Esteira X", familiaNome: "Cardio", marcaNome: "Matrix", localId: 20, quantidade: 3, vrSaldo: 1500 },
+          { produtoId: 2, produtoNome: "Bike Y", familiaNome: "Cardio", marcaNome: "Johnson", localId: 10, quantidade: 1, vrSaldo: 800 },
+        ]),
+      },
+    } as unknown as Parameters<typeof queryCatalogoEstoque>[0];
+    const r = await queryCatalogoEstoque(prisma);
+    expect(r.total).toBe(2);
+    expect(r.valorGeral).toBe(3300);
+    expect(r.linhas[0]).toEqual({
+      produto: "Esteira X",
+      familia: "Cardio",
+      marca: "Matrix",
+      quantidade: 5,
+      valorTotal: 2500,
+      locais: 2,
+    });
+    expect(r.linhas[1].produto).toBe("Bike Y");
+    expect(r.linhas[1].locais).toBe(1);
+  });
+
+  it("agrupa por nome quando produtoId é null", async () => {
+    const prisma = {
+      fatoEstoqueSaldo: {
+        findMany: jest.fn().mockResolvedValue([
+          { produtoId: null, produtoNome: "Avulso", familiaNome: null, marcaNome: null, localId: null, quantidade: 1, vrSaldo: 50 },
+          { produtoId: null, produtoNome: "Avulso", familiaNome: null, marcaNome: null, localId: null, quantidade: 2, vrSaldo: 100 },
+        ]),
+      },
+    } as unknown as Parameters<typeof queryCatalogoEstoque>[0];
+    const r = await queryCatalogoEstoque(prisma);
+    expect(r.total).toBe(1);
+    expect(r.linhas[0].quantidade).toBe(3);
+    expect(r.linhas[0].valorTotal).toBe(150);
+    expect(r.linhas[0].locais).toBe(0);
   });
 });
 

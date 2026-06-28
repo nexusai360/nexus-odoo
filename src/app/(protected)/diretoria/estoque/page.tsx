@@ -8,6 +8,7 @@ import {
   queryIndicadoresEstoque,
   queryEstoquePorLocal,
   queryEstoquePorFamilia,
+  queryCatalogoEstoque,
   queryComprasPorFornecedor,
   queryComprasAtivas,
   querySeriais,
@@ -90,14 +91,16 @@ function TabelaValor({
 export default async function DiretoriaEstoquePage() {
   const user = await requireDiretoriaArea("estoque");
 
-  const [indicadores, porLocal, porFamilia, compras, comprasAtivas, seriais] = await Promise.all([
-    queryIndicadoresEstoque(prisma),
-    queryEstoquePorLocal(prisma),
-    queryEstoquePorFamilia(prisma),
-    queryComprasPorFornecedor(prisma, {}),
-    queryComprasAtivas(prisma, new Date(), 50),
-    querySeriais(prisma, new Date(), 50),
-  ]);
+  const [indicadores, porLocal, porFamilia, catalogo, compras, comprasAtivas, seriais] =
+    await Promise.all([
+      queryIndicadoresEstoque(prisma),
+      queryEstoquePorLocal(prisma),
+      queryEstoquePorFamilia(prisma),
+      queryCatalogoEstoque(prisma, 100),
+      queryComprasPorFornecedor(prisma, {}),
+      queryComprasAtivas(prisma, new Date(), 50),
+      querySeriais(prisma, new Date(), 50),
+    ]);
 
   const podeSync = await canDiretoria(user, "diretoria.sync.force");
   const freshIso = await ultimaSyncIso(prisma);
@@ -148,6 +151,45 @@ export default async function DiretoriaEstoquePage() {
           <TabelaValor titulo="Estoque por local" rotulo="Local" linhas={porLocal.linhas} />
           <TabelaValor titulo="Distribuição por família" rotulo="Família" linhas={porFamilia.linhas} />
         </div>
+
+        {/* Modelos do catálogo em estoque (A3) */}
+        <section className="rounded-2xl border border-border/60 bg-card/60 p-5">
+          <h2 className="mb-4 text-sm font-semibold">Modelos do catálogo em estoque</h2>
+          {catalogo.linhas.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">Sem modelos em estoque.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
+                    <th className="pb-2 font-medium">Modelo</th>
+                    <th className="pb-2 font-medium">Família</th>
+                    <th className="pb-2 font-medium">Marca</th>
+                    <th className="pb-2 text-right font-medium">Qtd</th>
+                    <th className="pb-2 text-right font-medium">Locais</th>
+                    <th className="pb-2 text-right font-medium">Valor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {catalogo.linhas.slice(0, 20).map((m, i) => (
+                    <tr key={`${m.produto}-${i}`} className="border-b border-border/20">
+                      <td className="py-2">{m.produto}</td>
+                      <td className="py-2 text-muted-foreground">{m.familia ?? ","}</td>
+                      <td className="py-2 text-muted-foreground">{m.marca ?? ","}</td>
+                      <td className="py-2 text-right tabular-nums">{num.format(Math.round(m.quantidade))}</td>
+                      <td className="py-2 text-right tabular-nums">{num.format(m.locais)}</td>
+                      <td className="py-2 text-right tabular-nums">{brl.format(m.valorTotal)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <p className="mt-3 text-xs text-muted-foreground">
+            Mostrando {Math.min(20, catalogo.linhas.length)} de {num.format(catalogo.total)} modelos
+            distintos em estoque.
+          </p>
+        </section>
 
         {/* Compras por fornecedor (A8) */}
         <section className="rounded-2xl border border-border/60 bg-card/60 p-5">

@@ -126,6 +126,89 @@ export async function querySeriais(
   return { linhas, total };
 }
 
+export interface CatalogoModelo {
+  produto: string;
+  familia: string | null;
+  marca: string | null;
+  quantidade: number;
+  valorTotal: number;
+  locais: number;
+}
+
+export interface CatalogoEstoque {
+  linhas: CatalogoModelo[];
+  total: number;
+  valorGeral: number;
+}
+
+/**
+ * A3 , Modelos do catálogo em estoque. Agrega fato_estoque_saldo por produto
+ * (modelo), somando quantidade e valor e contando em quantos locais aparece.
+ * Ordena por valor desc; retorna o catálogo completo (UI pagina/limita).
+ */
+export async function queryCatalogoEstoque(
+  prisma: PrismaClient,
+  limit = 100,
+): Promise<CatalogoEstoque> {
+  const rows = await prisma.fatoEstoqueSaldo.findMany({
+    select: {
+      produtoId: true,
+      produtoNome: true,
+      familiaNome: true,
+      marcaNome: true,
+      localId: true,
+      quantidade: true,
+      vrSaldo: true,
+    },
+  });
+  const map = new Map<
+    string,
+    {
+      produto: string;
+      familia: string | null;
+      marca: string | null;
+      quantidade: number;
+      valorTotal: number;
+      locais: Set<number>;
+    }
+  >();
+  let valorGeral = 0;
+  for (const r of rows) {
+    const chave = r.produtoId != null ? `id:${r.produtoId}` : `nome:${r.produtoNome ?? "?"}`;
+    const valor = Number(r.vrSaldo ?? 0);
+    const qtd = Number(r.quantidade ?? 0);
+    valorGeral += valor;
+    const cur = map.get(chave);
+    if (cur) {
+      cur.quantidade += qtd;
+      cur.valorTotal += valor;
+      if (r.localId != null) cur.locais.add(r.localId);
+    } else {
+      const locais = new Set<number>();
+      if (r.localId != null) locais.add(r.localId);
+      map.set(chave, {
+        produto: r.produtoNome ?? "Sem nome",
+        familia: r.familiaNome,
+        marca: r.marcaNome,
+        quantidade: qtd,
+        valorTotal: valor,
+        locais,
+      });
+    }
+  }
+  const todas = [...map.values()]
+    .map((v) => ({
+      produto: v.produto,
+      familia: v.familia,
+      marca: v.marca,
+      quantidade: v.quantidade,
+      valorTotal: v.valorTotal,
+      locais: v.locais.size,
+    }))
+    .sort((a, b) => b.valorTotal - a.valorTotal || a.produto.localeCompare(b.produto));
+  return { linhas: todas.slice(0, limit), total: todas.length, valorGeral };
+}
+
 export interface CompraFornecedor {
   fornecedor: string;
   notas: number;
