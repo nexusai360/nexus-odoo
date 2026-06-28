@@ -2,6 +2,7 @@
 // agrega fato_estoque_saldo; compras (A8) agregam fato_dfe (notas de entrada).
 
 import type { PrismaClient } from "@/generated/prisma/client";
+import { diasRestantes, statusPrazo, type StatusPrazo } from "@/lib/diretoria/cores";
 
 export interface IndicadoresEstoque {
   valorTotal: number;
@@ -167,4 +168,69 @@ export async function queryComprasPorFornecedor(
     .map(([fornecedor, v]) => ({ fornecedor, ...v }))
     .sort((a, b) => b.valorTotal - a.valorTotal || a.fornecedor.localeCompare(b.fornecedor));
   return { linhas, valorGeral };
+}
+
+export interface CompraAtivaLinha {
+  numero: string | null;
+  fornecedor: string | null;
+  comprador: string | null;
+  etapa: string | null;
+  valor: number;
+  dataOrcamento: string | null;
+  dataPrevista: string | null;
+  diasRestantes: number | null;
+  statusPrazo: StatusPrazo | null;
+}
+
+export interface ComprasAtivas {
+  linhas: CompraAtivaLinha[];
+  total: number;
+  valorTotal: number;
+  atrasadas: number;
+}
+
+/**
+ * A7 , Compras ativas (ordens de compra não recebidas e não canceladas).
+ * Contagem regressiva (diasRestantes/statusPrazo) só quando há data prevista;
+ * caso contrário fica null ("sem previsão"). `hoje` injetado para testabilidade.
+ */
+export async function queryComprasAtivas(
+  prisma: PrismaClient,
+  hoje: Date,
+  limit = 50,
+): Promise<ComprasAtivas> {
+  const rows = await prisma.fatoCompra.findMany({
+    where: { recebida: false, cancelada: false },
+    orderBy: [{ vrNf: "desc" }],
+    select: {
+      numero: true,
+      fornecedorNome: true,
+      compradorNome: true,
+      etapaNome: true,
+      vrNf: true,
+      dataOrcamento: true,
+      dataPrevista: true,
+    },
+  });
+  let valorTotal = 0;
+  let atrasadas = 0;
+  const linhas: CompraAtivaLinha[] = rows.map((r) => {
+    const valor = Number(r.vrNf ?? 0);
+    valorTotal += valor;
+    const dias = r.dataPrevista ? diasRestantes(r.dataPrevista, hoje) : null;
+    const status = r.dataPrevista ? statusPrazo(r.dataPrevista, hoje) : null;
+    if (status === "atrasado") atrasadas += 1;
+    return {
+      numero: r.numero,
+      fornecedor: r.fornecedorNome,
+      comprador: r.compradorNome,
+      etapa: r.etapaNome,
+      valor,
+      dataOrcamento: r.dataOrcamento ? r.dataOrcamento.toISOString().slice(0, 10) : null,
+      dataPrevista: r.dataPrevista ? r.dataPrevista.toISOString().slice(0, 10) : null,
+      diasRestantes: dias,
+      statusPrazo: status,
+    };
+  });
+  return { linhas: linhas.slice(0, limit), total: rows.length, valorTotal, atrasadas };
 }

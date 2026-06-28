@@ -429,6 +429,36 @@ model FatoSerial {
   @@map("fato_serial")
 }
 
+// A7 (Diretoria): compras (ordens de compra) extraídas de raw_pedido_documento
+// onde tipo = "compra". Guarda todas; a query filtra as ATIVAS (não recebidas e
+// não canceladas). `recebida` = estoque_finalizado do Odoo.
+model FatoCompra {
+  odooId         Int       @id @map("odoo_id")
+  numero         String?
+  etapaId        Int?      @map("etapa_id")
+  etapaNome      String?   @map("etapa_nome")
+  operacaoId     Int?      @map("operacao_id")
+  operacaoNome   String?   @map("operacao_nome")
+  fornecedorId   Int?      @map("fornecedor_id")
+  fornecedorNome String?   @map("fornecedor_nome")
+  compradorId    Int?      @map("comprador_id")
+  compradorNome  String?   @map("comprador_nome")
+  empresaId      Int?      @map("empresa_id")
+  empresaNome    String?   @map("empresa_nome")
+  dataOrcamento  DateTime? @map("data_orcamento")
+  dataPrevista   DateTime? @map("data_prevista")
+  dataAprovacao  DateTime? @map("data_aprovacao")
+  vrProdutos     Decimal?  @map("vr_produtos") @db.Decimal(18, 4)
+  vrNf           Decimal?  @map("vr_nf") @db.Decimal(18, 4)
+  vrPago         Decimal?  @map("vr_pago") @db.Decimal(18, 4)
+  vrSaldo        Decimal?  @map("vr_saldo") @db.Decimal(18, 4)
+  recebida       Boolean   @default(false)
+  cancelada      Boolean   @default(false)
+
+  @@index([recebida, cancelada])
+  @@map("fato_compra")
+}
+
 model PasswordResetToken {
   id        String    @id @default(uuid()) @db.Uuid
   userId    String    @map("user_id") @db.Uuid

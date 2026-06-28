@@ -1,4 +1,4 @@
-import { Boxes, Package, Layers, Warehouse } from "lucide-react";
+import { Boxes, Package, Layers, Warehouse, ShoppingCart, Wallet, AlertTriangle } from "lucide-react";
 
 import { PageShell } from "@/components/layout/page-shell";
 import { PageHeader } from "@/components/page-header";
@@ -9,8 +9,10 @@ import {
   queryEstoquePorLocal,
   queryEstoquePorFamilia,
   queryComprasPorFornecedor,
+  queryComprasAtivas,
   querySeriais,
 } from "@/lib/diretoria/queries/estoque";
+import type { StatusPrazo } from "@/lib/diretoria/cores";
 import { SyncNowButton } from "@/components/diretoria/sync-now-button";
 import { FreshnessBadge } from "@/components/diretoria/freshness-badge";
 import { ultimaSyncIso } from "@/lib/diretoria/freshness";
@@ -23,6 +25,29 @@ const brl = new Intl.NumberFormat("pt-BR", {
   maximumFractionDigits: 0,
 });
 const num = new Intl.NumberFormat("pt-BR");
+
+// Prazo como pílula semântica: cor + texto (não depende só de cor).
+function PrazoBadge({ status, dias }: { status: StatusPrazo | null; dias: number | null }) {
+  if (status === null || dias === null) {
+    return <span className="text-xs text-muted-foreground">Sem previsão</span>;
+  }
+  const estilo: Record<StatusPrazo, string> = {
+    no_prazo: "bg-emerald-500/10 text-emerald-500",
+    atencao: "bg-amber-500/10 text-amber-500",
+    atrasado: "bg-rose-500/10 text-rose-500",
+  };
+  const rotulo =
+    status === "atrasado"
+      ? `Atrasada ${Math.abs(dias)}d`
+      : dias === 0
+        ? "Vence hoje"
+        : `Em ${dias}d`;
+  return (
+    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium tabular-nums ${estilo[status]}`}>
+      {rotulo}
+    </span>
+  );
+}
 
 function TabelaValor({
   titulo,
@@ -65,11 +90,12 @@ function TabelaValor({
 export default async function DiretoriaEstoquePage() {
   const user = await requireDiretoriaArea("estoque");
 
-  const [indicadores, porLocal, porFamilia, compras, seriais] = await Promise.all([
+  const [indicadores, porLocal, porFamilia, compras, comprasAtivas, seriais] = await Promise.all([
     queryIndicadoresEstoque(prisma),
     queryEstoquePorLocal(prisma),
     queryEstoquePorFamilia(prisma),
     queryComprasPorFornecedor(prisma, {}),
+    queryComprasAtivas(prisma, new Date(), 50),
     querySeriais(prisma, new Date(), 50),
   ]);
 
@@ -148,6 +174,94 @@ export default async function DiretoriaEstoquePage() {
               </tbody>
             </table>
           )}
+        </section>
+
+        {/* Compras ativas (A7) , ordens de compra não recebidas */}
+        <section className="rounded-2xl border border-border/60 bg-card/60 p-5">
+          <h2 className="mb-4 text-sm font-semibold">Compras ativas</h2>
+          <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {[
+              {
+                label: "Compras ativas",
+                valor: num.format(comprasAtivas.total),
+                icon: ShoppingCart,
+                cor: "text-violet-500 bg-violet-600/10",
+              },
+              {
+                label: "Valor em aberto",
+                valor: brl.format(comprasAtivas.valorTotal),
+                icon: Wallet,
+                cor: "text-violet-500 bg-violet-600/10",
+              },
+              {
+                label: "Atrasadas",
+                valor: num.format(comprasAtivas.atrasadas),
+                icon: AlertTriangle,
+                cor:
+                  comprasAtivas.atrasadas > 0
+                    ? "text-rose-500 bg-rose-500/10"
+                    : "text-emerald-500 bg-emerald-500/10",
+              },
+            ].map((k) => (
+              <div key={k.label} className="rounded-xl border border-border/50 bg-background/40 p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    {k.label}
+                  </span>
+                  <span className={`flex h-7 w-7 items-center justify-center rounded-lg ${k.cor}`}>
+                    <k.icon className="h-3.5 w-3.5" />
+                  </span>
+                </div>
+                <div className="mt-2 text-xl font-semibold tabular-nums">{k.valor}</div>
+              </div>
+            ))}
+          </div>
+          {comprasAtivas.linhas.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              Nenhuma compra ativa no momento.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
+                    <th className="pb-2 font-medium">Número</th>
+                    <th className="pb-2 font-medium">Fornecedor</th>
+                    <th className="pb-2 font-medium">Comprador</th>
+                    <th className="pb-2 font-medium">Etapa</th>
+                    <th className="pb-2 font-medium">Prazo</th>
+                    <th className="pb-2 text-right font-medium">Valor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {comprasAtivas.linhas.map((c, i) => (
+                    <tr key={c.numero ?? i} className="border-b border-border/20">
+                      <td className="py-2 font-medium tabular-nums">{c.numero ?? ","}</td>
+                      <td className="py-2">{c.fornecedor ?? ","}</td>
+                      <td className="py-2 text-muted-foreground">{c.comprador ?? ","}</td>
+                      <td className="py-2">
+                        {c.etapa ? (
+                          <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-xs">
+                            {c.etapa}
+                          </span>
+                        ) : (
+                          ","
+                        )}
+                      </td>
+                      <td className="py-2">
+                        <PrazoBadge status={c.statusPrazo} dias={c.diasRestantes} />
+                      </td>
+                      <td className="py-2 text-right tabular-nums">{brl.format(c.valor)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <p className="mt-3 text-xs text-muted-foreground">
+            Mostrando {comprasAtivas.linhas.length} de {num.format(comprasAtivas.total)} compras
+            ativas (ordens não recebidas). Prazo só aparece quando há data prevista no pedido.
+          </p>
         </section>
 
         {/* Lista de seriais (A6) */}

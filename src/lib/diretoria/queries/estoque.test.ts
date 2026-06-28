@@ -2,6 +2,7 @@ import {
   queryIndicadoresEstoque,
   queryEstoquePorFamilia,
   queryComprasPorFornecedor,
+  queryComprasAtivas,
 } from "./estoque";
 
 describe("queryIndicadoresEstoque (A4)", () => {
@@ -58,5 +59,67 @@ describe("queryComprasPorFornecedor (A8)", () => {
     expect(r.valorGeral).toBe(4500);
     expect(r.linhas[0]).toEqual({ fornecedor: "Fornecedor Y", notas: 1, valorTotal: 3000 });
     expect(r.linhas[1]).toEqual({ fornecedor: "Fornecedor X", notas: 2, valorTotal: 1500 });
+  });
+});
+
+describe("queryComprasAtivas (A7)", () => {
+  const hoje = new Date("2026-06-28T00:00:00Z");
+
+  it("soma valor, conta total e calcula contagem regressiva quando há data prevista", async () => {
+    const prisma = {
+      fatoCompra: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            numero: "OC-0001",
+            fornecedorNome: "Johnson",
+            compradorNome: "Thiago",
+            etapaNome: "Aprovado",
+            vrNf: 1000,
+            dataOrcamento: new Date("2026-06-01T00:00:00Z"),
+            dataPrevista: new Date("2026-07-10T00:00:00Z"),
+          },
+          {
+            numero: "OC-0002",
+            fornecedorNome: "Rotha",
+            compradorNome: "Edson",
+            etapaNome: "Em cotação/provisório",
+            vrNf: 500,
+            dataOrcamento: new Date("2026-06-10T00:00:00Z"),
+            dataPrevista: new Date("2026-06-20T00:00:00Z"), // já passou → atrasada
+          },
+        ]),
+      },
+    } as unknown as Parameters<typeof queryComprasAtivas>[0];
+    const r = await queryComprasAtivas(prisma, hoje);
+    expect(r.total).toBe(2);
+    expect(r.valorTotal).toBe(1500);
+    expect(r.atrasadas).toBe(1);
+    expect(r.linhas[0].numero).toBe("OC-0001");
+    expect(r.linhas[0].diasRestantes).toBe(12);
+    expect(r.linhas[0].statusPrazo).toBe("no_prazo");
+    expect(r.linhas[1].statusPrazo).toBe("atrasado");
+  });
+
+  it("data prevista null → diasRestantes/statusPrazo null (sem previsão)", async () => {
+    const prisma = {
+      fatoCompra: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            numero: "OC-0003",
+            fornecedorNome: "Johnson",
+            compradorNome: "Thiago",
+            etapaNome: "Aprovado",
+            vrNf: 2000,
+            dataOrcamento: new Date("2026-05-14T00:00:00Z"),
+            dataPrevista: null,
+          },
+        ]),
+      },
+    } as unknown as Parameters<typeof queryComprasAtivas>[0];
+    const r = await queryComprasAtivas(prisma, hoje);
+    expect(r.linhas[0].diasRestantes).toBeNull();
+    expect(r.linhas[0].statusPrazo).toBeNull();
+    expect(r.linhas[0].dataPrevista).toBeNull();
+    expect(r.atrasadas).toBe(0);
   });
 });
