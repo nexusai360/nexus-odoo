@@ -34,14 +34,22 @@
     - [ ] C5 ranking vendedor (reusar queryPedidosPorVendedor de comercial.ts)
     - [ ] C7 itens vendidos (reusar queryProdutosFaturados de fiscal.ts)
     - [ ] C8/C9 comparativo: feito no componente reusando queryVendasPorUf c/ 2 ufs
-  - [ ] MAPA DO BRASIL: componente novo src/components/diretoria/brazil-map/
-        (27 paths SVG locais, choropleth, animado, ui-ux-pro-max INLINE, hover+
-        tooltip+ranking, seleciona 2 UFs p/ C8/C9). Consome queryVendasPorUf.
-  - [ ] DiretoriaPeriodBar (visual): usar resolverPeriodoDir; padrão period-bar.tsx
-  - [ ] SyncNowButton (visual): chama forcarSyncDiretoria("vendas")
-  - [ ] Tela /diretoria/vendas: montar seções no server (guard + freshness +
-        período + queries) e client (KPIs, charts Recharts, DataTable, mapa)
-  - [ ] E2E contra dado real: subir serviço, conferir números por UF/marca/pgto
+  - [x] MAPA DO BRASIL: src/components/diretoria/brazil-map/ (7 testes verdes)
+        usa @svg-maps/brazil (dep commitada); choropleth roxo; hover/tooltip/
+        ranking; seleciona 2 UFs (onSelect) p/ C8/C9; reduced-motion; a11y.
+        API: <BrazilMap data={{uf,valor,label?}[]} metric onSelect maxSelection formatValor/>
+  - [ ] DiretoriaPeriodBar (visual): usar DIRETORIA_PERIODO_PRESETS + escreve
+        periodo/de/ate na URL; padrão visual de period-bar.tsx (pílulas roxas)
+  - [ ] SyncNowButton (visual, client): chama forcarSyncDiretoria("vendas"),
+        cooldown 30s, toast; só renderiza se user tem diretoria.sync.force
+  - [ ] Tela /diretoria/vendas: server (requireDiretoriaArea("vendas") +
+        reportFreshness + resolverPeriodoDir + userUfs + as queries C2/C3/C4/C6/C10)
+        -> client (KPICard/ChartCard/BarChart/PieChart/DataTable de @/components/charts
+        + <BrazilMap> ligado em queryVendasPorUf + DiretoriaPeriodBar + SyncNowButton).
+        margem ESTIMADA: criar seção depois (nf_item x fato_produto.preco_custo).
+  - [ ] C5 ranking vendedor (reusar queryPedidosPorVendedor) + C7 (queryProdutosFaturados)
+  - [ ] E2E contra dado real: npm run dev:fresh, abrir /diretoria/vendas logado,
+        conferir numeros por UF/marca/pgto. Rebuild worker p/ testar sync.
 - [ ] Onda 2 , Pedidos & Entregas (módulo B)
 - [ ] Onda 2 , Pedidos & Entregas (módulo B)
 - [ ] Onda 3 , Estoque & Compras (módulo A)
