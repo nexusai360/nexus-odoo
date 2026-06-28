@@ -66,7 +66,7 @@ const fatoEstoqueSaldo: FonteDef = {
     fato: "fato_estoque_saldo",
     modeloFonte: "estoque.saldo.hoje",
     dominio: "estoque",
-    shapes: ["tabela", "kpis", "agregacaoCategorica"],
+    shapes: ["tabela", "kpis", "agregacaoCategorica", "medidor"],
     campos: {
       tabela: [
         { key: "produtoNome", label: "Produto", tipo: "texto" },
@@ -84,6 +84,11 @@ const fatoEstoqueSaldo: FonteDef = {
         { key: "rotulo", label: "Categoria", tipo: "texto" },
         { key: "valor", label: "Valor", tipo: "moeda" },
       ],
+      medidor: [
+        { key: "valor", label: "Percentual", tipo: "percentual" },
+        { key: "max", label: "Maximo", tipo: "numero" },
+        { key: "label", label: "Rotulo", tipo: "texto" },
+      ],
     },
   },
   produtores: {
@@ -98,6 +103,14 @@ const fatoEstoqueSaldo: FonteDef = {
     kpis: async (filtros) => {
       const d = await querySaldoProduto(prisma, filtros);
       return { linhas: [], kpis: { ...d.kpis }, freshness: null };
+    },
+    // Medidor de saude: % de produtos com saldo negativo (derivado dos KPIs).
+    medidor: async (filtros) => {
+      const d = await querySaldoProduto(prisma, filtros);
+      const total = Number(d.kpis.totalProdutos ?? 0);
+      const neg = Number(d.kpis.produtosNegativos ?? 0);
+      const pct = total > 0 ? (neg / total) * 100 : 0;
+      return { linhas: [{ valor: pct, max: 100, label: "Produtos negativos" }], freshness: null };
     },
     agregacaoCategorica: async () => {
       const d = await queryConcentracao(prisma);

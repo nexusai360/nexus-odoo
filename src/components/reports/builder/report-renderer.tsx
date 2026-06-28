@@ -18,6 +18,7 @@ import {
   Filter as FunnelIcon,
   BarChartHorizontal as WaterfallIcon,
   LayoutGrid as TreemapIcon,
+  Gauge as GaugeIcon,
   Table as TableIcon,
   ChevronUp,
   ChevronDown,
@@ -39,6 +40,7 @@ import {
   InteractiveWaterfallChart,
   InteractiveComboChart,
   InteractiveTreemapChart,
+  InteractiveGaugeChart,
   type AreaChartData,
   type BarChartData,
   type PieChartData,
@@ -99,6 +101,8 @@ function metaTemplate(template: string): { Icon: LucideIcon; titulo: string } {
       return { Icon: FunnelIcon, titulo: "Funil por etapa" };
     case "Treemap":
       return { Icon: TreemapIcon, titulo: "Mapa de concentracao" };
+    case "Gauge":
+      return { Icon: GaugeIcon, titulo: "Indicador" };
     case "Waterfall":
       return { Icon: WaterfallIcon, titulo: "Resultado em cascata" };
     default:
@@ -561,6 +565,20 @@ function SecaoView({
           formatValue={formatadorValor(campoValor?.tipo)}
           emptyMessage="Sem dados para esta secao."
         />
+      </CardSecao>
+    );
+  }
+
+  // Gauge , medidor radial (percentual de saude/meta) a partir do shape "medidor".
+  if (secao.template === "Gauge") {
+    const linhas = (resolvida.dado as Record<string, unknown>[]) ?? [];
+    const m = linhas[0] ?? {};
+    const valor = Number(m.valor ?? 0);
+    const max = Number(m.max ?? 100);
+    const label = typeof m.label === "string" && m.label ? m.label : titulo;
+    return (
+      <CardSecao Icon={Icon} titulo={titulo} {...editProps}>
+        <InteractiveGaugeChart value={valor} max={max} label={label} color={corResolvida(corDaSecao(secao)) ?? undefined} />
       </CardSecao>
     );
   }

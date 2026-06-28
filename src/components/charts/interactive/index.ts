@@ -60,3 +60,8 @@ export {
   type TreemapDatum,
   type InteractiveTreemapChartProps,
 } from "./treemap-chart";
+export {
+  InteractiveGaugeChart,
+  valorMedidor,
+  type InteractiveGaugeChartProps,
+} from "./gauge-chart";

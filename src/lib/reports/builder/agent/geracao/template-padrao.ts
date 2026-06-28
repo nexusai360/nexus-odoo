@@ -36,6 +36,7 @@ const TEMPLATES_POR_DOMINIO: Record<string, (m: Metrica[]) => Plano> = {
         dominio: "estoque",
         blocos: [
           { tipo: "KpiStrip", metricas: ["estoque.valor_total", "estoque.produtos", "estoque.negativos"] },
+          { tipo: "Medidor", metrica: "estoque.saude_negativos" },
           { tipo: "Ranking", metrica: "estoque.valor_armazem", recorte: "armazem" },
           { tipo: "Tabela", metrica: "estoque.saldo_produto" },
         ],
@@ -98,6 +99,7 @@ function blocoTemMetricasValidas(bloco: Bloco, metricas: Metrica[]): boolean {
     case "Ranking":
     case "Tabela":
     case "Cascata":
+    case "Medidor":
       return !!obterMetrica(metricas, bloco.metrica);
     case "TendenciaDistribuicao":
       return !!obterMetrica(metricas, bloco.metricaSerie) && !!obterMetrica(metricas, bloco.metricaComposicao);

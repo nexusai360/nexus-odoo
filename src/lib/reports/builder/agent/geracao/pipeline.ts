@@ -84,7 +84,7 @@ function metricasDoPlano(plano: Plano, metricas: Metrica[]): Metrica[] {
   const ids = new Set<string>();
   for (const b of plano.blocos) {
     if (b.tipo === "KpiStrip") b.metricas.forEach((id) => ids.add(id));
-    else if (b.tipo === "Ranking" || b.tipo === "Tabela" || b.tipo === "Cascata") ids.add(b.metrica);
+    else if (b.tipo === "Ranking" || b.tipo === "Tabela" || b.tipo === "Cascata" || b.tipo === "Medidor") ids.add(b.metrica);
     else if (b.tipo === "TendenciaDistribuicao") {
       ids.add(b.metricaSerie);
       ids.add(b.metricaComposicao);

@@ -135,6 +135,20 @@ export const COMPONENT_CATALOG: ComponentEntry[] = [
     tokensVisuais: { celula: "chart.bar", borda: "card.border" },
   },
   {
+    chave: "Gauge",
+    nome: "Medidor (gauge)",
+    paraQueServe:
+      "Mostrar UMA taxa/percentual num arco (ex.: % de produtos negativos, % de meta), com o valor em destaque no centro.",
+    quandoUsar:
+      "Quando a fonte oferecer o shape 'medidor' (um percentual 0-100). Use no topo, como indicador de saude.",
+    quandoNaoUsar:
+      "Valores absolutos (use KPI), comparacao por categoria (use barra) ou serie no tempo (use linha).",
+    shapeDerivadoExigido: "medidor",
+    parametros: [{ chave: "titulo", descricao: "Titulo curto opcional do medidor." }],
+    interacao: ["destaque_percentual"],
+    tokensVisuais: { arco: "chart.bar", trilha: "chart.grid" },
+  },
+  {
     chave: "DataTable",
     nome: "Tabela de dados",
     paraQueServe:

@@ -103,7 +103,7 @@ async function main() {
 
 function metricaRef(b: Bloco, id: string): boolean {
   if (b.tipo === "KpiStrip") return b.metricas.includes(id);
-  if (b.tipo === "Ranking" || b.tipo === "Tabela" || b.tipo === "Cascata") return b.metrica === id;
+  if (b.tipo === "Ranking" || b.tipo === "Tabela" || b.tipo === "Cascata" || b.tipo === "Medidor") return b.metrica === id;
   return b.metricaSerie === id || b.metricaComposicao === id;
 }
 

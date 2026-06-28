@@ -67,6 +67,14 @@ const CURADORIA: Record<string, Curada> = {
     formato: "contagem",
     chartPreferido: "KPIRow",
   },
+  "fato_estoque_saldo|medidor|": {
+    id: "estoque.saude_negativos",
+    rotulo: "Saude do estoque",
+    descricao: "Percentual de produtos com saldo negativo",
+    pergunta: "Que fracao dos produtos esta negativa?",
+    formato: "percentual",
+    chartPreferido: "Gauge",
+  },
   "fato_estoque_saldo|tabela|": {
     id: "estoque.saldo_produto",
     rotulo: "Saldo por produto",
@@ -379,6 +387,7 @@ const TEMPLATES_POR_SHAPE: Record<ShapeDerivado, ReportTemplate[]> = {
   agregacaoCategorica: ["BarChart", "PieChart", "Funnel", "Treemap"],
   serieTemporal: ["LineChart", "Combo"],
   cascata: ["Waterfall"],
+  medidor: ["Gauge"],
 };
 
 /** Dimensoes = colunas categoricas (texto) que o fato oferece para recorte/agrupamento. */

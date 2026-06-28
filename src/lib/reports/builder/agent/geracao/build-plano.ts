@@ -92,6 +92,14 @@ function especificarBloco(
       }
       return [{ template: "Waterfall", fato: m.fato, shapeDerivado: "cascata", config: { titulo: m.rotulo } }];
     }
+    case "Medidor": {
+      const m = obterMetrica(metricas, bloco.metrica);
+      if (!m || m.shape !== "medidor") {
+        omitidos.push(`medidor ${bloco.metrica} (metrica fora do catalogo ou nao-medidor)`);
+        return [];
+      }
+      return [{ template: "Gauge", fato: m.fato, shapeDerivado: "medidor", config: { titulo: m.rotulo } }];
+    }
     case "TendenciaDistribuicao": {
       const serie = obterMetrica(metricas, bloco.metricaSerie);
       const comp = obterMetrica(metricas, bloco.metricaComposicao);

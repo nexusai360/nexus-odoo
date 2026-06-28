@@ -65,6 +65,20 @@ describe("buildFichaDoPlano", () => {
     expect(temporal?.template).toBe("Combo");
   });
 
+  it("bloco Medidor vira secao Gauge com shape medidor", () => {
+    const planoGauge: Plano = {
+      titulo: "Saude do estoque",
+      objetivo: "indicador de negativos",
+      dominio: "estoque",
+      blocos: [{ tipo: "Medidor", metrica: "estoque.saude_negativos" }],
+      filtrosIniciais: {},
+    };
+    const { ficha, omitidos } = buildFichaDoPlano(planoGauge, metricas);
+    expect(omitidos).toEqual([]);
+    expect(ficha.secoes.map((s) => s.template)).toEqual(["Gauge"]);
+    expect(ficha.secoes[0].shapeDerivado).toBe("medidor");
+  });
+
   it("bloco Cascata vira secao Waterfall com shape cascata", () => {
     const fin = listarMetricas({ dominiosPermitidos: ["financeiro"] });
     const planoDre: Plano = {

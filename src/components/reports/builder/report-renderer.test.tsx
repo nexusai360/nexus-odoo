@@ -238,6 +238,22 @@ describe("ReportRenderer", () => {
     expect(screen.getByLabelText(/combinado/i)).toBeInTheDocument();
   });
 
+  it("renderiza um Gauge (medidor de saude) com o percentual", () => {
+    const comGauge: BuilderReportEntry = {
+      ...entry,
+      titulo: "Saude",
+      secoes: [
+        { id: "g", template: "Gauge", fato: "fato_estoque_saldo", shapeDerivado: "medidor", config: { titulo: "Saude do estoque" }, filtros: [] },
+      ],
+    };
+    const dados: Record<string, SecaoResolvida> = {
+      g: { estado: "ok", dado: [{ valor: 9, max: 100, label: "Produtos negativos" }] },
+    };
+    render(<ReportRenderer entry={comGauge} dados={dados} />);
+    expect(screen.getByText("9%")).toBeInTheDocument();
+    expect(screen.getByText("Produtos negativos")).toBeInTheDocument();
+  });
+
   it("renderiza um Treemap (faturamento por cliente)", () => {
     const comTree: BuilderReportEntry = {
       ...entry,

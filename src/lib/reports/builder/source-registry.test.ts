@@ -69,11 +69,11 @@ describe("source-registry , todos os fatos ativados", () => {
 });
 
 describe("source-registry", () => {
-  it("listarFontes inclui fato_estoque_saldo com os 3 shapes", () => {
+  it("listarFontes inclui fato_estoque_saldo com seus shapes (inclui medidor p/ gauge)", () => {
     const c = listarFontes().find((f) => f.fato === "fato_estoque_saldo");
     expect(c).toBeDefined();
     expect([...(c!.shapes)].sort()).toEqual(
-      ["agregacaoCategorica", "kpis", "tabela"].sort(),
+      ["agregacaoCategorica", "kpis", "medidor", "tabela"].sort(),
     );
   });
 

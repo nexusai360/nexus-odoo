@@ -28,7 +28,8 @@ export type ReportTemplate =
   | "Funnel"
   | "Waterfall"
   | "Combo"
-  | "Treemap";
+  | "Treemap"
+  | "Gauge";
 
 /** Uma seção de relatório , um template alimentado por um fato. */
 export interface ReportSection {
