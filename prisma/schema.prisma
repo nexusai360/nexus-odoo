@@ -188,6 +188,8 @@ model User {
   domainAccess           UserDomainAccess[]      @relation("UserDomainAccess")
   diretoriaAccess        UserDiretoriaAccess[]   @relation("UserDiretoriaAccess")
   diretoriaUfs           UserDiretoriaUf[]       @relation("UserDiretoriaUf")
+  eventosCriados         DiretoriaEvento[]       @relation("DiretoriaEventoCriador")
+  eventosColaborador     DiretoriaEventoColaborador[] @relation("DiretoriaEventoColaborador")
   reportPresets          ReportPreset[]
   // F5
   conversations          Conversation[]
@@ -347,6 +349,66 @@ model UserDiretoriaUf {
   @@unique([userId, uf])
   @@index([userId])
   @@map("user_diretoria_uf")
+}
+
+/// Tipo de evento da agenda da Diretoria (dado nativo da plataforma, não-Odoo).
+enum DiretoriaEventoTipo {
+  reuniao
+  entrega
+  inventario
+  prospeccao
+  carregamento
+  organizacao_estoque
+  assembleia
+  visita
+}
+
+/// Evento da agenda da Diretoria (reunião, inventário, prospecção, assembleia...).
+model DiretoriaEvento {
+  id          String             @id @default(uuid()) @db.Uuid
+  titulo      String
+  tipo        DiretoriaEventoTipo
+  inicio      DateTime           @map("inicio")
+  fim         DateTime?          @map("fim")
+  diaInteiro  Boolean            @default(false) @map("dia_inteiro")
+  descricao   String?
+  local       String?
+  criadoPorId String             @map("criado_por_id") @db.Uuid
+  criadoPor   User               @relation("DiretoriaEventoCriador", fields: [criadoPorId], references: [id])
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+  colaboradores DiretoriaEventoColaborador[]
+  anexos      DiretoriaEventoAnexo[]
+
+  @@index([inicio])
+  @@map("diretoria_evento")
+}
+
+/// Colaborador vinculado a um evento da agenda.
+model DiretoriaEventoColaborador {
+  id       String          @id @default(uuid()) @db.Uuid
+  eventoId String          @map("evento_id") @db.Uuid
+  userId   String          @map("user_id") @db.Uuid
+  evento   DiretoriaEvento @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  user     User            @relation("DiretoriaEventoColaborador", fields: [userId], references: [id])
+
+  @@unique([eventoId, userId])
+  @@index([userId])
+  @@map("diretoria_evento_colaborador")
+}
+
+/// Anexo de um evento da agenda (referência por URL; upload real fica para depois).
+model DiretoriaEventoAnexo {
+  id       String          @id @default(uuid()) @db.Uuid
+  eventoId String          @map("evento_id") @db.Uuid
+  nome     String
+  url      String
+  mime     String?
+  tamanho  Int?
+  evento   DiretoriaEvento @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+
+  @@index([eventoId])
+  @@map("diretoria_evento_anexo")
 }
 
 model PasswordResetToken {
