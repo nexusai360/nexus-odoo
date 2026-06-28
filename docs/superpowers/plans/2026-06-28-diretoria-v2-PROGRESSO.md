@@ -16,7 +16,20 @@
       níveis por interseção (gating server); tabelas de config próprias; período
       enxuto; fonteDado = nosso cache.
 - [x] PLAN Onda 1 v3 (v1 + 2 reviews): `plans/2026-06-28-diretoria-v2-onda1-plan.md`.
-- [ ] IMPLEMENTAÇÃO Onda 1 , PRÓXIMO. Tasks T1..T8c (ver o plano).
+- [~] IMPLEMENTAÇÃO Onda 1 em andamento (TDD, commits atômicos):
+  - [x] T1 catálogo de componentes (catalogo.ts) , travas por tipo, capability por área. 5 testes.
+  - [x] T2 normalização de layout (layout.ts) , clamp às travas + spans. 7 testes.
+  - [x] T3 schema DiretoriaRelatorio + Bloco (SQL cirúrgico, índices únicos parciais). client regen.
+  - [x] T4 carregarLayout (layout-repo.ts) , usuário > padrão. 3 testes.
+  - [x] T5 loaders + resolverBlocos (loaders.ts) , dedupe + allSettled. 3 testes. A-01..A-04 reusam queries de estoque.
+  - [ ] T6 GridRelatorio + BlocoCard (CSS grid 12col/auto-rows, span; selo de fonte). UI inline ui-ux-pro-max.
+  - [ ] T7 render-componente (id -> componente React com dado plano). A-01..A-04.
+  - [ ] T8a gating (filtrarPermitidos, função pura + teste).
+  - [ ] T8b seed do layout padrão (script idempotente).
+  - [ ] T8c página montada + validação E2E no browser (PROTOTIPAR sem regredir telas atuais).
+  - TOTAL builder até agora: 18 testes verdes, tsc 0. Arquivos em src/lib/diretoria/builder/.
+  - NOTA: a parte de DADOS/lógica (T1-T5) está pronta e testada; falta o RENDER visual
+    (T6-T8), que é UI inline (ui-ux-pro-max) + validação no browser , fazer com contexto fresco.
 
 ## Catálogo de componentes (índice próprio)
 A=Estoque, K=Compras, B=Demandas, C=Vendas, G=Visão geral. Ver SPEC §5.
