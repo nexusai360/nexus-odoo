@@ -17,6 +17,12 @@ import {
   queryFluxoCaixa,
 } from "@/lib/reports/queries/financeiro";
 import { queryResultadoPorConta } from "@/lib/reports/queries/financeiro-resultado";
+import {
+  queryPedidosPeriodo,
+  queryPedidosPorEtapa,
+  queryPedidosPorVendedor,
+  queryPedidosAtrasados,
+} from "@/lib/reports/queries/comercial";
 import type {
   RawSourceData,
   ShapeDerivado,
@@ -456,6 +462,89 @@ const fatoFinanceiroResultado: FonteDef = {
   },
 };
 
+// ===========================================================================
+// COMERCIAL (onda 3): pedidos , KPIs, por etapa, por vendedor, atrasados.
+// ===========================================================================
+
+const fatoComercialPedido: FonteDef = {
+  contract: {
+    fato: "fato_comercial_pedido",
+    modeloFonte: "comercial.pedido",
+    dominio: "comercial",
+    shapes: ["kpis", "tabela"],
+    campos: {
+      kpis: [
+        { key: "totalPedidos", label: "Pedidos", tipo: "numero" },
+        { key: "valorTotal", label: "Valor em pedidos", tipo: "moeda" },
+      ],
+      tabela: [
+        { key: "participanteNome", label: "Cliente", tipo: "texto" },
+        { key: "numero", label: "Numero", tipo: "texto" },
+        { key: "valor", label: "Valor", tipo: "moeda" },
+        { key: "diasAtraso", label: "Dias em atraso", tipo: "numero" },
+      ],
+    },
+  },
+  produtores: {
+    kpis: async (filtros) => {
+      const d = await queryPedidosPeriodo(prisma, { periodoDe: filtros.periodoDe, periodoAte: filtros.periodoAte });
+      return { linhas: [], kpis: { totalPedidos: d.totalPedidos, valorTotal: d.valorTotal }, freshness: null };
+    },
+    tabela: async () => {
+      const d = await queryPedidosAtrasados(prisma, new Date(), { limit: 200 });
+      return { linhas: d.linhas as unknown as Record<string, unknown>[], freshness: null };
+    },
+  },
+};
+
+const fatoComercialEtapa: FonteDef = {
+  contract: {
+    fato: "fato_comercial_etapa",
+    modeloFonte: "comercial.pedido",
+    dominio: "comercial",
+    shapes: ["agregacaoCategorica"],
+    campos: {
+      agregacaoCategorica: [
+        { key: "rotulo", label: "Etapa", tipo: "texto" },
+        { key: "valor", label: "Valor", tipo: "moeda" },
+      ],
+    },
+  },
+  produtores: {
+    agregacaoCategorica: async () => {
+      const d = await queryPedidosPorEtapa(prisma);
+      return {
+        linhas: d.linhas.map((l) => ({ rotulo: l.etapaNome ?? "(sem etapa)", valor: l.valorTotal })),
+        freshness: null,
+      };
+    },
+  },
+};
+
+const fatoComercialVendedor: FonteDef = {
+  contract: {
+    fato: "fato_comercial_vendedor",
+    modeloFonte: "comercial.pedido",
+    dominio: "comercial",
+    shapes: ["agregacaoCategorica"],
+    campos: {
+      agregacaoCategorica: [
+        { key: "rotulo", label: "Vendedor", tipo: "texto" },
+        { key: "valor", label: "Valor", tipo: "moeda" },
+      ],
+    },
+  },
+  produtores: {
+    agregacaoCategorica: async (filtros) => {
+      const d = await queryPedidosPorVendedor(prisma, { periodoDe: filtros.periodoDe, periodoAte: filtros.periodoAte });
+      return {
+        linhas: d.linhas.map((l) => ({ rotulo: l.vendedorNome ?? "(sem vendedor)", valor: l.valorTotal })),
+        freshness: null,
+      };
+    },
+  },
+};
+
 const REGISTRY: Record<string, FonteDef> = {
   fato_estoque_saldo: fatoEstoqueSaldo,
   fato_estoque_armazem: fatoEstoqueArmazem,
@@ -468,6 +557,9 @@ const REGISTRY: Record<string, FonteDef> = {
   fato_financeiro_saldo: fatoFinanceiroSaldo,
   fato_financeiro_movimento: fatoFinanceiroMovimento,
   fato_financeiro_resultado: fatoFinanceiroResultado,
+  fato_comercial_pedido: fatoComercialPedido,
+  fato_comercial_etapa: fatoComercialEtapa,
+  fato_comercial_vendedor: fatoComercialVendedor,
 };
 
 /** Lista os contratos publicos de todas as fontes (alimenta o agente). */

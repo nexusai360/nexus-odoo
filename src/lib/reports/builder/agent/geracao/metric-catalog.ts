@@ -231,6 +231,47 @@ const CURADORIA: Record<string, Curada> = {
     formato: "brl",
     chartPreferido: "BarChart",
   },
+  // --- COMERCIAL (onda 3) ---
+  "fato_comercial_pedido|kpis|totalPedidos": {
+    id: "comercial.pedidos",
+    rotulo: "Pedidos",
+    descricao: "Quantidade de pedidos no periodo",
+    pergunta: "Quantos pedidos sairam?",
+    formato: "contagem",
+    chartPreferido: "KPIRow",
+  },
+  "fato_comercial_pedido|kpis|valorTotal": {
+    id: "comercial.valor_pedidos",
+    rotulo: "Valor em pedidos",
+    descricao: "Valor total dos pedidos no periodo",
+    pergunta: "Quanto foi vendido em pedidos?",
+    formato: "brl",
+    chartPreferido: "KPIRow",
+  },
+  "fato_comercial_pedido|tabela|": {
+    id: "comercial.pedidos_atrasados",
+    rotulo: "Pedidos atrasados",
+    descricao: "Pedidos vencidos por cliente",
+    pergunta: "Quais pedidos estao atrasados?",
+    formato: "brl",
+    chartPreferido: "DataTable",
+  },
+  "fato_comercial_etapa|agregacaoCategorica|": {
+    id: "comercial.por_etapa",
+    rotulo: "Pedidos por etapa",
+    descricao: "Valor por etapa do funil",
+    pergunta: "Onde os pedidos estao parados no funil?",
+    formato: "brl",
+    chartPreferido: "BarChart",
+  },
+  "fato_comercial_vendedor|agregacaoCategorica|": {
+    id: "comercial.por_vendedor",
+    rotulo: "Pedidos por vendedor",
+    descricao: "Valor por vendedor",
+    pergunta: "Quem vende mais?",
+    formato: "brl",
+    chartPreferido: "BarChart",
+  },
 };
 
 const TEMPLATES_POR_SHAPE: Record<ShapeDerivado, ReportTemplate[]> = {

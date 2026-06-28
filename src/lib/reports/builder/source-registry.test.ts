@@ -38,6 +38,9 @@ describe("source-registry , todos os fatos ativados", () => {
         "fato_financeiro_saldo",
         "fato_financeiro_movimento",
         "fato_financeiro_resultado",
+        "fato_comercial_pedido",
+        "fato_comercial_etapa",
+        "fato_comercial_vendedor",
       ].sort(),
     );
   });
