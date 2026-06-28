@@ -74,14 +74,29 @@
   ja filtra "??". Verificar se e perda real de cobertura (regra verdade-vs-dado).
 - margem ESTIMADA ainda NAO implementada (precisa nf_item x fato_produto.preco_custo).
 
-### FALTA na tela de Vendas (proximo)
-- C6 modalidades + maior pedido (query pronta: queryModalidadesEMaiorPedido) , card
-- C5 ranking vendedores (queryPedidosPorVendedor de comercial.ts) , tabela paginada
-- C7 itens vendidos (queryProdutosFaturados de fiscal.ts)
-- C8/C9 comparativo: ligar onSelect do BrazilMap a 2 UFs -> 2 cards lado a lado
-- margem estimada (nova query) + FreshnessIndicator no header
-- Validacao visual no browser (npm run dev:fresh, logar super_admin, /diretoria/vendas)
-Depois: Onda 2 (Pedidos/B), 3 (Estoque/A), 4 (Visao geral), 5 (Agenda), 6 (RBAC usuarios).
+### Tela de Vendas , estado (substancialmente completa, dado real)
+- [x] C2 KPIs (faturamento/pedidos/ticket) , [x] C3 Mapa do Brasil por UF
+- [x] C4 vendas por marca (bar) , [x] C10 formas de pagamento (donut)
+- [x] C6 modalidades + maior pedido , [x] C5 ranking de vendedores (tabela)
+- FALTA (refino da Onda 1): C7 itens vendidos (queryProdutosFaturados de fiscal.ts);
+  C8/C9 comparativo (ligar onSelect do BrazilMap a 2 UFs -> 2 cards client);
+  margem estimada (nova query nf_item x fato_produto.preco_custo, rotulo "estimada");
+  FreshnessIndicator no header; validacao visual no browser.
+- LICAO: husky/lint-staged ABORTA o commit se houver arquivo modificado nao-staged
+  junto. SEMPRE `git add` todos os arquivos relacionados e CONFERIR o hash do commit
+  (nao confiar em echo). Ex: commit C6 tela falhou silenciosamente e foi refeito.
+
+### Proximas ondas (ordem fixa, sem pausar entre elas)
+- Onda 2 (Pedidos & Entregas/B): B1/B2 pendentes (cliente+UF), B3 a receber
+  (queryContasAReceber pronta), B4 mapa de demandas (reusa BrazilMap), B5 drill-in,
+  B7 disponivel (reservado=gap). Reusar padrao da tela de Vendas + BrazilMap.
+- Onda 3 (Estoque & Compras/A): reusar 6 queries de estoque; criar fato_serial (A6)
+  e fato_compra (A7/A8) de raw; config estoque ideal + alertas.
+- Onda 4 (Visao geral): KPIs globais + mapa em destaque + drill-in + YoY.
+- Onda 5 (Agenda): schema novo (DiretoriaEvento*) via SQL cirurgico + CRUD + calendario.
+- Onda 6 (RBAC usuarios): etapa Diretoria no stepper de user-form-dialog + uf-picker
+  novo + updateUserDiretoriaAccess. super_admin sem etapa (bypass).
+- NAO FAZER MERGE (so com autorizacao do usuario). Pode abrir/atualizar PR #156.
 - [ ] Onda 2 , Pedidos & Entregas (módulo B)
 - [ ] Onda 2 , Pedidos & Entregas (módulo B)
 - [ ] Onda 3 , Estoque & Compras (módulo A)
