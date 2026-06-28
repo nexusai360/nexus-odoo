@@ -27,6 +27,8 @@ export interface EntradaGeracao {
   dominiosPermitidos?: string[];
   /** "gerar_ja": template deterministico (0 LLM). Default: completo (compositor+critico). */
   modo?: "completo" | "gerar_ja";
+  /** Dominio do template no "gerar_ja" (ex.: "financeiro"). Default: o da intencao. */
+  dominioTemplate?: string;
   /** Plano anterior, para o "regenerar" barato (pula o compositor). */
   ultimoPlano?: Plano;
 }

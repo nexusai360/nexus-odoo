@@ -69,7 +69,14 @@ export async function POST(req: Request): Promise<Response> {
     return jsonError("Acesso negado", 403);
   }
 
-  let body: { conversationId?: string; message?: string; isAudio?: boolean; acao?: "gerar" | "regenerar" };
+  let body: {
+    conversationId?: string;
+    message?: string;
+    isAudio?: boolean;
+    acao?: "gerar" | "regenerar" | "exemplo";
+    /** Dominio do exemplo deterministico (gerar_ja). */
+    dominio?: string;
+  };
   try {
     body = (await req.json()) as typeof body;
   } catch {
@@ -182,15 +189,20 @@ export async function POST(req: Request): Promise<Response> {
       // runBuilder one-shot. So quando elegivel por evidencia (gerar) ou quando ja
       // ha refino (regenerar). Caso contrario, cai no turno normal abaixo. ===
       const querRegenerar = body.acao === "regenerar";
-      const deveGerar = (querGerar && podeOferecerGeracao(journeyState)) || querRegenerar;
+      // "exemplo": gera um relatorio pronto por dominio pelo caminho DETERMINISTICO
+      // (gerar_ja, 0 LLM / 0 custo de API). Nao precisa de elegibilidade nem quota.
+      const querExemplo = body.acao === "exemplo";
+      const deveGerar = querExemplo || (querGerar && podeOferecerGeracao(journeyState)) || querRegenerar;
       if (deveGerar) {
         try {
-          const quota = await verificarQuota(user.id);
-          if (!quota.ok) {
-            const mid = await persistBuilderMensagem(conversationId, "assistant", "Voce atingiu o limite de uso por agora. Tente de novo mais tarde.", {});
-            emit({ type: "done", conversationId, message: "Voce atingiu o limite de uso por agora.", messageId: mid, bloqueado: true, fase: journeyState.fase, journeyState });
-            controller.close();
-            return;
+          if (!querExemplo) {
+            const quota = await verificarQuota(user.id);
+            if (!quota.ok) {
+              const mid = await persistBuilderMensagem(conversationId, "assistant", "Voce atingiu o limite de uso por agora. Tente de novo mais tarde.", {});
+              emit({ type: "done", conversationId, message: "Voce atingiu o limite de uso por agora.", messageId: mid, bloqueado: true, fase: journeyState.fase, journeyState });
+              controller.close();
+              return;
+            }
           }
 
           const entrada: EntradaGeracao = {
@@ -200,6 +212,7 @@ export async function POST(req: Request): Promise<Response> {
             user: { id: user.id },
             ...(querRegenerar ? { ajuste: message } : {}),
             ...(querRegenerar && journeyState.ultimoPlano ? { ultimoPlano: journeyState.ultimoPlano } : {}),
+            ...(querExemplo ? { modo: "gerar_ja" as const, dominioTemplate: body.dominio } : {}),
           };
 
           const saida = await pipelineGeracao(entrada, (p) =>

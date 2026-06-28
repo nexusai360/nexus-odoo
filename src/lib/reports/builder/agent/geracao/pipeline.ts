@@ -114,7 +114,7 @@ export async function pipelineGeracao(
   if (ehGerarJa) {
     // Atalho deterministico (0 LLM): template padrao do dominio.
     const { templatePadrao } = await import("./template-padrao");
-    plano = templatePadrao(curada.dominio, metricas);
+    plano = templatePadrao(entrada.dominioTemplate ?? curada.dominio, metricas);
     if (plano.blocos.length === 0) throw new Error("template_padrao_vazio");
     onProgresso({ fase: "amostra", pct: FAIXAS.amostra.de, frase: frasesDe("amostra")[0] });
     amostra = await resolverAmostra(metricasDoPlano(plano, metricas), { resolver: deps.resolver });

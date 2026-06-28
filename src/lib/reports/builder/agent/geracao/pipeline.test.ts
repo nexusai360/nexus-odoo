@@ -52,6 +52,10 @@ const resolverFake = jest.fn(async (fato: string, shape: string) => {
   if (shape === "agregacaoCategorica") {
     return { linhas: [{ rotulo: "A", valor: 10 }, { rotulo: "B", valor: 5 }] };
   }
+  if (shape === "serieTemporal") {
+    // 4+ pontos: o revisor NAO degrada a tendencia (Combo sobrevive).
+    return { linhas: [{ mes: "2026-01" }, { mes: "2026-02" }, { mes: "2026-03" }, { mes: "2026-04" }] };
+  }
   return { linhas: [] };
 });
 
@@ -87,6 +91,21 @@ describe("pipelineGeracao (compositor + critico + revisor)", () => {
     expect(criarCliente).not.toHaveBeenCalled();
     expect(logUsage).not.toHaveBeenCalled();
     expect(out.ficha.secoes.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("gerar_ja com dominioTemplate financeiro: mostra Combo e Waterfall, 0 LLM", async () => {
+    const criarCliente = jest.fn(async () => clienteRoteirizado([]) as never);
+    const logUsage = jest.fn().mockResolvedValue(undefined);
+    const d = deps(clienteRoteirizado([]), logUsage, criarCliente);
+    const out = await pipelineGeracao(
+      { ...ENTRADA, modo: "gerar_ja", dominioTemplate: "financeiro" },
+      () => {},
+      d,
+    );
+    expect(criarCliente).not.toHaveBeenCalled();
+    const tpls = out.ficha.secoes.map((s) => s.template);
+    expect(tpls).toContain("Combo");
+    expect(tpls).toContain("Waterfall");
   });
 
   it("plano vazio (tudo fora do catalogo) -> erro limpo", async () => {

@@ -12,7 +12,7 @@
  */
 
 import { motion, useReducedMotion } from "framer-motion";
-import { ChevronDown, Download, Loader2, MessagesSquare, Mic, MoreVertical, Send, Sparkles, Trash2 } from "lucide-react";
+import { Boxes, ChevronDown, Coins, Download, Loader2, MessagesSquare, Mic, MoreVertical, Receipt, Send, ShoppingCart, Sparkles, Trash2, Wand2, type LucideIcon } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -386,13 +386,13 @@ export function BuilderChatPanel({
   }, [reduceMotion, setIsSticky]);
 
   const handleSend = React.useCallback(
-    async (text: string, opts?: { isAudio?: boolean; acao?: "gerar" | "regenerar" }) => {
+    async (text: string, opts?: { isAudio?: boolean; acao?: "gerar" | "regenerar" | "exemplo"; dominio?: string }) => {
       const trimmed = text.trim();
       if (!trimmed || pending) return;
 
-      // No Gerar/Regenerar a experiencia e a OVERLAY (bastidores): nada de bolha de
-      // "Pensando" nem da mensagem sintetica do usuario. So a barra de progresso.
-      const silencioso = opts?.acao === "gerar" || opts?.acao === "regenerar";
+      // No Gerar/Regenerar/Exemplo a experiencia e a OVERLAY (bastidores): nada de bolha
+      // de "Pensando" nem da mensagem sintetica do usuario. So a barra de progresso.
+      const silencioso = opts?.acao === "gerar" || opts?.acao === "regenerar" || opts?.acao === "exemplo";
 
       setIsSticky(true);
       requestAnimationFrame(() => {
@@ -440,6 +440,7 @@ export function BuilderChatPanel({
             conversationId: conversationIdRef.current ?? undefined,
             isAudio: opts?.isAudio,
             ...(opts?.acao ? { acao: opts.acao } : {}),
+            ...(opts?.dominio ? { dominio: opts.dominio } : {}),
           }),
           signal: controller.signal,
         });
@@ -701,6 +702,15 @@ export function BuilderChatPanel({
     [audioFlight, handleSend, setIsSticky],
   );
 
+  // Dispara um relatorio de EXEMPLO pronto por dominio (gerar_ja, 0 LLM / 0 custo).
+  // Mostra todos os componentes do gerador sem gastar a API do cliente.
+  const dispararExemplo = React.useCallback(
+    (dominio: string, label: string) => {
+      void handleSend(`Quero ver um exemplo de ${label.toLowerCase()}.`, { acao: "exemplo", dominio });
+    },
+    [handleSend],
+  );
+
   const sendDisabled = pending || input.trim().length === 0;
   const showWelcome = !restoring && messages.length === 0;
   const showRestoring = restoring && messages.length === 0;
@@ -889,6 +899,7 @@ export function BuilderChatPanel({
               Me descreva que eu te ajudo a montar do seu jeito.
             </p>
             {composerNode}
+            <ExemplosRapidos onPick={dispararExemplo} disabled={pending} />
           </div>
         </div>
       ) : (
@@ -896,7 +907,7 @@ export function BuilderChatPanel({
       {/* Area de mensagens */}
       <div ref={scrollRef} className={cn("flex-1 overflow-y-auto overscroll-contain pb-3", imersivo ? "px-4 pt-12 sm:px-6" : "px-4 pt-[17px]")}>
         {showWelcome ? (
-          <WelcomeBlock />
+          <WelcomeBlock onExemplo={dispararExemplo} disabled={pending} />
         ) : showRestoring ? (
           <RestoringBlock />
         ) : (
@@ -1012,7 +1023,13 @@ export function BuilderChatPanel({
   );
 }
 
-function WelcomeBlock() {
+function WelcomeBlock({
+  onExemplo,
+  disabled,
+}: {
+  onExemplo: (dominio: string, label: string) => void;
+  disabled?: boolean;
+}) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 px-2 text-center">
       <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-violet-500 text-white shadow-md shadow-violet-600/40">
@@ -1024,6 +1041,51 @@ function WelcomeBlock() {
           Descreva o relatorio que voce quer ver. Ex.: saldo de estoque por armazem, ou valor
           parado por familia.
         </p>
+      </div>
+      <ExemplosRapidos onPick={onExemplo} disabled={disabled} />
+    </div>
+  );
+}
+
+/** Dominios com exemplo pronto (gerar_ja deterministico). */
+const EXEMPLOS_DOMINIO: { dominio: string; label: string; Icon: LucideIcon }[] = [
+  { dominio: "estoque", label: "Estoque", Icon: Boxes },
+  { dominio: "financeiro", label: "Financeiro", Icon: Coins },
+  { dominio: "comercial", label: "Comercial", Icon: ShoppingCart },
+  { dominio: "fiscal", label: "Fiscal", Icon: Receipt },
+];
+
+/**
+ * Chips de "Gerar exemplo": montam um relatorio pronto por dominio pelo caminho
+ * deterministico (0 LLM / 0 custo de API), para ver os componentes na hora.
+ */
+function ExemplosRapidos({
+  onPick,
+  disabled,
+}: {
+  onPick: (dominio: string, label: string) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="mt-5 flex flex-col items-center gap-2">
+      <span className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+        <Wand2 className="h-3.5 w-3.5 text-violet-500" aria-hidden />
+        Ou gere um exemplo pronto (sem gastar nada)
+      </span>
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        {EXEMPLOS_DOMINIO.map(({ dominio, label, Icon }) => (
+          <button
+            key={dominio}
+            type="button"
+            disabled={disabled}
+            onClick={() => onPick(dominio, label)}
+            aria-label={`Gerar exemplo de ${label}`}
+            className="flex cursor-pointer items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground transition-colors duration-200 hover:border-violet-400/60 hover:bg-violet-500/10 hover:text-violet-700 focus-visible:ring-2 focus-visible:ring-violet-400/50 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40 dark:hover:text-violet-200"
+          >
+            <Icon className="h-3.5 w-3.5 text-violet-500" aria-hidden />
+            {label}
+          </button>
+        ))}
       </div>
     </div>
   );
