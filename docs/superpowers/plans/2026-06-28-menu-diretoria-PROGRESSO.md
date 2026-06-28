@@ -40,8 +40,19 @@
 - [x] Onda 5 , Agenda , COMPLETA: schema DiretoriaEvento* (SQL cirurgico), server
       actions listar/criar/excluir (gated, TDD), calendario mensal com 8 tipos de
       evento + navegacao de mes + criar/excluir. Falta colaboradores/anexos na UI.
-- [~] Onda 6 , RBAC na tela de Usuarios , EM ANDAMENTO (action + refactor stepper).
-- [~] (detalhe Onda 1 abaixo)
+- [x] Onda 6 , RBAC na tela de Usuarios , COMPLETA: action updateUserDiretoriaAccess
+      (gated, TDD) + getUserDiretoriaAccess; componentes uf-picker (novo) e
+      diretoria-access-step; DiretoriaAccessDialog; botao "Acesso a Diretoria" na
+      lista de usuarios (/usuarios). Optou-se por dialog dedicado em vez de
+      refatorar o stepper critico de user-form-dialog (mais seguro; usuario detalha
+      defaults finos depois). super_admin nao precisa (bypass).
+
+### TODAS AS 6 ONDAS ENTREGUES (2026-06-28). 85 testes verdes, tsc 0. PR #156.
+Refinos pendentes (nao bloqueiam): margem estimada (Vendas), B5 drill-in/B7 maquinas/
+B8 (Pedidos), A3 catalogo/A6 seriais/A7 compras-ativas (Estoque, precisam builders
+fato_serial/fato_compra), colaboradores+anexos na UI da Agenda, FreshnessIndicator
+nos headers, validacao visual no browser, e rebuild do worker p/ testar sync E2E.
+NAO FAZER MERGE sem autorizacao do usuario.
   - queries em `src/lib/diretoria/queries/vendas.ts` (TDD, mock prisma):
     - [x] C10 queryFormasPagamento (fato_pedido_parcela.formaPagamentoNome)
     - [x] C4 queryVendasPorMarca (nf_item -> fato_produto.marcaNome, entradaSaida=1)
