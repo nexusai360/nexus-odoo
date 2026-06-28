@@ -9,7 +9,15 @@ import {
   processSnapshotCycle,
   processReconcileCycle,
 } from "./sync/processors";
-import { JOB_INCREMENTAL, JOB_SNAPSHOT, JOB_RECONCILE, JOB_CONFIG_CHECK } from "./jobs";
+import {
+  JOB_INCREMENTAL,
+  JOB_SNAPSHOT,
+  JOB_RECONCILE,
+  JOB_CONFIG_CHECK,
+  JOB_ONDEMAND,
+  ODOO_SYNC_QUEUE_NAME,
+} from "./jobs";
+import { escoparCatalogo } from "./sync/ondemand-cycle";
 import { AGENT_QUEUE_NAME } from "./agent/queue";
 import { processAgentJob, type AgentJobData } from "./agent/processor";
 import { cleanupIdempotencyTable } from "./agent/cleanup";
@@ -56,7 +64,8 @@ const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
 const connection = new IORedis(REDIS_URL, { maxRetriesPerRequest: null });
 connection.on("error", (err: Error) => console.error("[worker] erro Redis:", err.message));
 
-export const ODOO_SYNC_QUEUE = "odoo-sync";
+// Fonte única do nome da fila (compartilhada com jobs.ts e o acessor lazy do app).
+export const ODOO_SYNC_QUEUE = ODOO_SYNC_QUEUE_NAME;
 export const syncQueue = new Queue(ODOO_SYNC_QUEUE, { connection });
 
 // ─── Fila do agente ───────────────────────────────────────────────────────────
@@ -321,6 +330,17 @@ async function rodarCiclo(name: string): Promise<void> {
 }
 
 /**
+ * Ciclo incremental ESCOPADO aos modelos passados (sync sob demanda da Diretoria).
+ * Reusa processIncrementalCycle, que aceita um catálogo pré-filtrado.
+ */
+async function rodarCicloEscopado(models: string[]): Promise<void> {
+  const client = clientFromEnv();
+  await client.authenticate();
+  const ctx = { prisma, client };
+  await processIncrementalCycle(ctx, escoparCatalogo(models));
+}
+
+/**
  * Drena snapshot/reconcile pendentes após uma recuperação.
  *
  * Chamado somente após um JOB_INCREMENTAL bem-sucedido , esse é o "sinal
@@ -357,6 +377,28 @@ const worker = new Worker(
       // Purga (uma vez) o scheduler heurístico legado, se ainda houver no Redis.
       await aplicarPurgaHeuristicaLegado();
       return { ok: true };
+    }
+    // Sync sob demanda (Diretoria): ciclo incremental ESCOPADO aos modelos da
+    // tela. Adquire o lock do INCREMENTAL (não "ondemand") para serializar com o
+    // cron e não duplicar trabalho; se ocupado, pula. One-shot: não mexe no
+    // scheduler repeat. Early-branch ANTES do lock genérico de baixo.
+    if (job.name === JOB_ONDEMAND) {
+      const models = (job.data?.models as string[] | undefined) ?? [];
+      if (models.length === 0) return { ok: true, skipped: "sem modelos" };
+      if (!(await adquirirLock(JOB_INCREMENTAL))) {
+        console.log("[worker] sync ondemand pulado , incremental em andamento (lock)");
+        return { skipped: true };
+      }
+      const inicioOd = Date.now();
+      try {
+        await rodarCicloEscopado(models);
+        console.log(
+          `[worker] sync ondemand (${models.length} modelos) concluído em ${Date.now() - inicioOd}ms`,
+        );
+        return { ok: true };
+      } finally {
+        await liberarLock(JOB_INCREMENTAL);
+      }
     }
     // Lock cluster-safe: se outro worker/ciclo já o detém, pula (WR-01).
     if (!(await adquirirLock(job.name))) {
