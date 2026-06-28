@@ -1,5 +1,22 @@
 # STATUS — nexus-odoo
 
+> **2026-06-28 (F6 , EXPANSÃO MULTI-DOMÍNIO + POLISH , EM EXECUÇÃO AUTÔNOMA) , branch
+> `feat/nex-reconstrucao`. F6 SÓ LOCAL.** Após o cérebro novo (ver bloco abaixo), o usuário
+> pediu: cobrir TODOS os fatos da plataforma + mais componentes. Mapa feito por workflow (4
+> mapeadores Opus): **todos os domínios já têm fato_* + query auditada; só estoque estava
+> registrado.** Cobrir = wrappar a query numa FonteDef + curar métrica (recipe em
+> `docs/superpowers/specs/2026-06-28-f6-expansao-dominios-e-componentes.md`). JÁ FEITO nesta
+> rodada: **C4** freshness "atualizado há Xs"; **D5** drilldown inline na tabela (via
+> `__detalhe`); **E1a** jornada enxuta; **ONDA 2 = domínio FINANCEIRO** registrado
+> (saldo bancário, fluxo de caixa série, DRE) , 12 métricas, provado contra dado real;
+> pipeline cobre todos os domínios registrados por padrão. **43 suites/211 testes builder
+> verdes, tsc 0.** PRÓXIMO (mecânico, recipe pronto): registrar Comercial → Fiscal →
+> Financeiro-títulos → Cadastros → Contábil; depois componentes novos (waterfall/funnel/
+> gauge/sparkline/combo/treemap/pivô) + ativar os já-existentes (KpiCard.delta, stacked,
+> secondaryValue, agruparOutros). Passe visual do usuário (caminho LLM bilha a API) pendente.
+> F6 NÃO sobe sem aprovação.
+
+
 > **2026-06-28 (F6 , REFORMA ESTRUTURAL DO CÉREBRO DO GERADOR , EM EXECUÇÃO AUTÔNOMA) ,
 > branch `feat/nex-reconstrucao`. F6 SÓ LOCAL.** Usuário FUROSO com o Frankenstein
 > (KPIs com o mesmo número em 3 cards, título que mente sobre o dado, 4 barras quase
