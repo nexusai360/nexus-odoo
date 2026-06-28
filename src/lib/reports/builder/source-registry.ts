@@ -28,6 +28,7 @@ import {
   queryFaturamentoPorCliente,
   queryProdutosFaturados,
 } from "@/lib/reports/queries/fiscal";
+import { queryContarParceiros, queryParceirosPorUf } from "@/lib/reports/queries/cadastros";
 import type {
   RawSourceData,
   ShapeDerivado,
@@ -623,6 +624,60 @@ const fatoFiscalProduto: FonteDef = {
   },
 };
 
+// ===========================================================================
+// CADASTROS (onda 5): parceiros , KPIs (clientes/fornecedores/ativos) e por UF.
+// ===========================================================================
+
+const fatoCadastrosParceiro: FonteDef = {
+  contract: {
+    fato: "fato_cadastros_parceiro",
+    modeloFonte: "cadastros.parceiro",
+    dominio: "cadastros",
+    shapes: ["kpis"],
+    campos: {
+      kpis: [
+        { key: "totalClientes", label: "Clientes", tipo: "numero" },
+        { key: "totalFornecedores", label: "Fornecedores", tipo: "numero" },
+        { key: "totalAtivos", label: "Ativos", tipo: "numero" },
+      ],
+    },
+  },
+  produtores: {
+    kpis: async () => {
+      const d = await queryContarParceiros(prisma);
+      return {
+        linhas: [],
+        kpis: { totalClientes: d.totalClientes, totalFornecedores: d.totalFornecedores, totalAtivos: d.totalAtivos },
+        freshness: null,
+      };
+    },
+  },
+};
+
+const fatoCadastrosUf: FonteDef = {
+  contract: {
+    fato: "fato_cadastros_uf",
+    modeloFonte: "cadastros.parceiro",
+    dominio: "cadastros",
+    shapes: ["agregacaoCategorica"],
+    campos: {
+      agregacaoCategorica: [
+        { key: "rotulo", label: "UF", tipo: "texto" },
+        { key: "valor", label: "Parceiros", tipo: "numero" },
+      ],
+    },
+  },
+  produtores: {
+    agregacaoCategorica: async () => {
+      const d = await queryParceirosPorUf(prisma, {});
+      return {
+        linhas: d.linhas.map((l) => ({ rotulo: l.uf ?? "(sem UF)", valor: l.quantidade })),
+        freshness: null,
+      };
+    },
+  },
+};
+
 const REGISTRY: Record<string, FonteDef> = {
   fato_estoque_saldo: fatoEstoqueSaldo,
   fato_estoque_armazem: fatoEstoqueArmazem,
@@ -641,6 +696,8 @@ const REGISTRY: Record<string, FonteDef> = {
   fato_fiscal_faturamento: fatoFiscalFaturamento,
   fato_fiscal_cliente: fatoFiscalCliente,
   fato_fiscal_produto: fatoFiscalProduto,
+  fato_cadastros_parceiro: fatoCadastrosParceiro,
+  fato_cadastros_uf: fatoCadastrosUf,
 };
 
 /** Lista os contratos publicos de todas as fontes (alimenta o agente). */

@@ -305,6 +305,39 @@ const CURADORIA: Record<string, Curada> = {
     formato: "brl",
     chartPreferido: "BarChart",
   },
+  // --- CADASTROS (onda 5) ---
+  "fato_cadastros_parceiro|kpis|totalClientes": {
+    id: "cadastros.clientes",
+    rotulo: "Clientes",
+    descricao: "Clientes cadastrados",
+    pergunta: "Quantos clientes existem?",
+    formato: "contagem",
+    chartPreferido: "KPIRow",
+  },
+  "fato_cadastros_parceiro|kpis|totalFornecedores": {
+    id: "cadastros.fornecedores",
+    rotulo: "Fornecedores",
+    descricao: "Fornecedores cadastrados",
+    pergunta: "Quantos fornecedores existem?",
+    formato: "contagem",
+    chartPreferido: "KPIRow",
+  },
+  "fato_cadastros_parceiro|kpis|totalAtivos": {
+    id: "cadastros.ativos",
+    rotulo: "Ativos",
+    descricao: "Parceiros ativos",
+    pergunta: "Quantos parceiros estao ativos?",
+    formato: "contagem",
+    chartPreferido: "KPIRow",
+  },
+  "fato_cadastros_uf|agregacaoCategorica|": {
+    id: "cadastros.por_uf",
+    rotulo: "Parceiros por UF",
+    descricao: "Distribuicao de parceiros por estado",
+    pergunta: "Onde estao os parceiros?",
+    formato: "contagem",
+    chartPreferido: "BarChart",
+  },
 };
 
 const TEMPLATES_POR_SHAPE: Record<ShapeDerivado, ReportTemplate[]> = {
