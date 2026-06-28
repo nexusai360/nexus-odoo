@@ -7,9 +7,11 @@
 // ele ESCONDE a conversa (relatorio ocupa tudo); o X traz a conversa de volta
 // (controlado pelo workspace via `cheia`/`onToggleCheia`). Sem barra de filtros.
 import { useState, useEffect } from "react";
-import { LayoutDashboard, AlertTriangle, Eye, Maximize2, Minimize2 } from "lucide-react";
+import { LayoutDashboard, AlertTriangle, Eye, Maximize2, Minimize2, RefreshCw } from "lucide-react";
 import { ReportRenderer, type EditavelFicha } from "./report-renderer";
+import { BuilderReportFilters } from "./builder-report-filters";
 import { previsualizarSecoes } from "@/lib/actions/builder";
+import type { FiltrosRuntime } from "@/lib/actions/relatorio-filtros";
 import { validarReportEntry } from "@/lib/reports/builder/report-entry-schema";
 import type { BuilderReportEntry } from "@/lib/reports/builder/types";
 import type { SecaoResolvida } from "@/lib/reports/builder/resolve-source";
@@ -47,6 +49,14 @@ export function BuilderPreview({
 }) {
   const [estado, setEstado] = useState<EstadoPreview>("vazio");
   const [dados, setDados] = useState<Record<string, SecaoResolvida>>({});
+  const [filtros, setFiltros] = useState<FiltrosRuntime>({});
+  const [atualizando, setAtualizando] = useState(false);
+
+  // Filtros sao do relatorio: ao trocar de ficha (nova geracao), zera o recorte.
+  const fichaId = ficha?.id ?? null;
+  useEffect(() => {
+    setFiltros({});
+  }, [fichaId]);
 
   useEffect(() => {
     if (!ficha) {
@@ -59,8 +69,11 @@ export function BuilderPreview({
       return;
     }
     let cancelado = false;
-    setEstado("carregando");
-    previsualizarSecoes(ficha, {})
+    setAtualizando(true);
+    // Re-resolucao por mudanca de filtro NAO volta ao skeleton: mantem o relatorio
+    // na tela e so troca os dados quando chegam (sem flash).
+    setEstado((prev) => (prev === "ok" ? "ok" : "carregando"));
+    previsualizarSecoes(ficha, filtros)
       .then((r) => {
         if (cancelado) return;
         if (r.tipo === "ok") {
@@ -69,14 +82,18 @@ export function BuilderPreview({
         } else {
           setEstado(r.tipo === "invalida" ? "invalida" : "erro");
         }
+        setAtualizando(false);
       })
       .catch(() => {
-        if (!cancelado) setEstado("erro");
+        if (!cancelado) {
+          setEstado("erro");
+          setAtualizando(false);
+        }
       });
     return () => {
       cancelado = true;
     };
-  }, [ficha]);
+  }, [ficha, filtros]);
 
   return (
     <div className="flex h-full flex-col">
@@ -155,6 +172,19 @@ export function BuilderPreview({
 
         {estado === "ok" && ficha ? (
           <div className="mx-auto w-full max-w-5xl px-5 py-6">
+            <div className="flex items-center justify-between gap-2">
+              <BuilderReportFilters
+                fatos={ficha.secoes.map((s) => s.fato)}
+                filtros={filtros}
+                onChange={setFiltros}
+              />
+              {atualizando ? (
+                <span className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground" aria-live="polite">
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                  Atualizando
+                </span>
+              ) : null}
+            </div>
             <ReportRenderer entry={ficha} dados={dados} editavel={editavel} />
           </div>
         ) : null}
