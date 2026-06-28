@@ -338,6 +338,31 @@ const CURADORIA: Record<string, Curada> = {
     formato: "contagem",
     chartPreferido: "BarChart",
   },
+  // --- CONTABIL + FISCAL ref (listagens) ---
+  "fato_contabil_plano|tabela|": {
+    id: "contabil.plano_contas",
+    rotulo: "Plano de contas",
+    descricao: "Estrutura contabil (codigo, conta, tipo)",
+    pergunta: "Como e o plano de contas?",
+    formato: "contagem",
+    chartPreferido: "DataTable",
+  },
+  "fato_fiscal_preco|tabela|": {
+    id: "fiscal.tabela_precos",
+    rotulo: "Tabela de precos",
+    descricao: "Regras de preco por produto/tabela",
+    pergunta: "Quais os precos cadastrados?",
+    formato: "brl",
+    chartPreferido: "DataTable",
+  },
+  "fato_fiscal_servico|tabela|": {
+    id: "fiscal.servicos",
+    rotulo: "Servicos",
+    descricao: "Servicos fiscais cadastrados",
+    pergunta: "Quais servicos existem?",
+    formato: "contagem",
+    chartPreferido: "DataTable",
+  },
 };
 
 const TEMPLATES_POR_SHAPE: Record<ShapeDerivado, ReportTemplate[]> = {

@@ -46,6 +46,9 @@ describe("source-registry , todos os fatos ativados", () => {
         "fato_fiscal_produto",
         "fato_cadastros_parceiro",
         "fato_cadastros_uf",
+        "fato_contabil_plano",
+        "fato_fiscal_preco",
+        "fato_fiscal_servico",
       ].sort(),
     );
   });

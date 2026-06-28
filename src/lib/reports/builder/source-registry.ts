@@ -29,6 +29,9 @@ import {
   queryProdutosFaturados,
 } from "@/lib/reports/queries/fiscal";
 import { queryContarParceiros, queryParceirosPorUf } from "@/lib/reports/queries/cadastros";
+import { queryPlanoDeContas } from "@/lib/reports/queries/contabil";
+import { queryPrecoProduto } from "@/lib/reports/queries/precos";
+import { queryServicoListar } from "@/lib/reports/queries/servicos";
 import type {
   RawSourceData,
   ShapeDerivado,
@@ -678,6 +681,78 @@ const fatoCadastrosUf: FonteDef = {
   },
 };
 
+// ===========================================================================
+// CONTABIL (plano de contas) + FISCAL ref (precos, servicos) , listagens (TAB).
+// ===========================================================================
+
+const fatoContabilPlano: FonteDef = {
+  contract: {
+    fato: "fato_contabil_plano",
+    modeloFonte: "contabil.conta",
+    dominio: "contabil",
+    shapes: ["tabela"],
+    campos: {
+      tabela: [
+        { key: "codigo", label: "Codigo", tipo: "texto" },
+        { key: "nome", label: "Conta", tipo: "texto" },
+        { key: "tipo", label: "Tipo", tipo: "texto" },
+        { key: "contaPaiNome", label: "Conta pai", tipo: "texto" },
+      ],
+    },
+  },
+  produtores: {
+    tabela: async () => {
+      const d = await queryPlanoDeContas(prisma, { limit: 500, offset: 0 });
+      return { linhas: d.linhas as unknown as Record<string, unknown>[], freshness: null };
+    },
+  },
+};
+
+const fatoFiscalPreco: FonteDef = {
+  contract: {
+    fato: "fato_fiscal_preco",
+    modeloFonte: "fiscal.preco",
+    dominio: "fiscal",
+    shapes: ["tabela"],
+    campos: {
+      tabela: [
+        { key: "tabelaNome", label: "Tabela", tipo: "texto" },
+        { key: "produtoNome", label: "Produto", tipo: "texto" },
+        { key: "valor", label: "Preco", tipo: "moeda" },
+        { key: "quantidadeMinima", label: "Qtd minima", tipo: "numero" },
+      ],
+    },
+  },
+  produtores: {
+    tabela: async () => {
+      const d = await queryPrecoProduto(prisma, { limit: 500, offset: 0 });
+      return { linhas: d.linhas as unknown as Record<string, unknown>[], freshness: null };
+    },
+  },
+};
+
+const fatoFiscalServico: FonteDef = {
+  contract: {
+    fato: "fato_fiscal_servico",
+    modeloFonte: "fiscal.servico",
+    dominio: "fiscal",
+    shapes: ["tabela"],
+    campos: {
+      tabela: [
+        { key: "codigoFormatado", label: "Codigo", tipo: "texto" },
+        { key: "descricao", label: "Servico", tipo: "texto" },
+        { key: "codigoTributacao", label: "Cod. tributacao", tipo: "texto" },
+      ],
+    },
+  },
+  produtores: {
+    tabela: async () => {
+      const d = await queryServicoListar(prisma, { limit: 500, offset: 0 });
+      return { linhas: d.linhas as unknown as Record<string, unknown>[], freshness: null };
+    },
+  },
+};
+
 const REGISTRY: Record<string, FonteDef> = {
   fato_estoque_saldo: fatoEstoqueSaldo,
   fato_estoque_armazem: fatoEstoqueArmazem,
@@ -698,6 +773,9 @@ const REGISTRY: Record<string, FonteDef> = {
   fato_fiscal_produto: fatoFiscalProduto,
   fato_cadastros_parceiro: fatoCadastrosParceiro,
   fato_cadastros_uf: fatoCadastrosUf,
+  fato_contabil_plano: fatoContabilPlano,
+  fato_fiscal_preco: fatoFiscalPreco,
+  fato_fiscal_servico: fatoFiscalServico,
 };
 
 /** Lista os contratos publicos de todas as fontes (alimenta o agente). */
