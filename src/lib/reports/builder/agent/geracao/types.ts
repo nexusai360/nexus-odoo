@@ -1,5 +1,5 @@
 // src/lib/reports/builder/agent/geracao/types.ts
-// Contratos do motor de geracao (pipeline do Gerar). Importa journey + blueprint-types.
+// Contratos do motor de geracao (pipeline do Gerar). Importa journey + plano-types.
 import type { ProviderClient } from "@/lib/agent/llm/types";
 import type { LogUsageArgs } from "@/lib/agent/llm/usage-logger";
 import type { BuilderReportEntry } from "../../types";
