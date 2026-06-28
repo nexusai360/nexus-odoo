@@ -1,5 +1,35 @@
 # STATUS — nexus-odoo
 
+> **2026-06-28 (F6 , ONDA DE COMPONENTES , EM EXECUÇÃO AUTÔNOMA) , branch
+> `feat/nex-reconstrucao`. F6 SÓ LOCAL.** Após a expansão multi-domínio, entrou a onda de
+> COMPONENTES novos do gerador. Cada componente = vertical completo com TDD (novo
+> `ReportTemplate` na union + `REPORT_TEMPLATES` zod + `TEMPLATES_ONDA1` + `component-catalog`
+> + `metric-catalog` `TEMPLATES_POR_SHAPE`/`chartPreferido` + `build-plano` + branch no
+> `report-renderer` + `option-thumbs` + componente em `charts/interactive/`). **ENTREGUES e
+> commitados nesta rodada (4):**
+> - **Funnel** (`comercial.por_etapa`): pipeline por etapa, reusa `agregacaoCategorica`
+>   (sem dado novo); ordena por valor desc, largura relativa ao topo, share do total.
+> - **Waterfall / DRE** (`financeiro.dre`): exigiu o SHAPE NOVO `cascata` (passos com sinal
+>   positivo/negativo/total , o produtor categórico descartava o sinal). Produtor cascata:
+>   Receitas → top 5 despesas → Outras → Resultado; **PROVADO contra dado real, RECONCILIA
+>   exato** (receitas-despesas = resultado = -103.564.271,65). Bloco de gramática novo
+>   `Cascata` (plano-types + compositor + build-plano).
+> - **Combo** (barra+linha, `financeiro.fluxo_caixa`): reusa `serieTemporal`; 1a série =
+>   barra (realizado), resto = linha (previsto). A metade temporal do bloco
+>   `TendenciaDistribuicao` agora honra `serie.chartPreferido` (LineChart|Combo).
+> - **agruparOutros (topN)**: helper puro `agruparTopN` nas barras (topN=12) e pizza (8) ,
+>   mata o Frankenstein de 30 barras indistinguíveis (faturamento por cliente/produto, saldo
+>   por banco). Ataca direto a queixa do usuário.
+> **Verificação global: tsc 0; 98 suites/632 testes verdes.**
+> **DEFERIDOS por honestidade/ROI (documentado):** *Gauge* (exige META/target que NÃO temos
+> no dado , seria desonesto); *Sparkline* (exige série por-KPI , plumbing alto, ROI baixo);
+> *KpiCard.delta período-a-período* (exige recomputar a janela anterior; só ativa com período
+> explícito; é o próximo candidato de alto valor se for retomado); *stacked/2D categórico*
+> (exige produtor 2D que não existe). PRÓXIMO se retomar: avaliar `KpiCard.delta` (janela
+> anterior nos KPIs temporais). Passe visual do usuário em `/relatorios-2/construtor` (caminho
+> LLM real BILHA a API) continua pendente. F6 NÃO sobe sem aprovação.
+
+
 > **2026-06-28 (F6 , EXPANSÃO MULTI-DOMÍNIO + POLISH , EM EXECUÇÃO AUTÔNOMA) , branch
 > `feat/nex-reconstrucao`. F6 SÓ LOCAL.** Após o cérebro novo (ver bloco abaixo), o usuário
 > pediu: cobrir TODOS os fatos da plataforma + mais componentes. Mapa feito por workflow (4
