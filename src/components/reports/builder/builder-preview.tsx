@@ -49,6 +49,7 @@ export function BuilderPreview({
 }) {
   const [estado, setEstado] = useState<EstadoPreview>("vazio");
   const [dados, setDados] = useState<Record<string, SecaoResolvida>>({});
+  const [freshness, setFreshness] = useState<Date | null>(null);
   const [filtros, setFiltros] = useState<FiltrosRuntime>({});
   const [atualizando, setAtualizando] = useState(false);
 
@@ -79,6 +80,7 @@ export function BuilderPreview({
         if (cancelado) return;
         if (r.tipo === "ok") {
           setDados(r.dados);
+          setFreshness(r.freshness ?? null);
           setEstado("ok");
         } else {
           setEstado(r.tipo === "invalida" ? "invalida" : "erro");
@@ -186,7 +188,7 @@ export function BuilderPreview({
                 </span>
               ) : null}
             </div>
-            <ReportRenderer entry={ficha} dados={dados} editavel={editavel} />
+            <ReportRenderer entry={ficha} dados={dados} editavel={editavel} freshness={freshness} />
           </div>
         ) : null}
       </div>

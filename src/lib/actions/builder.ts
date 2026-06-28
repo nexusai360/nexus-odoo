@@ -15,6 +15,7 @@ import {
 } from "@/lib/reports/builder/saved-report-repo";
 import { validarReportEntry } from "@/lib/reports/builder/report-entry-schema";
 import { resolveSecao, type SecaoResolvida } from "@/lib/reports/builder/resolve-source";
+import { freshnessDoEntry } from "@/lib/reports/builder/freshness-builder";
 import type { BuilderReportEntry } from "@/lib/reports/builder/types";
 
 async function gateAdmin(): Promise<
@@ -125,7 +126,7 @@ export async function salvarFichaEditada(
 export type PrevisualizacaoResult =
   | { tipo: "negado" }
   | { tipo: "invalida"; erros: string[] }
-  | { tipo: "ok"; dados: Record<string, SecaoResolvida> };
+  | { tipo: "ok"; dados: Record<string, SecaoResolvida>; freshness?: Date | null };
 
 export async function previsualizarSecoes(
   ficha: BuilderReportEntry,
@@ -141,5 +142,6 @@ export async function previsualizarSecoes(
   for (const secao of v.entry.secoes) {
     dados[secao.id] = await resolveSecao(secao, filtros);
   }
-  return { tipo: "ok", dados };
+  const freshness = await freshnessDoEntry(v.entry).catch(() => null);
+  return { tipo: "ok", dados, freshness };
 }

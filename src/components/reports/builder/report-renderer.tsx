@@ -545,14 +545,27 @@ function agruparPorGrupoId(secoes: BuilderSection[]): BuilderSection[][] {
   return grupos;
 }
 
+/** "Atualizado ha Xs/min/h/d" a partir do instante do ultimo build do dado. */
+function atualizadoHa(d: Date): string {
+  const s = Math.max(0, Math.floor((Date.now() - d.getTime()) / 1000));
+  if (s < 60) return `Atualizado ha ${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `Atualizado ha ${m}min`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `Atualizado ha ${h}h`;
+  return `Atualizado ha ${Math.floor(h / 24)}d`;
+}
+
 export function ReportRenderer({
   entry,
   dados,
   editavel,
+  freshness,
 }: {
   entry: BuilderReportEntry;
   dados: Record<string, SecaoResolvida>;
   editavel?: EditavelFicha;
+  freshness?: Date | null;
 }) {
   const total = entry.secoes.length;
   const grupos = agruparPorGrupoId(entry.secoes);
@@ -560,9 +573,16 @@ export function ReportRenderer({
   return (
     <div className="flex flex-col gap-4">
       {entry.titulo ? (
-        <div className="mb-1">
-          <h1 className="text-base font-semibold tracking-tight text-foreground">{entry.titulo}</h1>
-          {entry.descricao ? <p className="mt-0.5 text-xs text-muted-foreground">{entry.descricao}</p> : null}
+        <div className="mb-1 flex items-baseline justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-base font-semibold tracking-tight text-foreground">{entry.titulo}</h1>
+            {entry.descricao ? <p className="mt-0.5 text-xs text-muted-foreground">{entry.descricao}</p> : null}
+          </div>
+          {freshness ? (
+            <span className="shrink-0 text-[11px] text-muted-foreground/70" title={freshness.toLocaleString("pt-BR")}>
+              {atualizadoHa(freshness)}
+            </span>
+          ) : null}
         </div>
       ) : null}
       {grupos.map((grupo, gi) => {
