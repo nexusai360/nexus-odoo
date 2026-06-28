@@ -36,10 +36,14 @@ describe("shape-adapters", () => {
       { key: "produtoNome", label: "Produto", tipo: "texto" as const },
       { key: "valorTotal", label: "Valor", tipo: "moeda" as const },
     ];
-    // So as 2 colunas declaradas; nada de numLocais/detalhePorLocal (que viravam
-    // "[object Object]" na tela).
+    // So as 2 colunas declaradas como COLUNA (numLocais escalar e descartado); o
+    // detalhe aninhado vira `__detalhe` (drilldown), nunca uma coluna "[object Object]".
     expect(adaptarTabela(raw, campos)).toEqual([
-      { produtoNome: "Esteira", valorTotal: 1000 },
+      {
+        produtoNome: "Esteira",
+        valorTotal: 1000,
+        __detalhe: [{ local: "A", saldo: 2 }, { local: "B", saldo: 1 }],
+      },
     ]);
   });
 

@@ -26,6 +26,17 @@ export function adaptarTabela(raw: RawSourceData, campos?: CampoMeta[]): LinhaTa
   return raw.linhas.map((linha) => {
     const proj: LinhaTabela = {};
     for (const k of keys) proj[k] = linha[k];
+    // Preserva o PRIMEIRO campo de detalhe aninhado (array de objetos) sob a chave
+    // reservada `__detalhe`, para o drilldown da tabela , SEM vaza-lo como coluna
+    // (ex.: detalhePorLocal do saldo: produto -> locais). Nao aparece como "[object Object]".
+    for (const k of Object.keys(linha)) {
+      if (keys.includes(k)) continue;
+      const v = linha[k];
+      if (Array.isArray(v) && v.length > 0 && typeof v[0] === "object" && v[0] !== null) {
+        proj.__detalhe = v;
+        break;
+      }
+    }
     return proj;
   });
 }

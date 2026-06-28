@@ -6,7 +6,7 @@
 // a direita, e rodape de paginacao de 3 zonas (Mostrando X-Y de Z | prev +
 // PageJumpNavigator + next | CustomSelect de itens por pagina).
 import * as React from "react";
-import { Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Table,
@@ -49,6 +49,44 @@ function celula(valor: unknown, tipo: CampoTipo | undefined): string {
   return String(valor);
 }
 
+/** Detalhe (drilldown) de uma linha: o array preservado em `__detalhe` pelo adaptador. */
+function detalheDe(row: Record<string, unknown>): Record<string, unknown>[] | null {
+  const d = row.__detalhe;
+  return Array.isArray(d) && d.length > 0 ? (d as Record<string, unknown>[]) : null;
+}
+
+/** Sub-tabela do drilldown: colunas derivadas das chaves do 1o item do detalhe. */
+function DetalheLinhas({ itens }: { itens: Record<string, unknown>[] }) {
+  const cols = Object.keys(itens[0]);
+  const fmt = new Intl.NumberFormat("pt-BR");
+  return (
+    <div className="rounded-lg border border-border/60 bg-muted/20 p-2">
+      <table className="w-full text-xs">
+        <thead>
+          <tr>
+            {cols.map((c) => (
+              <th key={c} className="px-2 py-1 text-left font-medium text-muted-foreground">
+                {c.charAt(0).toUpperCase() + c.slice(1)}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {itens.map((it, i) => (
+            <tr key={i}>
+              {cols.map((c) => (
+                <td key={c} className="px-2 py-1 text-foreground/80 tabular-nums">
+                  {typeof it[c] === "number" ? fmt.format(it[c] as number) : String(it[c] ?? "-")}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export function ReportDataTable({
   columns,
   rows,
@@ -61,6 +99,7 @@ export function ReportDataTable({
   const [busca, setBusca] = React.useState("");
   const [page, setPage] = React.useState(0);
   const [pageSize, setPageSize] = React.useState<number>(25);
+  const [aberta, setAberta] = React.useState<number | null>(null);
 
   // Filtra por texto em qualquer coluna (case/acento-insensitive simples).
   const filtradas = React.useMemo(() => {
@@ -84,6 +123,10 @@ export function ReportDataTable({
 
   const numberFmt = React.useMemo(() => new Intl.NumberFormat("pt-BR"), []);
 
+  // Drilldown: ha alguma linha com detalhe aninhado? (decide a coluna do chevron)
+  const algumDrill = React.useMemo(() => filtradas.some((r) => detalheDe(r) !== null), [filtradas]);
+  const totalColunas = columns.length + (algumDrill ? 1 : 0);
+
   return (
     <div className="flex flex-col gap-3">
       {searchable ? (
@@ -103,6 +146,7 @@ export function ReportDataTable({
         <Table>
           <TableHeader>
             <TableRow>
+              {algumDrill ? <TableHead className="w-9" /> : null}
               {columns.map((c) => (
                 <TableHead key={c.key} className={cn(ehNumerico(c.tipo) && "text-right")}>
                   {c.header}
@@ -113,23 +157,50 @@ export function ReportDataTable({
           <TableBody>
             {visiveis.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={columns.length} className="py-8 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={totalColunas} className="py-8 text-center text-sm text-muted-foreground">
                   {busca ? "Nenhum resultado para a busca." : "Sem dados para esta secao."}
                 </TableCell>
               </TableRow>
             ) : (
-              visiveis.map((row, i) => (
-                <TableRow key={i} className="transition-colors hover:bg-muted/40">
-                  {columns.map((c) => (
-                    <TableCell
-                      key={c.key}
-                      className={cn(ehNumerico(c.tipo) && "text-right tabular-nums")}
+              visiveis.map((row, i) => {
+                const idxAbs = inicio + i;
+                const detalhe = detalheDe(row);
+                const expandida = aberta === idxAbs;
+                return (
+                  <React.Fragment key={idxAbs}>
+                    <TableRow
+                      className={cn("transition-colors hover:bg-muted/40", detalhe && "cursor-pointer")}
+                      onClick={detalhe ? () => setAberta(expandida ? null : idxAbs) : undefined}
+                      {...(detalhe
+                        ? { role: "button", "aria-expanded": expandida, "aria-label": "Abrir detalhe da linha" }
+                        : {})}
                     >
-                      {celula(row[c.key], c.tipo)}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
+                      {algumDrill ? (
+                        <TableCell className="w-9 text-muted-foreground">
+                          {detalhe ? (
+                            <ChevronDown
+                              className={cn("h-4 w-4 transition-transform duration-200", expandida ? "rotate-0" : "-rotate-90")}
+                              aria-hidden
+                            />
+                          ) : null}
+                        </TableCell>
+                      ) : null}
+                      {columns.map((c) => (
+                        <TableCell key={c.key} className={cn(ehNumerico(c.tipo) && "text-right tabular-nums")}>
+                          {celula(row[c.key], c.tipo)}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                    {expandida && detalhe ? (
+                      <TableRow className="bg-muted/10 hover:bg-muted/10">
+                        <TableCell colSpan={totalColunas} className="p-2">
+                          <DetalheLinhas itens={detalhe} />
+                        </TableCell>
+                      </TableRow>
+                    ) : null}
+                  </React.Fragment>
+                );
+              })
             )}
           </TableBody>
         </Table>
