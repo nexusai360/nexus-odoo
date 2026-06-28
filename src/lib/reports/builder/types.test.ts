@@ -6,9 +6,9 @@ import {
 } from "./types";
 
 describe("builder/types , constantes e guards", () => {
-  it("SHAPES_DERIVADOS cobre os 4 shapes da onda 1", () => {
+  it("SHAPES_DERIVADOS cobre os shapes do construtor (inclui cascata p/ waterfall)", () => {
     expect([...SHAPES_DERIVADOS].sort()).toEqual(
-      ["agregacaoCategorica", "kpis", "serieTemporal", "tabela"].sort(),
+      ["agregacaoCategorica", "cascata", "kpis", "serieTemporal", "tabela"].sort(),
     );
   });
 

@@ -25,7 +25,16 @@ export interface BlocoTabela {
   tipo: "Tabela";
   metrica: string;
 }
-export type Bloco = BlocoKpi | BlocoTendencia | BlocoRanking | BlocoTabela;
+export interface BlocoCascata {
+  tipo: "Cascata";
+  metrica: string;
+}
+export type Bloco =
+  | BlocoKpi
+  | BlocoTendencia
+  | BlocoRanking
+  | BlocoTabela
+  | BlocoCascata;
 
 export interface Plano {
   titulo: string;
@@ -44,6 +53,7 @@ export const blocoSchema = z.discriminatedUnion("tipo", [
   }),
   z.object({ tipo: z.literal("Ranking"), metrica: z.string(), recorte: z.string() }),
   z.object({ tipo: z.literal("Tabela"), metrica: z.string() }),
+  z.object({ tipo: z.literal("Cascata"), metrica: z.string() }),
 ]);
 
 export const planoSchema: z.ZodType<Plano> = z.object({
@@ -60,6 +70,7 @@ export function papelDoBloco(b: Bloco): PapelBloco {
       return "panorama";
     case "TendenciaDistribuicao":
     case "Ranking":
+    case "Cascata":
       return "analise";
     case "Tabela":
       return "detalhe";

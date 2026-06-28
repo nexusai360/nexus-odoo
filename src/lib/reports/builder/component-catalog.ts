@@ -93,6 +93,20 @@ export const COMPONENT_CATALOG: ComponentEntry[] = [
     tokensVisuais: { estagio: "chart.bar", rotulo: "chart.legend" },
   },
   {
+    chave: "Waterfall",
+    nome: "Cascata (waterfall)",
+    paraQueServe:
+      "Mostrar como um valor de partida (receita) chega a um resultado, passo a passo, somando e subtraindo (DRE).",
+    quandoUsar:
+      "Decomposicao de um resultado financeiro/contabil: receita menos despesas ate o resultado. Usa o shape 'cascata' (passos com sinal).",
+    quandoNaoUsar:
+      "Comparar categorias sem ideia de acumulo (use barra) ou proporcao (use pizza).",
+    shapeDerivadoExigido: "cascata",
+    parametros: [{ chave: "titulo", descricao: "Titulo curto opcional da cascata." }],
+    interacao: ["tooltip", "acumulado"],
+    tokensVisuais: { sobe: "chart.positive", desce: "chart.negative", total: "chart.bar" },
+  },
+  {
     chave: "DataTable",
     nome: "Tabela de dados",
     paraQueServe:

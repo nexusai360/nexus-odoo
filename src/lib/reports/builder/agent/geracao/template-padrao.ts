@@ -33,6 +33,7 @@ function blocoTemMetricasValidas(bloco: Bloco, metricas: Metrica[]): boolean {
       return bloco.metricas.every((id) => obterMetrica(metricas, id));
     case "Ranking":
     case "Tabela":
+    case "Cascata":
       return !!obterMetrica(metricas, bloco.metrica);
     case "TendenciaDistribuicao":
       return !!obterMetrica(metricas, bloco.metricaSerie) && !!obterMetrica(metricas, bloco.metricaComposicao);

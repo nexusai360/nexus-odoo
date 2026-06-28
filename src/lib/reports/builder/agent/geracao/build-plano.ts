@@ -78,6 +78,14 @@ function especificarBloco(
       }
       return [{ template: "DataTable", fato: m.fato, shapeDerivado: "tabela", config: { titulo: m.rotulo } }];
     }
+    case "Cascata": {
+      const m = obterMetrica(metricas, bloco.metrica);
+      if (!m || m.shape !== "cascata") {
+        omitidos.push(`cascata ${bloco.metrica} (metrica fora do catalogo ou nao-cascata)`);
+        return [];
+      }
+      return [{ template: "Waterfall", fato: m.fato, shapeDerivado: "cascata", config: { titulo: m.rotulo } }];
+    }
     case "TendenciaDistribuicao": {
       const serie = obterMetrica(metricas, bloco.metricaSerie);
       const comp = obterMetrica(metricas, bloco.metricaComposicao);

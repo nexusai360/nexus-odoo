@@ -2,7 +2,7 @@
 // Thumbnails ilustrativos (so icone) por tipo de visualizacao, para os cards de
 // opcao da jornada. v1 nao renderiza o componente real em miniatura (decisao de
 // escopo): so um icone que representa o template.
-import { BarChart3, PieChart, TrendingUp, Table as TableIcon, Boxes, Filter, LayoutGrid, type LucideIcon } from "lucide-react";
+import { BarChart3, PieChart, TrendingUp, Table as TableIcon, Boxes, Filter, BarChartHorizontal, LayoutGrid, type LucideIcon } from "lucide-react";
 import type { ReportTemplate } from "@/lib/reports/types";
 
 const ICONE_TEMPLATE: Record<ReportTemplate, LucideIcon> = {
@@ -13,6 +13,7 @@ const ICONE_TEMPLATE: Record<ReportTemplate, LucideIcon> = {
   LineChart: TrendingUp,
   DataTable: TableIcon,
   Funnel: Filter,
+  Waterfall: BarChartHorizontal,
 };
 
 /** Icone que representa um template (ou um generico quando ausente). */

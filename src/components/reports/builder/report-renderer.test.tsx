@@ -162,6 +162,30 @@ describe("ReportRenderer", () => {
     expect(screen.getByLabelText(/funil/i)).toBeInTheDocument();
   });
 
+  it("renderiza um Waterfall (DRE em cascata)", () => {
+    const comCascata: BuilderReportEntry = {
+      ...entry,
+      titulo: "DRE",
+      dominio: "financeiro",
+      secoes: [
+        { id: "dre", template: "Waterfall", fato: "fato_financeiro_resultado", shapeDerivado: "cascata", config: { titulo: "Resultado em cascata" }, filtros: [] },
+      ],
+    };
+    const dados: Record<string, SecaoResolvida> = {
+      dre: {
+        estado: "ok",
+        dado: [
+          { rotulo: "Receitas", valor: 1000, tipo: "positivo" },
+          { rotulo: "Custos", valor: 400, tipo: "negativo" },
+          { rotulo: "Resultado", valor: 600, tipo: "total" },
+        ],
+      },
+    };
+    render(<ReportRenderer entry={comCascata} dados={dados} />);
+    expect(screen.getByText("Resultado em cascata")).toBeInTheDocument();
+    expect(screen.getByLabelText(/cascata/i)).toBeInTheDocument();
+  });
+
   it("KPIRow mostra o subtitulo por metrica (config.subtitulos)", () => {
     const comSub: BuilderReportEntry = {
       ...entry,

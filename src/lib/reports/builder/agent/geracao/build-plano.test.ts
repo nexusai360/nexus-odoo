@@ -49,6 +49,21 @@ describe("buildFichaDoPlano", () => {
     expect(ficha.secoes).toHaveLength(5);
   });
 
+  it("bloco Cascata vira secao Waterfall com shape cascata", () => {
+    const fin = listarMetricas({ dominiosPermitidos: ["financeiro"] });
+    const planoDre: Plano = {
+      titulo: "DRE gerencial",
+      objetivo: "da receita ao resultado",
+      dominio: "financeiro",
+      blocos: [{ tipo: "Cascata", metrica: "financeiro.dre" }],
+      filtrosIniciais: {},
+    };
+    const { ficha, omitidos } = buildFichaDoPlano(planoDre, fin);
+    expect(omitidos).toEqual([]);
+    expect(ficha.secoes.map((s) => s.template)).toEqual(["Waterfall"]);
+    expect(ficha.secoes[0].shapeDerivado).toBe("cascata");
+  });
+
   it("Ranking numa metrica com chartPreferido Funnel vira secao Funnel", () => {
     const comercial = listarMetricas({ dominiosPermitidos: ["comercial"] });
     const planoComercial: Plano = {

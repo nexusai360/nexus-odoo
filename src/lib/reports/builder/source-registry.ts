@@ -439,7 +439,7 @@ const fatoFinanceiroResultado: FonteDef = {
     fato: "fato_financeiro_resultado",
     modeloFonte: "financeiro.resultado",
     dominio: "financeiro",
-    shapes: ["kpis", "agregacaoCategorica"],
+    shapes: ["kpis", "agregacaoCategorica", "cascata"],
     campos: {
       kpis: [
         { key: "totalReceita", label: "Receita", tipo: "moeda" },
@@ -449,6 +449,11 @@ const fatoFinanceiroResultado: FonteDef = {
       agregacaoCategorica: [
         { key: "rotulo", label: "Conta gerencial", tipo: "texto" },
         { key: "valor", label: "Valor", tipo: "moeda" },
+      ],
+      cascata: [
+        { key: "rotulo", label: "Passo", tipo: "texto" },
+        { key: "valor", label: "Valor", tipo: "moeda" },
+        { key: "tipo", label: "Sinal", tipo: "texto" },
       ],
     },
   },
@@ -467,6 +472,28 @@ const fatoFinanceiroResultado: FonteDef = {
         linhas: d.linhas.map((l) => ({ rotulo: l.contaNome ?? "(sem conta)", valor: l.total })),
         freshness: null,
       };
+    },
+    // DRE em cascata: Receitas (sobe) -> top despesas por conta (descem) ->
+    // Outras despesas (resto) -> Resultado (barra total reancorada no zero).
+    cascata: async (filtros) => {
+      const d = await queryResultadoPorConta(prisma, { periodoDe: filtros.periodoDe, periodoAte: filtros.periodoAte });
+      if (d.totalReceita === 0 && d.totalDespesa === 0 && d.linhas.length === 0) {
+        return { linhas: [], freshness: null };
+      }
+      const despesas = d.linhas.filter((l) => l.natureza === "despesa");
+      const TOPN = 5;
+      const top = despesas.slice(0, TOPN);
+      // Resto = tudo que nao esta no top, derivado do TOTAL (nao da soma das linhas
+      // exibidas, que o query limita): garante Receitas - despesas = Resultado exato.
+      const somaTop = top.reduce((s, l) => s + l.total, 0);
+      const resto = d.totalDespesa - somaTop;
+      const passos: Record<string, unknown>[] = [
+        { rotulo: "Receitas", valor: d.totalReceita, tipo: "positivo" },
+        ...top.map((l) => ({ rotulo: l.contaNome ?? "(sem conta)", valor: l.total, tipo: "negativo" })),
+      ];
+      if (resto > 0.005) passos.push({ rotulo: "Outras despesas", valor: resto, tipo: "negativo" });
+      passos.push({ rotulo: "Resultado", valor: d.resultado, tipo: "total" });
+      return { linhas: passos, freshness: null };
     },
   },
 };

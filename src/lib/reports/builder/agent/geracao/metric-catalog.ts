@@ -231,6 +231,14 @@ const CURADORIA: Record<string, Curada> = {
     formato: "brl",
     chartPreferido: "BarChart",
   },
+  "fato_financeiro_resultado|cascata|": {
+    id: "financeiro.dre",
+    rotulo: "DRE em cascata",
+    descricao: "Da receita ao resultado, passo a passo",
+    pergunta: "Como a receita vira resultado?",
+    formato: "brl",
+    chartPreferido: "Waterfall",
+  },
   // --- COMERCIAL (onda 3) ---
   "fato_comercial_pedido|kpis|totalPedidos": {
     id: "comercial.pedidos",
@@ -370,6 +378,7 @@ const TEMPLATES_POR_SHAPE: Record<ShapeDerivado, ReportTemplate[]> = {
   tabela: ["DataTable"],
   agregacaoCategorica: ["BarChart", "PieChart", "Funnel"],
   serieTemporal: ["LineChart"],
+  cascata: ["Waterfall"],
 };
 
 /** Dimensoes = colunas categoricas (texto) que o fato oferece para recorte/agrupamento. */

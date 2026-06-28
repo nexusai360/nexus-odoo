@@ -16,6 +16,7 @@ import {
   BarChart3,
   PieChart as PieIcon,
   Filter as FunnelIcon,
+  BarChartHorizontal as WaterfallIcon,
   Table as TableIcon,
   ChevronUp,
   ChevronDown,
@@ -34,10 +35,13 @@ import {
   InteractiveBarChart,
   DonutWithCenter,
   InteractiveFunnelChart,
+  InteractiveWaterfallChart,
   type AreaChartData,
   type BarChartData,
   type PieChartData,
   type FunnelDatum,
+  type PassoCascata,
+  type PassoCascataTipo,
 } from "@/components/charts/interactive";
 import {
   CHART_COLORS,
@@ -84,6 +88,8 @@ function metaTemplate(template: string): { Icon: LucideIcon; titulo: string } {
       return { Icon: TrendingUp, titulo: "Evolucao no tempo" };
     case "Funnel":
       return { Icon: FunnelIcon, titulo: "Funil por etapa" };
+    case "Waterfall":
+      return { Icon: WaterfallIcon, titulo: "Resultado em cascata" };
     default:
       return { Icon: TableIcon, titulo: "Detalhe" };
   }
@@ -507,6 +513,26 @@ function SecaoView({
         <InteractiveFunnelChart
           data={funnelData}
           color={corDaSecao(secao)}
+          formatValue={formatadorValor(campoValor?.tipo)}
+          emptyMessage="Sem dados para esta secao."
+        />
+      </CardSecao>
+    );
+  }
+
+  // Waterfall , cascata (DRE) a partir do shape "cascata" (passos com sinal).
+  if (secao.template === "Waterfall") {
+    const data = (resolvida.dado as Record<string, unknown>[]) ?? [];
+    const campoValor = (resolvida.campos ?? []).find((c) => c.key === "valor");
+    const passos: PassoCascata[] = data.map((d) => ({
+      rotulo: String(d.rotulo ?? ""),
+      valor: Number(d.valor ?? 0),
+      tipo: (d.tipo as PassoCascataTipo) ?? "positivo",
+    }));
+    return (
+      <CardSecao Icon={Icon} titulo={titulo} {...editProps}>
+        <InteractiveWaterfallChart
+          passos={passos}
           formatValue={formatadorValor(campoValor?.tipo)}
           emptyMessage="Sem dados para esta secao."
         />

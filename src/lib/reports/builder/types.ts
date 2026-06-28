@@ -18,6 +18,7 @@ export const SHAPES_DERIVADOS = [
   "tabela",
   "agregacaoCategorica",
   "serieTemporal",
+  "cascata",
 ] as const;
 export type ShapeDerivado = (typeof SHAPES_DERIVADOS)[number];
 
@@ -117,4 +118,5 @@ export const TEMPLATES_ONDA1: ReportTemplate[] = [
   "LineChart",
   "DataTable",
   "Funnel",
+  "Waterfall",
 ];

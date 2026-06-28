@@ -25,4 +25,10 @@ describe("component-catalog", () => {
     expect(c).toBeDefined();
     expect(c!.shapeDerivadoExigido).toBe("agregacaoCategorica");
   });
+
+  it("descreverComponente(Waterfall) exige o shape cascata", () => {
+    const c = descreverComponente("Waterfall");
+    expect(c).toBeDefined();
+    expect(c!.shapeDerivadoExigido).toBe("cascata");
+  });
 });

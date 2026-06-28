@@ -39,3 +39,11 @@ export {
   type FunnelSegment,
   type InteractiveFunnelChartProps,
 } from "./funnel-chart";
+export {
+  InteractiveWaterfallChart,
+  buildWaterfallBars,
+  type PassoCascata,
+  type PassoCascataTipo,
+  type BarraCascata,
+  type InteractiveWaterfallChartProps,
+} from "./waterfall-chart";

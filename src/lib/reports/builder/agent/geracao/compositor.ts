@@ -72,6 +72,7 @@ function validarContraCatalogo(bloco: Bloco, metricas: Metrica[], omitidos: stri
     }
     case "Ranking":
     case "Tabela":
+    case "Cascata":
       if (existe(bloco.metrica)) return bloco;
       omitidos.push(`${bloco.tipo} ${bloco.metrica} (fora do catalogo)`);
       return null;
@@ -101,6 +102,7 @@ Blocos disponiveis (use os ids EXATOS do catalogo):
 - {"tipo": "KpiStrip", "metricas": ["id", ...]}  panorama: indicadores escalares (do MESMO fato), no topo.
 - {"tipo": "TendenciaDistribuicao", "metricaSerie": "id_temporal", "metricaComposicao": "id_categorico"}  evolucao no tempo + composicao lado a lado. So use metricaSerie que seja TEMPORAL.
 - {"tipo": "Ranking", "metrica": "id_categorico", "recorte": "armazem|marca|familia"}  comparacao por categoria.
+- {"tipo": "Cascata", "metrica": "id_cascata"}  DRE em cascata (receita -> despesas -> resultado). Use SO em metrica cuja sugestao seja [Waterfall].
 - {"tipo": "Tabela", "metrica": "id_tabela"}  detalhe item a item.
 
 Principios: escolha as metricas que RESPONDEM a intencao; narrativa panorama -> analise -> detalhe; nao repita a mesma informacao. Se a intencao pede algo fora do catalogo, simplesmente nao inclua.
