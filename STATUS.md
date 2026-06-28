@@ -41,13 +41,19 @@
 >   `resolveSecao` popula `freshness` via `prisma.fatoBuildState.ultimoBuildAt` (min com
 >   `syncState.lastSnapshotAt`, padrão de `src/lib/reports/freshness.ts`); renderer mostra
 >   o min no topo. Cuidar do mock de prisma em `resolve-source.test`.
-> - [ ] **FASE D (filtros ao vivo) ← RETOMAR AQUI.** D1 `previsualizarComFiltros(entry,
->   filtros)` resolve do entry em memória (sem savedId), liga em `builder-preview.tsx`/
->   `report-view-interactive.tsx`; D2 plumbing período mensal (FiltrosFonte/Runtime
->   periodoDe/Ate só no movimento + corrigir gap armazemId/familiaId em `filtrosDaSecao`);
->   D3 `report-filters.tsx` (pílulas de recorte sempre; período mensal só se há bloco
->   temporal) + REMOVER a barra de filtro fixa; D4 navegador mensal condicional (≥4 pts);
->   D5 drilldown inline no `ReportDataTable`.
+> - [x] **D1 (já existia)** , `previsualizarSecoes(ficha, filtros)` (lib/actions/builder.ts)
+>   já resolve do entry EM MEMÓRIA com FiltrosFonte, sem savedId, gate admin. É o caminho
+>   de filtro ao vivo do preview. Nada a criar.
+> - [x] **D2** , plumbing de filtro: `FiltrosFonte`/`FiltrosRuntime` ganham
+>   `periodoDe/periodoAte` (só o produtor de `fato_estoque_movimento` repassa às queries);
+>   **corrigido o gap histórico** armazem/família em `filtrosDaSecao` (default→id numérico).
+>   resolve-source.test 8 verdes; tsc 0. **Backend dos filtros ao vivo COMPLETO.**
+> - [ ] **FASE D , UI restante (client, ui-ux-pro-max, ideal validar na tela) ← RETOMAR.**
+>   D3 `report-filters.tsx` (pílulas de recorte armazem/marca/família via
+>   `listarDimensoesFiltro`; período mensal só se há bloco temporal) + segurar `filtros`
+>   em estado no `builder-preview.tsx` e re-chamar `previsualizarSecoes(ficha, filtros)` ao
+>   mudar (debounce); D4 navegador mensal ≥4 pts no LineChart do grupo; D5 drilldown inline
+>   no `ReportDataTable` (estado expandedRowId, padrão do Consumo).
 > - [ ] **FASE E** E1a prompt enxuto (≤3 perguntas) + remover "firmeza contra pressa";
 >   E1b gate por domínio detectado (mexe em `journey/state.ts podeOferecerGeracao` + 3
 >   testes route/state/roteiro , RISCO, fazer com cuidado); E1c rota "gerar já" 0-LLM
