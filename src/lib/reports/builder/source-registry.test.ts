@@ -41,6 +41,9 @@ describe("source-registry , todos os fatos ativados", () => {
         "fato_comercial_pedido",
         "fato_comercial_etapa",
         "fato_comercial_vendedor",
+        "fato_fiscal_faturamento",
+        "fato_fiscal_cliente",
+        "fato_fiscal_produto",
       ].sort(),
     );
   });

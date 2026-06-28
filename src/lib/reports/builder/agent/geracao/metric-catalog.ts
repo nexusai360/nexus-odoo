@@ -272,6 +272,39 @@ const CURADORIA: Record<string, Curada> = {
     formato: "brl",
     chartPreferido: "BarChart",
   },
+  // --- FISCAL (onda 4) ---
+  "fato_fiscal_faturamento|kpis|totalNotas": {
+    id: "fiscal.notas",
+    rotulo: "Notas emitidas",
+    descricao: "Quantidade de NF de saida no periodo",
+    pergunta: "Quantas notas foram emitidas?",
+    formato: "contagem",
+    chartPreferido: "KPIRow",
+  },
+  "fato_fiscal_faturamento|kpis|valorFaturado": {
+    id: "fiscal.faturamento",
+    rotulo: "Faturamento",
+    descricao: "Valor faturado (NF de saida) no periodo",
+    pergunta: "Quanto foi faturado?",
+    formato: "brl",
+    chartPreferido: "KPIRow",
+  },
+  "fato_fiscal_cliente|agregacaoCategorica|": {
+    id: "fiscal.por_cliente",
+    rotulo: "Faturamento por cliente",
+    descricao: "Valor faturado por cliente",
+    pergunta: "Quais clientes mais faturam?",
+    formato: "brl",
+    chartPreferido: "BarChart",
+  },
+  "fato_fiscal_produto|agregacaoCategorica|": {
+    id: "fiscal.por_produto",
+    rotulo: "Faturamento por produto",
+    descricao: "Valor faturado por produto",
+    pergunta: "Quais produtos mais faturam?",
+    formato: "brl",
+    chartPreferido: "BarChart",
+  },
 };
 
 const TEMPLATES_POR_SHAPE: Record<ShapeDerivado, ReportTemplate[]> = {

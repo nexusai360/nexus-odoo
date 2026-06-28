@@ -23,6 +23,11 @@ import {
   queryPedidosPorVendedor,
   queryPedidosAtrasados,
 } from "@/lib/reports/queries/comercial";
+import {
+  queryFaturamentoPeriodo,
+  queryFaturamentoPorCliente,
+  queryProdutosFaturados,
+} from "@/lib/reports/queries/fiscal";
 import type {
   RawSourceData,
   ShapeDerivado,
@@ -545,6 +550,79 @@ const fatoComercialVendedor: FonteDef = {
   },
 };
 
+// ===========================================================================
+// FISCAL (onda 4): faturamento (NF de saida) , KPIs, por cliente, por produto.
+// ===========================================================================
+
+const fatoFiscalFaturamento: FonteDef = {
+  contract: {
+    fato: "fato_fiscal_faturamento",
+    modeloFonte: "fiscal.nota",
+    dominio: "fiscal",
+    shapes: ["kpis"],
+    campos: {
+      kpis: [
+        { key: "totalNotas", label: "Notas emitidas", tipo: "numero" },
+        { key: "valorFaturado", label: "Valor faturado", tipo: "moeda" },
+      ],
+    },
+  },
+  produtores: {
+    kpis: async (filtros) => {
+      const d = await queryFaturamentoPeriodo(prisma, { periodoDe: filtros.periodoDe, periodoAte: filtros.periodoAte });
+      return { linhas: [], kpis: { totalNotas: d.totalNotas, valorFaturado: d.valorFaturado }, freshness: null };
+    },
+  },
+};
+
+const fatoFiscalCliente: FonteDef = {
+  contract: {
+    fato: "fato_fiscal_cliente",
+    modeloFonte: "fiscal.nota",
+    dominio: "fiscal",
+    shapes: ["agregacaoCategorica"],
+    campos: {
+      agregacaoCategorica: [
+        { key: "rotulo", label: "Cliente", tipo: "texto" },
+        { key: "valor", label: "Faturado", tipo: "moeda" },
+      ],
+    },
+  },
+  produtores: {
+    agregacaoCategorica: async (filtros) => {
+      const d = await queryFaturamentoPorCliente(prisma, { periodoDe: filtros.periodoDe, periodoAte: filtros.periodoAte });
+      return {
+        linhas: d.linhas.map((l) => ({ rotulo: l.participanteNome ?? "(sem cliente)", valor: l.valorTotal })),
+        freshness: null,
+      };
+    },
+  },
+};
+
+const fatoFiscalProduto: FonteDef = {
+  contract: {
+    fato: "fato_fiscal_produto",
+    modeloFonte: "fiscal.nota",
+    dominio: "fiscal",
+    shapes: ["agregacaoCategorica"],
+    campos: {
+      agregacaoCategorica: [
+        { key: "rotulo", label: "Produto", tipo: "texto" },
+        { key: "valor", label: "Faturado", tipo: "moeda" },
+      ],
+    },
+  },
+  produtores: {
+    agregacaoCategorica: async (filtros) => {
+      const d = await queryProdutosFaturados(prisma, { periodoDe: filtros.periodoDe, periodoAte: filtros.periodoAte });
+      return {
+        linhas: d.linhas.map((l) => ({ rotulo: l.produtoNome ?? "(sem produto)", valor: l.valorTotal })),
+        freshness: null,
+      };
+    },
+  },
+};
+
 const REGISTRY: Record<string, FonteDef> = {
   fato_estoque_saldo: fatoEstoqueSaldo,
   fato_estoque_armazem: fatoEstoqueArmazem,
@@ -560,6 +638,9 @@ const REGISTRY: Record<string, FonteDef> = {
   fato_comercial_pedido: fatoComercialPedido,
   fato_comercial_etapa: fatoComercialEtapa,
   fato_comercial_vendedor: fatoComercialVendedor,
+  fato_fiscal_faturamento: fatoFiscalFaturamento,
+  fato_fiscal_cliente: fatoFiscalCliente,
+  fato_fiscal_produto: fatoFiscalProduto,
 };
 
 /** Lista os contratos publicos de todas as fontes (alimenta o agente). */
