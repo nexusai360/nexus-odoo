@@ -12,6 +12,7 @@ import {
   queryFormasPagamento,
   queryModalidadesEMaiorPedido,
 } from "@/lib/diretoria/queries/vendas";
+import { queryPedidosPorVendedor } from "@/lib/reports/queries/comercial";
 import { DiretoriaPeriodBar } from "@/components/diretoria/diretoria-period-bar";
 import { SyncNowButton } from "@/components/diretoria/sync-now-button";
 import { BrazilMap } from "@/components/diretoria/brazil-map/brazil-map";
@@ -53,13 +54,14 @@ export default async function DiretoriaVendasPage({
     ufs,
   };
 
-  const [indicadores, vendasUf, vendasMarca, formasPgto, modalidades] =
+  const [indicadores, vendasUf, vendasMarca, formasPgto, modalidades, vendedores] =
     await Promise.all([
       queryIndicadoresVendas(prisma, filtros),
       queryVendasPorUf(prisma, filtros),
       queryVendasPorMarca(prisma, filtros),
       queryFormasPagamento(prisma, filtros),
       queryModalidadesEMaiorPedido(prisma, filtros),
+      queryPedidosPorVendedor(prisma, filtros),
     ]);
 
   const podeSync = await canDiretoria(user, "diretoria.sync.force");
@@ -165,6 +167,35 @@ export default async function DiretoriaVendasPage({
             )}
           </section>
         </div>
+
+        {/* Ranking de vendedores (C5) */}
+        <section className="rounded-2xl border border-border/60 bg-card/60 p-5">
+          <h2 className="mb-4 text-sm font-semibold">Ranking de vendedores</h2>
+          {vendedores.linhas.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">Sem dados no período.</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
+                  <th className="pb-2 font-medium">#</th>
+                  <th className="pb-2 font-medium">Vendedor</th>
+                  <th className="pb-2 text-right font-medium">Pedidos</th>
+                  <th className="pb-2 text-right font-medium">Valor</th>
+                </tr>
+              </thead>
+              <tbody>
+                {vendedores.linhas.slice(0, 10).map((v, i) => (
+                  <tr key={v.vendedorNome ?? i} className="border-b border-border/20">
+                    <td className="py-2 text-muted-foreground tabular-nums">{i + 1}</td>
+                    <td className="py-2">{v.vendedorNome ?? "Não informado"}</td>
+                    <td className="py-2 text-right tabular-nums">{num.format(v.quantidade)}</td>
+                    <td className="py-2 text-right tabular-nums">{brl.format(v.valorTotal)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </section>
       </div>
     </PageShell>
   );
