@@ -28,8 +28,9 @@
     - [x] C10 queryFormasPagamento (fato_pedido_parcela.formaPagamentoNome)
     - [x] C4 queryVendasPorMarca (nf_item -> fato_produto.marcaNome, entradaSaida=1)
     - [x] C3 queryVendasPorUf (nf saida autorizada -> fato_parceiro.uf, UF-scoping)
-    - [ ] C6 modalidades (fato_pedido.operacaoNome) + maior pedido
-    - [ ] C2 indicadores (faturamento/ticket/nº pedidos/margem ESTIMADA)
+    - [x] C6 queryModalidadesEMaiorPedido (fato_pedido.operacaoNome + maior pedido)
+    - [x] C2 queryIndicadoresVendas (faturamento/ticket/nº pedidos)
+    - [ ] margem ESTIMADA: seção própria (nf_item -> fato_produto.preco_custo)
     - [ ] C5 ranking vendedor (reusar queryPedidosPorVendedor de comercial.ts)
     - [ ] C7 itens vendidos (reusar queryProdutosFaturados de fiscal.ts)
     - [ ] C8/C9 comparativo: feito no componente reusando queryVendasPorUf c/ 2 ufs
