@@ -32,6 +32,7 @@ import { queryContarParceiros, queryParceirosPorUf } from "@/lib/reports/queries
 import { queryPlanoDeContas } from "@/lib/reports/queries/contabil";
 import { queryPrecoProduto } from "@/lib/reports/queries/precos";
 import { queryServicoListar } from "@/lib/reports/queries/servicos";
+import { janelaAnterior } from "./janela-anterior";
 import type {
   RawSourceData,
   ShapeDerivado,
@@ -422,7 +423,13 @@ const fatoFinanceiroMovimento: FonteDef = {
   produtores: {
     kpis: async (filtros) => {
       const d = await queryCaixaPeriodo(prisma, { periodoDe: filtros.periodoDe, periodoAte: filtros.periodoAte });
-      return { linhas: [], kpis: { entrada: d.entrada, saida: d.saida, saldo: d.saldo }, freshness: null };
+      const ja = janelaAnterior(filtros.periodoDe, filtros.periodoAte);
+      let kpisAnterior: Record<string, number> | undefined;
+      if (ja) {
+        const a = await queryCaixaPeriodo(prisma, { periodoDe: ja.de, periodoAte: ja.ate });
+        kpisAnterior = { entrada: a.entrada, saida: a.saida, saldo: a.saldo };
+      }
+      return { linhas: [], kpis: { entrada: d.entrada, saida: d.saida, saldo: d.saldo }, kpisAnterior, freshness: null };
     },
     serieTemporal: async (filtros) => {
       const d = await queryFluxoCaixa(prisma, { periodoDe: filtros.periodoDe, periodoAte: filtros.periodoAte });
@@ -524,7 +531,13 @@ const fatoComercialPedido: FonteDef = {
   produtores: {
     kpis: async (filtros) => {
       const d = await queryPedidosPeriodo(prisma, { periodoDe: filtros.periodoDe, periodoAte: filtros.periodoAte });
-      return { linhas: [], kpis: { totalPedidos: d.totalPedidos, valorTotal: d.valorTotal }, freshness: null };
+      const ja = janelaAnterior(filtros.periodoDe, filtros.periodoAte);
+      let kpisAnterior: Record<string, number> | undefined;
+      if (ja) {
+        const a = await queryPedidosPeriodo(prisma, { periodoDe: ja.de, periodoAte: ja.ate });
+        kpisAnterior = { totalPedidos: a.totalPedidos, valorTotal: a.valorTotal };
+      }
+      return { linhas: [], kpis: { totalPedidos: d.totalPedidos, valorTotal: d.valorTotal }, kpisAnterior, freshness: null };
     },
     tabela: async () => {
       const d = await queryPedidosAtrasados(prisma, new Date(), { limit: 200 });
@@ -601,7 +614,13 @@ const fatoFiscalFaturamento: FonteDef = {
   produtores: {
     kpis: async (filtros) => {
       const d = await queryFaturamentoPeriodo(prisma, { periodoDe: filtros.periodoDe, periodoAte: filtros.periodoAte });
-      return { linhas: [], kpis: { totalNotas: d.totalNotas, valorFaturado: d.valorFaturado }, freshness: null };
+      const ja = janelaAnterior(filtros.periodoDe, filtros.periodoAte);
+      let kpisAnterior: Record<string, number> | undefined;
+      if (ja) {
+        const a = await queryFaturamentoPeriodo(prisma, { periodoDe: ja.de, periodoAte: ja.ate });
+        kpisAnterior = { totalNotas: a.totalNotas, valorFaturado: a.valorFaturado };
+      }
+      return { linhas: [], kpis: { totalNotas: d.totalNotas, valorFaturado: d.valorFaturado }, kpisAnterior, freshness: null };
     },
   },
 };

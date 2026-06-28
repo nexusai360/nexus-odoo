@@ -18,6 +18,8 @@ export interface SecaoResolvida {
   erro?: string;
   /** Metadados dos campos do shape (rotulos + tipo de formatacao) para o render. */
   campos?: CampoMeta[];
+  /** KPIs do periodo anterior (so shape kpis com periodo): alimenta o delta. */
+  kpisAnterior?: Record<string, number>;
 }
 
 function aplicarAdaptador(
@@ -91,5 +93,5 @@ export async function resolveSecao(
       ? Object.keys(raw.kpis ?? {}).length === 0
       : raw.linhas.length === 0;
   const estado: SecaoResolvida["estado"] = vazio ? "vazio" : "ok";
-  return { dado, estado, freshness: raw.freshness, campos };
+  return { dado, estado, freshness: raw.freshness, campos, kpisAnterior: raw.kpisAnterior };
 }

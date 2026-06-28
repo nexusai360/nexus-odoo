@@ -59,6 +59,12 @@ export interface CampoMeta {
 export interface RawSourceData {
   linhas: Record<string, unknown>[];
   kpis?: Record<string, number>;
+  /**
+   * KPIs do periodo IMEDIATAMENTE anterior (mesmo tamanho de janela), quando ha
+   * um periodo explicito. Alimenta o delta periodo-a-periodo do KPIRow. Ausente
+   * quando nao ha base anterior (sem periodo) , nunca um delta inventado.
+   */
+  kpisAnterior?: Record<string, number>;
   freshness: Date | null;
 }
 

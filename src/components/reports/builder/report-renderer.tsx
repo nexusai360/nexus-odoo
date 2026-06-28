@@ -53,6 +53,7 @@ import {
   CORES_SELECIONAVEIS,
 } from "@/components/charts/colors";
 import { ReportDataTable, type ColunaTabela } from "./report-data-table";
+import { calcularDeltaKpi } from "@/lib/reports/builder/janela-anterior";
 import type {
   BuilderReportEntry,
   BuilderSection,
@@ -367,6 +368,7 @@ function SecaoView({
   // KPIRow , faixa de indicadores (cada um e um KpiCard), com entrada animada.
   if (secao.template === "KPIRow") {
     const kpis = (resolvida.dado as Record<string, number>) ?? {};
+    const anteriores = resolvida.kpisAnterior;
     const campos = resolvida.campos ?? [];
     // Subtitulo (descricao da metrica) e ordem/subset vem do build (config).
     const subtitulos = (secao.config.subtitulos as Record<string, string> | undefined) ?? {};
@@ -398,6 +400,10 @@ function SecaoView({
                 : ("success" as const)
               : ("default" as const);
           const Ico = c.tipo === "moeda" ? Coins : /produto|item|total|armaz/i.test(c.key) ? Boxes : TrendingUp;
+          // Delta periodo-a-periodo: so quando ha base anterior valida (nunca inventado).
+          const anterior = anteriores?.[c.key];
+          const deltaCalc = anterior !== undefined ? calcularDeltaKpi(valor, anterior) : null;
+          const delta = deltaCalc ? { ...deltaCalc, period: "vs periodo anterior" } : undefined;
           return (
             <motion.div
               key={c.key}
@@ -410,6 +416,7 @@ function SecaoView({
                 tone={tone}
                 subtitle={subtitulos[c.key]}
                 hint={!subtitulos[c.key] && c.tipo === "moeda" ? "no periodo" : undefined}
+                delta={delta}
               />
             </motion.div>
           );

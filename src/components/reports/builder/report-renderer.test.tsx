@@ -238,6 +238,41 @@ describe("ReportRenderer", () => {
     expect(screen.getByLabelText(/combinado/i)).toBeInTheDocument();
   });
 
+  it("KPIRow mostra delta periodo-a-periodo quando ha kpisAnterior", () => {
+    const comDelta: BuilderReportEntry = {
+      ...entry,
+      titulo: "Faturamento",
+      dominio: "fiscal",
+      secoes: [
+        { id: "kpi", template: "KPIRow", fato: "fato_fiscal_faturamento", shapeDerivado: "kpis", config: { titulo: "Indicadores" }, filtros: [] },
+      ],
+    };
+    const dados: Record<string, SecaoResolvida> = {
+      kpi: {
+        estado: "ok",
+        dado: { valorFaturado: 120 },
+        kpisAnterior: { valorFaturado: 100 },
+        campos: [{ key: "valorFaturado", label: "Valor faturado", tipo: "moeda" }],
+      },
+    };
+    render(<ReportRenderer entry={comDelta} dados={dados} />);
+    expect(screen.getByText(/\+20%/)).toBeInTheDocument();
+  });
+
+  it("KPIRow NAO inventa delta quando nao ha base anterior", () => {
+    const semBase: BuilderReportEntry = {
+      ...entry,
+      secoes: [
+        { id: "kpi", template: "KPIRow", fato: "fato_fiscal_faturamento", shapeDerivado: "kpis", config: {}, filtros: [] },
+      ],
+    };
+    const dados: Record<string, SecaoResolvida> = {
+      kpi: { estado: "ok", dado: { valorFaturado: 120 }, campos: [{ key: "valorFaturado", label: "Valor faturado", tipo: "moeda" }] },
+    };
+    const { container } = render(<ReportRenderer entry={semBase} dados={dados} />);
+    expect(container.textContent).not.toMatch(/%/);
+  });
+
   it("KPIRow mostra o subtitulo por metrica (config.subtitulos)", () => {
     const comSub: BuilderReportEntry = {
       ...entry,
