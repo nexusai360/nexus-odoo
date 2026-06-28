@@ -14,6 +14,7 @@ const REPORT_TEMPLATES = [
   "Funnel",
   "Waterfall",
   "Combo",
+  "Treemap",
 ] as const;
 
 const FILTER_TIPOS = ["armazem", "familia", "marca", "sentido", "faixaDias"] as const;

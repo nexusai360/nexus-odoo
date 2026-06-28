@@ -303,7 +303,7 @@ const CURADORIA: Record<string, Curada> = {
     descricao: "Valor faturado por cliente",
     pergunta: "Quais clientes mais faturam?",
     formato: "brl",
-    chartPreferido: "BarChart",
+    chartPreferido: "Treemap",
   },
   "fato_fiscal_produto|agregacaoCategorica|": {
     id: "fiscal.por_produto",
@@ -376,7 +376,7 @@ const CURADORIA: Record<string, Curada> = {
 const TEMPLATES_POR_SHAPE: Record<ShapeDerivado, ReportTemplate[]> = {
   kpis: ["KPIRow"],
   tabela: ["DataTable"],
-  agregacaoCategorica: ["BarChart", "PieChart", "Funnel"],
+  agregacaoCategorica: ["BarChart", "PieChart", "Funnel", "Treemap"],
   serieTemporal: ["LineChart", "Combo"],
   cascata: ["Waterfall"],
 };

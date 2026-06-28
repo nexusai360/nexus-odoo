@@ -37,4 +37,10 @@ describe("component-catalog", () => {
     expect(c).toBeDefined();
     expect(c!.shapeDerivadoExigido).toBe("serieTemporal");
   });
+
+  it("descreverComponente(Treemap) exige agregacaoCategorica (mesmo shape da barra)", () => {
+    const c = descreverComponente("Treemap");
+    expect(c).toBeDefined();
+    expect(c!.shapeDerivadoExigido).toBe("agregacaoCategorica");
+  });
 });

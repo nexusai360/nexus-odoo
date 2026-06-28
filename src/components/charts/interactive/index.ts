@@ -54,3 +54,9 @@ export {
   type ComboChartSeries,
   type InteractiveComboChartProps,
 } from "./combo-chart";
+export {
+  InteractiveTreemapChart,
+  prepararTreemap,
+  type TreemapDatum,
+  type InteractiveTreemapChartProps,
+} from "./treemap-chart";

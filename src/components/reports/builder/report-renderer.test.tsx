@@ -238,6 +238,33 @@ describe("ReportRenderer", () => {
     expect(screen.getByLabelText(/combinado/i)).toBeInTheDocument();
   });
 
+  it("renderiza um Treemap (faturamento por cliente)", () => {
+    const comTree: BuilderReportEntry = {
+      ...entry,
+      titulo: "Faturamento",
+      dominio: "fiscal",
+      secoes: [
+        { id: "tree", template: "Treemap", fato: "fato_fiscal_cliente", shapeDerivado: "agregacaoCategorica", config: { titulo: "Por cliente" }, filtros: [] },
+      ],
+    };
+    const dados: Record<string, SecaoResolvida> = {
+      tree: {
+        estado: "ok",
+        dado: [
+          { rotulo: "Cliente A", valor: 1000 },
+          { rotulo: "Cliente B", valor: 400 },
+        ],
+        campos: [
+          { key: "rotulo", label: "Cliente", tipo: "texto" },
+          { key: "valor", label: "Faturado", tipo: "moeda" },
+        ],
+      },
+    };
+    render(<ReportRenderer entry={comTree} dados={dados} />);
+    expect(screen.getByText("Por cliente")).toBeInTheDocument();
+    expect(screen.getByLabelText(/treemap|mapa de arvore/i)).toBeInTheDocument();
+  });
+
   it("KPIRow mostra delta periodo-a-periodo quando ha kpisAnterior", () => {
     const comDelta: BuilderReportEntry = {
       ...entry,

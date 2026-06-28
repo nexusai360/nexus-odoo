@@ -17,6 +17,7 @@ import {
   PieChart as PieIcon,
   Filter as FunnelIcon,
   BarChartHorizontal as WaterfallIcon,
+  LayoutGrid as TreemapIcon,
   Table as TableIcon,
   ChevronUp,
   ChevronDown,
@@ -37,6 +38,7 @@ import {
   InteractiveFunnelChart,
   InteractiveWaterfallChart,
   InteractiveComboChart,
+  InteractiveTreemapChart,
   type AreaChartData,
   type BarChartData,
   type PieChartData,
@@ -45,6 +47,7 @@ import {
   type PassoCascataTipo,
   type ComboChartData,
   type ComboChartSeries,
+  type TreemapDatum,
 } from "@/components/charts/interactive";
 import {
   CHART_COLORS,
@@ -94,6 +97,8 @@ function metaTemplate(template: string): { Icon: LucideIcon; titulo: string } {
       return { Icon: TrendingUp, titulo: "Realizado x previsto" };
     case "Funnel":
       return { Icon: FunnelIcon, titulo: "Funil por etapa" };
+    case "Treemap":
+      return { Icon: TreemapIcon, titulo: "Mapa de concentracao" };
     case "Waterfall":
       return { Icon: WaterfallIcon, titulo: "Resultado em cascata" };
     default:
@@ -139,7 +144,7 @@ export interface EditavelFicha {
 }
 
 /** Templates de grafico que aceitam escolha de cor pela UI. */
-const TEMPLATES_COM_COR = new Set(["BarChart", "PieChart", "LineChart", "Funnel", "Combo"]);
+const TEMPLATES_COM_COR = new Set(["BarChart", "PieChart", "LineChart", "Funnel", "Combo", "Treemap"]);
 
 /** Cor atual da secao (config.cor), normalizada para string|undefined. */
 function corDaSecao(secao: BuilderSection): string | undefined {
@@ -552,6 +557,23 @@ function SecaoView({
       <CardSecao Icon={Icon} titulo={titulo} {...editProps}>
         <InteractiveFunnelChart
           data={funnelData}
+          color={corDaSecao(secao)}
+          formatValue={formatadorValor(campoValor?.tipo)}
+          emptyMessage="Sem dados para esta secao."
+        />
+      </CardSecao>
+    );
+  }
+
+  // Treemap , concentracao por area (muitas categorias). Mesmo shape da barra.
+  if (secao.template === "Treemap") {
+    const data = (resolvida.dado as Record<string, unknown>[]) ?? [];
+    const campoValor = (resolvida.campos ?? []).find((c) => c.key === "valor");
+    const treeData: TreemapDatum[] = data.map((d) => ({ name: String(d.rotulo ?? ""), value: Number(d.valor ?? 0) }));
+    return (
+      <CardSecao Icon={Icon} titulo={titulo} {...editProps}>
+        <InteractiveTreemapChart
+          data={treeData}
           color={corDaSecao(secao)}
           formatValue={formatadorValor(campoValor?.tipo)}
           emptyMessage="Sem dados para esta secao."

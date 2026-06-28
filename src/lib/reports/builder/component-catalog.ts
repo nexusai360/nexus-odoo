@@ -121,6 +121,20 @@ export const COMPONENT_CATALOG: ComponentEntry[] = [
     tokensVisuais: { barra: "chart.bar", linha: "chart.line" },
   },
   {
+    chave: "Treemap",
+    nome: "Mapa de arvore (treemap)",
+    paraQueServe:
+      "Mostrar a proporcao de MUITAS categorias por AREA de uma so vez (ex.: faturamento por cliente/produto), onde a pizza satura e a barra vira floresta.",
+    quandoUsar:
+      "Muitas categorias (>8) e a intencao e ver concentracao/participacao. Usa o mesmo shape do grafico de barras.",
+    quandoNaoUsar:
+      "Poucas categorias (use pizza/barra), comparacao precisa (use barra/tabela) ou serie no tempo (use linha).",
+    shapeDerivadoExigido: "agregacaoCategorica",
+    parametros: [{ chave: "titulo", descricao: "Titulo curto opcional do treemap." }],
+    interacao: ["tooltip", "area_proporcional"],
+    tokensVisuais: { celula: "chart.bar", borda: "card.border" },
+  },
+  {
     chave: "DataTable",
     nome: "Tabela de dados",
     paraQueServe:

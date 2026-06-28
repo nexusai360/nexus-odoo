@@ -69,6 +69,13 @@ describe("listarMetricas , catalogo derivado do registry", () => {
     expect(ms.find((m) => m.id === "comercial.por_etapa")?.chartPreferido).toBe("Funnel");
   });
 
+  it("fiscal.por_cliente prefere o Treemap (muitas categorias por area)", () => {
+    const ms = listarMetricas({ dominiosPermitidos: ["fiscal"] });
+    const cli = ms.find((m) => m.id === "fiscal.por_cliente");
+    expect(cli?.chartPreferido).toBe("Treemap");
+    expect(cli?.chartsValidos).toEqual(expect.arrayContaining(["BarChart", "Treemap"]));
+  });
+
   it("financeiro.fluxo_caixa prefere o Combo (realizado barra + previsto linha)", () => {
     const ms = listarMetricas({ dominiosPermitidos: ["financeiro"] });
     const fluxo = ms.find((m) => m.id === "financeiro.fluxo_caixa");

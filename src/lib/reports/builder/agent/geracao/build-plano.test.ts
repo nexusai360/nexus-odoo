@@ -80,6 +80,20 @@ describe("buildFichaDoPlano", () => {
     expect(ficha.secoes[0].shapeDerivado).toBe("cascata");
   });
 
+  it("Ranking numa metrica com chartPreferido Treemap vira secao Treemap", () => {
+    const fiscal = listarMetricas({ dominiosPermitidos: ["fiscal"] });
+    const planoFiscal: Plano = {
+      titulo: "Faturamento por cliente",
+      objetivo: "concentracao de faturamento",
+      dominio: "fiscal",
+      blocos: [{ tipo: "Ranking", metrica: "fiscal.por_cliente", recorte: "cliente" }],
+      filtrosIniciais: {},
+    };
+    const { ficha, omitidos } = buildFichaDoPlano(planoFiscal, fiscal);
+    expect(omitidos).toEqual([]);
+    expect(ficha.secoes.map((s) => s.template)).toEqual(["Treemap"]);
+  });
+
   it("Ranking numa metrica com chartPreferido Funnel vira secao Funnel", () => {
     const comercial = listarMetricas({ dominiosPermitidos: ["comercial"] });
     const planoComercial: Plano = {

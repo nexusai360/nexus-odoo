@@ -19,7 +19,7 @@ interface SecaoSpec {
 }
 
 /** Templates que consomem agregacaoCategorica; o ranking honra o preferido da metrica. */
-const TEMPLATES_CATEGORICOS: ReportTemplate[] = ["BarChart", "PieChart", "Funnel"];
+const TEMPLATES_CATEGORICOS: ReportTemplate[] = ["BarChart", "PieChart", "Funnel", "Treemap"];
 function templateCategorico(preferido: ReportTemplate): ReportTemplate {
   return TEMPLATES_CATEGORICOS.includes(preferido) ? preferido : "BarChart";
 }
