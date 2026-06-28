@@ -3,7 +3,7 @@ import { CalendarDays } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
 import { PageHeader } from "@/components/page-header";
 import { requireDiretoriaArea, canDiretoria } from "@/lib/diretoria/access";
-import { listarEventos } from "@/lib/actions/diretoria-agenda";
+import { listarEventos, listarColaboradoresElegiveis } from "@/lib/actions/diretoria-agenda";
 import { AgendaCalendar } from "@/components/diretoria/agenda-calendar";
 
 export const dynamic = "force-dynamic";
@@ -26,9 +26,10 @@ export default async function DiretoriaAgendaPage({
   const de = new Date(Date.UTC(ano, m - 1, 1)).toISOString();
   const ate = new Date(Date.UTC(ano, m, 0, 23, 59, 59)).toISOString();
 
-  const [eventos, podeGerenciar] = await Promise.all([
+  const [eventos, podeGerenciar, colaboradores] = await Promise.all([
     listarEventos(de, ate),
     canDiretoria(user, "diretoria.agenda.manage"),
+    listarColaboradoresElegiveis(),
   ]);
 
   return (
@@ -39,7 +40,12 @@ export default async function DiretoriaAgendaPage({
         subtitle="Eventos da operação: reuniões, inventários, prospecções e assembleias."
       />
       <section className="rounded-2xl border border-border/60 bg-card/60 p-5">
-        <AgendaCalendar eventos={eventos} mesIso={mesIso} podeGerenciar={podeGerenciar} />
+        <AgendaCalendar
+          eventos={eventos}
+          mesIso={mesIso}
+          podeGerenciar={podeGerenciar}
+          colaboradores={colaboradores}
+        />
       </section>
     </PageShell>
   );

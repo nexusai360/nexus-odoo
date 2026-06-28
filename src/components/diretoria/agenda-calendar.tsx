@@ -2,13 +2,14 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Plus, Users } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import {
   criarEvento,
   excluirEvento,
   type EventoResumo,
+  type ColaboradorResumo,
 } from "@/lib/actions/diretoria-agenda";
 import type { DiretoriaEventoTipo } from "@/generated/prisma/client";
 
@@ -51,10 +52,12 @@ export function AgendaCalendar({
   eventos,
   mesIso,
   podeGerenciar,
+  colaboradores = [],
 }: {
   eventos: EventoResumo[];
   mesIso: string; // "YYYY-MM"
   podeGerenciar: boolean;
+  colaboradores?: ColaboradorResumo[];
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -66,6 +69,7 @@ export function AgendaCalendar({
     hora: "09:00",
     local: "",
   });
+  const [selecionados, setSelecionados] = useState<string[]>([]);
   const [erro, setErro] = useState<string | null>(null);
 
   const [ano, mes0] = mesIso.split("-").map((s, i) => (i === 1 ? Number(s) - 1 : Number(s)));
@@ -103,10 +107,12 @@ export function AgendaCalendar({
         tipo: form.tipo,
         inicio: new Date(`${form.data}T${form.hora}:00Z`).toISOString(),
         local: form.local || null,
+        colaboradorIds: selecionados,
       });
       if (r.ok) {
         setAberto(false);
         setForm((f) => ({ ...f, titulo: "", local: "" }));
+        setSelecionados([]);
         router.refresh();
       } else {
         setErro(r.erro ?? "Falha ao salvar");
@@ -200,6 +206,36 @@ export function AgendaCalendar({
               className="w-40 rounded-lg border border-border/60 bg-background px-2.5 py-1.5 text-sm"
             />
           </label>
+          {colaboradores.length ? (
+            <div className="flex w-full flex-col gap-1.5 text-xs text-muted-foreground">
+              <span>Colaboradores</span>
+              <div className="flex max-h-28 flex-wrap gap-1.5 overflow-y-auto">
+                {colaboradores.map((c) => {
+                  const ativo = selecionados.includes(c.id);
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      aria-pressed={ativo}
+                      onClick={() =>
+                        setSelecionados((s) =>
+                          ativo ? s.filter((x) => x !== c.id) : [...s, c.id],
+                        )
+                      }
+                      className={cn(
+                        "rounded-full border px-2.5 py-1 text-xs transition-colors",
+                        ativo
+                          ? "border-violet-500 bg-violet-600/20 text-violet-200"
+                          : "border-border/60 hover:bg-muted/60",
+                      )}
+                    >
+                      {c.nome}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
           <button
             type="button"
             disabled={pending || !form.titulo}
@@ -233,7 +269,11 @@ export function AgendaCalendar({
                     <button
                       key={e.id}
                       type="button"
-                      title={`${TIPO_LABEL[e.tipo]}${e.local ? " , " + e.local : ""}`}
+                      title={`${TIPO_LABEL[e.tipo]}${e.local ? " , " + e.local : ""}${
+                        e.colaboradores.length
+                          ? " , " + e.colaboradores.map((c) => c.nome).join(", ")
+                          : ""
+                      }`}
                       onClick={() => podeGerenciar && remover(e.id)}
                       className={cn(
                         "block w-full truncate rounded px-1.5 py-0.5 text-left text-[11px]",
@@ -241,6 +281,12 @@ export function AgendaCalendar({
                       )}
                     >
                       {e.titulo}
+                      {e.colaboradores.length ? (
+                        <span className="ml-1 inline-flex items-center gap-0.5 align-middle opacity-70">
+                          <Users className="h-2.5 w-2.5" />
+                          {e.colaboradores.length}
+                        </span>
+                      ) : null}
                     </button>
                   ))}
                 </div>

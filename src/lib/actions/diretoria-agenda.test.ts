@@ -65,6 +65,22 @@ describe("criarEvento", () => {
     expect(create).toHaveBeenCalledTimes(1);
     expect(create.mock.calls[0][0].data.criadoPorId).toBe("u1");
   });
+
+  it("anexa colaboradores (dedup, ignora vazios) no create", async () => {
+    mockUser.mockResolvedValue({ id: "u1", platformRole: "admin" });
+    mockCan.mockResolvedValue(true);
+    const r = await criarEvento({ ...valido, colaboradorIds: ["a", "a", "b", "  "] });
+    expect(r.ok).toBe(true);
+    const data = create.mock.calls[0][0].data;
+    expect(data.colaboradores.create).toEqual([{ userId: "a" }, { userId: "b" }]);
+  });
+
+  it("sem colaboradores não envia a chave colaboradores", async () => {
+    mockUser.mockResolvedValue({ id: "u1", platformRole: "admin" });
+    mockCan.mockResolvedValue(true);
+    await criarEvento(valido);
+    expect("colaboradores" in create.mock.calls[0][0].data).toBe(false);
+  });
 });
 
 describe("excluirEvento", () => {

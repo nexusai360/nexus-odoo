@@ -15,6 +15,12 @@ export interface EventoInput {
   diaInteiro?: boolean;
   descricao?: string | null;
   local?: string | null;
+  colaboradorIds?: string[];
+}
+
+export interface ColaboradorResumo {
+  id: string;
+  nome: string;
 }
 
 export interface EventoResumo {
@@ -26,6 +32,7 @@ export interface EventoResumo {
   diaInteiro: boolean;
   descricao: string | null;
   local: string | null;
+  colaboradores: ColaboradorResumo[];
 }
 
 const TIPOS: DiretoriaEventoTipo[] = [
@@ -50,6 +57,7 @@ export async function listarEventos(
   const eventos = await prisma.diretoriaEvento.findMany({
     where: { inicio: { gte: new Date(deIso), lte: new Date(ateIso) } },
     orderBy: { inicio: "asc" },
+    include: { colaboradores: { include: { user: { select: { id: true, name: true } } } } },
   });
   return eventos.map((e) => ({
     id: e.id,
@@ -60,7 +68,20 @@ export async function listarEventos(
     diaInteiro: e.diaInteiro,
     descricao: e.descricao,
     local: e.local,
+    colaboradores: e.colaboradores.map((c) => ({ id: c.user.id, nome: c.user.name })),
   }));
+}
+
+/** Lista usuários ativos elegíveis como colaboradores (gated por agenda.view). */
+export async function listarColaboradoresElegiveis(): Promise<ColaboradorResumo[]> {
+  const user = await getCurrentUser();
+  if (!user || !(await canDiretoria(user, "diretoria.agenda.view"))) return [];
+  const users = await prisma.user.findMany({
+    where: { isActive: true },
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  });
+  return users.map((u) => ({ id: u.id, nome: u.name }));
 }
 
 function validar(input: EventoInput): string | null {
@@ -83,6 +104,7 @@ export async function criarEvento(
   const erro = validar(input);
   if (erro) return { ok: false, erro };
 
+  const colaboradorIds = [...new Set((input.colaboradorIds ?? []).filter((id) => id?.trim()))];
   const ev = await prisma.diretoriaEvento.create({
     data: {
       titulo: input.titulo.trim(),
@@ -93,6 +115,9 @@ export async function criarEvento(
       descricao: input.descricao?.trim() || null,
       local: input.local?.trim() || null,
       criadoPorId: user.id,
+      ...(colaboradorIds.length
+        ? { colaboradores: { create: colaboradorIds.map((userId) => ({ userId })) } }
+        : {}),
     },
   });
   revalidatePath("/diretoria/agenda");
