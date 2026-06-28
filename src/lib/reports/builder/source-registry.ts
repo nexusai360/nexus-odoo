@@ -27,6 +27,9 @@ export type FiltrosFonte = {
   sentido?: string;
   /** Nome (ou parte) da marca para recortar um KPI por marca (ex.: "Matrix"). */
   marca?: string;
+  /** Janela temporal (mes "YYYY-MM") , so afeta fatos com serie temporal (movimento). */
+  periodoDe?: string;
+  periodoAte?: string;
 };
 
 type Produtor = (filtros: FiltrosFonte) => Promise<RawSourceData>;
@@ -252,11 +255,19 @@ const fatoEstoqueMovimento: FonteDef = {
   },
   produtores: {
     serieTemporal: async (filtros) => {
-      const d = await queryEntradasSaidas(prisma, { armazemId: filtros.armazemId });
+      const d = await queryEntradasSaidas(prisma, {
+        armazemId: filtros.armazemId,
+        periodoDe: filtros.periodoDe,
+        periodoAte: filtros.periodoAte,
+      });
       return { linhas: d.serie as unknown as Record<string, unknown>[], freshness: null };
     },
     tabela: async (filtros) => {
-      const d = await queryEntradasSaidas(prisma, { armazemId: filtros.armazemId });
+      const d = await queryEntradasSaidas(prisma, {
+        armazemId: filtros.armazemId,
+        periodoDe: filtros.periodoDe,
+        periodoAte: filtros.periodoAte,
+      });
       return { linhas: d.detalhe as unknown as Record<string, unknown>[], freshness: null };
     },
   },

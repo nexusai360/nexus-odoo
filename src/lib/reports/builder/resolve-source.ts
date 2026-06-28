@@ -48,6 +48,13 @@ function filtrosDaSecao(secao: BuilderSection): FiltrosFonte {
       out.sentido = f.default;
     } else if (f.tipo === "marca" && f.default) {
       out.marca = f.default;
+    } else if (f.tipo === "armazem" && f.default != null) {
+      // Gap historico: armazem/familia nunca eram convertidos para id numerico.
+      const n = Number(f.default);
+      if (!Number.isNaN(n)) out.armazemId = n;
+    } else if (f.tipo === "familia" && f.default != null) {
+      const n = Number(f.default);
+      if (!Number.isNaN(n)) out.familiaId = n;
     }
   }
   return out;

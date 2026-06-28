@@ -20,6 +20,9 @@ export interface FiltrosRuntime {
   armazemId?: number;
   /** Id da familia (familiaId) escolhida no dropdown. */
   familiaId?: number;
+  /** Janela temporal (mes "YYYY-MM") , so afeta o bloco de movimento (serie). */
+  periodoDe?: string;
+  periodoAte?: string;
 }
 
 export async function resolverRelatorioComFiltros(
@@ -34,6 +37,8 @@ export async function resolverRelatorioComFiltros(
   if (filtros.sentido && filtros.sentido.trim()) limpos.sentido = filtros.sentido.trim();
   if (typeof filtros.armazemId === "number" && filtros.armazemId > 0) limpos.armazemId = filtros.armazemId;
   if (typeof filtros.familiaId === "number" && filtros.familiaId > 0) limpos.familiaId = filtros.familiaId;
+  if (filtros.periodoDe && filtros.periodoDe.trim()) limpos.periodoDe = filtros.periodoDe.trim();
+  if (filtros.periodoAte && filtros.periodoAte.trim()) limpos.periodoAte = filtros.periodoAte.trim();
 
   const r = await carregarRelatorioDinamico(savedId, { userId: me.id, role: me.platformRole }, limpos);
   if (r.tipo === "notfound") return { ok: false, error: "Relatorio nao encontrado" };

@@ -42,6 +42,36 @@ describe("resolveSecao , filtros da secao", () => {
     expect(prod).toHaveBeenCalledWith(expect.objectContaining({ faixaDias: 90 }));
   });
 
+  it("converte secao.filtros (armazem) em armazemId numerico (corrige o gap)", async () => {
+    const prod = jest.fn().mockResolvedValue({ linhas: [{ a: 1 }], freshness: null });
+    obterProdutor.mockReturnValue(prod);
+    const secao: BuilderSection = {
+      id: "a",
+      template: "DataTable",
+      fato: "fato_estoque_saldo",
+      shapeDerivado: "tabela",
+      config: {},
+      filtros: [{ tipo: "armazem", default: "5" }],
+    };
+    await resolveSecao(secao, {});
+    expect(prod).toHaveBeenCalledWith(expect.objectContaining({ armazemId: 5 }));
+  });
+
+  it("repassa periodoDe/periodoAte de runtime ao produtor (bloco temporal)", async () => {
+    const prod = jest.fn().mockResolvedValue({ linhas: [{ mes: "2026-05" }], freshness: null });
+    obterProdutor.mockReturnValue(prod);
+    const secao: BuilderSection = {
+      id: "m",
+      template: "LineChart",
+      fato: "fato_estoque_movimento",
+      shapeDerivado: "serieTemporal",
+      config: {},
+      filtros: [],
+    };
+    await resolveSecao(secao, { periodoDe: "2026-05", periodoAte: "2026-06" });
+    expect(prod).toHaveBeenCalledWith(expect.objectContaining({ periodoDe: "2026-05", periodoAte: "2026-06" }));
+  });
+
   it("filtro de runtime tem precedencia sobre o filtro da secao", async () => {
     const prod = jest.fn().mockResolvedValue({ linhas: [{ a: 1 }], freshness: null });
     obterProdutor.mockReturnValue(prod);
