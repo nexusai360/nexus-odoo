@@ -11,6 +11,8 @@ import {
   queryComprasPorFornecedor,
 } from "@/lib/diretoria/queries/estoque";
 import { SyncNowButton } from "@/components/diretoria/sync-now-button";
+import { FreshnessBadge } from "@/components/diretoria/freshness-badge";
+import { ultimaSyncIso } from "@/lib/diretoria/freshness";
 
 export const dynamic = "force-dynamic";
 
@@ -70,6 +72,7 @@ export default async function DiretoriaEstoquePage() {
   ]);
 
   const podeSync = await canDiretoria(user, "diretoria.sync.force");
+  const freshIso = await ultimaSyncIso(prisma);
 
   const kpis = [
     { label: "Valor em estoque", valor: brl.format(indicadores.valorTotal), icon: Boxes },
@@ -84,7 +87,12 @@ export default async function DiretoriaEstoquePage() {
         icon={Boxes}
         title="Estoque & Compras"
         subtitle="Estoque por local, distribuição e compras por fornecedor."
-        actions={podeSync ? <SyncNowButton area="estoque" /> : undefined}
+        actions={
+          <div className="flex items-center gap-3">
+            <FreshnessBadge iso={freshIso} />
+            {podeSync ? <SyncNowButton area="estoque" /> : null}
+          </div>
+        }
       />
 
       <div className="flex flex-col gap-6">

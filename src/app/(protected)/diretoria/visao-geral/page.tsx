@@ -30,6 +30,8 @@ import {
 } from "@/lib/reports/queries/financeiro";
 import { DiretoriaPeriodBar } from "@/components/diretoria/diretoria-period-bar";
 import { VendasMapaComparativo } from "@/components/diretoria/vendas-mapa-comparativo";
+import { FreshnessBadge } from "@/components/diretoria/freshness-badge";
+import { ultimaSyncIso } from "@/lib/diretoria/freshness";
 
 export const dynamic = "force-dynamic";
 
@@ -80,6 +82,7 @@ export default async function DiretoriaVisaoGeralPage({
     if (await canDiretoria(user, a.cap)) atalhos.push(a);
   }
 
+  const freshIso = await ultimaSyncIso(prisma);
   const mapData = vendasUf.linhas
     .filter((l) => l.uf !== "??")
     .map((l) => ({ uf: l.uf, valor: l.valorTotal, quantidade: l.quantidade }));
@@ -98,6 +101,7 @@ export default async function DiretoriaVisaoGeralPage({
         icon={LayoutDashboard}
         title="Visão geral"
         subtitle="Painel executivo da diretoria: indicadores, mapa do Brasil e atalhos."
+        actions={<FreshnessBadge iso={freshIso} />}
       />
 
       <div className="flex flex-col gap-6">

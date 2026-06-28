@@ -15,6 +15,8 @@ import {
 } from "@/lib/diretoria/queries/pedidos";
 import { queryContasAReceber } from "@/lib/reports/queries/financeiro";
 import { SyncNowButton } from "@/components/diretoria/sync-now-button";
+import { FreshnessBadge } from "@/components/diretoria/freshness-badge";
+import { ultimaSyncIso } from "@/lib/diretoria/freshness";
 import { BrazilMap } from "@/components/diretoria/brazil-map/brazil-map";
 
 export const dynamic = "force-dynamic";
@@ -39,6 +41,7 @@ export default async function DiretoriaPedidosPage() {
   ]);
 
   const podeSync = await canDiretoria(user, "diretoria.sync.force");
+  const freshIso = await ultimaSyncIso(prisma);
   const mapData = demandasUf.linhas
     .filter((l) => l.uf !== "??")
     .map((l) => ({ uf: l.uf, valor: l.valorTotal }));
@@ -56,7 +59,12 @@ export default async function DiretoriaPedidosPage() {
         icon={Truck}
         title="Pedidos & Entregas"
         subtitle="Demandas a entregar, dívida com clientes e mapa de demandas por estado."
-        actions={podeSync ? <SyncNowButton area="pedidos" /> : undefined}
+        actions={
+          <div className="flex items-center gap-3">
+            <FreshnessBadge iso={freshIso} />
+            {podeSync ? <SyncNowButton area="pedidos" /> : null}
+          </div>
+        }
       />
 
       <div className="flex flex-col gap-6">

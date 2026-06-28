@@ -17,6 +17,8 @@ import { queryPedidosPorVendedor } from "@/lib/reports/queries/comercial";
 import { queryProdutosFaturados } from "@/lib/reports/queries/fiscal";
 import { DiretoriaPeriodBar } from "@/components/diretoria/diretoria-period-bar";
 import { SyncNowButton } from "@/components/diretoria/sync-now-button";
+import { FreshnessBadge } from "@/components/diretoria/freshness-badge";
+import { ultimaSyncIso } from "@/lib/diretoria/freshness";
 import { VendasMapaComparativo } from "@/components/diretoria/vendas-mapa-comparativo";
 import {
   VendasPorMarcaChart,
@@ -77,6 +79,7 @@ export default async function DiretoriaVendasPage({
     ]);
 
   const podeSync = await canDiretoria(user, "diretoria.sync.force");
+  const freshIso = await ultimaSyncIso(prisma);
 
   const mapData = vendasUf.linhas
     .filter((l) => l.uf !== "??")
@@ -95,7 +98,12 @@ export default async function DiretoriaVendasPage({
         icon={TrendingUp}
         title="Vendas"
         subtitle="Faturamento, vendas por estado e marca, modalidades e formas de pagamento."
-        actions={podeSync ? <SyncNowButton area="vendas" /> : undefined}
+        actions={
+          <div className="flex items-center gap-3">
+            <FreshnessBadge iso={freshIso} />
+            {podeSync ? <SyncNowButton area="vendas" /> : null}
+          </div>
+        }
       />
 
       <div className="flex flex-col gap-6">
