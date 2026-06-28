@@ -1,5 +1,31 @@
 # STATUS — nexus-odoo
 
+> **2026-06-28 (F6 , REFORMA DE QUALIDADE/EFICIÊNCIA DO CONSTRUTOR , EM ANDAMENTO) ,
+> branch `feat/nex-reconstrucao`. F6 SÓ LOCAL.** Usuário MUITO insatisfeito com o
+> resultado: relatório saiu "Frankenstein" (KPIs duplicados , "Valor Total" x3 igual;
+> título que mente sobre o dado , "Ranking de itens negativos" mostrando valor por
+> marca; sem narrativa), entrevista interminável, e geração gastando muitas chamadas.
+> **JÁ ENTREGUE nesta rodada:**
+> - UI: **arrancada a barra de filtros** do preview; **ampliar agora ESCONDE a conversa**
+>   (sem modal), X traz de volta (`cheia` no workspace); mantém zoom + rolagem.
+> - Geração em **UMA chamada de raciocínio ALTO** (removida a revisão separada , era +1
+>   chamada) + **curarBlueprint determinístico** (no máx 1 KPIRow, dedup de seções, teto
+>   5-6, narrativa) + **prompt de DESIGNER** (no máx 5 seções, KPIs distintos, título que
+>   bate com o dado, gráfico certo, narrativa). progresso ajustado.
+> - **Brainstorm curto:** teto do roteiro 7→5 + prompt manda não inflar (~4-5 perguntas).
+> - tsc 0; 211 testes builder/componentes verdes; commits feitos.
+> **PRÓXIMA FASE (a decidir/specar , o FIX DE VERDADE da coerência):** em vez do LLM
+> free-formar seções (gera Frankenstein), definir um pequeno conjunto de **ARQUÉTIPOS de
+> relatório** profissionalmente desenhados (ui-ux-pro-max) , ex.: "Panorama por armazém",
+> "Risco e rupturas", "Análise por marca/família" , e o LLM só **ESCOLHE o arquétipo +
+> PARAMETRIZA** (fato/recorte/filtros). Coerência vem do padrão pré-desenhado;
+> inteligência da escolha; eficiência de 1 chamada. É a ideia original do usuário
+> ("parametrizar, deixar padrão"). NÃO usar "time de agentes" (contradiz o pedido de
+> gastar menos chamadas). Falta também: remodelar o RENDER (KPI cards, tabelas, filtros
+> embutidos) com ui-ux-pro-max; canvas só rolagem vertical (tirar pan). Specar antes.
+> F6 NÃO sobe sem aprovação.
+
+
 > **2026-06-27 (F6 , METODOLOGIA NO CONSTRUTOR , IMPLEMENTAÇÃO COMPLETA) , branch
 > `feat/nex-reconstrucao`. F6 SÓ LOCAL.** Feature nova entregue de ponta a ponta
 > (spec v3 + plano v3 + 20 tasks TDD, todas as Tasks 0-17 commitadas). O construtor
