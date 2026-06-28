@@ -32,18 +32,33 @@
 >   state.ts/route.ts/types.ts; logUsage 2x/0x; regenerar reusa ultimoPlano), `B6` removeu
 >   o cérebro antigo (blueprint/build/curar/ordenar). tsc 0; 89→ testes geração/jornada
 >   verdes.
-> - [ ] **FASE C (render UI, inline + ui-ux-pro-max)** ← RETOMAR AQUI. C1 renderer agrupar
->   seções irmãs (área+donut) por grupoId + estados vazio/erro por metade (tocar também
->   `report-view-interactive.tsx`); C2 subtítulo do KPI (config.subtitulos→subtitle);
->   C3 título sempre derivado da métrica (fecha backdoor do refino: neutralizar
->   definirTituloSecao/editarSecao/onRenomear; renderer usa métrica, não config.titulo);
->   C4 freshness "atualizado há Xs".
-> - [ ] **FASE D** filtros-pílula ao vivo (recorte sempre; período mensal só no temporal),
->   preview sem savedId (D1), plumbing período mensal (D2), barra fixa fora (D3), navegador
->   mensal ≥4 pontos (D4), drilldown tabela (D5).
-> - [ ] **FASE E** entrevista convergente + gerar-já determinístico (E1a/b/c), canvas limpo
->   (E2: tirar pan/animações; zoom+rolagem+ampliar-esconde-conversa).
-> - [ ] **FASE F** E2E real (semente determinística) + latência + régua visual.
+> - [x] **FASE C (render, parcial)** , C1 renderer agrupa seções irmãs por `grupoId`
+>   (área+donut lado a lado; estado vazio/erro por metade) + C2 subtítulo do KPI
+>   (`config.subtitulos`→`subtitle`) + C3 `editarSecao` dropa título obsoleto ao trocar o
+>   vínculo (fecha o backdoor; rename continua feature do refino). report-renderer.test
+>   8 verdes. **Validação geral: 51 suites / 242 testes verdes em todo o builder; tsc 0.**
+> - [ ] **C4 (DEFERIDO, polish)** , freshness "atualizado há Xs". Abordagem pronta:
+>   `resolveSecao` popula `freshness` via `prisma.fatoBuildState.ultimoBuildAt` (min com
+>   `syncState.lastSnapshotAt`, padrão de `src/lib/reports/freshness.ts`); renderer mostra
+>   o min no topo. Cuidar do mock de prisma em `resolve-source.test`.
+> - [ ] **FASE D (filtros ao vivo) ← RETOMAR AQUI.** D1 `previsualizarComFiltros(entry,
+>   filtros)` resolve do entry em memória (sem savedId), liga em `builder-preview.tsx`/
+>   `report-view-interactive.tsx`; D2 plumbing período mensal (FiltrosFonte/Runtime
+>   periodoDe/Ate só no movimento + corrigir gap armazemId/familiaId em `filtrosDaSecao`);
+>   D3 `report-filters.tsx` (pílulas de recorte sempre; período mensal só se há bloco
+>   temporal) + REMOVER a barra de filtro fixa; D4 navegador mensal condicional (≥4 pts);
+>   D5 drilldown inline no `ReportDataTable`.
+> - [ ] **FASE E** E1a prompt enxuto (≤3 perguntas) + remover "firmeza contra pressa";
+>   E1b gate por domínio detectado (mexe em `journey/state.ts podeOferecerGeracao` + 3
+>   testes route/state/roteiro , RISCO, fazer com cuidado); E1c rota "gerar já" 0-LLM
+>   (`stream/route.ts` usa `templatePadrao`, EntradaGeracao.modo="gerar_ja" já existe);
+>   E2 canvas limpo (CONFERIR `builder-preview.tsx`/`builder-workspace.tsx`: tirar pan +
+>   animações de mãozinha; manter zoom+rolagem+ampliar-esconde-conversa , parte pode já
+>   ter sido feita em sessão anterior).
+> - [ ] **FASE F** E2E real (semente determinística de IntencaoCurada em código, sem LLM
+>   de entrevista) + popular fatos + fallback movimento <4 pontos + latência + régua visual.
+> **NOTA:** o pipeline novo já está ligado no `stream/route.ts` (gerar/regenerar). O cérebro
+> (A+B) impede o Frankenstein por construção, independente do tamanho da entrevista.
 > F6 NÃO sobe sem aprovação.
 
 > **2026-06-28 (F6 , REFORMA DE QUALIDADE/EFICIÊNCIA DO CONSTRUTOR , ANTERIOR) ,
