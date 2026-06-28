@@ -47,7 +47,9 @@
       refatorar o stepper critico de user-form-dialog (mais seguro; usuario detalha
       defaults finos depois). super_admin nao precisa (bypass).
 
-### TODAS AS 6 ONDAS ENTREGUES (2026-06-28). 85 testes verdes, tsc 0. PR #156.
+### TODAS AS 6 ONDAS ENTREGUES (2026-06-28). 86 testes verdes, tsc 0. PR #156.
+### Refinos JA FEITOS pos-ondas: margem ESTIMADA (Vendas, KPI) + freshness
+    ('atualizado ha X') nos headers das 4 telas (helper ultimaSyncIso + FreshnessBadge).
 Refinos pendentes (nao bloqueiam): margem estimada (Vendas), B5 drill-in/B7 maquinas/
 B8 (Pedidos), A3 catalogo/A6 seriais/A7 compras-ativas (Estoque, precisam builders
 fato_serial/fato_compra), colaboradores+anexos na UI da Agenda, FreshnessIndicator
