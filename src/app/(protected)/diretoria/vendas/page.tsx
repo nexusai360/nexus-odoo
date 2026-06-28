@@ -8,10 +8,16 @@ import { resolverPeriodoDir } from "@/lib/diretoria/periodo";
 import {
   queryIndicadoresVendas,
   queryVendasPorUf,
+  queryVendasPorMarca,
+  queryFormasPagamento,
 } from "@/lib/diretoria/queries/vendas";
 import { DiretoriaPeriodBar } from "@/components/diretoria/diretoria-period-bar";
 import { SyncNowButton } from "@/components/diretoria/sync-now-button";
 import { BrazilMap } from "@/components/diretoria/brazil-map/brazil-map";
+import {
+  VendasPorMarcaChart,
+  FormasPagamentoChart,
+} from "@/components/diretoria/vendas-charts";
 
 export const dynamic = "force-dynamic";
 
@@ -46,9 +52,11 @@ export default async function DiretoriaVendasPage({
     ufs,
   };
 
-  const [indicadores, vendasUf] = await Promise.all([
+  const [indicadores, vendasUf, vendasMarca, formasPgto] = await Promise.all([
     queryIndicadoresVendas(prisma, filtros),
     queryVendasPorUf(prisma, filtros),
+    queryVendasPorMarca(prisma, filtros),
+    queryFormasPagamento(prisma, filtros),
   ]);
 
   const podeSync = await canDiretoria(user, "diretoria.sync.force");
@@ -102,6 +110,18 @@ export default async function DiretoriaVendasPage({
           <h2 className="mb-4 text-sm font-semibold">Vendas por estado</h2>
           <BrazilMap data={mapData} metric="Faturamento" />
         </section>
+
+        {/* Marca (C4) e formas de pagamento (C10) */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <section className="rounded-2xl border border-border/60 bg-card/60 p-5">
+            <h2 className="mb-4 text-sm font-semibold">Vendas por marca</h2>
+            <VendasPorMarcaChart data={vendasMarca.linhas} />
+          </section>
+          <section className="rounded-2xl border border-border/60 bg-card/60 p-5">
+            <h2 className="mb-4 text-sm font-semibold">Formas de pagamento</h2>
+            <FormasPagamentoChart data={formasPgto.linhas} />
+          </section>
+        </div>
       </div>
     </PageShell>
   );
