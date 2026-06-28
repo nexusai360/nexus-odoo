@@ -23,7 +23,7 @@ beforeEach(() => {
 });
 
 describe("source-registry , todos os fatos ativados", () => {
-  it("expoe todas as dimensoes de estoque como fontes", () => {
+  it("expoe as fontes de estoque E financeiro (onda 2)", () => {
     const fatos = listarFontes().map((f) => f.fato).sort();
     expect(fatos).toEqual(
       [
@@ -35,6 +35,9 @@ describe("source-registry , todos os fatos ativados", () => {
         "fato_estoque_parados",
         "fato_estoque_saldo",
         "fato_estoque_top_movimentados",
+        "fato_financeiro_saldo",
+        "fato_financeiro_movimento",
+        "fato_financeiro_resultado",
       ].sort(),
     );
   });

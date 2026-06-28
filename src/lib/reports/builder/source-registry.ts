@@ -11,6 +11,12 @@ import {
   queryProdutosParados,
   queryTopMovimentados,
 } from "@/lib/reports/queries/estoque";
+import {
+  querySaldoContas,
+  queryCaixaPeriodo,
+  queryFluxoCaixa,
+} from "@/lib/reports/queries/financeiro";
+import { queryResultadoPorConta } from "@/lib/reports/queries/financeiro-resultado";
 import type {
   RawSourceData,
   ShapeDerivado,
@@ -336,6 +342,120 @@ const fatoEstoqueTopMovimentados: FonteDef = {
   },
 };
 
+// ===========================================================================
+// FINANCEIRO (onda 2): saldo bancario, fluxo de caixa (serie) e DRE gerencial.
+// Reusa as queries auditadas de queries/financeiro*.ts , so wrap em FonteDef.
+// ===========================================================================
+
+const fatoFinanceiroSaldo: FonteDef = {
+  contract: {
+    fato: "fato_financeiro_saldo",
+    modeloFonte: "financeiro.saldo",
+    dominio: "financeiro",
+    shapes: ["kpis", "agregacaoCategorica", "tabela"],
+    campos: {
+      kpis: [{ key: "saldoTotal", label: "Saldo total", tipo: "moeda" }],
+      agregacaoCategorica: [
+        { key: "rotulo", label: "Banco", tipo: "texto" },
+        { key: "valor", label: "Saldo", tipo: "moeda" },
+      ],
+      tabela: [
+        { key: "bancoNome", label: "Banco", tipo: "texto" },
+        { key: "tipo", label: "Tipo", tipo: "texto" },
+        { key: "saldo", label: "Saldo", tipo: "moeda" },
+      ],
+    },
+  },
+  produtores: {
+    kpis: async () => {
+      const d = await querySaldoContas(prisma);
+      return { linhas: [], kpis: { saldoTotal: d.saldoTotal }, freshness: null };
+    },
+    agregacaoCategorica: async () => {
+      const d = await querySaldoContas(prisma);
+      return {
+        linhas: d.contas.map((c) => ({ rotulo: c.bancoNome ?? "(sem banco)", valor: c.saldo })),
+        freshness: null,
+      };
+    },
+    tabela: async () => {
+      const d = await querySaldoContas(prisma);
+      return { linhas: d.contas as unknown as Record<string, unknown>[], freshness: null };
+    },
+  },
+};
+
+const fatoFinanceiroMovimento: FonteDef = {
+  contract: {
+    fato: "fato_financeiro_movimento",
+    modeloFonte: "financeiro.movimento",
+    dominio: "financeiro",
+    shapes: ["kpis", "serieTemporal"],
+    campos: {
+      kpis: [
+        { key: "entrada", label: "Entradas", tipo: "moeda" },
+        { key: "saida", label: "Saidas", tipo: "moeda" },
+        { key: "saldo", label: "Caixa liquido", tipo: "moeda" },
+      ],
+      serieTemporal: [
+        { key: "mes", label: "Mes", tipo: "texto" },
+        { key: "realizado", label: "Realizado", tipo: "moeda" },
+        { key: "previsto", label: "Previsto", tipo: "moeda" },
+      ],
+    },
+  },
+  produtores: {
+    kpis: async (filtros) => {
+      const d = await queryCaixaPeriodo(prisma, { periodoDe: filtros.periodoDe, periodoAte: filtros.periodoAte });
+      return { linhas: [], kpis: { entrada: d.entrada, saida: d.saida, saldo: d.saldo }, freshness: null };
+    },
+    serieTemporal: async (filtros) => {
+      const d = await queryFluxoCaixa(prisma, { periodoDe: filtros.periodoDe, periodoAte: filtros.periodoAte });
+      return {
+        linhas: d.serie.map((s) => ({ mes: s.periodo, realizado: s.realizado, previsto: s.previsto })),
+        freshness: null,
+      };
+    },
+  },
+};
+
+const fatoFinanceiroResultado: FonteDef = {
+  contract: {
+    fato: "fato_financeiro_resultado",
+    modeloFonte: "financeiro.resultado",
+    dominio: "financeiro",
+    shapes: ["kpis", "agregacaoCategorica"],
+    campos: {
+      kpis: [
+        { key: "totalReceita", label: "Receita", tipo: "moeda" },
+        { key: "totalDespesa", label: "Despesa", tipo: "moeda" },
+        { key: "resultado", label: "Resultado", tipo: "moeda" },
+      ],
+      agregacaoCategorica: [
+        { key: "rotulo", label: "Conta gerencial", tipo: "texto" },
+        { key: "valor", label: "Valor", tipo: "moeda" },
+      ],
+    },
+  },
+  produtores: {
+    kpis: async (filtros) => {
+      const d = await queryResultadoPorConta(prisma, { periodoDe: filtros.periodoDe, periodoAte: filtros.periodoAte });
+      return {
+        linhas: [],
+        kpis: { totalReceita: d.totalReceita, totalDespesa: d.totalDespesa, resultado: d.resultado },
+        freshness: null,
+      };
+    },
+    agregacaoCategorica: async (filtros) => {
+      const d = await queryResultadoPorConta(prisma, { periodoDe: filtros.periodoDe, periodoAte: filtros.periodoAte });
+      return {
+        linhas: d.linhas.map((l) => ({ rotulo: l.contaNome ?? "(sem conta)", valor: l.total })),
+        freshness: null,
+      };
+    },
+  },
+};
+
 const REGISTRY: Record<string, FonteDef> = {
   fato_estoque_saldo: fatoEstoqueSaldo,
   fato_estoque_armazem: fatoEstoqueArmazem,
@@ -345,6 +465,9 @@ const REGISTRY: Record<string, FonteDef> = {
   fato_estoque_movimento: fatoEstoqueMovimento,
   fato_estoque_parados: fatoEstoqueParados,
   fato_estoque_top_movimentados: fatoEstoqueTopMovimentados,
+  fato_financeiro_saldo: fatoFinanceiroSaldo,
+  fato_financeiro_movimento: fatoFinanceiroMovimento,
+  fato_financeiro_resultado: fatoFinanceiroResultado,
 };
 
 /** Lista os contratos publicos de todas as fontes (alimenta o agente). */

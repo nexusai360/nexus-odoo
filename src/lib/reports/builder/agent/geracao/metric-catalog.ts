@@ -142,6 +142,95 @@ const CURADORIA: Record<string, Curada> = {
     formato: "contagem",
     chartPreferido: "LineChart",
   },
+  // --- FINANCEIRO (onda 2) ---
+  "fato_financeiro_saldo|kpis|saldoTotal": {
+    id: "financeiro.saldo_total",
+    rotulo: "Saldo em conta",
+    descricao: "Saldo somado das contas bancarias",
+    pergunta: "Quanto tem em caixa/banco hoje?",
+    formato: "brl",
+    chartPreferido: "KPIRow",
+  },
+  "fato_financeiro_saldo|agregacaoCategorica|": {
+    id: "financeiro.saldo_por_banco",
+    rotulo: "Saldo por banco",
+    descricao: "Saldo de cada conta bancaria",
+    pergunta: "Onde esta o dinheiro?",
+    formato: "brl",
+    chartPreferido: "BarChart",
+  },
+  "fato_financeiro_saldo|tabela|": {
+    id: "financeiro.contas",
+    rotulo: "Contas bancarias",
+    descricao: "Saldo por conta e tipo",
+    pergunta: "Quais sao as contas e seus saldos?",
+    formato: "brl",
+    chartPreferido: "DataTable",
+  },
+  "fato_financeiro_movimento|kpis|entrada": {
+    id: "financeiro.entradas",
+    rotulo: "Entradas",
+    descricao: "Total de entradas no periodo",
+    pergunta: "Quanto entrou de dinheiro?",
+    formato: "brl",
+    chartPreferido: "KPIRow",
+  },
+  "fato_financeiro_movimento|kpis|saida": {
+    id: "financeiro.saidas",
+    rotulo: "Saidas",
+    descricao: "Total de saidas no periodo",
+    pergunta: "Quanto saiu de dinheiro?",
+    formato: "brl",
+    chartPreferido: "KPIRow",
+  },
+  "fato_financeiro_movimento|kpis|saldo": {
+    id: "financeiro.caixa_liquido",
+    rotulo: "Caixa liquido",
+    descricao: "Entradas menos saidas no periodo",
+    pergunta: "Qual o resultado de caixa do periodo?",
+    formato: "brl",
+    chartPreferido: "KPIRow",
+  },
+  "fato_financeiro_movimento|serieTemporal|": {
+    id: "financeiro.fluxo_caixa",
+    rotulo: "Fluxo de caixa",
+    descricao: "Realizado e previsto por mes",
+    pergunta: "Como o caixa evolui no tempo?",
+    formato: "brl",
+    chartPreferido: "LineChart",
+  },
+  "fato_financeiro_resultado|kpis|totalReceita": {
+    id: "financeiro.receita",
+    rotulo: "Receita",
+    descricao: "Receita gerencial no periodo",
+    pergunta: "Quanto faturou (gerencial)?",
+    formato: "brl",
+    chartPreferido: "KPIRow",
+  },
+  "fato_financeiro_resultado|kpis|totalDespesa": {
+    id: "financeiro.despesa",
+    rotulo: "Despesa",
+    descricao: "Despesa gerencial no periodo",
+    pergunta: "Quanto gastou (gerencial)?",
+    formato: "brl",
+    chartPreferido: "KPIRow",
+  },
+  "fato_financeiro_resultado|kpis|resultado": {
+    id: "financeiro.resultado",
+    rotulo: "Resultado",
+    descricao: "Receita menos despesa (gerencial)",
+    pergunta: "Qual o resultado gerencial?",
+    formato: "brl",
+    chartPreferido: "KPIRow",
+  },
+  "fato_financeiro_resultado|agregacaoCategorica|": {
+    id: "financeiro.resultado_por_conta",
+    rotulo: "Resultado por conta",
+    descricao: "Valor por conta gerencial (DRE)",
+    pergunta: "Onde estao as maiores receitas/despesas?",
+    formato: "brl",
+    chartPreferido: "BarChart",
+  },
 };
 
 const TEMPLATES_POR_SHAPE: Record<ShapeDerivado, ReportTemplate[]> = {
@@ -211,4 +300,9 @@ function montar(
 /** Acha uma metrica pelo id (helper para build/amostra/template). */
 export function obterMetrica(metricas: Metrica[], id: string): Metrica | undefined {
   return metricas.find((m) => m.id === id);
+}
+
+/** Dominios distintos que o registry conhece (default de RBAC quando nao filtrado). */
+export function dominiosRegistrados(): string[] {
+  return [...new Set(listarFontes().map((c) => c.dominio))];
 }

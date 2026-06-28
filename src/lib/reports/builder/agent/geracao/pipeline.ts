@@ -11,7 +11,7 @@ import { logUsage as logUsagePadrao } from "@/lib/agent/llm/usage-logger";
 import { obterProdutor } from "../../source-registry";
 import type { ShapeDerivado } from "../../types";
 import type { EntradaGeracao, SaidaGeracao, GeracaoDeps, ProgressoGeracao, FaseGeracao } from "./types";
-import { listarMetricas, obterMetrica } from "./metric-catalog";
+import { listarMetricas, obterMetrica, dominiosRegistrados } from "./metric-catalog";
 import type { Metrica } from "./metric-catalog";
 import type { Plano } from "./plano-types";
 import { intencaoCuradaDeColeta } from "../../journey/intencao-curada";
@@ -100,7 +100,8 @@ export async function pipelineGeracao(
   onProgresso: Emit,
   deps: GeracaoDeps = DEPS_PADRAO,
 ): Promise<SaidaGeracao> {
-  const dominios = entrada.dominiosPermitidos ?? ["estoque"];
+  // Sem RBAC explicito, cobre TODOS os dominios registrados (estoque + financeiro + ...).
+  const dominios = entrada.dominiosPermitidos ?? dominiosRegistrados();
   const metricas = listarMetricas({ dominiosPermitidos: dominios });
   const curada = intencaoCuradaDeColeta(entrada.intencao, entrada.entendimento);
   const omitidos: string[] = [];

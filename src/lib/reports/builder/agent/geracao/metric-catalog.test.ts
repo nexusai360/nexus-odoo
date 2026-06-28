@@ -1,6 +1,6 @@
 jest.mock("@/lib/prisma", () => ({ prisma: {} }));
 
-import { listarMetricas } from "./metric-catalog";
+import { listarMetricas, dominiosRegistrados } from "./metric-catalog";
 
 describe("listarMetricas , catalogo derivado do registry", () => {
   it("expande fato_estoque_saldo (shape kpis) em metricas escalares distintas com campoKpi", () => {
@@ -31,6 +31,29 @@ describe("listarMetricas , catalogo derivado do registry", () => {
   it("filtra por dominios permitidos: vazio => nenhuma metrica", () => {
     expect(listarMetricas({ dominiosPermitidos: [] })).toEqual([]);
     expect(listarMetricas({ dominiosPermitidos: ["estoque"] }).length).toBeGreaterThan(0);
+  });
+
+  it("cobre o dominio FINANCEIRO (saldo, fluxo de caixa serie, DRE)", () => {
+    const ms = listarMetricas({ dominiosPermitidos: ["financeiro"] });
+    expect(ms.every((m) => m.dominio === "financeiro")).toBe(true);
+    const ids = ms.map((m) => m.id);
+    expect(ids).toEqual(expect.arrayContaining([
+      "financeiro.saldo_total",
+      "financeiro.saldo_por_banco",
+      "financeiro.fluxo_caixa",
+      "financeiro.receita",
+      "financeiro.resultado_por_conta",
+    ]));
+    // fluxo de caixa e a unica metrica financeira temporal
+    expect(ms.find((m) => m.id === "financeiro.fluxo_caixa")?.temSerieTemporal).toBe(true);
+    expect(ms.find((m) => m.id === "financeiro.saldo_total")?.temSerieTemporal).toBe(false);
+  });
+
+  it("estoque e financeiro nao se misturam, mas ambos sao registrados", () => {
+    expect(dominiosRegistrados()).toEqual(expect.arrayContaining(["estoque", "financeiro"]));
+    const todos = listarMetricas({ dominiosPermitidos: dominiosRegistrados() });
+    expect(todos.some((m) => m.dominio === "estoque")).toBe(true);
+    expect(todos.some((m) => m.dominio === "financeiro")).toBe(true);
   });
 
   it("chartsValidos reflete o shape (categorica aceita Bar/Pie; kpis aceita KPIRow)", () => {
