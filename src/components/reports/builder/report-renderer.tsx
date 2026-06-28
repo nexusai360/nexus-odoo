@@ -352,10 +352,19 @@ function SecaoView({
   if (secao.template === "KPIRow") {
     const kpis = (resolvida.dado as Record<string, number>) ?? {};
     const campos = resolvida.campos ?? [];
-    const cards = (campos.length > 0
-      ? campos
-      : Object.keys(kpis).map((k) => ({ key: k, label: humanizarChave(k), tipo: "numero" as CampoTipo }))
-    ).filter((c) => c.key in kpis);
+    // Subtitulo (descricao da metrica) e ordem/subset vem do build (config).
+    const subtitulos = (secao.config.subtitulos as Record<string, string> | undefined) ?? {};
+    const ordem = secao.config.campos as string[] | undefined;
+    let base =
+      campos.length > 0
+        ? campos
+        : Object.keys(kpis).map((k) => ({ key: k, label: humanizarChave(k), tipo: "numero" as CampoTipo }));
+    if (ordem && ordem.length > 0) {
+      base = ordem.map(
+        (k) => base.find((c) => c.key === k) ?? { key: k, label: humanizarChave(k), tipo: "numero" as CampoTipo },
+      );
+    }
+    const cards = base.filter((c) => c.key in kpis);
     if (cards.length === 0) return null;
     const grid = (
       <motion.div
@@ -383,7 +392,8 @@ function SecaoView({
                 label={c.label}
                 value={formatNumber(valor, formatoDoCampo(c.tipo))}
                 tone={tone}
-                hint={c.tipo === "moeda" ? "no periodo" : undefined}
+                subtitle={subtitulos[c.key]}
+                hint={!subtitulos[c.key] && c.tipo === "moeda" ? "no periodo" : undefined}
               />
             </motion.div>
           );
@@ -516,6 +526,25 @@ function tituloSecao(secao: BuilderSection): string | null {
   return typeof t === "string" && t.trim().length > 0 ? t.trim() : null;
 }
 
+/**
+ * Agrupa secoes irmas consecutivas que compartilham `config.grupoId` (ex.: o par
+ * tendencia+distribuicao do bloco composto), para o renderer posiciona-las lado a lado.
+ * Secoes sem grupoId (ou isoladas) viram grupos de 1 (render solo, como sempre).
+ */
+function agruparPorGrupoId(secoes: BuilderSection[]): BuilderSection[][] {
+  const grupos: BuilderSection[][] = [];
+  for (const secao of secoes) {
+    const g = secao.config?.grupoId;
+    const ultimo = grupos[grupos.length - 1];
+    if (typeof g === "string" && g && ultimo && ultimo[0].config?.grupoId === g) {
+      ultimo.push(secao);
+    } else {
+      grupos.push([secao]);
+    }
+  }
+  return grupos;
+}
+
 export function ReportRenderer({
   entry,
   dados,
@@ -526,6 +555,8 @@ export function ReportRenderer({
   editavel?: EditavelFicha;
 }) {
   const total = entry.secoes.length;
+  const grupos = agruparPorGrupoId(entry.secoes);
+  let idx = 0;
   return (
     <div className="flex flex-col gap-4">
       {entry.titulo ? (
@@ -534,16 +565,37 @@ export function ReportRenderer({
           {entry.descricao ? <p className="mt-0.5 text-xs text-muted-foreground">{entry.descricao}</p> : null}
         </div>
       ) : null}
-      {entry.secoes.map((secao, i) => (
-        <SecaoView
-          key={secao.id}
-          secao={secao}
-          resolvida={dados[secao.id]}
-          editavel={editavel}
-          primeira={i === 0}
-          ultima={i === total - 1}
-        />
-      ))}
+      {grupos.map((grupo, gi) => {
+        if (grupo.length > 1) {
+          // Par lado a lado (tendencia 2/3 + distribuicao 1/3 no desktop; empilhado no
+          // mobile). Cada metade mantem seu proprio estado (vazio/erro) , uma vazia nao
+          // derruba a outra.
+          return (
+            <div key={`grupo-${gi}`} data-testid="secao-grupo" className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+              {grupo.map((secao, j) => {
+                const i = idx++;
+                return (
+                  <div key={secao.id} className={j === 0 ? "lg:col-span-2" : ""}>
+                    <SecaoView secao={secao} resolvida={dados[secao.id]} editavel={editavel} primeira={i === 0} ultima={i === total - 1} />
+                  </div>
+                );
+              })}
+            </div>
+          );
+        }
+        const secao = grupo[0];
+        const i = idx++;
+        return (
+          <SecaoView
+            key={secao.id}
+            secao={secao}
+            resolvida={dados[secao.id]}
+            editavel={editavel}
+            primeira={i === 0}
+            ultima={i === total - 1}
+          />
+        );
+      })}
     </div>
   );
 }

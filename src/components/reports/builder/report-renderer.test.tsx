@@ -106,6 +106,47 @@ describe("ReportRenderer", () => {
     expect(container.textContent).not.toMatch(/\[object Object\]/);
   });
 
+  it("agrupa secoes irmas (mesmo grupoId) lado a lado; metade vazia nao derruba a outra", () => {
+    const comGrupo: BuilderReportEntry = {
+      ...entry,
+      titulo: "Movimentacao",
+      secoes: [
+        { id: "line", template: "LineChart", fato: "fato_estoque_movimento", shapeDerivado: "serieTemporal", config: { titulo: "Movimentacao mensal", grupoId: "g1" }, filtros: [] },
+        { id: "pie", template: "PieChart", fato: "fato_estoque_marca", shapeDerivado: "agregacaoCategorica", config: { titulo: "Valor por marca", grupoId: "g1" }, filtros: [] },
+      ],
+    };
+    const dados: Record<string, SecaoResolvida> = {
+      line: { estado: "vazio" },
+      pie: {
+        estado: "ok",
+        dado: [{ rotulo: "MATRIX", valor: 100 }],
+        campos: [
+          { key: "rotulo", label: "Marca", tipo: "texto" },
+          { key: "valor", label: "Valor", tipo: "moeda" },
+        ],
+      },
+    };
+    render(<ReportRenderer entry={comGrupo} dados={dados} />);
+    expect(screen.getByTestId("secao-grupo")).toBeInTheDocument();
+    // metade vazia mostra placeholder; a outra metade renderiza
+    expect(screen.getByText(/sem dados para esta secao/i)).toBeInTheDocument();
+    expect(screen.getByText("Valor por marca")).toBeInTheDocument();
+  });
+
+  it("KPIRow mostra o subtitulo por metrica (config.subtitulos)", () => {
+    const comSub: BuilderReportEntry = {
+      ...entry,
+      secoes: [
+        { id: "kpi", template: "KPIRow", fato: "fato_estoque_saldo", shapeDerivado: "kpis", config: { titulo: "Indicadores", subtitulos: { valorTotal: "Valor do estoque no momento" } }, filtros: [] },
+      ],
+    };
+    const dados: Record<string, SecaoResolvida> = {
+      kpi: { estado: "ok", dado: { valorTotal: 1000 }, campos: [{ key: "valorTotal", label: "Valor total", tipo: "moeda" }] },
+    };
+    render(<ReportRenderer entry={comSub} dados={dados} />);
+    expect(screen.getByText("Valor do estoque no momento")).toBeInTheDocument();
+  });
+
   describe("seletor de cor (modo edicao)", () => {
     const grafico: BuilderReportEntry = {
       ...entry,
