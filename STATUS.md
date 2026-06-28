@@ -7,12 +7,15 @@
 > registrado.** Cobrir = wrappar a query numa FonteDef + curar métrica (recipe em
 > `docs/superpowers/specs/2026-06-28-f6-expansao-dominios-e-componentes.md`). JÁ FEITO nesta
 > rodada: **C4** freshness "atualizado há Xs"; **D5** drilldown inline na tabela (via
-> `__detalhe`); **E1a** jornada enxuta; **ONDA 2 = domínio FINANCEIRO** registrado
-> (saldo bancário, fluxo de caixa série, DRE) , 12 métricas, provado contra dado real;
-> pipeline cobre todos os domínios registrados por padrão. **43 suites/211 testes builder
-> verdes, tsc 0.** PRÓXIMO (mecânico, recipe pronto): registrar Comercial → Fiscal →
-> Financeiro-títulos → Cadastros → Contábil; depois componentes novos (waterfall/funnel/
-> gauge/sparkline/combo/treemap/pivô) + ativar os já-existentes (KpiCard.delta, stacked,
+> `__detalhe`); **E1a** jornada enxuta; e **EXPANSÃO MULTI-DOMÍNIO , 5 domínios registrados
+> e provados contra DADO REAL: estoque + financeiro (saldo/fluxo de caixa série/DRE) +
+> comercial (pedidos/etapa/vendedor/atrasados) + fiscal (faturamento/cliente/produto) +
+> cadastros (clientes 6427/fornecedores/UF). 36 métricas no catálogo.** O pipeline cobre
+> todos os domínios registrados por padrão (`dominiosRegistrados()`). **43 suites/211 testes
+> builder verdes, tsc 0.** Recipe em `docs/superpowers/specs/2026-06-28-f6-expansao-dominios-
+> e-componentes.md`. PRÓXIMO (mecânico): demais domínios (contábil-plano, preços, serviços,
+> produção; estruturais 0-reg com guarda de count); depois COMPONENTES novos (waterfall/
+> funnel/gauge/sparkline/combo/treemap/pivô) + ativar já-existentes (KpiCard.delta, stacked,
 > secondaryValue, agruparOutros). Passe visual do usuário (caminho LLM bilha a API) pendente.
 > F6 NÃO sobe sem aprovação.
 
