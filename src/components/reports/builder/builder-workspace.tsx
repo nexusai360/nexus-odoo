@@ -53,6 +53,8 @@ export function BuilderWorkspace({
   const [progresso, setProgresso] = useState<ProgressoGeracaoUi | null>(null);
   const [roteiro, setRoteiro] = useState<RoteiroUi | null>(null);
   const [omitidos, setOmitidos] = useState<string[]>([]);
+  // Ampliar: esconde a conversa (relatorio ocupa tudo); X traz a conversa de volta.
+  const [cheia, setCheia] = useState(false);
   // Ref do etag para o salvamento async da edicao ler sempre o valor atual.
   const etagRef = useRef<string | null>(initialEtag);
   // Handle de envio exposto pelo chat (Gerar e "ajustar e regenerar").
@@ -260,11 +262,19 @@ export function BuilderWorkspace({
           </div>
         </header>
         <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-          <aside className="flex min-h-0 w-full shrink-0 flex-col border-b border-border lg:h-auto lg:w-[400px] lg:border-r lg:border-b-0">
-            <div className="min-h-[320px] flex-1 lg:min-h-0">{chatPanel}</div>
-          </aside>
+          {/* Conversa: escondida no modo ampliado (cheia). */}
+          {!cheia ? (
+            <aside className="flex min-h-0 w-full shrink-0 flex-col border-b border-border lg:h-auto lg:w-[400px] lg:border-r lg:border-b-0">
+              <div className="min-h-[320px] flex-1 lg:min-h-0">{chatPanel}</div>
+            </aside>
+          ) : null}
           <section className="min-h-0 min-w-0 flex-1 bg-background">
-            <BuilderPreview ficha={ficha} editavel={editavel} />
+            <BuilderPreview
+              ficha={ficha}
+              editavel={editavel}
+              cheia={cheia}
+              onToggleCheia={() => setCheia((v) => !v)}
+            />
           </section>
         </div>
         {overlay}
