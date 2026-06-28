@@ -20,12 +20,7 @@ import { signOut } from "next-auth/react";
 import { useTheme } from "@/components/providers/theme-provider";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import {
-  filterNav,
-  NAV_ITEMS,
-  SECTION_LABELS,
-  type NavItem,
-} from "@/lib/constants/nav";
+import { SECTION_LABELS, type NavItem } from "@/lib/constants/nav";
 import { PLATFORM_ROLE_LABELS } from "@/lib/constants/roles";
 import type { PlatformRole } from "@/generated/prisma/client";
 import {
@@ -44,6 +39,8 @@ interface SidebarUser {
 
 interface SidebarProps {
   user: SidebarUser;
+  /** Nav já resolvido no layout server (papel + capabilities da Diretoria). */
+  nav: NavItem[];
 }
 
 const THEME_ICONS = { dark: Moon, light: Sun, system: Monitor } as const;
@@ -55,7 +52,7 @@ const THEME_LABELS = {
 
 const COLLAPSED_KEY = "nexus-sidebar-collapsed";
 
-export function Sidebar({ user }: SidebarProps) {
+export function Sidebar({ user, nav }: SidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const reduceMotion = useReducedMotion();
@@ -90,14 +87,14 @@ export function Sidebar({ user }: SidebarProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, [mobileOpen]);
 
-  const visibleNav = filterNav(NAV_ITEMS, user);
+  const visibleNav = nav;
   const allLeafHrefs = useMemo(() => collectLeafHrefs(visibleNav), [visibleNav]);
 
   // Abre, na montagem, o grupo cujo prefixo de href bate com o pathname atual,
   // para que o submenu já apareça expandido ao navegar direto numa sub-rota.
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
-    for (const item of NAV_ITEMS) {
+    for (const item of nav) {
       if ((item.children?.length ?? 0) > 0 && isGroupActive(item.href, pathname)) {
         initial[item.href] = true;
       }
