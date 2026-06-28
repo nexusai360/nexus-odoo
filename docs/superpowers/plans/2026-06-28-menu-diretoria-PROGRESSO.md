@@ -38,18 +38,30 @@
         usa @svg-maps/brazil (dep commitada); choropleth roxo; hover/tooltip/
         ranking; seleciona 2 UFs (onSelect) p/ C8/C9; reduced-motion; a11y.
         API: <BrazilMap data={{uf,valor,label?}[]} metric onSelect maxSelection formatValor/>
-  - [ ] DiretoriaPeriodBar (visual): usar DIRETORIA_PERIODO_PRESETS + escreve
-        periodo/de/ate na URL; padrão visual de period-bar.tsx (pílulas roxas)
-  - [ ] SyncNowButton (visual, client): chama forcarSyncDiretoria("vendas"),
-        cooldown 30s, toast; só renderiza se user tem diretoria.sync.force
-  - [ ] Tela /diretoria/vendas: server (requireDiretoriaArea("vendas") +
-        reportFreshness + resolverPeriodoDir + userUfs + as queries C2/C3/C4/C6/C10)
-        -> client (KPICard/ChartCard/BarChart/PieChart/DataTable de @/components/charts
-        + <BrazilMap> ligado em queryVendasPorUf + DiretoriaPeriodBar + SyncNowButton).
-        margem ESTIMADA: criar seção depois (nf_item x fato_produto.preco_custo).
-  - [ ] C5 ranking vendedor (reusar queryPedidosPorVendedor) + C7 (queryProdutosFaturados)
-  - [ ] E2E contra dado real: npm run dev:fresh, abrir /diretoria/vendas logado,
-        conferir numeros por UF/marca/pgto. Rebuild worker p/ testar sync.
+  - [x] DiretoriaPeriodBar (src/components/diretoria/diretoria-period-bar.tsx):
+        pílulas dos 10 presets + custom (de/ate), escreve na URL. PRONTO.
+  - [x] SyncNowButton (src/components/diretoria/sync-now-button.tsx): gated,
+        cooldown 30s, router.refresh. PRONTO.
+  - [~] Tela /diretoria/vendas , v1 PRONTA (KPIs C2 + Mapa C3 + período + sync).
+        FALTA adicionar seções: C4 vendas por marca (BarChart), C10 formas de
+        pagamento (PieChart/donut), C6 modalidades + maior pedido, tabela de
+        pedidos/vendedores (C5), C7 itens vendidos, comparativo C8/C9 (ligar
+        onSelect do BrazilMap a 2 UFs), margem ESTIMADA (nf_item x preco_custo),
+        e o FreshnessIndicator no header. Componentes de chart: usar Recharts
+        direto (client) ou @/components/charts (KPICard/ChartCard/BarChart/
+        PieChart/DataTable). Cada seção é um client component que recebe os dados
+        do server (page.tsx) , as queries ja existem em queries/vendas.ts.
+  - [ ] C5 ranking vendedor (reusar queryPedidosPorVendedor de comercial.ts) +
+        C7 itens (reusar queryProdutosFaturados de fiscal.ts)
+  - [ ] E2E contra dado real: npm run dev:fresh, abrir /diretoria/vendas logado
+        (super_admin), conferir numeros por UF (mapa)/marca/pgto. Rebuild worker
+        (docker compose build app && up -d --force-recreate worker) p/ testar sync.
+
+### Estado geral (commitado + pushed, PR #156)
+- Onda 0 COMPLETA. Onda 1: dados (C2/C3/C4/C6/C10) + Mapa do Brasil + period bar +
+  sync button + tela Vendas v1. 50 testes no bloco diretoria, tsc 0.
+- Componentes prontos reusaveis: BrazilMap, DiretoriaPeriodBar, SyncNowButton.
+- API BrazilMap: data={{uf,valor,label?}[]} metric onSelect maxSelection formatValor.
 - [ ] Onda 2 , Pedidos & Entregas (módulo B)
 - [ ] Onda 2 , Pedidos & Entregas (módulo B)
 - [ ] Onda 3 , Estoque & Compras (módulo A)
