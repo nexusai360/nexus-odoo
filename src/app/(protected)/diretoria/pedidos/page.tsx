@@ -1,13 +1,54 @@
-import { Truck } from "lucide-react";
+import { Truck, PackageCheck, AlertTriangle, HandCoins } from "lucide-react";
 
 import { PageShell } from "@/components/layout/page-shell";
 import { PageHeader } from "@/components/page-header";
-import { requireDiretoriaArea } from "@/lib/diretoria/access";
+import { prisma } from "@/lib/prisma";
+import {
+  requireDiretoriaArea,
+  userUfs,
+  canDiretoria,
+} from "@/lib/diretoria/access";
+import {
+  queryIndicadoresDemandas,
+  queryDemandasPorUf,
+  queryDemandasPendentes,
+} from "@/lib/diretoria/queries/pedidos";
+import { queryContasAReceber } from "@/lib/reports/queries/financeiro";
+import { SyncNowButton } from "@/components/diretoria/sync-now-button";
+import { BrazilMap } from "@/components/diretoria/brazil-map/brazil-map";
 
 export const dynamic = "force-dynamic";
 
+const brl = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+  maximumFractionDigits: 0,
+});
+const num = new Intl.NumberFormat("pt-BR");
+
 export default async function DiretoriaPedidosPage() {
-  await requireDiretoriaArea("pedidos");
+  const user = await requireDiretoriaArea("pedidos");
+  const ufs = await userUfs(user);
+  const hoje = new Date();
+
+  const [indicadores, demandasUf, pendentes, aReceber] = await Promise.all([
+    queryIndicadoresDemandas(prisma, hoje),
+    queryDemandasPorUf(prisma, { ufs }),
+    queryDemandasPendentes(prisma, hoje, { ufs }),
+    queryContasAReceber(prisma, {}, hoje),
+  ]);
+
+  const podeSync = await canDiretoria(user, "diretoria.sync.force");
+  const mapData = demandasUf.linhas
+    .filter((l) => l.uf !== "??")
+    .map((l) => ({ uf: l.uf, valor: l.valorTotal }));
+
+  const kpis = [
+    { label: "Demandas a entregar", valor: num.format(indicadores.totalPendentes), icon: Truck },
+    { label: "Valor a entregar", valor: brl.format(indicadores.valorAEntregar), icon: PackageCheck },
+    { label: "Atrasadas", valor: num.format(indicadores.atrasadas), icon: AlertTriangle },
+    { label: "A receber de clientes", valor: brl.format(aReceber.totalAReceber), icon: HandCoins },
+  ];
 
   return (
     <PageShell variant="wide">
@@ -15,8 +56,86 @@ export default async function DiretoriaPedidosPage() {
         icon={Truck}
         title="Pedidos & Entregas"
         subtitle="Demandas a entregar, dívida com clientes e mapa de demandas por estado."
+        actions={podeSync ? <SyncNowButton area="pedidos" /> : undefined}
       />
-      <p className="text-sm text-muted-foreground">Em construção (Onda 2).</p>
+
+      <div className="flex flex-col gap-6">
+        {/* Indicadores (B6 + B3) */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {kpis.map((k) => (
+            <div key={k.label} className="rounded-2xl border border-border/60 bg-card/60 p-5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  {k.label}
+                </span>
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-600/10">
+                  <k.icon className="h-4 w-4 text-violet-500" />
+                </span>
+              </div>
+              <div className="mt-3 font-[var(--font-space-grotesk)] text-2xl font-semibold tabular-nums">
+                {k.valor}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Mapa de demandas por estado (B4) */}
+        <section className="rounded-2xl border border-border/60 bg-card/60 p-5">
+          <h2 className="mb-4 text-sm font-semibold">Mapa de demandas por estado</h2>
+          <BrazilMap data={mapData} metric="Valor a entregar" />
+        </section>
+
+        {/* Lista de pedidos pendentes (B2) */}
+        <section className="rounded-2xl border border-border/60 bg-card/60 p-5">
+          <h2 className="mb-4 text-sm font-semibold">Pedidos pendentes</h2>
+          {pendentes.linhas.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">Nenhum pedido pendente.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
+                    <th className="pb-2 font-medium">Pedido</th>
+                    <th className="pb-2 font-medium">Cliente</th>
+                    <th className="pb-2 font-medium">UF</th>
+                    <th className="pb-2 font-medium">Etapa</th>
+                    <th className="pb-2 font-medium">Prazo</th>
+                    <th className="pb-2 text-right font-medium">Valor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pendentes.linhas.slice(0, 20).map((d, i) => (
+                    <tr key={d.numero ?? i} className="border-b border-border/20">
+                      <td className="py-2 tabular-nums">{d.numero ?? "?"}</td>
+                      <td className="py-2">{d.cliente ?? "Não informado"}</td>
+                      <td className="py-2">{d.uf}</td>
+                      <td className="py-2 text-muted-foreground">{d.etapa ?? "?"}</td>
+                      <td className="py-2">
+                        {d.dataPrevista ? (
+                          <span
+                            className={
+                              d.atrasado ? "text-rose-400" : "text-muted-foreground"
+                            }
+                          >
+                            {d.dataPrevista}
+                            {d.atrasado ? " (atrasado)" : ""}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">,</span>
+                        )}
+                      </td>
+                      <td className="py-2 text-right tabular-nums">{brl.format(d.valor)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <p className="mt-3 text-xs text-muted-foreground">
+            Mostrando {Math.min(20, pendentes.linhas.length)} de {num.format(pendentes.linhas.length)} pendentes.
+          </p>
+        </section>
+      </div>
     </PageShell>
   );
 }
