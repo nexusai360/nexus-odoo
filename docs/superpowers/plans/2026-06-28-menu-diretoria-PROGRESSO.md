@@ -37,7 +37,10 @@
 - [x] Onda 4 , Visao geral executiva , COMPLETA: tela /diretoria/visao-geral com
       KPIs globais (faturamento/a receber/a pagar/estoque/demandas) + mapa em
       destaque (VendasMapaComparativo) + atalhos drill-in gated por capability.
-- [~] Onda 5 , Agenda , EM ANDAMENTO (schema novo via SQL cirurgico + CRUD + calendario).
+- [x] Onda 5 , Agenda , COMPLETA: schema DiretoriaEvento* (SQL cirurgico), server
+      actions listar/criar/excluir (gated, TDD), calendario mensal com 8 tipos de
+      evento + navegacao de mes + criar/excluir. Falta colaboradores/anexos na UI.
+- [~] Onda 6 , RBAC na tela de Usuarios , EM ANDAMENTO (action + refactor stepper).
 - [~] (detalhe Onda 1 abaixo)
   - queries em `src/lib/diretoria/queries/vendas.ts` (TDD, mock prisma):
     - [x] C10 queryFormasPagamento (fato_pedido_parcela.formaPagamentoNome)
