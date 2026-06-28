@@ -9,6 +9,7 @@ import {
   queryEstoquePorLocal,
   queryEstoquePorFamilia,
   queryComprasPorFornecedor,
+  querySeriais,
 } from "@/lib/diretoria/queries/estoque";
 import { SyncNowButton } from "@/components/diretoria/sync-now-button";
 import { FreshnessBadge } from "@/components/diretoria/freshness-badge";
@@ -64,11 +65,12 @@ function TabelaValor({
 export default async function DiretoriaEstoquePage() {
   const user = await requireDiretoriaArea("estoque");
 
-  const [indicadores, porLocal, porFamilia, compras] = await Promise.all([
+  const [indicadores, porLocal, porFamilia, compras, seriais] = await Promise.all([
     queryIndicadoresEstoque(prisma),
     queryEstoquePorLocal(prisma),
     queryEstoquePorFamilia(prisma),
     queryComprasPorFornecedor(prisma, {}),
+    querySeriais(prisma, new Date(), 50),
   ]);
 
   const podeSync = await canDiretoria(user, "diretoria.sync.force");
@@ -146,6 +148,42 @@ export default async function DiretoriaEstoquePage() {
               </tbody>
             </table>
           )}
+        </section>
+
+        {/* Lista de seriais (A6) */}
+        <section className="rounded-2xl border border-border/60 bg-card/60 p-5">
+          <h2 className="mb-4 text-sm font-semibold">Seriais em estoque</h2>
+          {seriais.linhas.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">Sem seriais.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
+                    <th className="pb-2 font-medium">Serial</th>
+                    <th className="pb-2 font-medium">Produto</th>
+                    <th className="pb-2 font-medium">Chegada</th>
+                    <th className="pb-2 text-right font-medium">Idade (dias)</th>
+                    <th className="pb-2 text-right font-medium">Custo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {seriais.linhas.map((s, i) => (
+                    <tr key={s.serial ?? i} className="border-b border-border/20">
+                      <td className="py-2 tabular-nums">{s.serial}</td>
+                      <td className="py-2">{s.produto ?? ","}</td>
+                      <td className="py-2 text-muted-foreground">{s.chegada ?? ","}</td>
+                      <td className="py-2 text-right tabular-nums">{s.idadeDias ?? ","}</td>
+                      <td className="py-2 text-right tabular-nums">{brl.format(s.valorCusto)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <p className="mt-3 text-xs text-muted-foreground">
+            Mostrando {seriais.linhas.length} de {num.format(seriais.total)} seriais em estoque.
+          </p>
         </section>
       </div>
     </PageShell>

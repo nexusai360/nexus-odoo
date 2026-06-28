@@ -80,6 +80,51 @@ export function queryEstoquePorMarca(prisma: PrismaClient) {
   return agrupaSaldo(prisma, "marcaNome", "Sem marca");
 }
 
+export interface SerialLinha {
+  serial: string | null;
+  produto: string | null;
+  local: string | null;
+  valorCusto: number;
+  chegada: string | null;
+  saida: string | null;
+  idadeDias: number | null;
+}
+
+/** A6 , Lista de seriais (em estoque = sem data de saída), com idade em dias. */
+export async function querySeriais(
+  prisma: PrismaClient,
+  hoje: Date,
+  limit = 50,
+): Promise<{ linhas: SerialLinha[]; total: number }> {
+  const total = await prisma.fatoSerial.count({ where: { serial: { not: null } } });
+  const rows = await prisma.fatoSerial.findMany({
+    where: { serial: { not: null } },
+    orderBy: [{ dataCompra: "desc" }],
+    take: limit,
+    select: {
+      serial: true,
+      produtoNome: true,
+      localNome: true,
+      valorCusto: true,
+      dataCompra: true,
+      dataSaida: true,
+    },
+  });
+  const MS = 86_400_000;
+  const linhas = rows.map((r) => ({
+    serial: r.serial,
+    produto: r.produtoNome,
+    local: r.localNome,
+    valorCusto: Number(r.valorCusto ?? 0),
+    chegada: r.dataCompra ? r.dataCompra.toISOString().slice(0, 10) : null,
+    saida: r.dataSaida ? r.dataSaida.toISOString().slice(0, 10) : null,
+    idadeDias: r.dataCompra
+      ? Math.floor((hoje.getTime() - r.dataCompra.getTime()) / MS)
+      : null,
+  }));
+  return { linhas, total };
+}
+
 export interface CompraFornecedor {
   fornecedor: string;
   notas: number;
