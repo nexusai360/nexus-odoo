@@ -5,8 +5,9 @@
 // a experiencia do Agente Nex) + preview ao vivo. O chat fala com
 // /api/builder/stream e PERSISTE a conversa; a ficha do preview vem do `onDone`
 // de cada turno. "Abrir relatorio" navega para a rota dinamica do SavedReport.
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { ExternalLink, FileBarChart, RefreshCw } from "lucide-react";
 import {
   BuilderChatPanel,
@@ -61,6 +62,18 @@ export function BuilderWorkspace({
   // refletido no evento roteiro: respondidas >= total).
   const elegivel = !!roteiro && roteiro.respondidas >= roteiro.total;
 
+  // Watchdog: a overlay NUNCA pode ficar travada. Se em ~110s nao chegou done nem
+  // erro (conexao caiu, funcao cortada), fecha e avisa.
+  useEffect(() => {
+    if (!gerando) return;
+    const id = window.setTimeout(() => {
+      setGerando(false);
+      setProgresso(null);
+      toast.error("A geracao demorou demais. Tenta de novo, por favor.");
+    }, 110_000);
+    return () => window.clearTimeout(id);
+  }, [gerando]);
+
   function aplicarDados(p: BuilderDonePayload) {
     if (p.ficha !== undefined && p.ficha !== null) setFicha(p.ficha);
     if (p.savedId) setSavedId(p.savedId);
@@ -74,6 +87,15 @@ export function BuilderWorkspace({
   function handleDone(p: BuilderDonePayload) {
     aplicarDados(p);
     if (p.omitidos) setOmitidos(p.omitidos);
+    // Geracao bloqueada por quota (ou qualquer done sem ir pro refino): fecha a
+    // overlay e segue na entrevista, sem travar.
+    if (gerando && p.fase !== "refino") {
+      setGerando(false);
+      setProgresso(null);
+      if (p.bloqueado) toast.info("Voce atingiu o limite de uso por agora. Tente de novo mais tarde.");
+      if (p.fase) setFase(p.fase);
+      return;
+    }
     if (p.fase === "refino" && gerando) {
       // Dwell no 100% antes de revelar o 2-pane (transicao suave do reveal).
       setProgresso({ fase: "validacao", pct: 100, frase: "" });
@@ -85,6 +107,14 @@ export function BuilderWorkspace({
       return;
     }
     if (p.fase) setFase(p.fase);
+  }
+
+  // Falha na geracao: nunca deixa a overlay travada , fecha e volta para a conversa.
+  function handleGenError(mensagem: string) {
+    setGerando(false);
+    setProgresso(null);
+    toast.error("Nao consegui montar agora. Me da mais um detalhe e tento de novo.");
+    if (mensagem) console.warn("[geracao] falha:", mensagem);
   }
 
   function handleCleared() {
@@ -185,6 +215,7 @@ export function BuilderWorkspace({
       enviarRef={enviarRef}
       onProgress={setProgresso}
       onRoteiro={setRoteiro}
+      onGenError={handleGenError}
       imersivo={fase !== "refino"}
     />
   );

@@ -7,6 +7,7 @@ import { z } from "zod";
 import type { ChatMessage } from "@/lib/agent/llm/types";
 import type { Blueprint } from "./blueprint-types";
 import { parseBlueprint } from "./blueprint";
+import { extrairJson } from "./extrair-json";
 
 const revisaoRawSchema = z.object({
   semReparos: z.boolean().optional(),
@@ -21,8 +22,7 @@ export function parseRevisao(
   raw: unknown,
   blueprintAnterior: Blueprint,
 ): { blueprint: Blueprint; semReparos: boolean; notas: string[] } {
-  const obj = typeof raw === "string" ? JSON.parse(raw) : raw;
-  const parsed = revisaoRawSchema.parse(obj);
+  const parsed = revisaoRawSchema.parse(extrairJson(raw));
 
   // "Sem reparos" (ou sem secoes corrigidas) -> mantem o anterior. Nao confiamos
   // cegamente: a falta de notas e so registrada, nunca degrada o que ja temos.

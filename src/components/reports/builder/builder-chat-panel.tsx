@@ -64,6 +64,8 @@ interface BuilderChatPanelProps {
   onProgress?: (p: ProgressoGeracaoUi) => void;
   /** Roteiro de perguntas atualizado (indicador X de N + libera o Gerar). */
   onRoteiro?: (r: RoteiroUi) => void;
+  /** Falha durante a geracao: o pai fecha a overlay e volta para a entrevista. */
+  onGenError?: (mensagem: string) => void;
   /** Modo imersivo (entrevista): sem header "Conversa", fundo transparente,
    *  conteudo centralizado e composer limpo (uma superficie so, estilo ChatGPT). */
   imersivo?: boolean;
@@ -140,6 +142,7 @@ export function BuilderChatPanel({
   enviarRef,
   onProgress,
   onRoteiro,
+  onGenError,
   imersivo = false,
 }: BuilderChatPanelProps) {
   const reduceMotion = useReducedMotion();
@@ -569,29 +572,36 @@ export function BuilderChatPanel({
                 omitidos: evt.omitidos,
               });
             } else if (evt.type === "error") {
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantId
-                    ? { ...m, content: `**Erro:** ${evt.error}`, streaming: false, steps: undefined }
-                    : m,
-                ),
-              );
+              if (silencioso) {
+                // Geracao falhou: sem bolha para atualizar; avisa o pai para fechar
+                // a overlay e voltar para a entrevista.
+                onGenError?.(evt.error);
+              } else {
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantId
+                      ? { ...m, content: `**Erro:** ${evt.error}`, streaming: false, steps: undefined }
+                      : m,
+                  ),
+                );
+              }
             }
           }
         }
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") return;
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantId
-              ? {
-                  ...m,
-                  content: `**Erro inesperado:** ${err instanceof Error ? err.message : String(err)}`,
-                  streaming: false,
-                }
-              : m,
-          ),
-        );
+        const msg = err instanceof Error ? err.message : String(err);
+        if (silencioso) {
+          onGenError?.(msg);
+        } else {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantId
+                ? { ...m, content: `**Erro inesperado:** ${msg}`, streaming: false }
+                : m,
+            ),
+          );
+        }
       } finally {
         setPending(false);
         setMessages((prev) =>
@@ -599,7 +609,7 @@ export function BuilderChatPanel({
         );
       }
     },
-    [pending, onConversationCreated, onDone, onProgress, onRoteiro, setIsSticky],
+    [pending, onConversationCreated, onDone, onProgress, onRoteiro, onGenError, setIsSticky],
   );
 
   // Expoe o envio ao pai (botao Gerar e "ajustar" da tela de resumo).

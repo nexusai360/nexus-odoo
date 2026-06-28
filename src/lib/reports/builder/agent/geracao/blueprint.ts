@@ -11,6 +11,7 @@ import { seccaoViavel } from "../../journey/viabilidade";
 import { capabilityComoTextoPrompt } from "../../capabilities";
 import type { Blueprint, BlueprintSecao } from "./blueprint-types";
 import type { EntradaGeracao } from "./types";
+import { extrairJson } from "./extrair-json";
 
 const blueprintSecaoRawSchema = z.object({
   template: z.string(),
@@ -33,8 +34,7 @@ const blueprintRawSchema = z.object({
  * schema basico (titulo/objetivo/secoes).
  */
 export function parseBlueprint(raw: unknown): { blueprint: Blueprint; omitidos: string[] } {
-  const obj = typeof raw === "string" ? JSON.parse(raw) : raw;
-  const parsed = blueprintRawSchema.parse(obj);
+  const parsed = blueprintRawSchema.parse(extrairJson(raw));
 
   const secoes: BlueprintSecao[] = [];
   const omitidos: string[] = [];
