@@ -3,7 +3,7 @@
  */
 import "@testing-library/jest-dom";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { ReportRenderer, type EditavelFicha } from "./report-renderer";
+import { ReportRenderer, agruparTopN, type EditavelFicha } from "./report-renderer";
 import type { BuilderReportEntry } from "@/lib/reports/builder/types";
 import type { SecaoResolvida } from "@/lib/reports/builder/resolve-source";
 
@@ -39,6 +39,30 @@ const entry: BuilderReportEntry = {
     },
   ],
 };
+
+describe("agruparTopN , agrupa a cauda categorica em 'Outros'", () => {
+  const muitos = Array.from({ length: 15 }, (_, i) => ({ rotulo: `C${i}`, valor: 15 - i }));
+
+  it("nao mexe quando ha poucas categorias (<= n)", () => {
+    const poucas = [{ rotulo: "A", valor: 3 }, { rotulo: "B", valor: 1 }];
+    expect(agruparTopN(poucas, 12)).toEqual([{ rotulo: "A", valor: 3 }, { rotulo: "B", valor: 1 }]);
+  });
+
+  it("ordena por valor e limita a n linhas, somando o resto em 'Outros'", () => {
+    const out = agruparTopN(muitos, 5);
+    expect(out).toHaveLength(5);
+    expect(out[0].rotulo).toBe("C0"); // maior valor (15)
+    expect(out[4].rotulo).toBe("Outros");
+    // top 4 = 15+14+13+12 = 54; total = 15..1 = 120; outros = 120-54 = 66
+    expect(out[4].valor).toBe(66);
+  });
+
+  it("'Outros' so aparece quando ha cauda", () => {
+    const exatos = Array.from({ length: 5 }, (_, i) => ({ rotulo: `C${i}`, valor: 5 - i }));
+    const out = agruparTopN(exatos, 5);
+    expect(out.some((r) => r.rotulo === "Outros")).toBe(false);
+  });
+});
 
 describe("ReportRenderer", () => {
   it("renderiza a DataTable com as linhas resolvidas", () => {

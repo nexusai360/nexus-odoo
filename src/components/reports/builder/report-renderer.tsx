@@ -433,7 +433,8 @@ function SecaoView({
 
   // BarChart , barras animadas (InteractiveBarChart). 1 serie "valor".
   if (secao.template === "BarChart") {
-    const data = (resolvida.dado as Record<string, unknown>[]) ?? [];
+    const topN = Number(secao.config.topN ?? 12);
+    const data = agruparTopN((resolvida.dado as Record<string, unknown>[]) ?? [], topN);
     const campoValor = (resolvida.campos ?? []).find((c) => c.key === "valor");
     const barData: BarChartData[] = data.map((d) => ({ name: String(d.rotulo ?? ""), valor: Number(d.valor ?? 0) }));
     const cor = corResolvida(corDaSecao(secao)) ?? CHART_COLORS.violet;
@@ -511,7 +512,8 @@ function SecaoView({
 
   // PieChart , rosca com centro (DonutWithCenter).
   if (secao.template === "PieChart") {
-    const data = (resolvida.dado as Record<string, unknown>[]) ?? [];
+    const topN = Number(secao.config.topN ?? 8);
+    const data = agruparTopN((resolvida.dado as Record<string, unknown>[]) ?? [], topN);
     const campoValor = (resolvida.campos ?? []).find((c) => c.key === "valor");
     const paleta = paletaApartirDe(corDaSecao(secao));
     const pieData: PieChartData[] = data.map((d, i) => ({
@@ -697,6 +699,23 @@ export function ReportRenderer({
       })}
     </div>
   );
+}
+
+/**
+ * Agrupa a cauda de uma serie categorica em "Outros": ordena por valor desc, mantem
+ * as (n-1) maiores e soma o resto numa fatia "Outros". Mata o anti-pattern de dezenas
+ * de barras indistinguiveis (ex.: faturamento por cliente com 30 linhas). So agrupa
+ * quando ha cauda (length > n); abaixo disso, devolve ordenado sem "Outros".
+ */
+export function agruparTopN<T extends { rotulo?: unknown; valor?: unknown }>(
+  rows: T[],
+  n: number,
+): (T | { rotulo: string; valor: number })[] {
+  const ordenado = [...rows].sort((a, b) => Number(b.valor ?? 0) - Number(a.valor ?? 0));
+  if (ordenado.length <= n) return ordenado;
+  const top = ordenado.slice(0, n - 1);
+  const soma = ordenado.slice(n - 1).reduce((s, r) => s + Number(r.valor ?? 0), 0);
+  return [...top, { rotulo: "Outros", valor: soma }];
 }
 
 /** camelCase / snake_case -> "Texto legivel" para cabecalho derivado. */
