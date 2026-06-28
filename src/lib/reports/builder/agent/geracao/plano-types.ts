@@ -35,7 +35,7 @@ export interface Plano {
   filtrosIniciais: Record<string, unknown>;
 }
 
-const blocoSchema = z.discriminatedUnion("tipo", [
+export const blocoSchema = z.discriminatedUnion("tipo", [
   z.object({ tipo: z.literal("KpiStrip"), metricas: z.array(z.string()).min(1) }),
   z.object({
     tipo: z.literal("TendenciaDistribuicao"),
