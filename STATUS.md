@@ -55,11 +55,16 @@
 >   E2 canvas limpo (CONFERIR `builder-preview.tsx`/`builder-workspace.tsx`: tirar pan +
 >   animações de mãozinha; manter zoom+rolagem+ampliar-esconde-conversa , parte pode já
 >   ter sido feita em sessão anterior).
-> - [ ] **FASE F** E2E real (semente determinística de IntencaoCurada em código, sem LLM
->   de entrevista) + popular fatos + fallback movimento <4 pontos + latência + régua visual.
+> - [~] **FASE F (parcial)** , `scripts/f6-e2e-geracao.ts` PROVA contra o DADO REAL
+>   (caminho determinístico gerar_ja, 0 LLM): catálogo deriva 12 métricas; relatório
+>   coerente (KPIRow+BarChart+DataTable, 0 omitidos); **os KPIs reais 49.447.434,34 /
+>   1894 / 172 (os MESMOS do print Frankenstein) saem DISTINTOS**; plano adversarial
+>   (4 rankings) vira 1 pelo revisor. Rodar: `npx tsx --env-file=.env.local
+>   scripts/f6-e2e-geracao.ts`. **FALTA F:** E2E do caminho com LLM (compositor+crítico)
+>   + passe visual na UI `/relatorios-2/construtor` + latência (~≤25s).
 > **NOTA:** o pipeline novo já está ligado no `stream/route.ts` (gerar/regenerar). O cérebro
-> (A+B) impede o Frankenstein por construção, independente do tamanho da entrevista.
-> F6 NÃO sobe sem aprovação.
+> (A+B) impede o Frankenstein por construção, COMPROVADO contra o dado real. Próxima frente
+> grande = FASE D (filtros-pílula ao vivo). F6 NÃO sobe sem aprovação.
 
 > **2026-06-28 (F6 , REFORMA DE QUALIDADE/EFICIÊNCIA DO CONSTRUTOR , ANTERIOR) ,
 > branch `feat/nex-reconstrucao`. F6 SÓ LOCAL.** Usuário MUITO insatisfeito com o
