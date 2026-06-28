@@ -22,14 +22,19 @@
   - [x] T3 schema DiretoriaRelatorio + Bloco (SQL cirúrgico, índices únicos parciais). client regen.
   - [x] T4 carregarLayout (layout-repo.ts) , usuário > padrão. 3 testes.
   - [x] T5 loaders + resolverBlocos (loaders.ts) , dedupe + allSettled. 3 testes. A-01..A-04 reusam queries de estoque.
-  - [ ] T6 GridRelatorio + BlocoCard (CSS grid 12col/auto-rows, span; selo de fonte). UI inline ui-ux-pro-max.
-  - [ ] T7 render-componente (id -> componente React com dado plano). A-01..A-04.
-  - [ ] T8a gating (filtrarPermitidos, função pura + teste).
-  - [ ] T8b seed do layout padrão (script idempotente).
-  - [ ] T8c página montada + validação E2E no browser (PROTOTIPAR sem regredir telas atuais).
-  - TOTAL builder até agora: 18 testes verdes, tsc 0. Arquivos em src/lib/diretoria/builder/.
-  - NOTA: a parte de DADOS/lógica (T1-T5) está pronta e testada; falta o RENDER visual
-    (T6-T8), que é UI inline (ui-ux-pro-max) + validação no browser , fazer com contexto fresco.
+  - [x] T6 GridRelatorio + BlocoCard (CSS grid 12col/auto-rows span, responsivo via
+        custom props, selo de fonte). src/components/diretoria/builder/grid-relatorio.tsx.
+  - [x] T7 render-componente (A-01 KPIs, A-02 tabela, A-03/A-04 barras CSS, server).
+  - [x] T8a gating (filtrarPermitidos, função pura). 3 testes.
+  - [x] T8b seed idempotente (scripts/seed-diretoria-relatorio.ts), tela "estoque-demo" 4 blocos 2x2.
+  - [x] T8c página /diretoria/relatorios (monta o layout, gating server, sem regredir telas atuais).
+  - ONDA 1 COMPLETA: 21 testes builder verdes, tsc 0. E2E dado real ok (A-01 R$49,4M/28829
+        itens/1894 produtos/68 locais; A-03 top JOHNSON; A-04 top MATRIX). Rota compila (302).
+  - VALIDAÇÃO VISUAL no browser (logado) pendente p/ o usuário: localhost:3000/diretoria/relatorios.
+
+## PRÓXIMO: Onda 2 (componentes de dado + mapa) , catalogar e construir os componentes
+  definitivos A*/K*/B*/C*/G* com dado real + interatividade; reusar BrazilMap; ReportContext
+  (período/uf/item). Antes de cada métrica estimada/sem-fonte, confirmar por SELECT no cache.
 
 ## Catálogo de componentes (índice próprio)
 A=Estoque, K=Compras, B=Demandas, C=Vendas, G=Visão geral. Ver SPEC §5.
