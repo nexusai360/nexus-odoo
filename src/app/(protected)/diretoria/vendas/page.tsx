@@ -16,7 +16,7 @@ import { queryPedidosPorVendedor } from "@/lib/reports/queries/comercial";
 import { queryProdutosFaturados } from "@/lib/reports/queries/fiscal";
 import { DiretoriaPeriodBar } from "@/components/diretoria/diretoria-period-bar";
 import { SyncNowButton } from "@/components/diretoria/sync-now-button";
-import { BrazilMap } from "@/components/diretoria/brazil-map/brazil-map";
+import { VendasMapaComparativo } from "@/components/diretoria/vendas-mapa-comparativo";
 import {
   VendasPorMarcaChart,
   FormasPagamentoChart,
@@ -77,7 +77,7 @@ export default async function DiretoriaVendasPage({
 
   const mapData = vendasUf.linhas
     .filter((l) => l.uf !== "??")
-    .map((l) => ({ uf: l.uf, valor: l.valorTotal }));
+    .map((l) => ({ uf: l.uf, valor: l.valorTotal, quantidade: l.quantidade }));
 
   const kpis = [
     { label: "Faturamento", valor: brl.format(indicadores.faturamento), icon: TrendingUp },
@@ -119,10 +119,10 @@ export default async function DiretoriaVendasPage({
           ))}
         </div>
 
-        {/* Vendas por estado (C3 + Mapa do Brasil) */}
+        {/* Vendas por estado (C3) + comparativo (C8/C9) */}
         <section className="rounded-2xl border border-border/60 bg-card/60 p-5">
           <h2 className="mb-4 text-sm font-semibold">Vendas por estado</h2>
-          <BrazilMap data={mapData} metric="Faturamento" />
+          <VendasMapaComparativo data={mapData} />
         </section>
 
         {/* Marca (C4) e formas de pagamento (C10) */}
