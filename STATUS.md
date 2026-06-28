@@ -2,32 +2,39 @@
 
 > **2026-06-28 (F6 , ONDA DE COMPONENTES , EM EXECUÇÃO AUTÔNOMA) , branch
 > `feat/nex-reconstrucao`. F6 SÓ LOCAL.** Após a expansão multi-domínio, entrou a onda de
-> COMPONENTES novos do gerador. Cada componente = vertical completo com TDD (novo
-> `ReportTemplate` na union + `REPORT_TEMPLATES` zod + `TEMPLATES_ONDA1` + `component-catalog`
-> + `metric-catalog` `TEMPLATES_POR_SHAPE`/`chartPreferido` + `build-plano` + branch no
-> `report-renderer` + `option-thumbs` + componente em `charts/interactive/`). **ENTREGUES e
-> commitados nesta rodada (4):**
+> COMPONENTES do gerador. Cada componente = vertical completo com TDD (novo `ReportTemplate`
+> na union + `REPORT_TEMPLATES` zod + `TEMPLATES_ONDA1` + `component-catalog` + `metric-catalog`
+> `TEMPLATES_POR_SHAPE`/`chartPreferido` + `build-plano` + branch no `report-renderer` +
+> `option-thumbs` + componente em `charts/interactive/`). **ENTREGUES e commitados (6):**
 > - **Funnel** (`comercial.por_etapa`): pipeline por etapa, reusa `agregacaoCategorica`
 >   (sem dado novo); ordena por valor desc, largura relativa ao topo, share do total.
-> - **Waterfall / DRE** (`financeiro.dre`): exigiu o SHAPE NOVO `cascata` (passos com sinal
+> - **Waterfall / DRE** (`financeiro.dre`): SHAPE NOVO `cascata` (passos com sinal
 >   positivo/negativo/total , o produtor categórico descartava o sinal). Produtor cascata:
 >   Receitas → top 5 despesas → Outras → Resultado; **PROVADO contra dado real, RECONCILIA
 >   exato** (receitas-despesas = resultado = -103.564.271,65). Bloco de gramática novo
 >   `Cascata` (plano-types + compositor + build-plano).
 > - **Combo** (barra+linha, `financeiro.fluxo_caixa`): reusa `serieTemporal`; 1a série =
->   barra (realizado), resto = linha (previsto). A metade temporal do bloco
->   `TendenciaDistribuicao` agora honra `serie.chartPreferido` (LineChart|Combo).
-> - **agruparOutros (topN)**: helper puro `agruparTopN` nas barras (topN=12) e pizza (8) ,
->   mata o Frankenstein de 30 barras indistinguíveis (faturamento por cliente/produto, saldo
->   por banco). Ataca direto a queixa do usuário.
-> **Verificação global: tsc 0; 98 suites/632 testes verdes.**
+>   barra (realizado), resto = linha (previsto). A metade temporal do `TendenciaDistribuicao`
+>   agora honra `serie.chartPreferido` (LineChart|Combo).
+> - **Treemap** (`fiscal.por_cliente`): concentração por área para MUITAS categorias (30
+>   clientes); reusa `agregacaoCategorica` como o Funnel. **PROVADO contra dado real** (30
+>   clientes, Jht SP R$50,5M dominando).
+> - **agruparOutros (topN)**: helper puro `agruparTopN` nas barras (12) e pizza (8) , mata o
+>   Frankenstein de 30 barras indistinguíveis. Ataca direto a queixa do usuário.
+> - **KpiCard.delta período-a-período**: variação % (seta + "vs período anterior") nos KPIs
+>   temporais (`financeiro_movimento`, `fiscal_faturamento`, `comercial_pedido`). HONESTO:
+>   só aparece com período explícito E base anterior válida !=0 (`janela-anterior.ts` puro:
+>   `janelaAnterior` + `calcularDeltaKpi`). **PROVADO contra dado real** (2026-05 vs 2026-04
+>   entrada 632.486,13→0 = down 100%; sem período = dormente).
+> **Verificação global: tsc 0; 100 suites/649 testes verdes.**
 > **DEFERIDOS por honestidade/ROI (documentado):** *Gauge* (exige META/target que NÃO temos
-> no dado , seria desonesto); *Sparkline* (exige série por-KPI , plumbing alto, ROI baixo);
-> *KpiCard.delta período-a-período* (exige recomputar a janela anterior; só ativa com período
-> explícito; é o próximo candidato de alto valor se for retomado); *stacked/2D categórico*
-> (exige produtor 2D que não existe). PRÓXIMO se retomar: avaliar `KpiCard.delta` (janela
-> anterior nos KPIs temporais). Passe visual do usuário em `/relatorios-2/construtor` (caminho
-> LLM real BILHA a API) continua pendente. F6 NÃO sobe sem aprovação.
+> no dado , seria desonesto); *Sparkline* (série por-KPI , plumbing alto, ROI baixo);
+> *stacked/2D categórico* (exige um produtor/query 2D que não existe , faturamento por mês ×
+> categoria; é o próximo candidato real se retomar, mas mexe na camada de queries auditadas);
+> *DonutWithCenter.secondaryValue* (render-only, marginal). PRÓXIMO se retomar: domínios
+> estruturais 0-reg com guarda de count (mecânico) OU o stacked-2D (precisa de query nova).
+> Passe visual do usuário em `/relatorios-2/construtor` (caminho LLM real BILHA a API)
+> continua pendente, é decisão dele. F6 NÃO sobe sem aprovação.
 
 
 > **2026-06-28 (F6 , EXPANSÃO MULTI-DOMÍNIO + POLISH , EM EXECUÇÃO AUTÔNOMA) , branch
