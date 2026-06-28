@@ -411,6 +411,38 @@ model DiretoriaEventoAnexo {
   @@map("diretoria_evento_anexo")
 }
 
+/// Construtor de relatórios (Diretoria v2). Um relatório por tela: o PADRÃO
+/// (dono nulo + isPadrao) ou o personalizado de um usuário. Blocos referenciam
+/// componentes do catálogo (catalogo.ts). Posição é derivada de ordem+largura+
+/// altura via CSS grid (sem x/y). Schema aplicado por SQL cirúrgico.
+model DiretoriaRelatorio {
+  id         String                    @id @default(uuid()) @db.Uuid
+  tela       String
+  donoUserId String?                   @map("dono_user_id") @db.Uuid
+  isPadrao   Boolean                   @default(false) @map("is_padrao")
+  createdAt  DateTime                  @default(now()) @map("created_at")
+  updatedAt  DateTime                  @updatedAt @map("updated_at")
+  blocos     DiretoriaRelatorioBloco[]
+
+  @@index([tela])
+  @@index([donoUserId])
+  @@map("diretoria_relatorio")
+}
+
+model DiretoriaRelatorioBloco {
+  id             String             @id @default(uuid()) @db.Uuid
+  relatorioId    String             @map("relatorio_id") @db.Uuid
+  componenteId   String             @map("componente_id")
+  ordem          Int
+  larguraQuartos Int                @map("largura_quartos")
+  alturaU        Int                @map("altura_u")
+  configJson     Json?              @map("config_json")
+  relatorio      DiretoriaRelatorio @relation(fields: [relatorioId], references: [id], onDelete: Cascade)
+
+  @@index([relatorioId])
+  @@map("diretoria_relatorio_bloco")
+}
+
 /// Fato de seriais (A6 da Diretoria). Cada equipamento por número de série.
 /// Fonte: raw_sped_produto_lote_serie. Construído pelo builder rebuildFatoSerial.
 model FatoSerial {
