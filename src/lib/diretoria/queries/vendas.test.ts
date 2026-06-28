@@ -4,6 +4,7 @@ import {
   queryVendasPorUf,
   queryModalidadesEMaiorPedido,
   queryIndicadoresVendas,
+  queryMargemEstimada,
 } from "./vendas";
 
 function makePrisma(parcelas: { formaPagamentoNome: string | null; valor: number }[]) {
@@ -200,5 +201,29 @@ describe("queryIndicadoresVendas (C2)", () => {
     } as unknown as Parameters<typeof queryIndicadoresVendas>[0];
     const r = await queryIndicadoresVendas(prisma, {});
     expect(r.ticketMedio).toBe(0);
+  });
+});
+
+describe("queryMargemEstimada (margem aproximada)", () => {
+  it("calcula margem = receita - custo (preco_custo x qtd)", async () => {
+    const prisma = {
+      fatoNotaFiscalItem: {
+        findMany: jest.fn().mockResolvedValue([
+          { produtoId: 1, vrProdutos: 1000, quantidade: 2 },
+          { produtoId: 2, vrProdutos: 500, quantidade: 1 },
+        ]),
+      },
+      fatoProduto: {
+        findMany: jest.fn().mockResolvedValue([
+          { odooId: 1, precoCusto: 300 }, // custo 300*2 = 600
+          { odooId: 2, precoCusto: 100 }, // custo 100*1 = 100
+        ]),
+      },
+    } as unknown as Parameters<typeof queryMargemEstimada>[0];
+    const r = await queryMargemEstimada(prisma, {});
+    expect(r.receita).toBe(1500);
+    expect(r.custoEstimado).toBe(700);
+    expect(r.margem).toBe(800);
+    expect(Math.round(r.margemPct)).toBe(53);
   });
 });

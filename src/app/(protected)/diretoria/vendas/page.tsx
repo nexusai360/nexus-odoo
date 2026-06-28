@@ -11,6 +11,7 @@ import {
   queryVendasPorMarca,
   queryFormasPagamento,
   queryModalidadesEMaiorPedido,
+  queryMargemEstimada,
 } from "@/lib/diretoria/queries/vendas";
 import { queryPedidosPorVendedor } from "@/lib/reports/queries/comercial";
 import { queryProdutosFaturados } from "@/lib/reports/queries/fiscal";
@@ -63,6 +64,7 @@ export default async function DiretoriaVendasPage({
     modalidades,
     vendedores,
     itens,
+    margem,
   ] = await Promise.all([
       queryIndicadoresVendas(prisma, filtros),
       queryVendasPorUf(prisma, filtros),
@@ -71,6 +73,7 @@ export default async function DiretoriaVendasPage({
       queryModalidadesEMaiorPedido(prisma, filtros),
       queryPedidosPorVendedor(prisma, filtros),
       queryProdutosFaturados(prisma, { ...filtros, limit: 10, offset: 0 }),
+      queryMargemEstimada(prisma, filtros),
     ]);
 
   const podeSync = await canDiretoria(user, "diretoria.sync.force");
@@ -83,6 +86,7 @@ export default async function DiretoriaVendasPage({
     { label: "Faturamento", valor: brl.format(indicadores.faturamento), icon: TrendingUp },
     { label: "Pedidos no período", valor: num.format(indicadores.numPedidos), icon: ShoppingCart },
     { label: "Ticket médio", valor: brl.format(indicadores.ticketMedio), icon: Receipt },
+    { label: "Margem estimada", valor: `${margem.margemPct.toFixed(1)}%`, icon: Receipt },
   ];
 
   return (
@@ -98,7 +102,7 @@ export default async function DiretoriaVendasPage({
         <DiretoriaPeriodBar />
 
         {/* KPIs (C2) */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {kpis.map((k) => (
             <div
               key={k.label}

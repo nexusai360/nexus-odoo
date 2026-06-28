@@ -297,3 +297,53 @@ export async function queryIndicadoresVendas(
   const ticketMedio = numPedidos > 0 ? faturamento / numPedidos : 0;
   return { faturamento, numPedidos, ticketMedio };
 }
+
+export interface MargemEstimada {
+  receita: number;
+  custoEstimado: number;
+  margem: number;
+  margemPct: number;
+}
+
+/**
+ * Margem ESTIMADA do período (rótulo obrigatório "estimada"). Não há custo por
+ * linha no cache, então usa-se o custo de catálogo (`fato_produto.preco_custo`)
+ * multiplicado pela quantidade vendida (itens de NF de saída). Aproximação , a
+ * margem real exigiria COGS por lote (ver fatos-status).
+ */
+export async function queryMargemEstimada(
+  prisma: PrismaClient,
+  filtros: FiltrosVendas,
+): Promise<MargemEstimada> {
+  const itens = await prisma.fatoNotaFiscalItem.findMany({
+    where: {
+      entradaSaida: "1",
+      ...periodoWhere(filtros.periodoDe, filtros.periodoAte, "dataEmissao"),
+    },
+    select: { produtoId: true, vrProdutos: true, quantidade: true },
+  });
+
+  const produtoIds = [
+    ...new Set(itens.map((i) => i.produtoId).filter((x): x is number => x != null)),
+  ];
+  const produtos = produtoIds.length
+    ? await prisma.fatoProduto.findMany({
+        where: { odooId: { in: produtoIds } },
+        select: { odooId: true, precoCusto: true },
+      })
+    : [];
+  const custoPorProduto = new Map(
+    produtos.map((p) => [p.odooId, Number(p.precoCusto ?? 0)]),
+  );
+
+  let receita = 0;
+  let custoEstimado = 0;
+  for (const it of itens) {
+    receita += Number(it.vrProdutos);
+    const custoUnit = it.produtoId != null ? custoPorProduto.get(it.produtoId) ?? 0 : 0;
+    custoEstimado += custoUnit * Number(it.quantidade);
+  }
+  const margem = receita - custoEstimado;
+  const margemPct = receita > 0 ? (margem / receita) * 100 : 0;
+  return { receita, custoEstimado, margem, margemPct };
+}
