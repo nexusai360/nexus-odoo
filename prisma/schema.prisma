@@ -411,6 +411,24 @@ model DiretoriaEventoAnexo {
   @@map("diretoria_evento_anexo")
 }
 
+/// Fato de seriais (A6 da Diretoria). Cada equipamento por número de série.
+/// Fonte: raw_sped_produto_lote_serie. Construído pelo builder rebuildFatoSerial.
+model FatoSerial {
+  odooId      Int       @id @map("odoo_id")
+  serial      String?
+  produtoId   Int?      @map("produto_id")
+  produtoNome String?   @map("produto_nome")
+  localId     Int?      @map("local_id")
+  localNome   String?   @map("local_nome")
+  valorCusto  Decimal?  @map("valor_custo") @db.Decimal(18, 4)
+  dataCompra  DateTime? @map("data_compra")
+  dataSaida   DateTime? @map("data_saida")
+  quantidade  Decimal?  @db.Decimal(18, 4)
+
+  @@index([produtoId])
+  @@map("fato_serial")
+}
+
 model PasswordResetToken {
   id        String    @id @default(uuid()) @db.Uuid
   userId    String    @map("user_id") @db.Uuid

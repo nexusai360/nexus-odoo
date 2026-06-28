@@ -39,6 +39,7 @@ import { rebuildFatoProducaoProcesso } from "./fato-producao-processo";
 import { rebuildFatoEstoqueMinMax } from "./fato-estoque-minimo-maximo";
 import { rebuildFatoCrmPipeline } from "./fato-crm-pipeline";
 import { rebuildFatoAuditoriaRegra } from "./fato-auditoria-regra";
+import { rebuildFatoSerial } from "./fato-serial";
 
 export interface FatoBuilderEntry {
   nome: string;
@@ -98,6 +99,8 @@ export const FATO_BUILDERS: FatoBuilderEntry[] = [
   { nome: "fato_producao_processo", cycle: "incremental", run: rebuildFatoProducaoProcesso },
   // B6 (estoque avançado). estoque.minimo.maximo (0 reg hoje; auto-ativa).
   { nome: "fato_estoque_min_max", cycle: "incremental", run: rebuildFatoEstoqueMinMax },
+  // A6 (Diretoria): seriais por número de série. sped.produto.lote.serie.
+  { nome: "fato_serial", cycle: "incremental", run: rebuildFatoSerial },
   // B7 (CRM + auditoria). crm.pipeline (0 reg); auditoria.regra (15 reg reais).
   { nome: "fato_crm_pipeline", cycle: "incremental", run: rebuildFatoCrmPipeline },
   { nome: "fato_auditoria_regra", cycle: "incremental", run: rebuildFatoAuditoriaRegra },
