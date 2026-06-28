@@ -186,6 +186,8 @@ model User {
   passwordResetTokens    PasswordResetToken[]
   emailChangeTokens      EmailChangeToken[]
   domainAccess           UserDomainAccess[]      @relation("UserDomainAccess")
+  diretoriaAccess        UserDiretoriaAccess[]   @relation("UserDiretoriaAccess")
+  diretoriaUfs           UserDiretoriaUf[]       @relation("UserDiretoriaUf")
   reportPresets          ReportPreset[]
   // F5
   conversations          Conversation[]
@@ -316,6 +318,35 @@ model UserDomainAccess {
   @@unique([userId, domain])
   @@index([userId])
   @@map("user_domain_access")
+}
+
+/// Concessão granular de capability do menu Diretoria a um usuário. super_admin
+/// não tem linhas (vê tudo, bypass). Demais papéis: default por papel + estes
+/// grants como override. Capability é string namespaced (ex "diretoria.vendas.view").
+model UserDiretoriaAccess {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  capability  String
+  grantedById String?  @map("granted_by_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  user        User     @relation("UserDiretoriaAccess", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, capability])
+  @@index([userId])
+  @@map("user_diretoria_access")
+}
+
+/// Recorte geográfico (UF-scoping) do acesso à Diretoria. Ausência de linhas =
+/// usuário enxerga todas as UFs. Aplicado como filtro nas queries das telas.
+model UserDiretoriaUf {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  uf     String @db.VarChar(2)
+  user   User   @relation("UserDiretoriaUf", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, uf])
+  @@index([userId])
+  @@map("user_diretoria_uf")
 }
 
 model PasswordResetToken {
