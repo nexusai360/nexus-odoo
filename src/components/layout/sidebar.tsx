@@ -20,7 +20,12 @@ import { signOut } from "next-auth/react";
 import { useTheme } from "@/components/providers/theme-provider";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { SECTION_LABELS, type NavItem } from "@/lib/constants/nav";
+import {
+  filterNav,
+  NAV_ITEMS,
+  SECTION_LABELS,
+  type NavItem,
+} from "@/lib/constants/nav";
 import { PLATFORM_ROLE_LABELS } from "@/lib/constants/roles";
 import type { PlatformRole } from "@/generated/prisma/client";
 import {
@@ -39,8 +44,12 @@ interface SidebarUser {
 
 interface SidebarProps {
   user: SidebarUser;
-  /** Nav já resolvido no layout server (papel + capabilities da Diretoria). */
-  nav: NavItem[];
+  /**
+   * Submenu da Diretoria resolvido por capability no layout server. Só dados
+   * serializáveis (label/href); o ícone é reanexado aqui no client a partir de
+   * NAV_ITEMS , componentes React não podem cruzar a fronteira server→client.
+   */
+  diretoriaNav: { label: string; href: string }[];
 }
 
 const THEME_ICONS = { dark: Moon, light: Sun, system: Monitor } as const;
@@ -52,7 +61,7 @@ const THEME_LABELS = {
 
 const COLLAPSED_KEY = "nexus-sidebar-collapsed";
 
-export function Sidebar({ user, nav }: SidebarProps) {
+export function Sidebar({ user, diretoriaNav }: SidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const reduceMotion = useReducedMotion();
@@ -87,14 +96,35 @@ export function Sidebar({ user, nav }: SidebarProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, [mobileOpen]);
 
-  const visibleNav = nav;
+  // Filtra por papel no client (ícones vêm de NAV_ITEMS, que vive aqui) e injeta
+  // os children da Diretoria resolvidos por capability no server (só label/href),
+  // reanexando o ícone do item-pai. Remove "Diretoria" se não houver children.
+  const visibleNav = useMemo(() => {
+    const base = filterNav(NAV_ITEMS, user);
+    return base
+      .map((item) =>
+        item.href === "/diretoria"
+          ? {
+              ...item,
+              children: diretoriaNav.map((c) => ({
+                label: c.label,
+                href: c.href,
+                icon: item.icon,
+              })),
+            }
+          : item,
+      )
+      .filter(
+        (item) => item.href !== "/diretoria" || (item.children?.length ?? 0) > 0,
+      );
+  }, [user, diretoriaNav]);
   const allLeafHrefs = useMemo(() => collectLeafHrefs(visibleNav), [visibleNav]);
 
   // Abre, na montagem, o grupo cujo prefixo de href bate com o pathname atual,
   // para que o submenu já apareça expandido ao navegar direto numa sub-rota.
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
-    for (const item of nav) {
+    for (const item of visibleNav) {
       if ((item.children?.length ?? 0) > 0 && isGroupActive(item.href, pathname)) {
         initial[item.href] = true;
       }

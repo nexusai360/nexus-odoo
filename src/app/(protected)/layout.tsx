@@ -11,7 +11,6 @@ import { seesAll, REPORT_DOMAINS, type ReportDomainId } from "@/lib/reports/doma
 import { getUserDomains } from "@/lib/actions/domain-access";
 import { getActiveConversationId } from "@/lib/actions/active-conversation";
 import { roleMeetsChannelLevel } from "@/lib/agent/channel-access";
-import { filterNav, NAV_ITEMS } from "@/lib/constants/nav";
 import { diretoriaNavFor } from "@/lib/diretoria/access";
 
 export default async function ProtectedLayout({
@@ -29,27 +28,10 @@ export default async function ProtectedLayout({
     avatarUrl: user.avatarUrl,
   };
 
-  // Nav resolvido no server: filtro por papel (filterNav) + submenu da Diretoria
-  // resolvido por capability (diretoriaNavFor). A Sidebar (client) consome a prop
-  // pronta e não filtra mais no cliente. O item "Diretoria" some se o usuário não
-  // tem acesso a nenhuma área. Usa `user` (com id), não `sidebarUser`.
+  // Submenu da Diretoria resolvido por capability no server. Passa só dados
+  // serializáveis (label/href) à Sidebar; o ícone é reanexado lá (componentes
+  // React não cruzam a fronteira server→client). Usa `user` (com id).
   const dirChildren = await diretoriaNavFor(user);
-  const nav = filterNav(NAV_ITEMS, sidebarUser)
-    .map((item) =>
-      item.href === "/diretoria"
-        ? {
-            ...item,
-            children: dirChildren.map((c) => ({
-              label: c.label,
-              href: c.href,
-              icon: item.icon,
-            })),
-          }
-        : item,
-    )
-    .filter(
-      (item) => item.href !== "/diretoria" || (item.children?.length ?? 0) > 0,
-    );
 
   // RBAC v2 (SPEC §6.5): a bubble do agente aparece para quem CONSEGUE usar o
   // Nex. super_admin/admin veem tudo (short-circuit seesAll, sem query).
@@ -127,7 +109,7 @@ export default async function ProtectedLayout({
   return (
     <TourProvider>
       <div className="flex h-screen overflow-hidden bg-background">
-        <Sidebar user={sidebarUser} nav={nav} />
+        <Sidebar user={sidebarUser} diretoriaNav={dirChildren} />
         <main className="flex-1 overflow-y-auto overscroll-contain">
           <div className="pt-16 pb-8 sm:pt-8">{children}</div>
         </main>
