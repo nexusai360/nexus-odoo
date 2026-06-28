@@ -53,9 +53,10 @@ export function BuilderPreview({
   const [atualizando, setAtualizando] = useState(false);
 
   // Filtros sao do relatorio: ao trocar de ficha (nova geracao), zera o recorte.
+  // Mantem a MESMA ref quando ja esta vazio (evita re-resolucao dupla na montagem).
   const fichaId = ficha?.id ?? null;
   useEffect(() => {
-    setFiltros({});
+    setFiltros((prev) => (Object.keys(prev).length === 0 ? prev : {}));
   }, [fichaId]);
 
   useEffect(() => {
