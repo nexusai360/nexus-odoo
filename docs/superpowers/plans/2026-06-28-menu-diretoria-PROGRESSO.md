@@ -59,9 +59,29 @@
 
 ### Estado geral (commitado + pushed, PR #156)
 - Onda 0 COMPLETA. Onda 1: dados (C2/C3/C4/C6/C10) + Mapa do Brasil + period bar +
-  sync button + tela Vendas v1. 50 testes no bloco diretoria, tsc 0.
-- Componentes prontos reusaveis: BrazilMap, DiretoriaPeriodBar, SyncNowButton.
+  sync button + tela Vendas (KPIs+mapa+marca+pagamentos). ~67 testes diretoria, tsc 0.
+- Componentes prontos reusaveis: BrazilMap, DiretoriaPeriodBar, SyncNowButton, vendas-charts.
 - API BrazilMap: data={{uf,valor,label?}[]} metric onSelect maxSelection formatValor.
+
+### E2E contra dado real FEITO (2026-06-28) , achados
+- queryVendasPorUf/Marca/FormasPagamento/Indicadores rodadas contra o banco real.
+- BUG CORRIGIDO: fato_parceiro.uf guarda o NOME ("Sao Paulo (BR)"), nao a sigla.
+  Criado src/lib/diretoria/uf.ts (siglaDeUf) e aplicado. Mapa agora casa as UFs.
+- Numeros reais (periodo 2025-2026): faturamento ~R$364M, 2122 pedidos, ticket ~171k.
+  Top UF: SE/AL/MS/DF/MG. Top marca: MATRIX domina. Pgto: Boleto lidera.
+- ATENCAO p/ investigar: ~33% do faturamento sem UF resolvida ("??", R$120M).
+  Pode ser participanteId sem match em fato_parceiro OU parceiros sem uf. O mapa
+  ja filtra "??". Verificar se e perda real de cobertura (regra verdade-vs-dado).
+- margem ESTIMADA ainda NAO implementada (precisa nf_item x fato_produto.preco_custo).
+
+### FALTA na tela de Vendas (proximo)
+- C6 modalidades + maior pedido (query pronta: queryModalidadesEMaiorPedido) , card
+- C5 ranking vendedores (queryPedidosPorVendedor de comercial.ts) , tabela paginada
+- C7 itens vendidos (queryProdutosFaturados de fiscal.ts)
+- C8/C9 comparativo: ligar onSelect do BrazilMap a 2 UFs -> 2 cards lado a lado
+- margem estimada (nova query) + FreshnessIndicator no header
+- Validacao visual no browser (npm run dev:fresh, logar super_admin, /diretoria/vendas)
+Depois: Onda 2 (Pedidos/B), 3 (Estoque/A), 4 (Visao geral), 5 (Agenda), 6 (RBAC usuarios).
 - [ ] Onda 2 , Pedidos & Entregas (módulo B)
 - [ ] Onda 2 , Pedidos & Entregas (módulo B)
 - [ ] Onda 3 , Estoque & Compras (módulo A)
