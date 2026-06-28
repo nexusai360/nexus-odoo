@@ -69,8 +69,19 @@
       data_prevista vem SEMPRE false no Odoo (sem previsao nas OCs) -> contagem
       regressiva fica null/"sem previsao" (a logica diasRestantes/statusPrazo ja
       esta wired p/ quando houver data). fornecedor = participante_id. 64 testes.
-- Incrementos menores ainda pendentes (baixa prioridade): B7 %reservado (sem fonte),
-  A3 catalogo, B5 drill-in, agenda colaboradores/anexos.
+- [x] A3 CATALOGO , COMPLETO (commit 921fad31). queryCatalogoEstoque (agrega
+      fato_estoque_saldo por produto) + secao "Modelos do catalogo" na tela Estoque.
+      E2E: 1894 modelos, R$49,4M.
+- [x] B5 DRILL-IN , COMPLETO (commit 974633ec). PedidosPendentesTable (client):
+      linha clicavel -> painel com KPIs do pedido (valor/UF/etapa/prazo). Sem schema.
+- [x] AGENDA COLABORADORES , COMPLETO (commit 7b566e25). actions colaboradorIds +
+      listarColaboradoresElegiveis; chips no form + contador/tooltip no calendario.
+- GAPS HONESTOS (sem fonte/infra, NAO bloqueiam):
+  - B7 %reservado: campo "reservado" nao existe no Odoo (sem fonte). Pular.
+  - AGENDA ANEXOS: schema pronto (DiretoriaEventoAnexo) mas falta infra de
+    upload/storage (sem backend de arquivos). Fica para quando houver storage.
+- Refinos opcionais restantes (Vendas): C7 itens vendidos, C8/C9 comparativo no mapa,
+  margem estimada por item. B8 itens vendidos em pedidos ativos. A4 tempo de cobertura.
 - App rodando em localhost:3000 (agente up / pid em /tmp/diretoria-dev.log).
 - NAO MERGEAR sem autorizacao. PR #156.
 Refinos pendentes (nao bloqueiam): margem estimada (Vendas), B5 drill-in/B7 maquinas/
