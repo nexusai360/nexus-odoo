@@ -9,7 +9,6 @@
 import { useState, useEffect } from "react";
 import { LayoutDashboard, AlertTriangle, Eye, Maximize2, Minimize2 } from "lucide-react";
 import { ReportRenderer, type EditavelFicha } from "./report-renderer";
-import { CanvasViewport } from "./canvas-viewport";
 import { previsualizarSecoes } from "@/lib/actions/builder";
 import { validarReportEntry } from "@/lib/reports/builder/report-entry-schema";
 import type { BuilderReportEntry } from "@/lib/reports/builder/types";
@@ -103,12 +102,11 @@ export function BuilderPreview({
         ) : null}
       </div>
 
-      {/* Canvas , quando ha relatorio vira um canvas com zoom + rolagem vertical;
-          nos demais estados e uma area pontilhada centralizada. */}
+      {/* Area do relatorio , SEM canvas/zoom/pan. So rolagem vertical, pagina limpa. */}
       <div
         className={
           estado === "ok"
-            ? "relative flex-1 overflow-hidden"
+            ? "relative flex-1 overflow-y-auto bg-background"
             : "relative flex-1 overflow-y-auto bg-[radial-gradient(circle_at_1px_1px,var(--color-border)_1px,transparent_0)] [background-size:22px_22px]"
         }
       >
@@ -156,13 +154,9 @@ export function BuilderPreview({
         ) : null}
 
         {estado === "ok" && ficha ? (
-          <CanvasViewport>
-            <div className="px-5 pb-10">
-              <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-                <ReportRenderer entry={ficha} dados={dados} editavel={editavel} />
-              </div>
-            </div>
-          </CanvasViewport>
+          <div className="mx-auto w-full max-w-5xl px-5 py-6">
+            <ReportRenderer entry={ficha} dados={dados} editavel={editavel} />
+          </div>
         ) : null}
       </div>
     </div>
