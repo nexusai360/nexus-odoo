@@ -50,6 +50,29 @@
 ### TODAS AS 6 ONDAS ENTREGUES (2026-06-28). 86 testes verdes, tsc 0. PR #156.
 ### Refinos JA FEITOS pos-ondas: margem ESTIMADA (Vendas, KPI) + freshness
     ('atualizado ha X') nos headers das 4 telas (helper ultimaSyncIso + FreshnessBadge).
+    + Bug do nav serializavel server->client CORRIGIDO (icone reanexado no client).
+
+### BUILDERS aprovados pelo usuario (2026-06-28):
+- [x] A6 SERIAIS , COMPLETO: model FatoSerial (SQL cirurgico), builder
+      src/worker/fatos/fato-serial.ts (chunks+select data, evita OOM; populou
+      8699 reais), registrado em registry.ts, querySeriais em estoque.ts, secao
+      "Seriais em estoque" na tela /diretoria/estoque. tsc 0, pushed.
+      NOTA: muitos seriais tem valor_custo=0 e data_compra null no raw (dado do
+      Odoo); a tabela mostra o que existe.
+- [ ] A7 COMPRAS ATIVAS , PROXIMO (nao iniciado). Construir fato_compra de
+      raw_pedido_documento: filtrar COMPRAS (ehCompra/operacao de compra) NAO
+      recebidas; campos data_prevista (contagem regressiva via diasRestantes de
+      cores.ts), comprador_id, participante=fornecedor, vr_produtos/vr_pago,
+      data_orcamento. Passos: model FatoCompra (SQL cirurgico, NUNCA db push) ->
+      builder fato-compra.ts (padrao chunks+select data, igual fato-serial) ->
+      registrar no registry -> rodar contra dado real (NODE_OPTIONS=--max-old-space
+      -size=8192 npx tsx) -> queryComprasAtivas em estoque.ts (com contagem
+      regressiva/atraso) -> secao "Compras ativas" na tela /diretoria/estoque ->
+      tsc+commit+push. VER campos reais do raw_pedido_documento.data antes (node pg).
+- Incrementos menores ainda pendentes (baixa prioridade): B7 %reservado (sem fonte),
+  A3 catalogo, B5 drill-in, agenda colaboradores/anexos.
+- App rodando em localhost:3000 (agente up / pid em /tmp/diretoria-dev.log).
+- NAO MERGEAR sem autorizacao. PR #156.
 Refinos pendentes (nao bloqueiam): margem estimada (Vendas), B5 drill-in/B7 maquinas/
 B8 (Pedidos), A3 catalogo/A6 seriais/A7 compras-ativas (Estoque, precisam builders
 fato_serial/fato_compra), colaboradores+anexos na UI da Agenda, FreshnessIndicator
