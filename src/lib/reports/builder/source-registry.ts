@@ -56,6 +56,18 @@ export type FiltrosFonte = {
 
 type Produtor = (filtros: FiltrosFonte) => Promise<RawSourceData>;
 
+/**
+ * Encurta o nome longo de uma conta bancaria para o eixo do grafico. O formato vem
+ * como "Itau / Corrente / 1584 / 36410-1 / Nome da Empresa 34.461.908/0001-14": tira
+ * o CNPJ do fim e fica so com o ultimo segmento (o nome da empresa). A tabela continua
+ * mostrando o nome completo.
+ */
+function rotuloConta(nome: string): string {
+  const semCnpj = nome.replace(/\s*\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}\s*$/, "").trim();
+  const segs = semCnpj.split(" / ").map((s) => s.trim()).filter(Boolean);
+  return segs[segs.length - 1] || semCnpj || nome;
+}
+
 interface FonteDef {
   contract: SourceContract;
   produtores: Partial<Record<ShapeDerivado, Produtor>>;
@@ -403,7 +415,7 @@ const fatoFinanceiroSaldo: FonteDef = {
     agregacaoCategorica: async () => {
       const d = await querySaldoContas(prisma);
       return {
-        linhas: d.contas.map((c) => ({ rotulo: c.bancoNome ?? "(sem banco)", valor: c.saldo })),
+        linhas: d.contas.map((c) => ({ rotulo: rotuloConta(c.bancoNome ?? "(sem banco)"), valor: c.saldo })),
         freshness: null,
       };
     },

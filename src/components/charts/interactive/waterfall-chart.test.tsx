@@ -13,25 +13,26 @@ describe("buildWaterfallBars", () => {
     { rotulo: "Resultado", valor: 500, tipo: "total" as const },
   ];
 
-  it("acumula a partir do zero: positivo sobe, negativo desce", () => {
+  it("acumula a partir do zero como faixa [inicio,fim]: positivo sobe, negativo desce", () => {
     const bars = buildWaterfallBars(passos);
-    expect(bars[0]).toMatchObject({ rotulo: "Receitas", base: 0, delta: 1000, cumulativo: 1000 });
-    expect(bars[1]).toMatchObject({ rotulo: "Aluguel", base: 700, delta: 300, cumulativo: 700 });
-    expect(bars[2]).toMatchObject({ rotulo: "Salarios", base: 500, delta: 200, cumulativo: 500 });
+    expect(bars[0]).toMatchObject({ rotulo: "Receitas", faixa: [0, 1000], cumulativo: 1000 });
+    expect(bars[1]).toMatchObject({ rotulo: "Aluguel", faixa: [1000, 700], cumulativo: 700 });
+    expect(bars[2]).toMatchObject({ rotulo: "Salarios", faixa: [700, 500], cumulativo: 500 });
   });
 
   it("o passo total reancora no zero (barra absoluta do resultado)", () => {
     const bars = buildWaterfallBars(passos);
-    expect(bars[3]).toMatchObject({ rotulo: "Resultado", base: 0, delta: 500, cumulativo: 500, tipo: "total" });
+    expect(bars[3]).toMatchObject({ rotulo: "Resultado", faixa: [0, 500], cumulativo: 500, tipo: "total" });
   });
 
-  it("resultado negativo: base negativa, delta positiva", () => {
+  it("acumulado NEGATIVO (resultado < 0): faixa desce abaixo de zero, sem espelhar", () => {
     const bars = buildWaterfallBars([
       { rotulo: "Receitas", valor: 100, tipo: "positivo" },
       { rotulo: "Custos", valor: 300, tipo: "negativo" },
       { rotulo: "Resultado", valor: -200, tipo: "total" },
     ]);
-    expect(bars[2]).toMatchObject({ base: -200, delta: 200, cumulativo: -200 });
+    expect(bars[1]).toMatchObject({ faixa: [100, -200], cumulativo: -200 }); // desce cruzando o zero
+    expect(bars[2]).toMatchObject({ faixa: [0, -200], cumulativo: -200, tipo: "total" });
   });
 
   it("entrada vazia retorna lista vazia", () => {

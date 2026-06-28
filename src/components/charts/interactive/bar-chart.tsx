@@ -85,6 +85,12 @@ export interface InteractiveBarChartProps {
 const defaultFormat = (v: number) =>
   Number.isFinite(v) ? v.toLocaleString("pt-BR") : ",";
 
+/** Trunca rotulo de categoria para nao sobrepor no eixo (tooltip mantem inteiro). */
+function truncarCategoria(v: unknown, max = 22): string {
+  const s = String(v ?? "");
+  return s.length > max ? `${s.slice(0, max - 1)}…` : s;
+}
+
 function makeYAxisFormatter(
   currency: "USD" | "BRL" | undefined,
   fallback: (v: number) => string,
@@ -304,8 +310,9 @@ export function InteractiveBarChart({
                 stroke="currentColor"
                 width={yAxisWidth}
                 className="text-xs text-muted-foreground"
-                tick={{ fill: "currentColor", fontSize: 13 }}
-                fontSize={13}
+                tick={{ fill: "currentColor", fontSize: 12 }}
+                fontSize={12}
+                tickFormatter={(v) => truncarCategoria(v)}
               />
             </>
           ) : (
@@ -321,6 +328,7 @@ export function InteractiveBarChart({
                     ? makeCustomBarTick(providersByModel)
                     : { fill: "currentColor", fontSize: xAxisFontSize }
                 }
+                tickFormatter={providersByModel ? undefined : (v) => truncarCategoria(v, 16)}
                 fontSize={xAxisFontSize}
                 tickMargin={xAxisPadding}
                 height={providersByModel ? 50 : undefined}
