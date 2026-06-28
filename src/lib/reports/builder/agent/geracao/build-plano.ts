@@ -18,6 +18,12 @@ interface SecaoSpec {
   config: Record<string, unknown>;
 }
 
+/** Templates que consomem agregacaoCategorica; o ranking honra o preferido da metrica. */
+const TEMPLATES_CATEGORICOS: ReportTemplate[] = ["BarChart", "PieChart", "Funnel"];
+function templateCategorico(preferido: ReportTemplate): ReportTemplate {
+  return TEMPLATES_CATEGORICOS.includes(preferido) ? preferido : "BarChart";
+}
+
 export function buildFichaDoPlano(
   plano: Plano,
   metricas: Metrica[],
@@ -57,7 +63,7 @@ function especificarBloco(
       }
       return [
         {
-          template: m.chartPreferido === "PieChart" ? "PieChart" : "BarChart",
+          template: templateCategorico(m.chartPreferido),
           fato: m.fato,
           shapeDerivado: "agregacaoCategorica",
           config: { titulo: m.rotulo, recorte: bloco.recorte },

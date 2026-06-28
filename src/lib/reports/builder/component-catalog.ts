@@ -79,6 +79,20 @@ export const COMPONENT_CATALOG: ComponentEntry[] = [
     tokensVisuais: { fatia: "chart.pie", legenda: "chart.legend" },
   },
   {
+    chave: "Funnel",
+    nome: "Funil de conversao",
+    paraQueServe:
+      "Mostrar estagios em sequencia decrescente (pipeline): quanto cada etapa concentra do total. Usa o mesmo shape do grafico de barras.",
+    quandoUsar:
+      "Poucos estagios ordenaveis (ex.: pedidos por etapa do funil comercial), para ler a concentracao/queda entre etapas.",
+    quandoNaoUsar:
+      "Categorias sem ideia de etapa/sequencia (use barra) ou serie no tempo (use linha).",
+    shapeDerivadoExigido: "agregacaoCategorica",
+    parametros: [{ chave: "titulo", descricao: "Titulo curto opcional do funil." }],
+    interacao: ["tooltip", "share_percentual"],
+    tokensVisuais: { estagio: "chart.bar", rotulo: "chart.legend" },
+  },
+  {
     chave: "DataTable",
     nome: "Tabela de dados",
     paraQueServe:

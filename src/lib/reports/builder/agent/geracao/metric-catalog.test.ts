@@ -56,11 +56,16 @@ describe("listarMetricas , catalogo derivado do registry", () => {
     expect(todos.some((m) => m.dominio === "financeiro")).toBe(true);
   });
 
-  it("chartsValidos reflete o shape (categorica aceita Bar/Pie; kpis aceita KPIRow)", () => {
+  it("chartsValidos reflete o shape (categorica aceita Bar/Pie/Funnel; kpis aceita KPIRow)", () => {
     const ms = listarMetricas({ dominiosPermitidos: ["estoque"] });
     const cat = ms.find((m) => m.shape === "agregacaoCategorica")!;
-    expect(cat.chartsValidos).toEqual(expect.arrayContaining(["BarChart", "PieChart"]));
+    expect(cat.chartsValidos).toEqual(expect.arrayContaining(["BarChart", "PieChart", "Funnel"]));
     const kpi = ms.find((m) => m.shape === "kpis")!;
     expect(kpi.chartsValidos).toEqual(["KPIRow"]);
+  });
+
+  it("comercial.por_etapa prefere o Funnel (pipeline por estagio)", () => {
+    const ms = listarMetricas({ dominiosPermitidos: ["comercial"] });
+    expect(ms.find((m) => m.id === "comercial.por_etapa")?.chartPreferido).toBe("Funnel");
   });
 });

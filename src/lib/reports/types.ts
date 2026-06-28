@@ -24,7 +24,8 @@ export type ReportTemplate =
   | "DataTable"
   | "BarChart"
   | "LineChart"
-  | "PieChart";
+  | "PieChart"
+  | "Funnel";
 
 /** Uma seção de relatório , um template alimentado por um fato. */
 export interface ReportSection {

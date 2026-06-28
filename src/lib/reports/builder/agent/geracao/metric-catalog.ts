@@ -262,7 +262,7 @@ const CURADORIA: Record<string, Curada> = {
     descricao: "Valor por etapa do funil",
     pergunta: "Onde os pedidos estao parados no funil?",
     formato: "brl",
-    chartPreferido: "BarChart",
+    chartPreferido: "Funnel",
   },
   "fato_comercial_vendedor|agregacaoCategorica|": {
     id: "comercial.por_vendedor",
@@ -368,7 +368,7 @@ const CURADORIA: Record<string, Curada> = {
 const TEMPLATES_POR_SHAPE: Record<ShapeDerivado, ReportTemplate[]> = {
   kpis: ["KPIRow"],
   tabela: ["DataTable"],
-  agregacaoCategorica: ["BarChart", "PieChart"],
+  agregacaoCategorica: ["BarChart", "PieChart", "Funnel"],
   serieTemporal: ["LineChart"],
 };
 

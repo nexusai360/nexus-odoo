@@ -48,4 +48,19 @@ describe("buildFichaDoPlano", () => {
     const { ficha } = buildFichaDoPlano(plano, metricas);
     expect(ficha.secoes).toHaveLength(5);
   });
+
+  it("Ranking numa metrica com chartPreferido Funnel vira secao Funnel", () => {
+    const comercial = listarMetricas({ dominiosPermitidos: ["comercial"] });
+    const planoComercial: Plano = {
+      titulo: "Pipeline comercial",
+      objetivo: "onde os pedidos param no funil",
+      dominio: "comercial",
+      blocos: [{ tipo: "Ranking", metrica: "comercial.por_etapa", recorte: "etapa" }],
+      filtrosIniciais: {},
+    };
+    const { ficha, omitidos } = buildFichaDoPlano(planoComercial, comercial);
+    expect(omitidos).toEqual([]);
+    expect(ficha.secoes.map((s) => s.template)).toEqual(["Funnel"]);
+    expect(ficha.secoes[0].shapeDerivado).toBe("agregacaoCategorica");
+  });
 });

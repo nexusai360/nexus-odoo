@@ -133,6 +133,35 @@ describe("ReportRenderer", () => {
     expect(screen.getByText("Valor por marca")).toBeInTheDocument();
   });
 
+  it("renderiza um Funnel (pipeline por etapa) com os estagios", () => {
+    const comFunnel: BuilderReportEntry = {
+      ...entry,
+      titulo: "Pipeline comercial",
+      dominio: "comercial",
+      secoes: [
+        { id: "fun", template: "Funnel", fato: "fato_comercial_etapa", shapeDerivado: "agregacaoCategorica", config: { titulo: "Pedidos por etapa" }, filtros: [] },
+      ],
+    };
+    const dados: Record<string, SecaoResolvida> = {
+      fun: {
+        estado: "ok",
+        dado: [
+          { rotulo: "Orcamento", valor: 1000 },
+          { rotulo: "Pedido", valor: 400 },
+        ],
+        campos: [
+          { key: "rotulo", label: "Etapa", tipo: "texto" },
+          { key: "valor", label: "Valor", tipo: "moeda" },
+        ],
+      },
+    };
+    render(<ReportRenderer entry={comFunnel} dados={dados} />);
+    expect(screen.getByText("Pedidos por etapa")).toBeInTheDocument();
+    expect(screen.getByText("Orcamento")).toBeInTheDocument();
+    expect(screen.getByText("Pedido")).toBeInTheDocument();
+    expect(screen.getByLabelText(/funil/i)).toBeInTheDocument();
+  });
+
   it("KPIRow mostra o subtitulo por metrica (config.subtitulos)", () => {
     const comSub: BuilderReportEntry = {
       ...entry,

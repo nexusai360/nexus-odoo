@@ -11,6 +11,7 @@ const REPORT_TEMPLATES = [
   "BarChart",
   "LineChart",
   "PieChart",
+  "Funnel",
 ] as const;
 
 const FILTER_TIPOS = ["armazem", "familia", "marca", "sentido", "faixaDias"] as const;

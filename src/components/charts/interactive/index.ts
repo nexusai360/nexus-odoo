@@ -32,3 +32,10 @@ export {
   type DonutTooltipPosition,
   type PieChartData,
 } from "./donut-with-center";
+export {
+  InteractiveFunnelChart,
+  buildFunnelSegments,
+  type FunnelDatum,
+  type FunnelSegment,
+  type InteractiveFunnelChartProps,
+} from "./funnel-chart";

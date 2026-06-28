@@ -116,4 +116,5 @@ export const TEMPLATES_ONDA1: ReportTemplate[] = [
   "PieChart",
   "LineChart",
   "DataTable",
+  "Funnel",
 ];

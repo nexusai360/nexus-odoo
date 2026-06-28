@@ -15,6 +15,7 @@ import {
   TrendingUp,
   BarChart3,
   PieChart as PieIcon,
+  Filter as FunnelIcon,
   Table as TableIcon,
   ChevronUp,
   ChevronDown,
@@ -32,9 +33,11 @@ import {
   InteractiveAreaChart,
   InteractiveBarChart,
   DonutWithCenter,
+  InteractiveFunnelChart,
   type AreaChartData,
   type BarChartData,
   type PieChartData,
+  type FunnelDatum,
 } from "@/components/charts/interactive";
 import {
   CHART_COLORS,
@@ -79,6 +82,8 @@ function metaTemplate(template: string): { Icon: LucideIcon; titulo: string } {
       return { Icon: PieIcon, titulo: "Distribuicao" };
     case "LineChart":
       return { Icon: TrendingUp, titulo: "Evolucao no tempo" };
+    case "Funnel":
+      return { Icon: FunnelIcon, titulo: "Funil por etapa" };
     default:
       return { Icon: TableIcon, titulo: "Detalhe" };
   }
@@ -122,7 +127,7 @@ export interface EditavelFicha {
 }
 
 /** Templates de grafico que aceitam escolha de cor pela UI. */
-const TEMPLATES_COM_COR = new Set(["BarChart", "PieChart", "LineChart"]);
+const TEMPLATES_COM_COR = new Set(["BarChart", "PieChart", "LineChart", "Funnel"]);
 
 /** Cor atual da secao (config.cor), normalizada para string|undefined. */
 function corDaSecao(secao: BuilderSection): string | undefined {
@@ -486,6 +491,23 @@ function SecaoView({
           centerLabel={campoValor?.label ?? "Total"}
           centerValue={fmt(total)}
           formatValue={fmt}
+          emptyMessage="Sem dados para esta secao."
+        />
+      </CardSecao>
+    );
+  }
+
+  // Funnel , funil de conversao (InteractiveFunnelChart). Mesmo shape da barra.
+  if (secao.template === "Funnel") {
+    const data = (resolvida.dado as Record<string, unknown>[]) ?? [];
+    const campoValor = (resolvida.campos ?? []).find((c) => c.key === "valor");
+    const funnelData: FunnelDatum[] = data.map((d) => ({ name: String(d.rotulo ?? ""), value: Number(d.valor ?? 0) }));
+    return (
+      <CardSecao Icon={Icon} titulo={titulo} {...editProps}>
+        <InteractiveFunnelChart
+          data={funnelData}
+          color={corDaSecao(secao)}
+          formatValue={formatadorValor(campoValor?.tipo)}
           emptyMessage="Sem dados para esta secao."
         />
       </CardSecao>

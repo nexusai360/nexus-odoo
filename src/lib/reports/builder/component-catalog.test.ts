@@ -19,4 +19,10 @@ describe("component-catalog", () => {
   it("descreverComponente de chave inexistente e undefined", () => {
     expect(descreverComponente("Hologram")).toBeUndefined();
   });
+
+  it("descreverComponente(Funnel) exige agregacaoCategorica (mesmo shape da barra)", () => {
+    const c = descreverComponente("Funnel");
+    expect(c).toBeDefined();
+    expect(c!.shapeDerivadoExigido).toBe("agregacaoCategorica");
+  });
 });
