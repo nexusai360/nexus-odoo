@@ -80,7 +80,12 @@ model UserDiretoriaUf {
   diretoriaUfs    UserDiretoriaUf[]     @relation("UserDiretoriaUf")
 ```
 
-- [ ] **Step 3: Validar e aplicar via db push** (apenas models novos)
+- [ ] **Step 3: Conferir drift ANTES do push** (db push é whole-schema, não escopável; o banco dev é compartilhado com `feat/nex-reconstrucao`)
+
+Run: `npx prisma migrate diff --from-schema-datasource prisma/schema.prisma --to-schema-datamodel prisma/schema.prisma --script` (e/ou inspecionar `db pull` num scratch).
+Expected: o diff deve conter SOMENTE `CREATE TABLE user_diretoria_access` e `user_diretoria_uf`. Se aparecer qualquer `DROP TABLE`/`ALTER` de tabela existente, **PARAR** (sinal de drift da outra worktree) e coordenar antes de prosseguir. Nunca usar `--accept-data-loss`.
+
+- [ ] **Step 3b: Aplicar via db push** (só após o diff limpo)
 
 Run: `npx prisma validate && npx prisma db push && npx prisma generate`
 Expected: "The database is now in sync"; client regenerado sem erro.
@@ -331,7 +336,7 @@ git commit -m "feat(diretoria): resolucao de acesso (capabilities, UF-scoping, b
 - Modify: `src/lib/constants/nav.ts` (item Diretoria como `children` factory)
 - Modify: `src/app/(protected)/layout.tsx` (resolver nav + diretoriaNavFor, passar prop)
 - Modify: `src/components/layout/sidebar.tsx` (consumir prop `nav`, parar de importar NAV_ITEMS)
-- Test: `src/lib/constants/nav.test.ts` (filterNav segue funcionando)
+- Create: `src/lib/constants/nav.test.ts` (NÃO existe ainda; criar do zero o teste de não-regressão do filterNav)
 
 **Interfaces:**
 - Consumes: `diretoriaNavFor` (Task 3), `filterNav`, `NAV_ITEMS`.
@@ -352,7 +357,7 @@ import { filterNav, NAV_ITEMS } from "@/lib/constants/nav";
 import { diretoriaNavFor } from "@/lib/diretoria/access";
 // ...
 const baseNav = filterNav(NAV_ITEMS, sidebarUser);
-const dirChildren = await diretoriaNavFor(currentUser); // currentUser: AuthUser do getCurrentUser
+const dirChildren = await diretoriaNavFor(user); // `user` = AuthUser completo (com id) já disponível no layout (L20). NÃO usar sidebarUser (subset sem id).
 const nav = baseNav
   .map((item) =>
     item.href === "/diretoria"
@@ -384,7 +389,7 @@ git commit -m "feat(diretoria): item na sidebar com submenu resolvido por capabi
 - Create: `src/app/(protected)/diretoria/{visao-geral,vendas,pedidos,estoque,agenda}/page.tsx`
 
 **Interfaces:**
-- Consumes: `requireDiretoriaArea` (Task 3), `PageShell`, `PageHeader`, `DiretoriaPeriodBar` (Task 6), `FreshnessIndicator`.
+- Consumes: `requireDiretoriaArea` (Task 3), `PageShell` (named export, prop `variant`), `PageHeader` (named export, props `icon`/`title`/`subtitle`). O conteúdo (período/seções/freshness) é só comentário placeholder nesta onda; nada da Task 6 é usado de fato aqui.
 
 - [ ] **Step 1:** `/diretoria/page.tsx` redireciona:
 
@@ -462,6 +467,8 @@ it("ano_anterior cobre 2025 inteiro", () => {
 
 - [ ] **Step 3:** Componente `DiretoriaPeriodBar` (client): pílulas dos presets (ativa em roxo sólido) + "Personalizado" (popover de data) escrevendo `periodo/de/ate` na URL preservando os demais searchParams. Padrão visual do `period-bar.tsx` existente, com os rótulos do HTML. `ui-ux-pro-max` para o visual.
 
+  Nota de escopo (registro do adiamento, spec §13 Track A): o **wiring do `period-navigator` (setas avançar/voltar dia/mês)** fica para a Onda 1, quando existirem gráficos de série temporal para amarrar (na Onda 0 não há). O componente `period-navigator.tsx` já existe e será reusado lá.
+
 - [ ] **Step 4: tsc + commit**
 
 ```bash
@@ -513,9 +520,13 @@ git commit -m "feat(diretoria): cores semanticas e helpers de delta/status/conta
 **Interfaces:**
 - Produces: `<BrazilMap data={Array<{uf:string; valor:number; label?:string}>} metric={string} onSelect={(ufs:string[])=>void} />`. API cega à origem.
 
-- [ ] **Step 1: Teste de render/binding/estados** (vazio, com dados, seleção, a11y):
+- [ ] **Step 1: Teste de render/binding/estados** (vazio, com dados, seleção, a11y). **Obrigatório** o docblock jsdom + jest-dom no topo (o jest do projeto é `testEnvironment: "node"` por padrão e não tem setup global):
 
 ```tsx
+/**
+ * @jest-environment jsdom
+ */
+import "@testing-library/jest-dom";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { BrazilMap } from "./brazil-map";
 it("renderiza 27 UFs", () => { render(<BrazilMap data={[]} metric="vendas" onSelect={() => {}} />); expect(screen.getAllByRole("button").length).toBeGreaterThanOrEqual(27); });
@@ -557,7 +568,7 @@ it("constante existe", () => { expect(JOB_ONDEMAND).toBe("ondemand"); });
 // teste estrutural: ondemand-queue.ts não importa worker/index (lint/grep no CI); singleton retorna a mesma instância
 ```
 
-- [ ] **Step 3: Implementar** `ondemand-queue.ts` espelhando `getDirectedSyncQueue` (Queue lazy na fila `odoo-sync`, conexão Redis de env, sem `new Worker`).
+- [ ] **Step 3: Implementar** `ondemand-queue.ts` copiando só o PADRÃO de `getDirectedSyncQueue` (singleton lazy + conexão Redis própria + zero `new Worker`), mas com `new Queue("odoo-sync")` (a constante `ODOO_SYNC_QUEUE`, NÃO `odoo-sync-directed`). Erro a evitar: usar o nome da fila directed faz o job cair noutro worker e o branch `JOB_ONDEMAND` (Task 10) nunca roda.
 
 - [ ] **Step 4: Rodar (PASS) + tsc + commit**
 
@@ -585,7 +596,7 @@ function escopar(models: string[]) { return MODEL_CATALOG.filter((e) => models.i
 it("escopa o catalogo aos models do payload", () => { const c = escopar(["sale.order"]); expect(c.every((e) => e.odooModel === "sale.order")).toBe(true); });
 ```
 
-- [ ] **Step 2: Rodar (FAIL/criar) → implementar** o branch no handler: se `job.name === JOB_ONDEMAND`, adquirir `lockKey(JOB_INCREMENTAL)` (se ocupado → `{ skipped: true }`), ler `job.data.models`, montar `MODEL_CATALOG.filter(...)`, chamar `processIncrementalCycle(ctx, catalogoEscopado)`, liberar lock no finally. Extrair a função `escopar` para um módulo testável (`ondemand-cycle.ts`) e usá-la no handler.
+- [ ] **Step 2: Rodar (FAIL/criar) → implementar** o branch no handler. CRÍTICO: o handler de `ODOO_SYNC_QUEUE` (`index.ts:351`) adquire `adquirirLock(job.name)` no TOPO para todo job (exceto o early-return de `JOB_CONFIG_CHECK`). O branch `JOB_ONDEMAND` deve ser um **early-branch ANTES** desse `adquirirLock(job.name)` genérico, no mesmo ponto do `JOB_CONFIG_CHECK`, senão ele pegaria o lock errado (`odoo-sync:lock:ondemand`) e `rodarCiclo("ondemand")` seria no-op. No branch: `await adquirirLock(JOB_INCREMENTAL)` (se ocupado → `return { skipped: true }`), ler `job.data.models`, `processIncrementalCycle(ctx, escopar(job.data.models))`, `liberarLock(JOB_INCREMENTAL)` no `finally`. Extrair `escopar(models)` para `ondemand-cycle.ts` (testável) e usá-la no handler. (Nota: o worker é `concurrency: 1`, então o lock incremental é reforço, não a única defesa.)
 
 - [ ] **Step 3: Rodar (PASS) + rebuild worker.** `docker compose build app && docker compose up -d --force-recreate worker`. Confirmar imagem nova (`docker image inspect nexus-odoo:local --format '{{.Created}}'`).
 
