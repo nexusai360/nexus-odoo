@@ -199,6 +199,7 @@ export async function POST(req: Request): Promise<Response> {
             historico,
             user: { id: user.id },
             ...(querRegenerar ? { ajuste: message } : {}),
+            ...(querRegenerar && journeyState.ultimoPlano ? { ultimoPlano: journeyState.ultimoPlano } : {}),
           };
 
           const saida = await pipelineGeracao(entrada, (p) =>
@@ -206,7 +207,7 @@ export async function POST(req: Request): Promise<Response> {
           );
 
           // Promove a ficha a SavedReport (abrivel) e entra no refino.
-          journeyState = irParaRefino({ ...journeyState, ultimoBlueprint: saida.blueprint });
+          journeyState = irParaRefino({ ...journeyState, ultimoPlano: saida.plano });
           let savedId: string | undefined = savedReportId ?? undefined;
           let etag: string | undefined;
           try {

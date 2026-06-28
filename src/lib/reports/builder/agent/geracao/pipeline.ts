@@ -1,24 +1,38 @@
 // src/lib/reports/builder/agent/geracao/pipeline.ts
-// ORQUESTRADOR do motor de geracao (clique do Gerar). Encadeia 4 fases:
-//   blueprint (LLM medio) -> revisao adversarial (LLM alto) -> build (deterministico)
-//   -> validacao (deterministico). Emite progresso REAL: pctBase ao entrar na fase +
-// heartbeats conforme os tokens chegam (barra avanca de verdade, sem rastejar e
-// saltar). Degrade elegante: se a revisao falha, segue com o blueprint da fase 1.
-// Billing isolado: logUsage por chamada LLM.
-import type { ProviderClient } from "@/lib/agent/llm/types";
+// ORQUESTRADOR do motor de geracao (clique do Gerar). Ordem:
+//   compositor (LLM alto) -> amostra leve -> critico semantico (LLM alto) ->
+//   revisor deterministico (codigo) -> build -> validacao.
+// "gerar_ja": template deterministico (0 LLM). "regenerar": reusa o ultimoPlano (pula
+// o compositor). A COERENCIA e garantida pelo revisor (codigo), nao pelo prompt; o
+// critico so faz o juizo semantico. Billing isolado: logUsage por chamada LLM.
+import type { ChatMessage, ProviderClient } from "@/lib/agent/llm/types";
 import { criarClienteConstrutorPadrao } from "../run-builder";
 import { logUsage as logUsagePadrao } from "@/lib/agent/llm/usage-logger";
+import { obterProdutor } from "../../source-registry";
+import type { ShapeDerivado } from "../../types";
 import type { EntradaGeracao, SaidaGeracao, GeracaoDeps, ProgressoGeracao, FaseGeracao } from "./types";
-import type { Blueprint } from "./blueprint-types";
-import { promptBlueprint, parseBlueprint } from "./blueprint";
-import { curarBlueprint } from "./curar-blueprint";
-import { buildFicha } from "./build";
+import { listarMetricas, obterMetrica } from "./metric-catalog";
+import type { Metrica } from "./metric-catalog";
+import type { Plano } from "./plano-types";
+import { intencaoCuradaDeColeta } from "../../journey/intencao-curada";
+import { promptCompositor, parseCompositor } from "./compositor";
+import { resolverAmostra } from "./amostra";
+import type { AmostraMetrica } from "./amostra";
+import { promptCritico, parseCritico } from "./critico";
+import { revisarPlano } from "./revisor";
+import { buildFichaDoPlano } from "./build-plano";
 import { validarFichaGerada } from "./validar";
 import { FAIXAS, frasesDe } from "./progresso";
 
 const DEPS_PADRAO: GeracaoDeps = {
   criarCliente: criarClienteConstrutorPadrao,
   logUsage: logUsagePadrao,
+  resolver: async (fato, shape) => {
+    const produtor = obterProdutor(fato, shape as ShapeDerivado);
+    if (!produtor) return { linhas: [] };
+    const raw = await produtor({});
+    return { linhas: raw.linhas, kpis: raw.kpis };
+  },
 };
 
 type Emit = (p: ProgressoGeracao) => void;
@@ -26,8 +40,7 @@ type Emit = (p: ProgressoGeracao) => void;
 /** Roda uma fase LLM emitindo heartbeats reais dentro da faixa da fase. */
 async function rodarFaseLLM(args: {
   cliente: ProviderClient;
-  messages: ReturnType<typeof promptBlueprint>;
-  effort: "medium" | "high";
+  messages: ChatMessage[];
   fase: FaseGeracao;
   emit: Emit;
   deps: GeracaoDeps;
@@ -41,12 +54,10 @@ async function rodarFaseLLM(args: {
 
   const res = await args.cliente.chat({
     messages: args.messages,
-    reasoningEffort: args.effort,
+    reasoningEffort: "high",
     stream: true,
     onToken: () => {
       tokens += 1;
-      // Avanco assintotico ate (ate-1): a barra se move a cada token sem nunca
-      // alcancar o alvo antes da fase concluir.
       pct = Math.min(ate - 1, pct + (ate - 1 - pct) * 0.08);
       args.emit({ fase: args.fase, pct: Math.round(pct), frase: frases[Math.floor(tokens / 6) % frases.length] });
     },
@@ -68,46 +79,93 @@ async function rodarFaseLLM(args: {
   return res.message ?? "";
 }
 
+/** Metricas referenciadas por um plano (para resolver a amostra). */
+function metricasDoPlano(plano: Plano, metricas: Metrica[]): Metrica[] {
+  const ids = new Set<string>();
+  for (const b of plano.blocos) {
+    if (b.tipo === "KpiStrip") b.metricas.forEach((id) => ids.add(id));
+    else if (b.tipo === "Ranking" || b.tipo === "Tabela") ids.add(b.metrica);
+    else if (b.tipo === "TendenciaDistribuicao") {
+      ids.add(b.metricaSerie);
+      ids.add(b.metricaComposicao);
+    }
+  }
+  return Array.from(ids)
+    .map((id) => obterMetrica(metricas, id))
+    .filter((m): m is Metrica => !!m);
+}
+
 export async function pipelineGeracao(
   entrada: EntradaGeracao,
   onProgresso: Emit,
   deps: GeracaoDeps = DEPS_PADRAO,
 ): Promise<SaidaGeracao> {
-  const clienteOuErro = await deps.criarCliente();
-  if ("erro" in clienteOuErro) throw new Error(`geracao_sem_cliente: ${clienteOuErro.erro}`);
-  const cliente = clienteOuErro as ProviderClient;
-
+  const dominios = entrada.dominiosPermitidos ?? ["estoque"];
+  const metricas = listarMetricas({ dominiosPermitidos: dominios });
+  const curada = intencaoCuradaDeColeta(entrada.intencao, entrada.entendimento);
   const omitidos: string[] = [];
+  const ehGerarJa = entrada.modo === "gerar_ja";
+  const ehRegenerar = !!entrada.ajuste && !!entrada.ultimoPlano;
 
-  // --- Fase 1: blueprint , UMA chamada de RACIOCINIO ALTO que pensa o relatorio
-  // inteiro (curadoria + design + narrativa). Sem segunda chamada de revisao: o
-  // modelo ja faz a critica internamente; o piso e garantido por curarBlueprint. ---
-  const rawBlueprint = await rodarFaseLLM({
-    cliente, messages: promptBlueprint(entrada), effort: "high",
-    fase: "blueprint", emit: onProgresso, deps, userId: entrada.user.id,
-  });
-  let blueprint: Blueprint;
-  try {
-    const parsed = parseBlueprint(rawBlueprint);
-    blueprint = parsed.blueprint;
-    omitidos.push(...parsed.omitidos);
-  } catch (e) {
-    throw new Error(`blueprint_invalido: ${e instanceof Error ? e.message : String(e)}`);
+  let plano: Plano;
+  let amostra: AmostraMetrica[];
+
+  if (ehGerarJa) {
+    // Atalho deterministico (0 LLM): template padrao do dominio.
+    const { templatePadrao } = await import("./template-padrao");
+    plano = templatePadrao(curada.dominio, metricas);
+    if (plano.blocos.length === 0) throw new Error("template_padrao_vazio");
+    onProgresso({ fase: "amostra", pct: FAIXAS.amostra.de, frase: frasesDe("amostra")[0] });
+    amostra = await resolverAmostra(metricasDoPlano(plano, metricas), { resolver: deps.resolver });
+  } else {
+    const clienteOuErro = await deps.criarCliente();
+    if ("erro" in clienteOuErro) throw new Error(`geracao_sem_cliente: ${clienteOuErro.erro}`);
+    const cliente = clienteOuErro as ProviderClient;
+
+    // --- Compositor (ou reuso do ultimoPlano no regenerar) ---
+    if (ehRegenerar) {
+      plano = entrada.ultimoPlano!;
+    } else {
+      const raw = await rodarFaseLLM({
+        cliente, messages: promptCompositor(curada, metricas),
+        fase: "compositor", emit: onProgresso, deps, userId: entrada.user.id,
+      });
+      const parsed = parseCompositor(raw, metricas);
+      plano = parsed.plano;
+      omitidos.push(...parsed.omitidos);
+      if (plano.blocos.length === 0) throw new Error("plano_vazio");
+    }
+
+    // --- Amostra leve (para o critico julgar com base no dado) ---
+    onProgresso({ fase: "amostra", pct: FAIXAS.amostra.de, frase: frasesDe("amostra")[0] });
+    const amostraCritico = await resolverAmostra(metricasDoPlano(plano, metricas), { resolver: deps.resolver });
+
+    // --- Critico semantico (degrade elegante: mantem o plano se falhar) ---
+    const rawC = await rodarFaseLLM({
+      cliente, messages: promptCritico(curada, plano, amostraCritico),
+      fase: "critico", emit: onProgresso, deps, userId: entrada.user.id,
+    });
+    try {
+      const c = parseCritico(rawC, metricas);
+      if (c.plano.blocos.length > 0) plano = c.plano;
+    } catch {
+      // mantem o plano do compositor
+    }
+    amostra = await resolverAmostra(metricasDoPlano(plano, metricas), { resolver: deps.resolver });
   }
-  if (blueprint.secoes.length === 0) throw new Error("blueprint_vazio");
 
-  // Curadoria deterministica (rede de seguranca): 1 KPIRow, dedup, teto, narrativa.
-  blueprint = curarBlueprint(blueprint);
+  // --- Revisor deterministico: forca as invariantes (resolve valores) ---
+  const revisado = revisarPlano(plano, { metricas, amostra });
 
-  // --- Fase 2: build (deterministico) ---
+  // --- Build deterministico ---
   onProgresso({ fase: "build", pct: FAIXAS.build.de, frase: frasesDe("build")[0] });
-  const { ficha, omitidos: omitidosBuild } = buildFicha(blueprint);
+  const { ficha, omitidos: omitidosBuild } = buildFichaDoPlano(revisado.plano, metricas);
   omitidos.push(...omitidosBuild);
 
-  // --- Fase 4: validacao (deterministico) ---
+  // --- Validacao deterministica ---
   onProgresso({ fase: "validacao", pct: FAIXAS.validacao.de, frase: frasesDe("validacao")[0] });
   validarFichaGerada(ficha);
   onProgresso({ fase: "validacao", pct: 100, frase: frasesDe("validacao")[0] });
 
-  return { ficha, omitidos, blueprint };
+  return { ficha, omitidos, plano: revisado.plano };
 }

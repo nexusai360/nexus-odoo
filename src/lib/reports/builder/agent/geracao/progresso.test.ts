@@ -11,14 +11,18 @@ describe("progresso , faixas pesadas por duracao", () => {
     expect(FAIXAS[FASES_ORDEM[FASES_ORDEM.length - 1]].ate).toBe(100);
   });
 
-  it("a fase blueprint (a que pensa) domina a faixa; build/validacao sao caudas curtas", () => {
-    const llm = FAIXAS.blueprint.ate - FAIXAS.blueprint.de;
-    const cauda = (FAIXAS.build.ate - FAIXAS.build.de) + (FAIXAS.validacao.ate - FAIXAS.validacao.de);
+  it("as fases LLM (compositor+critico) dominam; amostra/build/validacao sao caudas curtas", () => {
+    const llm =
+      FAIXAS.compositor.ate - FAIXAS.compositor.de + (FAIXAS.critico.ate - FAIXAS.critico.de);
+    const cauda =
+      FAIXAS.amostra.ate - FAIXAS.amostra.de +
+      (FAIXAS.build.ate - FAIXAS.build.de) +
+      (FAIXAS.validacao.ate - FAIXAS.validacao.de);
     expect(llm).toBeGreaterThan(cauda * 3);
   });
 
   it("pctBase/pctAlvo refletem a faixa", () => {
-    expect(pctBase("blueprint")).toBe(FAIXAS.blueprint.de);
+    expect(pctBase("compositor")).toBe(FAIXAS.compositor.de);
     expect(pctAlvo("validacao")).toBe(100);
   });
 
@@ -28,10 +32,11 @@ describe("progresso , faixas pesadas por duracao", () => {
       expect(fs.length).toBeGreaterThan(0);
       for (const f of fs) {
         expect(f.trim().length).toBeGreaterThan(0);
-        expect(f.toLowerCase()).not.toContain("blueprint");
+        expect(f.toLowerCase()).not.toContain("plano");
         expect(f.toLowerCase()).not.toContain("pipeline");
+        expect(f.toLowerCase()).not.toContain("compositor");
       }
     }
-    expect(FRASES.blueprint).toBeDefined();
+    expect(FRASES.compositor).toBeDefined();
   });
 });

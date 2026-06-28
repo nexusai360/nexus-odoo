@@ -5,7 +5,7 @@ import type { BuilderReportEntry } from "../types";
 import type { ReportTemplate } from "@/lib/reports/types";
 import { intencaoInicial, type IntencaoColeta } from "./intencao";
 import { roteiroDerivado, dimensaoCoberta, NUCLEO } from "./roteiro";
-import type { Blueprint } from "../agent/geracao/blueprint-types";
+import type { Plano } from "../agent/geracao/plano-types";
 
 export type FaseJornada = "entrevista" | "refino";
 
@@ -34,8 +34,8 @@ export interface JourneyState {
   intencao: IntencaoColeta;
   /** Dimensoes em escopo (roteiro): nucleo + opcionais marcadas pela IA. */
   dimensoesRelevantes: Dimensao[];
-  /** Ultimo blueprint gerado (reaproveitado no "regenerar" pos-reveal). */
-  ultimoBlueprint?: Blueprint;
+  /** Ultimo plano gerado (reaproveitado no "regenerar" pos-reveal). */
+  ultimoPlano?: Plano;
 }
 
 export const TETO_TURNOS = 8;
