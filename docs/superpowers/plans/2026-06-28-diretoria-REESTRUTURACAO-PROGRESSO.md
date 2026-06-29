@@ -141,3 +141,34 @@ ONDA 2 (a fazer) , REUSAR os componentes que a plataforma JÁ tem (recharts 3.8.
   clicáveis + botão limpar (padrão Router). Filtro por componente: interno.
 - Mini gráficos (sparklines) nos KPIs (padrão Router).
 - Integrar o construtor às telas com ABAS (cada aba = tela montável) + entrada no menu.
+
+## ONDA 2 , EM ANDAMENTO (handoff p/ nova sessão em 2026-06-29 ~01h30)
+FEITO nesta sessão:
+- UX de edição do construtor: placeholder violeta (não vermelho) + alças de
+  redimensionar em todas as bordas/cantos (commit bbb2bd2b).
+- DataTable evoluída (commit 033f67f9): PAGINAÇÃO (rodapé "X a Y de Z registros",
+  seletor 10/25/50/100, Anterior/Próxima, página/total, reset ao buscar/ordenar)
+  + novo tipo de coluna "tag" (badge colorido via `tagCores`). Reusada em TODAS as
+  telas e no construtor. tsc + testes verdes.
+
+FALTA na Onda 2 (próxima sessão, REUSAR componentes existentes):
+1. GRÁFICOS recharts variados nos blocos (hoje só donut caseiro + mapa). Reusar
+   `src/components/charts/{line-chart,bar-chart,pie-chart}.tsx` e
+   `interactive/area-chart.tsx`, `chart-card.tsx`, `chart-tooltip.tsx` (recharts
+   3.8.1). Ex.: trocar/duplicar A-03/A-04 com barras reais; criar componente de
+   LINHA/ÁREA com série temporal (precisa query temporal nova, TDD): faturamento/
+   compras por dia/mês com navegação de período (‹ 22/06-28/06 ›) e tooltip hover
+   (igual "Custo por dia" do Consumo). Integrar em blocos-estoque.tsx +
+   render-componente + catálogo (tipos linha/barra/area + travasDoTipo).
+2. APLICAR colunas-tag nas tabelas onde há status (compras ativas: prazo
+   Atrasado/No prazo; pedidos pendentes; fornecedores) usando o novo tipo "tag".
+3. FILTROS GLOBAIS avançados nas pílulas: dropdowns por dimensão (família/marca/
+   local/fornecedor/UF) cruzando todos os componentes (catálogo já tem publica/
+   consome); "Personalizado" de datas diferenciado; tags clicáveis + limpar
+   (padrão Router). Filtro por componente: interno.
+4. Mini-sparklines nos KPIs (padrão Router); integrar construtor às ABAS + menu.
+
+Como retomar: ler este PROGRESSO + SPEC `2026-06-29-diretoria-construtor-modular-SPEC.md`.
+Construtor vive em /diretoria/relatorios (tela=estoque). Validar SEMPRE por
+screenshot (scripts/diretoria-render-user.ts + diretoria-screenshot.ts; user
+render-check@local.test / Teste@12345). NÃO mergear sem autorização (regra F6).
