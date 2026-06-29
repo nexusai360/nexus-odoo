@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Columns2, WrapText, ChevronRight, Download } from "lucide-react";
+import { Columns2, WrapText, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import {
   TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -17,15 +17,20 @@ import {
   sortRows, filterRows, toggleSortStack, type SortEntry,
 } from "./data-table-utils";
 import { gerarCsv, downloadCsv } from "./export-csv";
+import { PageJumpNavigator } from "@/components/agent/consumo/page-jump-navigator";
 import type { ReactNode } from "react";
 
 export interface ColumnDef<T> {
   key: keyof T & string;
   header: string;
-  tipo: "texto" | "numero" | "moeda" | "percentual" | "tag";
   /**
-   * Para `tipo: "tag"`: mapa valor->classe Tailwind do badge. O valor sem mapa
-   * cai numa cor neutra. Ex.: `{ Atrasado: "bg-rose-500/10 text-rose-400" }`.
+   * - `tag`: 1 pílula colorida (valor string).
+   * - `tags`: VÁRIAS pílulas por célula (valor `string[]`), estilo Router.
+   */
+  tipo: "texto" | "numero" | "moeda" | "percentual" | "tag" | "tags";
+  /**
+   * Para `tipo: "tag"|"tags"`: mapa valor->classe Tailwind do badge. O valor sem
+   * mapa cai numa cor neutra. Ex.: `{ Atrasado: "bg-rose-500/10 text-rose-400" }`.
    */
   tagCores?: Record<string, string>;
 }
@@ -440,7 +445,20 @@ export function DataTable<T extends Record<string, unknown>>({
                                         {String(row[c.key] ?? "")}
                                       </span>
                                     )
-                                  : String(row[c.key] ?? "")}
+                                  : c.tipo === "tags"
+                                    ? (
+                                        <div className="flex flex-wrap gap-1">
+                                          {(Array.isArray(row[c.key]) ? (row[c.key] as unknown as string[]) : []).map((t, ti) => (
+                                            <span key={`${t}-${ti}`} className={cn(
+                                              "inline-flex rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ring-border/60",
+                                              c.tagCores?.[t] ?? "bg-muted text-muted-foreground",
+                                            )}>
+                                              {t}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      )
+                                    : String(row[c.key] ?? "")}
                         </TableCell>
                       ))}
                     </TableRow>
@@ -491,12 +509,17 @@ export function DataTable<T extends Record<string, unknown>>({
               ))}
             </select>
           </label>
-          <Button variant="outline" size="sm" className="h-7 px-2 text-xs" disabled={paginaSegura <= 1} onClick={() => setPagina((p) => Math.max(1, p - 1))}>
-            Anterior
+          <Button variant="outline" size="icon" className="h-7 w-7" aria-label="Página anterior" disabled={paginaSegura <= 1} onClick={() => setPagina((p) => Math.max(1, p - 1))}>
+            <ChevronLeft className="h-3.5 w-3.5" />
           </Button>
-          <span className="tabular-nums">{paginaSegura} / {totalPaginas}</span>
-          <Button variant="outline" size="sm" className="h-7 px-2 text-xs" disabled={paginaSegura >= totalPaginas} onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}>
-            Próxima
+          <PageJumpNavigator
+            page={paginaSegura - 1}
+            totalPages={totalPaginas}
+            onJump={(idx) => setPagina(idx + 1)}
+            disabled={totalPaginas <= 1}
+          />
+          <Button variant="outline" size="icon" className="h-7 w-7" aria-label="Próxima página" disabled={paginaSegura >= totalPaginas} onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}>
+            <ChevronRight className="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>

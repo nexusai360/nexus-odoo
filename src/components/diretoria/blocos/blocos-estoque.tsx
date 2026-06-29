@@ -141,23 +141,48 @@ function SerieCompras({ d }: { d: EstoqueData }) {
 }
 
 function Catalogo({ d }: { d: EstoqueData }) {
+  const total = d.catalogo.valorGeral || 1;
   const linhas = d.catalogo.linhas.map((m) => ({
     produto: m.produto,
-    familia: m.familia ?? "Sem família",
-    marca: m.marca ?? "Sem marca",
+    classificacao: [m.familia ?? "Sem família", m.marca ?? "Sem marca"],
     quantidade: Math.round(m.quantidade),
     locais: m.locais,
     valorTotal: m.valorTotal,
+    _participacao: (m.valorTotal / total) * 100,
+    _valorMedio: m.quantidade > 0 ? m.valorTotal / m.quantidade : 0,
   }));
   const colunas: ColumnDef<(typeof linhas)[number]>[] = [
     { key: "produto", header: "Modelo", tipo: "texto" },
-    { key: "familia", header: "Família", tipo: "texto" },
-    { key: "marca", header: "Marca", tipo: "texto" },
+    { key: "classificacao", header: "Família / Marca", tipo: "tags", tagCores: {} },
     { key: "quantidade", header: "Qtd", tipo: "numero" },
     { key: "locais", header: "Locais", tipo: "numero" },
     { key: "valorTotal", header: "Valor", tipo: "moeda" },
   ];
-  return <DataTable columns={colunas} rows={linhas} searchable compactoInicial exportFilename="catalogo-estoque" estado={linhas.length === 0 ? "vazio" : "ok"} />;
+  return (
+    <DataTable
+      columns={colunas}
+      rows={linhas}
+      searchable
+      compactoInicial
+      exportFilename="catalogo-estoque"
+      estado={linhas.length === 0 ? "vazio" : "ok"}
+      expandDetail={(row) => (
+        <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-4">
+          {[
+            { rotulo: "Valor total", valor: brl.format(row.valorTotal) },
+            { rotulo: "Valor médio/un.", valor: brl.format(row._valorMedio) },
+            { rotulo: "% do estoque", valor: pct1(row._participacao) },
+            { rotulo: "Presença", valor: `${row.locais} ${row.locais === 1 ? "local" : "locais"}` },
+          ].map((x) => (
+            <div key={x.rotulo} className="rounded-lg border border-border/50 bg-background/40 p-3">
+              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{x.rotulo}</div>
+              <div className="mt-1 text-sm font-semibold tabular-nums">{x.valor}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    />
+  );
 }
 
 function Seriais({ d }: { d: EstoqueData }) {
