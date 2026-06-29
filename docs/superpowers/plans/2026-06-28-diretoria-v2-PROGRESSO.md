@@ -1,3 +1,8 @@
+> ⛔ 2026-06-28 NOITE: o cliente REJEITOU TODA a UI (telas-lista simplórias, sem
+> navegação/filtros/interação) e mandou REFAZER DO ZERO, igualando/superando o HTML.
+> NORTE OBRIGATÓRIO DA PRÓXIMA SESSÃO: `docs/superpowers/plans/2026-06-28-diretoria-REESTRUTURACAO.md`.
+> Manter perícia/queries/schema/BrazilMap/DonutChart; jogar fora as PÁGINAS e o builder.
+
 # PROGRESSO , Diretoria v2 (reconstrução + construtor de relatórios)
 
 > Ponto de retomada da RECONSTRUÇÃO (a v1 foi rejeitada pelo cliente por cobrir
