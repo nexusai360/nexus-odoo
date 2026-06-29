@@ -203,31 +203,10 @@ export default async function DiretoriaEstoquePage() {
           </p>
         </section>
 
-        {/* Compras por fornecedor (A8) */}
+        {/* Compras por fornecedor (A8) , notas de entrada por fornecedor */}
         <section className="rounded-2xl border border-border/60 bg-card/60 p-5">
-          <h2 className="mb-4 text-sm font-semibold">Compras por fornecedor</h2>
-          {compras.linhas.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">Sem compras registradas.</p>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
-                  <th className="pb-2 font-medium">Fornecedor</th>
-                  <th className="pb-2 text-right font-medium">Notas</th>
-                  <th className="pb-2 text-right font-medium">Valor</th>
-                </tr>
-              </thead>
-              <tbody>
-                {compras.linhas.slice(0, 15).map((c) => (
-                  <tr key={c.fornecedor} className="border-b border-border/20">
-                    <td className="py-2">{c.fornecedor}</td>
-                    <td className="py-2 text-right tabular-nums">{num.format(c.notas)}</td>
-                    <td className="py-2 text-right tabular-nums">{brl.format(c.valorTotal)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+          <h2 className="mb-4 text-sm font-semibold">Compras por fornecedor (notas de entrada)</h2>
+          <DonutChart data={compras.linhas.map((c) => ({ label: c.fornecedor, valor: c.valorTotal }))} />
         </section>
 
         {/* Compras ativas (A7) , ordens de compra não recebidas */}
