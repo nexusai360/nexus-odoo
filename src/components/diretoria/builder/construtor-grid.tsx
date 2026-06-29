@@ -61,6 +61,8 @@ export function ConstrutorGrid<T>({
   renderBloco,
   filtroConfig,
   comPeriodo = true,
+  editando: editandoProp,
+  onEditandoChange,
 }: {
   /** Chave de persistência: área ("estoque") ou área:aba ("estoque:visao"). */
   tela: string;
@@ -76,9 +78,15 @@ export function ConstrutorGrid<T>({
   filtroConfig?: FiltroDimensaoConfig<T>;
   /** Mostra a barra de pílulas de período (só telas com bloco temporal). */
   comPeriodo?: boolean;
+  /** Controla o modo edição DE FORA (tela com botão global). Se omitido, usa o botão interno. */
+  editando?: boolean;
+  onEditandoChange?: (b: boolean) => void;
 }) {
   const router = useRouter();
-  const [editando, setEditando] = useState(false);
+  const [editandoLocal, setEditandoLocal] = useState(false);
+  const controlado = editandoProp !== undefined;
+  const editando = controlado ? editandoProp : editandoLocal;
+  const setEditando = (v: boolean) => { if (controlado) onEditandoChange?.(v); else setEditandoLocal(v); };
   const [blocos, setBlocos] = useState<BlocoLayout[]>(layoutInicial);
   const [salvando, start] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
@@ -177,7 +185,8 @@ export function ConstrutorGrid<T>({
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Barra de ações do construtor */}
+      {/* Barra de ações , quando o modo é controlado pela tela, só aparece em edição. */}
+      {(!controlado || editando) ? (
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="text-xs text-muted-foreground">
           {editando
@@ -186,7 +195,7 @@ export function ConstrutorGrid<T>({
         </div>
         <div className="flex items-center gap-2">
           {msg ? <span className="text-xs text-emerald-400">{msg}</span> : null}
-          {!editando && (podeEditarPessoal || podeEditarGlobal) ? (
+          {!controlado && !editando && (podeEditarPessoal || podeEditarGlobal) ? (
             <button
               type="button"
               onClick={() => { setEditando(true); setMsg(null); }}
@@ -215,6 +224,7 @@ export function ConstrutorGrid<T>({
           ) : null}
         </div>
       </div>
+      ) : null}
 
       {/* Pílulas de período , comandam os blocos temporais (ex.: A-10) */}
       {comPeriodo ? (
