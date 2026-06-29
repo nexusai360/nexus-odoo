@@ -55,6 +55,15 @@
 - [x] Mapa do Brasil CONTIDO (brazil-map.tsx altura clamp; corrige "mapa gigante"). commit 7054c0b4
 - [x] Donuts interativos A5 (família + marca) na tela de estoque (DonutChart SVG,
       hover/legenda/total, cores). Validado por screenshot. commit fb9c69c5
+- [x] A8 resumo/matriz de compras por fornecedor (queryResumoCompras, FatoCompra,
+      TDD) + 5 KPIs + tabela matriz. commit 7fee1210. Donut compras/fornecedor c0be2e49.
+- [x] A4 indicadores avançados (queryIndicadoresAvancadosEstoque TDD: idade média,
+      cobertura, giro anual, valor médio/produto) + faixa de KPIs. commit 00779382.
+      VALIDADO por screenshot: tela com cara de BI (KPIs+A4+donut família+tabela densa).
+      NOTA: idade média = "-" (seriais sem dataCompra no Odoo, gap honesto).
+- [ ] FALTA na tela Estoque: A7 detalhe/drill-in da compra (clicar OC → itens+KPIs);
+      densificar mais (grid); polir donut marca/compras. Depois: replicar qualidade
+      (donuts/KPIs/matriz) nas telas Vendas, Pedidos, Visão geral, Agenda.
 - [ ] A4 indicadores completos: valor médio/produto, qtd média/local, IDADE MÉDIA,
       TEMPO DE COBERTURA (precisa query nova; ver 03-estoque fórmulas cobertura=estoque/demanda*30).
 - [ ] A7 detalhe da compra: lista de OCs + itens (4 col) + 10 KPIs + contagem
