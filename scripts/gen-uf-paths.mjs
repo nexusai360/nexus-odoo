@@ -8,8 +8,7 @@ const require = createRequire(import.meta.url);
 const m = require("@svg-maps/brazil");
 const map = m.default || m;
 
-const TOL = 1.7;          // tolerância RDP (unidades do viewBox 613x639)
-const ILHA_MIN_AREA = 6;  // bbox area mínima p/ manter subpath extra (ilhas)
+const TOL = 1.7; // tolerância RDP (unidades do viewBox 613x639)
 
 /** Converte um path relativo (só m/z) em lista de subpaths absolutos [[x,y],...]. */
 function parsePath(d) {
@@ -75,12 +74,12 @@ let totalIn = 0, totalOut = 0;
 const out = map.locations.map((loc) => {
   const subs = parsePath(loc.path);
   totalIn += subs.reduce((s, p) => s + p.length, 0);
-  // mantém o maior subpath sempre; demais só se a bbox não for minúscula
+  // Mantém SÓ o maior subpath (o continente do estado). Ilhas/recortes do litoral
+  // , ex.: o delta do Amazonas/Marajó no PA, com dezenas de ilhotas , viravam um
+  // emaranhado de linhas no mapa. Para um mapa de calor, a massa principal basta.
   const areas = subs.map(bboxArea);
-  const maxArea = Math.max(...areas);
-  const kept = subs
-    .map((pts, i) => ({ pts: rdp(pts, TOL), area: areas[i] }))
-    .filter((s, i) => s.pts.length >= 3 && (areas[i] === maxArea || s.area >= ILHA_MIN_AREA));
+  const maxIdx = areas.indexOf(Math.max(...areas));
+  const kept = [{ pts: rdp(subs[maxIdx], TOL) }].filter((s) => s.pts.length >= 3);
   totalOut += kept.reduce((s, k) => s + k.pts.length, 0);
   const dStr = kept
     .map((k) => "M" + k.pts.map(([x, y]) => `${r(x)},${r(y)}`).join("L") + "Z")
