@@ -185,7 +185,25 @@ tsc verde; 177 testes (25 suites) verdes. Nada mergeado (regra F6).
   (Maior/Menor). Visualização além de pizza/barra/linha. Validado por screenshot.
 - tsc verde; 170 testes verdes. Nada mergeado (regra F6).
 
-### Onda 3.4 (próxima, a validar com cliente)
+**Onda 3.4 , espalhar para Vendas e Pedidos (commit espalha):**
+- ConstrutorGrid GENERALIZADO (`T` genérico + `renderBloco` + `filtroConfig`
+  opcional + `comPeriodo`). FiltrosGlobais e DistribuicaoDinamica genéricos
+  (dimensões nomeadas). Wrappers client por domínio (construtor-estoque/vendas/
+  pedidos) porque funções não cruzam server->client.
+- Vendas montável (/diretoria/relatorios-vendas): C-01 KPIs, C-02 mapa do Brasil,
+  C-03 barras por marca, C-04 ranking de estados, C-05 modalidades, C-07 donut de
+  pagamento, C-09 distribuição dinâmica (marca/estado/pagamento).
+- Pedidos montável (/diretoria/relatorios-pedidos): B-01 KPIs, B-02/B-03 mapa,
+  B-04 tabela rica de pendentes (tag de prazo), B-05 ranking de estados.
+- Entradas no menu (Vendas montável / Pedidos montável), gated por capability.
+- tsc verde; 170 testes verdes; 0 hydration. Validado por screenshot. Nada mergeado.
+
+### Onda 3.5 (polimento, a validar com cliente)
+- UF não informada aparece como "??" nos rankings/mapas de Vendas/Pedidos (dado
+  real com uf nula). Rotular "Sem UF" na fonte (query) p/ consistência com o mapa.
+- Limpar CNPJ da razão social do fornecedor no ranking K-01.
+- Filtros globais de dimensão p/ Vendas (UF/marca) e período comandando dados
+  server-side (hoje vendas/pedidos sem pílula de período).
 - Gráfico temporal correlacionado com PÍLULAS de período (Esta semana→navega semana,
   Este mês→navega mês, igual "Custo por dia" do Consumo). Reusar `PeriodNavigator`
   (`dashboard/period-navigator.tsx`). Hoje o A-10 tem navegação própria (toggle dia/mês + ‹ ›).
