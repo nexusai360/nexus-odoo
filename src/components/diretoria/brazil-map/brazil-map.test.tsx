@@ -35,9 +35,9 @@ jest.mock("@svg-maps/brazil", () => {
 });
 
 describe("corPorIntensidade", () => {
-  it("rampa de calor vívida em rgb, variando por intensidade", () => {
-    expect(corPorIntensidade(0)).toMatch(/^rgb\(/);
-    expect(corPorIntensidade(1)).toMatch(/^rgb\(/);
+  it("rampa de UM tom (roxo hsl 263), saturação variando por intensidade", () => {
+    expect(corPorIntensidade(0)).toContain("hsl(263");
+    expect(corPorIntensidade(1)).toContain("hsl(263");
     expect(corPorIntensidade(0)).not.toBe(corPorIntensidade(1));
     expect(corPorIntensidade(0.5)).not.toBe(corPorIntensidade(0));
   });

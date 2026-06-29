@@ -34,33 +34,23 @@ const brl = new Intl.NumberFormat("pt-BR", {
   maximumFractionDigits: 0,
 });
 
-// Cor de estado SEM dado: token neutro do tema (cinza claro no tema claro,
-// cinza escuro no escuro). Nunca preto-sobre-branco.
-const COR_SEM_DADO = "var(--muted)";
+// Cor de estado SEM dado: cinza calibrado por tema (mais presente que o --muted
+// padrão). No escuro fica um pouco mais claro (menos apagado), no claro um cinza
+// mais presente. Definido em globals.css.
+const COR_SEM_DADO = "var(--mapa-sem-dado)";
 
 /**
- * Rampa de calor VÍVIDA (índigo -> violeta -> magenta). Cores saturadas de
- * lightness média: nítidas e bem diferenciadas TANTO no tema claro quanto no
- * escuro (não somem no fundo como a mistura antiga fazia). A progressão de
- * matiz (azul-violeta no baixo, magenta no alto) separa os estados muito melhor
- * que só variar o tom de um único roxo.
+ * Rampa de calor de UM TOM SÓ (roxo). A intensidade é codificada pela
+ * SATURAÇÃO (não pela mistura com o fundo nem por trocar de matiz): valor baixo
+ * = roxo fraco porém VISÍVEL (acinzentado, não apagado); valor alto = roxo bem
+ * forte e presente. Como a lightness fica quase constante (~55-60%), as mesmas
+ * cores são legíveis tanto no tema claro quanto no escuro.
  */
-const HEAT_STOPS: [number, number, number][] = [
-  [79, 70, 229],   // indigo-600  #4f46e5 , menor
-  [139, 92, 246],  // violet-500  #8b5cf6
-  [192, 64, 236],  // entre roxo e magenta
-  [232, 62, 175],  // magenta/pink #e83eaf , maior
-];
-
 export function corPorIntensidade(t: number): string {
   const c = Math.max(0, Math.min(1, t));
-  const seg = c * (HEAT_STOPS.length - 1);
-  const i = Math.min(Math.floor(seg), HEAT_STOPS.length - 2);
-  const f = seg - i;
-  const a = HEAT_STOPS[i];
-  const b = HEAT_STOPS[i + 1];
-  const ch = (k: number) => Math.round(a[k] + (b[k] - a[k]) * f);
-  return `rgb(${ch(0)} ${ch(1)} ${ch(2)})`;
+  const s = 38 + c * 54; // 38%..92% , fraco (acinzentado) -> forte (saturado)
+  const l = 55 + c * 5;  // 55%..60% , quase constante p/ servir aos 2 temas
+  return `hsl(263 ${s.toFixed(1)}% ${l.toFixed(1)}%)`;
 }
 
 export function BrazilMap({
