@@ -35,15 +35,29 @@ extraindo-os para componentes reutilizáveis):
 - **A-07** Compras ativas (KPIs + chips prazo + tabela) , widget
 - **A-08** Matriz por fornecedor (KPIs-filtro + DataTable) , tabela
 - **K/A** Compras por fornecedor (donut NF entrada) , grafico
-Travas de tamanho mínimo por tipo já em `travasDoTipo` (kpi 1×1..2×2, tabela
-1×2..4×6, grafico 2×2..4×4, mapa 2×3..4×6). Validar com o desenho real.
+Travas de tamanho por tipo na escala 8×8 (mínimo nunca < 2), a ajustar em
+`travasDoTipo`:
+- **kpi**: w 2..4, h 2..3
+- **tabela**: w 3..8, h 3..8
+- **grafico** (donut): w 3..6, h 3..6
+- **mapa**: w 4..8, h 4..8
+- **widget** (composto, ex.: A-07): w 4..8, h 3..8
+Validar cada mínimo com o desenho real (o bloco precisa caber a informação).
 
-## 2. Grid 4×4 em quadrantes
-- Lib: **react-grid-layout** (instalar). `cols=4` (quartos), `rowHeight` ≈ u
-  (~132px), `margin` compacto. `draggableHandle` = "mãozinha" (ícone grip no
-  canto sup. direito do bloco, aparece no modo edição). Resize pelas bordas.
-- Cada bloco: `w=larguraQuartos (1..4)`, `h=alturaU`, `minW/minH/maxW/maxH` das
-  travas do tipo. Snap nativo a quadrantes. Área = w×h.
+## 2. Grid 8×8 em quadrantes (ATUALIZADO , cliente 2026-06-29)
+Granularidade **8×8** (não 4×4): 8 colunas na horizontal **e** 8 unidades na
+vertical. Dá meio-passo (ex.: "2,5 de 4" = **5 de 8**), mais mobilidade.
+- **Tamanho mínimo = nível 2** em qualquer eixo (nunca 1); máximo = **8** (=
+  tela cheia). Vale horizontal E vertical.
+- Lib: **react-grid-layout** (instalar). `cols=8`, `rowHeight` ≈ ⅛ da área útil
+  vertical de referência, `margin` compacto. `draggableHandle` = "mãozinha"
+  (ícone grip no canto sup. direito do bloco, aparece no modo edição). Resize
+  pelas bordas, snap a oitavos.
+- Cada bloco: `w (2..8)`, `h (2..8)`, `minW/minH/maxW/maxH` das travas do tipo
+  (mínimo nunca < 2). Área = w×h (em oitavos²).
+- **Schema:** os campos `larguraQuartos`/`alturaU` passam a representar
+  **oitavos (1..8)**. Na execução, renomear via migration cirúrgica para
+  `larguraOitavos`/`alturaOitavos` (clareza) ou manter e documentar. Nunca db push.
 - Modo **view**: estático (sem drag/resize), lê o layout resolvido.
 - Modo **edição**: drag/resize ligados, paleta lateral de componentes
   disponíveis (catálogo filtrado por capability) para adicionar/remover, botão
