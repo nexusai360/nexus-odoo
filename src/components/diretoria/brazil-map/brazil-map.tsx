@@ -240,7 +240,7 @@ export function BrazilMap({
                   {hoverDatum ? formatValor(hoverDatum.valor) : "Sem dados"}
                 </div>
                 {hoverDatum && total > 0 ? (
-                  <div className="mt-0.5 text-[11px] font-semibold text-violet-300 tabular-nums">
+                  <div className="mt-0.5 text-[11px] font-semibold text-violet-700 dark:text-violet-300 tabular-nums">
                     {((hoverDatum.valor / total) * 100).toFixed(1)}% do total
                   </div>
                 ) : null}
@@ -268,7 +268,7 @@ export function BrazilMap({
           {/* Cartão de destaque , sempre mostra o que o usuário está vendo */}
           {focoDatum ? (
             <div className="rounded-xl border border-violet-500/30 bg-violet-600/10 px-3.5 py-3">
-              <div className="text-[10px] font-medium uppercase tracking-wide text-violet-300/80">
+              <div className="text-[10px] font-medium uppercase tracking-wide text-violet-700/80 dark:text-violet-300/80">
                 {focoOrigem === "hover"
                   ? "Em foco"
                   : focoOrigem === "selecionado"
@@ -283,7 +283,7 @@ export function BrazilMap({
                 <span className="text-lg font-bold tabular-nums text-foreground leading-none">
                   {formatValor(focoDatum.valor)}
                 </span>
-                <span className="text-2xl font-bold tabular-nums text-violet-300 leading-none">
+                <span className="text-2xl font-bold tabular-nums text-violet-700 dark:text-violet-300 leading-none">
                   {focoShare.toFixed(1)}%
                 </span>
               </div>
