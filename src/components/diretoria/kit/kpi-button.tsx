@@ -9,6 +9,7 @@
 import type { LucideIcon } from "lucide-react";
 import { Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Sparkline } from "./sparkline";
 
 export type KpiTone = "default" | "success" | "danger" | "warning" | "info";
 
@@ -51,6 +52,8 @@ interface KpiButtonProps {
   onClick?: () => void;
   /** Estado de seleção (realce). Só faz sentido com `onClick`. */
   selecionado?: boolean;
+  /** Série para mini-gráfico (sparkline) no rodapé do card. */
+  sparkline?: number[];
   className?: string;
 }
 
@@ -63,9 +66,11 @@ export function KpiButton({
   hint,
   onClick,
   selecionado = false,
+  sparkline,
   className,
 }: KpiButtonProps) {
   const clicavel = typeof onClick === "function";
+  const temSpark = Array.isArray(sparkline) && sparkline.length >= 2;
 
   const conteudo = (
     <>
@@ -92,6 +97,9 @@ export function KpiButton({
         <p className="mt-1.5 line-clamp-2 text-[11px] leading-snug text-muted-foreground">
           {hint}
         </p>
+      ) : null}
+      {temSpark ? (
+        <Sparkline data={sparkline!} className={cn("mt-2", iconColor[tone])} />
       ) : null}
     </>
   );

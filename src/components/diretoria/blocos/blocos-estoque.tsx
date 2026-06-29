@@ -133,11 +133,12 @@ function ComprasAtivas({ d }: { d: EstoqueData }) {
     { key: "prazo", header: "Prazo", tipo: "texto" },
     { key: "valor", header: "Valor", tipo: "moeda" },
   ];
+  const sparkCompras = d.comprasSerie.diaria.slice(-14).map((p) => p.valor);
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="grid grid-cols-3 gap-2.5">
         <KpiButton rotulo="Ativas" valor={num.format(c.total)} icone={ShoppingCart} tone="info" hint="Não recebidas" />
-        <KpiButton rotulo="Em aberto" valor={brlCompacto(c.valorTotal)} valorCompleto={brl.format(c.valorTotal)} icone={Wallet} hint="Soma das ordens" />
+        <KpiButton rotulo="Em aberto" valor={brlCompacto(c.valorTotal)} valorCompleto={brl.format(c.valorTotal)} icone={Wallet} hint="Soma das ordens" sparkline={sparkCompras} />
         <KpiButton rotulo="Atrasadas" valor={num.format(c.atrasadas)} icone={AlertTriangle} tone={c.atrasadas > 0 ? "danger" : "success"} hint="Prazo vencido" />
       </div>
       <div className="min-h-0 flex-1">
@@ -171,10 +172,11 @@ function MatrizFornecedor({ d }: { d: EstoqueData }) {
     } },
   ];
   const pagoPct = r.totalComprado > 0 ? (r.totalPago / r.totalComprado) * 100 : 0;
+  const sparkCompras = d.comprasSerie.diaria.slice(-14).map((p) => p.valor);
   return (
     <div className="flex h-full flex-col gap-3">
       <div className="grid grid-cols-3 gap-2.5">
-        <KpiButton rotulo="Comprado" valor={brlCompacto(r.totalComprado)} valorCompleto={brl.format(r.totalComprado)} icone={Coins} hint="Total em ordens" />
+        <KpiButton rotulo="Comprado" valor={brlCompacto(r.totalComprado)} valorCompleto={brl.format(r.totalComprado)} icone={Coins} hint="Total em ordens" sparkline={sparkCompras} />
         <KpiButton rotulo="Pago" valor={brlCompacto(r.totalPago)} valorCompleto={brl.format(r.totalPago)} icone={CheckCircle2} tone="success" hint={`${pct1(pagoPct)} do total`} />
         <KpiButton rotulo="A pagar" valor={brlCompacto(r.totalAPagar)} valorCompleto={brl.format(r.totalAPagar)} icone={Wallet} tone="warning" hint="Saldo pendente" />
       </div>
