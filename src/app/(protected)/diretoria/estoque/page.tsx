@@ -12,6 +12,7 @@ import {
   queryCatalogoEstoque,
   queryComprasPorFornecedor,
   queryComprasAtivas,
+  queryResumoCompras,
   querySeriais,
 } from "@/lib/diretoria/queries/estoque";
 import type { StatusPrazo } from "@/lib/diretoria/cores";
@@ -93,7 +94,7 @@ function TabelaValor({
 export default async function DiretoriaEstoquePage() {
   const user = await requireDiretoriaArea("estoque");
 
-  const [indicadores, porLocal, porFamilia, porMarca, catalogo, compras, comprasAtivas, seriais] =
+  const [indicadores, porLocal, porFamilia, porMarca, catalogo, compras, comprasAtivas, resumoCompras, seriais] =
     await Promise.all([
       queryIndicadoresEstoque(prisma),
       queryEstoquePorLocal(prisma),
@@ -102,6 +103,7 @@ export default async function DiretoriaEstoquePage() {
       queryCatalogoEstoque(prisma, 100),
       queryComprasPorFornecedor(prisma, {}),
       queryComprasAtivas(prisma, new Date(), 50),
+      queryResumoCompras(prisma, new Date()),
       querySeriais(prisma, new Date(), 50),
     ]);
 
@@ -201,6 +203,57 @@ export default async function DiretoriaEstoquePage() {
             Mostrando {Math.min(20, catalogo.linhas.length)} de {num.format(catalogo.total)} modelos
             distintos em estoque.
           </p>
+        </section>
+
+        {/* Resumo de compras + matriz por fornecedor (A8) */}
+        <section className="rounded-2xl border border-border/60 bg-card/60 p-5">
+          <h2 className="mb-4 text-sm font-semibold">Resumo de compras (ordens)</h2>
+          <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            {[
+              { label: "Comprado", valor: brl.format(resumoCompras.totalComprado) },
+              { label: "Pago", valor: brl.format(resumoCompras.totalPago) },
+              { label: "A pagar", valor: brl.format(resumoCompras.totalAPagar) },
+              { label: "Ativas", valor: num.format(resumoCompras.comprasAtivas) },
+              { label: "Atrasadas", valor: num.format(resumoCompras.atrasadas) },
+            ].map((k) => (
+              <div key={k.label} className="rounded-xl border border-border/50 bg-background/40 p-3">
+                <div className="text-xs text-muted-foreground">{k.label}</div>
+                <div className="mt-1 text-base font-semibold tabular-nums">{k.valor}</div>
+              </div>
+            ))}
+          </div>
+          {resumoCompras.fornecedores.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">Sem compras registradas.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
+                    <th className="pb-2 font-medium">Fornecedor</th>
+                    <th className="pb-2 text-right font-medium">Ativas</th>
+                    <th className="pb-2 text-right font-medium">Comprado</th>
+                    <th className="pb-2 text-right font-medium">Pago</th>
+                    <th className="pb-2 text-right font-medium">A pagar</th>
+                    <th className="pb-2 text-right font-medium">Atrasadas</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {resumoCompras.fornecedores.slice(0, 15).map((f) => (
+                    <tr key={f.fornecedor} className="border-b border-border/20">
+                      <td className="py-2">{f.fornecedor}</td>
+                      <td className="py-2 text-right tabular-nums">{num.format(f.ativas)}</td>
+                      <td className="py-2 text-right tabular-nums">{brl.format(f.comprado)}</td>
+                      <td className="py-2 text-right tabular-nums">{brl.format(f.pago)}</td>
+                      <td className="py-2 text-right tabular-nums">{brl.format(f.aPagar)}</td>
+                      <td className={`py-2 text-right tabular-nums ${f.atrasadas > 0 ? "text-rose-500" : ""}`}>
+                        {num.format(f.atrasadas)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
 
         {/* Compras por fornecedor (A8) , notas de entrada por fornecedor */}

@@ -4,6 +4,7 @@ import {
   queryComprasPorFornecedor,
   queryComprasAtivas,
   queryCatalogoEstoque,
+  queryResumoCompras,
 } from "./estoque";
 
 describe("queryIndicadoresEstoque (A4)", () => {
@@ -103,6 +104,28 @@ describe("queryCatalogoEstoque (A3)", () => {
     expect(r.linhas[0].quantidade).toBe(3);
     expect(r.linhas[0].valorTotal).toBe(150);
     expect(r.linhas[0].locais).toBe(0);
+  });
+});
+
+describe("queryResumoCompras (A8)", () => {
+  const hoje = new Date("2026-06-28T00:00:00Z");
+  it("agrega por fornecedor, soma totais e conta ativas/atrasadas", async () => {
+    const prisma = {
+      fatoCompra: {
+        findMany: jest.fn().mockResolvedValue([
+          { fornecedorNome: "Johnson", vrNf: 1000, vrPago: 400, recebida: false, dataPrevista: null },
+          { fornecedorNome: "Johnson", vrNf: 500, vrPago: 0, recebida: false, dataPrevista: new Date("2026-06-01T00:00:00Z") },
+          { fornecedorNome: "Rotha", vrNf: 200, vrPago: 200, recebida: true, dataPrevista: null },
+        ]),
+      },
+    } as unknown as Parameters<typeof queryResumoCompras>[0];
+    const r = await queryResumoCompras(prisma, hoje);
+    expect(r.totalComprado).toBe(1700);
+    expect(r.totalPago).toBe(600);
+    expect(r.totalAPagar).toBe(1100);
+    expect(r.comprasAtivas).toBe(2); // 2 Johnson não recebidas
+    expect(r.atrasadas).toBe(1); // a 2ª Johnson, prevista vencida
+    expect(r.fornecedores[0]).toEqual({ fornecedor: "Johnson", ativas: 2, comprado: 1500, pago: 400, aPagar: 1100, atrasadas: 1 });
   });
 });
 

@@ -253,6 +253,77 @@ export async function queryComprasPorFornecedor(
   return { linhas, valorGeral };
 }
 
+export interface FornecedorResumo {
+  fornecedor: string;
+  ativas: number;
+  comprado: number;
+  pago: number;
+  aPagar: number;
+  atrasadas: number;
+}
+
+export interface ResumoCompras {
+  totalComprado: number;
+  totalPago: number;
+  totalAPagar: number;
+  comprasAtivas: number;
+  atrasadas: number;
+  fornecedores: FornecedorResumo[];
+}
+
+/**
+ * A8 , Resumo de compras + matriz por fornecedor. Agrega fato_compra (ordens de
+ * compra). "Ativa" = não recebida e não cancelada. A pagar = vrNf - vrPago.
+ * Atrasada = ativa com dataPrevista vencida. `hoje` injetado para testabilidade.
+ */
+export async function queryResumoCompras(
+  prisma: PrismaClient,
+  hoje: Date,
+): Promise<ResumoCompras> {
+  const rows = await prisma.fatoCompra.findMany({
+    where: { cancelada: false },
+    select: {
+      fornecedorNome: true,
+      vrNf: true,
+      vrPago: true,
+      recebida: true,
+      dataPrevista: true,
+    },
+  });
+  const map = new Map<string, FornecedorResumo>();
+  let totalComprado = 0;
+  let totalPago = 0;
+  let comprasAtivas = 0;
+  let atrasadas = 0;
+  for (const r of rows) {
+    const nf = Number(r.vrNf ?? 0);
+    const pago = Number(r.vrPago ?? 0);
+    const ativa = !r.recebida;
+    const atrasada = ativa && r.dataPrevista != null && r.dataPrevista < hoje;
+    totalComprado += nf;
+    totalPago += pago;
+    if (ativa) comprasAtivas += 1;
+    if (atrasada) atrasadas += 1;
+    const k = r.fornecedorNome ?? "Não informado";
+    const cur = map.get(k) ?? { fornecedor: k, ativas: 0, comprado: 0, pago: 0, aPagar: 0, atrasadas: 0 };
+    cur.comprado += nf;
+    cur.pago += pago;
+    cur.aPagar += nf - pago;
+    if (ativa) cur.ativas += 1;
+    if (atrasada) cur.atrasadas += 1;
+    map.set(k, cur);
+  }
+  const fornecedores = [...map.values()].sort((a, b) => b.comprado - a.comprado);
+  return {
+    totalComprado,
+    totalPago,
+    totalAPagar: totalComprado - totalPago,
+    comprasAtivas,
+    atrasadas,
+    fornecedores,
+  };
+}
+
 export interface CompraAtivaLinha {
   numero: string | null;
   fornecedor: string | null;
