@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Columns2, WrapText, ChevronRight, Download } from "lucide-react";
 import {
   TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -22,7 +22,12 @@ import type { ReactNode } from "react";
 export interface ColumnDef<T> {
   key: keyof T & string;
   header: string;
-  tipo: "texto" | "numero" | "moeda" | "percentual";
+  tipo: "texto" | "numero" | "moeda" | "percentual" | "tag";
+  /**
+   * Para `tipo: "tag"`: mapa valor->classe Tailwind do badge. O valor sem mapa
+   * cai numa cor neutra. Ex.: `{ Atrasado: "bg-rose-500/10 text-rose-400" }`.
+   */
+  tagCores?: Record<string, string>;
 }
 
 interface DataTableProps<T> {
@@ -153,6 +158,10 @@ export function DataTable<T extends Record<string, unknown>>({
   // --- modo compacto ---
   const [compacto, setCompacto] = useState(compactoInicial);
 
+  // --- paginação ---
+  const [porPagina, setPorPagina] = useState(25);
+  const [pagina, setPagina] = useState(1);
+
   // --- linhas expandidas ---
   const [expandedKeys, setExpandedKeys] = useState<Set<string | number>>(new Set());
   function toggleExpand(key: string | number) {
@@ -174,6 +183,18 @@ export function DataTable<T extends Record<string, unknown>>({
     () => sortRows(filtered, sortStack, columns),
     [filtered, sortStack, columns],
   );
+
+  // --- paginação derivada ---
+  const totalPaginas = Math.max(1, Math.ceil(sorted.length / porPagina));
+  const paginaSegura = Math.min(pagina, totalPaginas);
+  const paginadas = useMemo(
+    () => sorted.slice((paginaSegura - 1) * porPagina, paginaSegura * porPagina),
+    [sorted, paginaSegura, porPagina],
+  );
+  // Volta à primeira página quando busca/ordenação/dados/tamanho mudam.
+  useEffect(() => {
+    setPagina(1);
+  }, [debouncedQuery, sortStack, rows, porPagina]);
 
   // --- exportação CSV ---
   function handleExport() {
@@ -353,7 +374,7 @@ export function DataTable<T extends Record<string, unknown>>({
                 </TableCell>
               </TableRow>
             ) : (
-              sorted.map((row, i) => {
+              paginadas.map((row, i) => {
                 const key = rowKey(row, i);
                 const expanded = expandedKeys.has(key);
                 const detailNode = expandDetail ? expandDetail(row) : null;
@@ -410,7 +431,16 @@ export function DataTable<T extends Record<string, unknown>>({
                               ? formatNumber(Number(row[c.key] ?? 0), "moeda")
                               : c.tipo === "percentual"
                                 ? `${Number(row[c.key] ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
-                                : String(row[c.key] ?? "")}
+                                : c.tipo === "tag"
+                                  ? (
+                                      <span className={cn(
+                                        "inline-flex rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ring-border/60",
+                                        c.tagCores?.[String(row[c.key] ?? "")] ?? "bg-muted text-muted-foreground",
+                                      )}>
+                                        {String(row[c.key] ?? "")}
+                                      </span>
+                                    )
+                                  : String(row[c.key] ?? "")}
                         </TableCell>
                       ))}
                     </TableRow>
@@ -438,6 +468,37 @@ export function DataTable<T extends Record<string, unknown>>({
             )}
           </TableBody>
         </table>
+      </div>
+
+      {/* Rodapé: contagem de registros + paginação */}
+      <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+        <span className="tabular-nums">
+          {sorted.length === 0
+            ? "Nenhum registro"
+            : `${(paginaSegura - 1) * porPagina + 1} a ${Math.min(paginaSegura * porPagina, sorted.length)} de ${sorted.length} registros`}
+        </span>
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-1.5">
+            Por página
+            <select
+              value={porPagina}
+              onChange={(e) => setPorPagina(Number(e.target.value))}
+              className="h-7 rounded-md border border-border bg-background px-1.5 text-xs"
+              aria-label="Registros por página"
+            >
+              {[10, 25, 50, 100].map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          </label>
+          <Button variant="outline" size="sm" className="h-7 px-2 text-xs" disabled={paginaSegura <= 1} onClick={() => setPagina((p) => Math.max(1, p - 1))}>
+            Anterior
+          </Button>
+          <span className="tabular-nums">{paginaSegura} / {totalPaginas}</span>
+          <Button variant="outline" size="sm" className="h-7 px-2 text-xs" disabled={paginaSegura >= totalPaginas} onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}>
+            Próxima
+          </Button>
+        </div>
       </div>
     </div>
   );
