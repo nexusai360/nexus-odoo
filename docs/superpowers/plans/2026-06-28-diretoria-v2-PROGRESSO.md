@@ -32,6 +32,20 @@
         itens/1894 produtos/68 locais; A-03 top JOHNSON; A-04 top MATRIX). Rota compila (302).
   - VALIDAÇÃO VISUAL no browser (logado) pendente p/ o usuário: localhost:3000/diretoria/relatorios.
 
+## DIRECAO FIRME DO CLIENTE (2026-06-28, apos rejeitar a previa pobre)
+> - REFAZER tudo do menu Diretoria com QUALIDADE BI ALTA. PODE SOBRESCREVER o existente.
+> - PROIBIDO mandar "previa"/incremento pobre. So mostrar quando ESTIVER BOM E COMPLETO.
+> - ui-ux-pro-max OBRIGATORIO em TUDO de frontend, sempre.
+> - NADA de "barrinhas chapadas" amadoras. Usar gráficos ricos (donut/recharts), densidade.
+> - Validar SEMPRE por screenshot interno (playwright) antes de considerar pronto. Nunca cego.
+> DESIGN SYSTEM (ui-ux-pro-max "Data-Dense Dashboard"): grid compacto, PADDING MINIMO,
+> máxima densidade de dados, multiplos charts/widgets/KPIs, hover tooltips, row highlighting,
+> filtros suaves, chart zoom on click. Manter identidade do projeto: DARK + acento VIOLETA,
+> cards rounded-2xl border bg-card/60, Inter/Space Grotesk. Evitar: design ornado, sem filtro.
+> Screenshot: playwright (--no-save) + user teste render-check@local.test/Teste@12345 (criar/
+> deletar via tsx) + chromium em /tmp; reiniciar dev:fresh se Turbopack ficar stale.
+> Item "Relatorios (previa)" REMOVIDO do menu (construtor fica no codigo, fora da nav).
+
 ## FOCO ATUAL (decisão do cliente): tela ESTOQUE & COMPRAS fiel e completa
 > Reconstruir /diretoria/estoque (no menu, fluxo normal) fiel ao HTML. Roteiro =
 > perícia MESTRE/03-estoque.md + 04-compras.md. VALIDAR CADA PASSO POR SCREENSHOT

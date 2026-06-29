@@ -75,15 +75,12 @@ export async function diretoriaNavFor(
   user: AuthUser,
 ): Promise<{ label: string; href: string }[]> {
   const caps = await userCapabilities(user);
-  const itens = DIRETORIA_AREAS.filter((a) => caps.has(`diretoria.${a}.view`)).map(
+  return DIRETORIA_AREAS.filter((a) => caps.has(`diretoria.${a}.view`)).map(
     (a) => ({ label: AREA_LABEL[a], href: AREA_HREF[a] }),
   );
-  // Prévia do construtor de relatórios (Onda 1/2). Visível a quem já vê alguma
-  // área da Diretoria. Item temporário até as telas migrarem para o construtor.
-  if (itens.length) {
-    itens.push({ label: "Relatórios (prévia)", href: "/diretoria/relatorios" });
-  }
-  return itens;
+  // NOTA: a rota /diretoria/relatorios (construtor) existe mas saiu do menu , a
+  // reconstrução foca nas telas reais (Estoque & Compras etc.) feitas com
+  // qualidade BI antes de reabilitar o construtor.
 }
 
 /**
