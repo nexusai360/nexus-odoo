@@ -10,7 +10,7 @@ import { useMemo, useState } from "react";
 import { PieChart, BarChart3 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { DonutWithCenter } from "@/components/charts/interactive/donut-with-center";
+import { DonutChart } from "@/components/diretoria/charts/donut-chart";
 import { InteractiveBarChart } from "@/components/charts/interactive/bar-chart";
 import { getColorByIndex } from "@/components/charts/colors";
 import { brl, brlCompacto } from "@/components/diretoria/kit/format";
@@ -55,11 +55,11 @@ export function DistribuicaoDinamica({ dimensoes }: { dimensoes: DimensaoDistrib
   const [dimChave, setDimChave] = useState(dimensoes[0]?.chave ?? "");
   const [tipo, setTipo] = useState<Tipo>("rosca");
 
+  const [sel, setSel] = useState<string | null>(null);
   const dimAtiva = dimensoes.find((d) => d.chave === dimChave) ?? dimensoes[0];
   const fonte = dimAtiva?.linhas ?? [];
   const rotuloAtual = (dimAtiva?.rotulo ?? "").toLowerCase();
-  const total = useMemo(() => fonte.reduce((s, l) => s + l.valorTotal, 0), [fonte]);
-  const dadosDonut = useMemo(() => topComOutros(fonte, 7).map((s, i) => ({ ...s, color: getColorByIndex(i) })), [fonte]);
+  const dadosDonut = useMemo(() => fonte.map((l) => ({ label: l.chave, valor: l.valorTotal })), [fonte]);
   const dadosBarras = useMemo(() => topComOutros(fonte, 8).map((s) => ({ name: s.name, valor: s.value })), [fonte]);
 
   return (
@@ -67,7 +67,7 @@ export function DistribuicaoDinamica({ dimensoes }: { dimensoes: DimensaoDistrib
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-1.5">
           {dimensoes.map((dd) => (
-            <Pilula key={dd.chave} ativo={dimChave === dd.chave} onClick={() => setDimChave(dd.chave)}>{dd.rotulo}</Pilula>
+            <Pilula key={dd.chave} ativo={dimChave === dd.chave} onClick={() => { setDimChave(dd.chave); setSel(null); }}>{dd.rotulo}</Pilula>
           ))}
         </div>
         {/* Toggle de tipo de visualização */}
@@ -95,16 +95,11 @@ export function DistribuicaoDinamica({ dimensoes }: { dimensoes: DimensaoDistrib
 
       <div className="min-h-0 flex-1">
         {tipo === "rosca" ? (
-          <DonutWithCenter
+          <DonutChart
             data={dadosDonut}
-            centerLabel={`Total ${rotuloAtual}`}
-            centerValue={brlCompacto(total)}
-            formatValue={(v) => brl.format(v)}
-            height={250}
-            innerRadius={64}
-            outerRadius={96}
-            tooltipPosition="top-left"
-            ariaLabel={`Distribuição por ${rotuloAtual}`}
+            formatValor={(v) => brl.format(v)}
+            onSelect={(label) => setSel(label || null)}
+            selecionado={sel}
           />
         ) : (
           <InteractiveBarChart

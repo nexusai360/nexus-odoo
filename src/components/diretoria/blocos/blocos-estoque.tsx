@@ -5,7 +5,7 @@
 // Reusa os componentes de qualidade já validados (KpiButton, DonutChart,
 // DataTable). Recebe o EstoqueData inteiro e cada bloco usa o pedaço relevante.
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
   Boxes, Package, Layers, Warehouse, Clock, Timer, RefreshCw, Coins,
   ShoppingCart, Wallet, AlertTriangle, CheckCircle2,
@@ -15,13 +15,28 @@ import { KpiButton } from "@/components/diretoria/kit/kpi-button";
 import { SerieTemporalCompras } from "@/components/diretoria/charts/serie-temporal";
 import { DistribuicaoDinamica } from "@/components/diretoria/charts/distribuicao-dinamica";
 import { RankingCards } from "@/components/diretoria/charts/ranking-cards";
+import { DonutChart } from "@/components/diretoria/charts/donut-chart";
 import { DataTable, type ColumnDef } from "@/components/charts/data-table";
-import { DonutWithCenter } from "@/components/charts/interactive/donut-with-center";
 import { InteractiveBarChart } from "@/components/charts/interactive/bar-chart";
 import { getColorByIndex } from "@/components/charts/colors";
 import type { PeriodKey } from "@/lib/datetime-core";
 import { brl, brlCompacto, num, pct1, DASH, nomeLimpo } from "@/components/diretoria/kit/format";
 import type { EstoqueData } from "@/components/diretoria/estoque/estoque-screen";
+
+/** Painel rico de drill-down: grade de cartões rótulo/valor (ref. Detalhes da
+ * chamada do Consumo). Reaproveitado pelas tabelas com `expandDetail`. */
+function DetalheGrid({ itens }: { itens: { rotulo: string; valor: ReactNode }[] }) {
+  return (
+    <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-4">
+      {itens.map((x) => (
+        <div key={x.rotulo} className="rounded-lg border border-border/50 bg-background/40 p-3">
+          <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{x.rotulo}</div>
+          <div className="mt-1 text-sm font-semibold tabular-nums">{x.valor}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function KpisEstoque({ d }: { d: EstoqueData }) {
   const i = d.indicadores;
@@ -72,21 +87,18 @@ function topComOutros(linhas: { chave: string; valorTotal: number }[], max = 7) 
   return [...top, { name: "Outros", value: resto }];
 }
 
-// A-03 , Distribuição por família: DONUT rico (centro com total, hover esmaece,
-// tooltip com %). Reusa o donut interativo do Agente Nex.
+// A-03 , Distribuição por família: DONUT clássico com LEGENDA LATERAL (bolinha +
+// valor + %) e clique numa fatia para destacar/filtrar. Total no centro, hover
+// esmaece as demais. Padrão preferido pelo cliente sobre o donut só-tooltip.
 function DonutFamilia({ d }: { d: EstoqueData }) {
-  const data = topComOutros(d.porFamilia.linhas).map((s, i) => ({ ...s, color: getColorByIndex(i) }));
+  const [sel, setSel] = useState<string | null>(null);
+  const data = d.porFamilia.linhas.map((l) => ({ label: l.chave, valor: l.valorTotal }));
   return (
-    <DonutWithCenter
+    <DonutChart
       data={data}
-      centerLabel="Total"
-      centerValue={brlCompacto(d.porFamilia.valorGeral)}
-      formatValue={(v) => brl.format(v)}
-      height={240}
-      innerRadius={62}
-      outerRadius={92}
-      tooltipPosition="top-left"
-      ariaLabel="Distribuição do valor de estoque por família"
+      formatValor={(v) => brl.format(v)}
+      onSelect={(label) => setSel(label || null)}
+      selecionado={sel}
     />
   );
 }
@@ -164,19 +176,14 @@ function Catalogo({ d }: { d: EstoqueData }) {
       exportFilename="catalogo-estoque"
       estado={linhas.length === 0 ? "vazio" : "ok"}
       expandDetail={(row) => (
-        <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-4">
-          {[
+        <DetalheGrid
+          itens={[
             { rotulo: "Valor total", valor: brl.format(row.valorTotal) },
             { rotulo: "Valor médio/un.", valor: brl.format(row._valorMedio) },
             { rotulo: "% do estoque", valor: pct1(row._participacao) },
             { rotulo: "Presença", valor: `${row.locais} ${row.locais === 1 ? "local" : "locais"}` },
-          ].map((x) => (
-            <div key={x.rotulo} className="rounded-lg border border-border/50 bg-background/40 p-3">
-              <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{x.rotulo}</div>
-              <div className="mt-1 text-sm font-semibold tabular-nums">{x.valor}</div>
-            </div>
-          ))}
-        </div>
+          ]}
+        />
       )}
     />
   );
@@ -214,6 +221,9 @@ function ComprasAtivas({ d }: { d: EstoqueData }) {
     situacao: rotuloSituacao(l.statusPrazo),
     prazo: l.statusPrazo === "atrasado" ? `Atrasada ${Math.abs(l.diasRestantes ?? 0)}d` : l.diasRestantes == null ? "Sem previsão" : `Em ${l.diasRestantes}d`,
     valor: l.valor,
+    _comprador: l.comprador ?? DASH,
+    _dataOrcamento: l.dataOrcamento ?? DASH,
+    _dataPrevista: l.dataPrevista ?? DASH,
   }));
   const colunas: ColumnDef<(typeof linhas)[number]>[] = [
     { key: "numero", header: "Número", tipo: "texto" },
@@ -232,7 +242,29 @@ function ComprasAtivas({ d }: { d: EstoqueData }) {
         <KpiButton rotulo="Atrasadas" valor={num.format(c.atrasadas)} icone={AlertTriangle} tone={c.atrasadas > 0 ? "danger" : "success"} hint="Prazo vencido" />
       </div>
       <div className="min-h-0 flex-1">
-        <DataTable columns={colunas} rows={linhas} searchable compactoInicial alturaFluida exportFilename="compras-ativas" estado={linhas.length === 0 ? "vazio" : "ok"} />
+        <DataTable
+          columns={colunas}
+          rows={linhas}
+          searchable
+          compactoInicial
+          alturaFluida
+          exportFilename="compras-ativas"
+          estado={linhas.length === 0 ? "vazio" : "ok"}
+          expandDetail={(row) => (
+            <DetalheGrid
+              itens={[
+                { rotulo: "Fornecedor", valor: row.fornecedor },
+                { rotulo: "Comprador", valor: row._comprador },
+                { rotulo: "Etapa", valor: row.etapa },
+                { rotulo: "Situação", valor: row.situacao },
+                { rotulo: "Data do orçamento", valor: row._dataOrcamento },
+                { rotulo: "Previsão de entrega", valor: row._dataPrevista },
+                { rotulo: "Prazo", valor: row.prazo },
+                { rotulo: "Valor da ordem", valor: brl.format(row.valor) },
+              ]}
+            />
+          )}
+        />
       </div>
     </div>
   );
@@ -271,7 +303,32 @@ function MatrizFornecedor({ d }: { d: EstoqueData }) {
         <KpiButton rotulo="A pagar" valor={brlCompacto(r.totalAPagar)} valorCompleto={brl.format(r.totalAPagar)} icone={Wallet} tone="warning" hint="Saldo pendente" />
       </div>
       <div className="min-h-0 flex-1">
-        <DataTable columns={colunas} rows={linhas} searchable compactoInicial alturaFluida exportFilename="fornecedores" estado={linhas.length === 0 ? "vazio" : "ok"} />
+        <DataTable
+          columns={colunas}
+          rows={linhas}
+          searchable
+          compactoInicial
+          alturaFluida
+          exportFilename="fornecedores"
+          estado={linhas.length === 0 ? "vazio" : "ok"}
+          expandDetail={(row) => {
+            const pago = row.comprado > 0 ? (row.pago / row.comprado) * 100 : 0;
+            return (
+              <DetalheGrid
+                itens={[
+                  { rotulo: "Fornecedor", valor: row.fornecedor },
+                  { rotulo: "Ordens ativas", valor: num.format(row.ativas) },
+                  { rotulo: "Comprado", valor: brl.format(row.comprado) },
+                  { rotulo: "Pago", valor: brl.format(row.pago) },
+                  { rotulo: "A pagar", valor: brl.format(row.aPagar) },
+                  { rotulo: "% pago", valor: pct1(pago) },
+                  { rotulo: "Atrasadas", valor: num.format(row.atrasadas) },
+                  { rotulo: "Situação", valor: row.situacao },
+                ]}
+              />
+            );
+          }}
+        />
       </div>
     </div>
   );

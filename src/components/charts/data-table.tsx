@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Columns2, WrapText, ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { Columns2, WrapText, ChevronLeft, ChevronRight, Download, ListFilter, Check, X } from "lucide-react";
 import {
   TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -170,8 +170,39 @@ export function DataTable<T extends Record<string, unknown>>({
   // --- modo compacto ---
   const [compacto, setCompacto] = useState(compactoInicial);
 
+  // --- filtro por coluna (valores distintos, estilo Router) ---
+  const [colFiltros, setColFiltros] = useState<Record<string, string[]>>({});
+  function toggleColFiltro(key: string, val: string) {
+    setColFiltros((prev) => {
+      const cur = prev[key] ?? [];
+      const next = cur.includes(val) ? cur.filter((x) => x !== val) : [...cur, val];
+      return { ...prev, [key]: next };
+    });
+  }
+  // Valores distintos por coluna textual/tag (até 60 valores; acima disso a busca
+  // dá conta e o popover viraria uma lista infinita).
+  const valoresPorColuna = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    for (const c of columns) {
+      if (c.tipo !== "texto" && c.tipo !== "tag" && c.tipo !== "tags") continue;
+      const set = new Set<string>();
+      for (const r of rows) {
+        const v = r[c.key];
+        if (c.tipo === "tags" && Array.isArray(v)) v.forEach((x) => set.add(String(x)));
+        else if (v != null && v !== "") set.add(String(v));
+      }
+      map[c.key] = [...set].sort((a, b) => a.localeCompare(b, "pt-BR"));
+    }
+    return map;
+  }, [rows, columns]);
+  const colunasFiltráveis = columns.filter((c) => {
+    const vals = valoresPorColuna[c.key];
+    return vals && vals.length >= 2 && vals.length <= 60;
+  });
+  const totalFiltrosAtivos = Object.values(colFiltros).reduce((s, v) => s + v.length, 0);
+
   // --- paginação ---
-  const [porPagina, setPorPagina] = useState(25);
+  const [porPagina, setPorPagina] = useState(50);
   const [pagina, setPagina] = useState(1);
 
   // --- linhas expandidas ---
@@ -185,15 +216,30 @@ export function DataTable<T extends Record<string, unknown>>({
     });
   }
 
-  // --- pipeline: filtro → sort ---
+  // --- pipeline: busca → filtro por coluna → sort ---
   const filtered = useMemo(
     () => filterRows(rows, debouncedQuery),
     [rows, debouncedQuery],
   );
 
+  const colFiltered = useMemo(() => {
+    const ativos = Object.entries(colFiltros).filter(([, v]) => v.length > 0);
+    if (ativos.length === 0) return filtered;
+    return filtered.filter((row) =>
+      ativos.every(([key, vals]) => {
+        const col = columns.find((c) => c.key === key);
+        const v = row[key];
+        if (col?.tipo === "tags" && Array.isArray(v)) {
+          return (v as unknown[]).some((x) => vals.includes(String(x)));
+        }
+        return vals.includes(String(v ?? ""));
+      }),
+    );
+  }, [filtered, colFiltros, columns]);
+
   const sorted = useMemo(
-    () => sortRows(filtered, sortStack, columns),
-    [filtered, sortStack, columns],
+    () => sortRows(colFiltered, sortStack, columns),
+    [colFiltered, sortStack, columns],
   );
 
   // --- paginação derivada ---
@@ -203,10 +249,10 @@ export function DataTable<T extends Record<string, unknown>>({
     () => sorted.slice((paginaSegura - 1) * porPagina, paginaSegura * porPagina),
     [sorted, paginaSegura, porPagina],
   );
-  // Volta à primeira página quando busca/ordenação/dados/tamanho mudam.
+  // Volta à primeira página quando busca/filtro/ordenação/dados/tamanho mudam.
   useEffect(() => {
     setPagina(1);
-  }, [debouncedQuery, sortStack, rows, porPagina]);
+  }, [debouncedQuery, sortStack, rows, porPagina, colFiltros]);
 
   // --- exportação CSV ---
   function handleExport() {
@@ -288,6 +334,86 @@ export function DataTable<T extends Record<string, unknown>>({
             </ul>
           </PopoverContent>
         </Popover>
+
+        {/* Filtro por coluna (valores distintos) */}
+        {colunasFiltráveis.length > 0 && (
+          <Popover>
+            <PopoverTrigger
+              render={
+                <Button
+                  variant={totalFiltrosAtivos > 0 ? "default" : "outline"}
+                  size="sm"
+                  className="h-8 gap-1.5 text-xs"
+                  aria-label="Filtrar por coluna"
+                >
+                  <ListFilter className="size-3.5" aria-hidden />
+                  Filtros
+                  {totalFiltrosAtivos > 0 && (
+                    <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-background/25 px-1 text-[10px] font-bold tabular-nums">
+                      {totalFiltrosAtivos}
+                    </span>
+                  )}
+                </Button>
+              }
+            />
+            <PopoverContent align="start" className="w-64 p-0">
+              <div className="flex items-center justify-between border-b border-border px-3 py-2">
+                <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Filtrar por coluna
+                </span>
+                {totalFiltrosAtivos > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setColFiltros({})}
+                    className="inline-flex items-center gap-1 rounded px-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground cursor-pointer"
+                  >
+                    <X className="size-3" aria-hidden />
+                    Limpar
+                  </button>
+                )}
+              </div>
+              <div className="flex max-h-72 flex-col gap-3 overflow-y-auto p-2">
+                {colunasFiltráveis.map((c) => {
+                  const sel = colFiltros[c.key] ?? [];
+                  return (
+                    <div key={c.key}>
+                      <p className="mb-1 px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        {c.header}
+                      </p>
+                      <ul role="listbox" aria-label={`Filtrar ${c.header}`} className="flex flex-col gap-0.5">
+                        {valoresPorColuna[c.key].map((val) => {
+                          const on = sel.includes(val);
+                          return (
+                            <li key={val} role="presentation">
+                              <button
+                                type="button"
+                                role="option"
+                                aria-selected={on}
+                                onClick={() => toggleColFiltro(c.key, val)}
+                                className="flex w-full cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 text-left text-sm transition-colors hover:bg-muted"
+                              >
+                                <span
+                                  className={cn(
+                                    "flex size-4 shrink-0 items-center justify-center rounded border border-border bg-background transition-colors",
+                                    on && "border-primary bg-primary text-primary-foreground",
+                                  )}
+                                  aria-hidden
+                                >
+                                  {on ? <Check className="size-3" /> : null}
+                                </span>
+                                <span className="truncate">{val}</span>
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  );
+                })}
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
 
         {/* Toggle compacto */}
         <Button
@@ -495,27 +621,17 @@ export function DataTable<T extends Record<string, unknown>>({
         </table>
       </div>
 
-      {/* Rodapé: contagem de registros + paginação */}
-      <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
-        <span className="tabular-nums">
+      {/* Rodapé: paginação em 3 zonas (esq: contagem · meio: navegação · dir: por página) */}
+      <div className="grid grid-cols-1 items-center gap-2 text-xs text-muted-foreground sm:grid-cols-3">
+        {/* ESQUERDA , "Mostrando X a Y de Z" */}
+        <span className="tabular-nums justify-self-center sm:justify-self-start">
           {sorted.length === 0
             ? "Nenhum registro"
-            : `${(paginaSegura - 1) * porPagina + 1} a ${Math.min(paginaSegura * porPagina, sorted.length)} de ${sorted.length} registros`}
+            : `Mostrando ${(paginaSegura - 1) * porPagina + 1} a ${Math.min(paginaSegura * porPagina, sorted.length)} de ${sorted.length}`}
         </span>
-        <div className="flex items-center gap-2">
-          <label className="flex items-center gap-1.5">
-            Por página
-            <select
-              value={porPagina}
-              onChange={(e) => setPorPagina(Number(e.target.value))}
-              className="h-7 rounded-md border border-border bg-background px-1.5 text-xs"
-              aria-label="Registros por página"
-            >
-              {[10, 25, 50, 100].map((n) => (
-                <option key={n} value={n}>{n}</option>
-              ))}
-            </select>
-          </label>
+
+        {/* MEIO , navegador de páginas */}
+        <div className="flex items-center justify-center gap-2 justify-self-center">
           <Button variant="outline" size="icon" className="h-7 w-7" aria-label="Página anterior" disabled={paginaSegura <= 1} onClick={() => setPagina((p) => Math.max(1, p - 1))}>
             <ChevronLeft className="h-3.5 w-3.5" />
           </Button>
@@ -529,6 +645,21 @@ export function DataTable<T extends Record<string, unknown>>({
             <ChevronRight className="h-3.5 w-3.5" />
           </Button>
         </div>
+
+        {/* DIREITA , registros por página */}
+        <label className="flex items-center gap-1.5 justify-self-center sm:justify-self-end">
+          Por página
+          <select
+            value={porPagina}
+            onChange={(e) => setPorPagina(Number(e.target.value))}
+            className="h-7 rounded-md border border-border bg-background px-1.5 text-xs"
+            aria-label="Registros por página"
+          >
+            {[50, 100, 500].map((n) => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
+        </label>
       </div>
     </div>
   );

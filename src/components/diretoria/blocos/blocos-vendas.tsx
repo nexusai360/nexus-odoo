@@ -4,11 +4,11 @@
 // MESMOS componentes ricos de Estoque (donut com centro, barras interativas,
 // ranking de cards, distribuição dinâmica, mapa do Brasil, tabela rica).
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { CircleDollarSign, ShoppingBag, Receipt, Percent } from "lucide-react";
 
 import { KpiButton } from "@/components/diretoria/kit/kpi-button";
-import { DonutWithCenter } from "@/components/charts/interactive/donut-with-center";
+import { DonutChart } from "@/components/diretoria/charts/donut-chart";
 import { InteractiveBarChart } from "@/components/charts/interactive/bar-chart";
 import { RankingCards } from "@/components/diretoria/charts/ranking-cards";
 import { DistribuicaoDinamica } from "@/components/diretoria/charts/distribuicao-dinamica";
@@ -84,20 +84,17 @@ function ModalidadesVendas({ d }: { d: VendasData }) {
   );
 }
 
-// C-07 , Formas de pagamento: DONUT com centro.
+// C-07 , Formas de pagamento: DONUT clássico com LEGENDA LATERAL (bolinha + valor
+// + %) e clique numa fatia para destacar/filtrar.
 function DonutPagamento({ d }: { d: VendasData }) {
-  const data = topComOutros(d.formasPagamento.linhas.map((l) => ({ chave: l.formaPagamento, valorTotal: l.valorTotal }))).map((s, i) => ({ ...s, color: getColorByIndex(i) }));
+  const [sel, setSel] = useState<string | null>(null);
+  const data = d.formasPagamento.linhas.map((l) => ({ label: l.formaPagamento, valor: l.valorTotal }));
   return (
-    <DonutWithCenter
+    <DonutChart
       data={data}
-      centerLabel="Total"
-      centerValue={brlCompacto(d.formasPagamento.valorGeral)}
-      formatValue={(v) => brl.format(v)}
-      height={240}
-      innerRadius={62}
-      outerRadius={92}
-      tooltipPosition="top-left"
-      ariaLabel="Distribuição por forma de pagamento"
+      formatValor={(v) => brl.format(v)}
+      onSelect={(label) => setSel(label || null)}
+      selecionado={sel}
     />
   );
 }

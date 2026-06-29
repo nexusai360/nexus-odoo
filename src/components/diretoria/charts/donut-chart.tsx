@@ -115,7 +115,8 @@ export function DonutChart({
           </text>
         </svg>
       </div>
-      <ul className="flex min-w-0 flex-1 flex-col gap-1.5 self-stretch overflow-auto text-sm">
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5 self-stretch">
+      <ul className="flex min-w-0 flex-col gap-1.5 overflow-auto text-sm">
         {segs.map((s) => {
           const sel = selecionado != null && selecionado !== "" && s.label === selecionado;
           const podeClicar = clicavel && s.label !== "Outros";
@@ -154,6 +155,12 @@ export function DonutChart({
           );
         })}
       </ul>
+        {clicavel ? (
+          <p className="mt-0.5 px-1.5 text-[11px] text-muted-foreground/80">
+            {selecionado ? "Clique de novo para limpar o filtro." : "Clique numa fatia para filtrar."}
+          </p>
+        ) : null}
+      </div>
     </div>
   );
 }
