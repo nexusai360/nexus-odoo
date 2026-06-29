@@ -113,3 +113,31 @@ Rota `/diretoria/relatorios` = construtor de Estoque & Compras:
   (hoje: editar pessoal = tem acesso; oficial = admin/super_admin por role).
 - Responsivo mobile (breakpoints do react-grid-layout) e renomear campos de
   schema p/ oitavos (larguraOitavos/alturaOitavos) via migration cirúrgica.
+
+## Feedback do cliente (2026-06-29, 01h) , construtor pobre vs plataforma
+Cliente comparou com Consumo do Agente Nex e Router (que já têm gráficos/tabelas
+muito melhores). Reclamações + plano da ONDA 2:
+
+FEITO já (commit bbb2bd2b): UX de edição , matou a "vermelhidão" (placeholder
+agora violeta) + alças de redimensionar em todas as bordas/cantos (antes só canto
+inf. dir.). Validado por screenshot no arraste.
+
+ONDA 2 (a fazer) , REUSAR os componentes que a plataforma JÁ tem (recharts 3.8.1):
+- Variedade de gráfico: `src/components/charts/line-chart.tsx`,
+  `bar-chart.tsx`, `interactive/area-chart.tsx`, `pie-chart.tsx`,
+  `chart-card.tsx`, `chart-tooltip.tsx`. Hoje o construtor só tem donut caseiro +
+  mapa + tabela. Adicionar tipos "linha"/"barra"/"area" ao catálogo e renders.
+  Ex.: série temporal (compras/faturamento por dia/mês) com navegação de período
+  (‹ 22/06-28/06 ›) e tooltip no hover (igual "Custo por dia" do Consumo);
+  barras (Distribuição do topScore do Router); multi-linha com legenda (Latência
+  p50/p95/p99). Precisa de queries temporais novas (TDD).
+- Tabela RICA: evoluir `charts/data-table.tsx` (já tem busca/sort/CSV/expand/
+  colunas/compacto) com PAGINAÇÃO + contagem de registros + TAGS (badge colorido
+  por célula) + drill-down de linha (ref: `charts/saldo-produto-drill-down.tsx`).
+  É a tabela do Consumo/Router que o cliente quer.
+- Filtros GLOBAIS avançados nas pílulas: além de período, dropdowns por dimensão
+  (família/marca/local/fornecedor/UF) que cruzam TODOS os componentes (catálogo
+  já tem publica/consome); "Personalizado" de datas diferenciado; busca/tags
+  clicáveis + botão limpar (padrão Router). Filtro por componente: interno.
+- Mini gráficos (sparklines) nos KPIs (padrão Router).
+- Integrar o construtor às telas com ABAS (cada aba = tela montável) + entrada no menu.
