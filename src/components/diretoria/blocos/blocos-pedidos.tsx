@@ -59,7 +59,7 @@ function Pendentes({ d }: { d: PedidosData }) {
       Atrasado: "bg-rose-500/10 text-rose-400 ring-1 ring-inset ring-rose-500/20",
       "No prazo": "bg-emerald-500/10 text-emerald-400 ring-1 ring-inset ring-emerald-500/20",
     } },
-    { key: "previsao", header: "Previsão", tipo: "texto" },
+    { key: "previsao", header: "Previsão", tipo: "data" },
     { key: "valor", header: "Valor", tipo: "moeda" },
   ];
   return <DataTable columns={colunas} rows={linhas} searchable compactoInicial alturaFluida exportFilename="pedidos-pendentes" estado={linhas.length === 0 ? "vazio" : "ok"} />;

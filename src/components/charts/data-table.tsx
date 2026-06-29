@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Columns2, WrapText, ChevronLeft, ChevronRight, Download, ListFilter, Check, X } from "lucide-react";
+import { Columns2, WrapText, ChevronLeft, ChevronRight, Download, ListFilter, Check, X, Search } from "lucide-react";
 import {
   TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -9,6 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ChartPreparing, ChartEmpty, ChartError } from "./chart-states";
@@ -26,8 +29,11 @@ export interface ColumnDef<T> {
   /**
    * - `tag`: 1 pílula colorida (valor string).
    * - `tags`: VÁRIAS pílulas por célula (valor `string[]`), estilo Router.
+   * - `data`: o valor é uma data ISO (`YYYY-MM-DD`); exibe `DD/MM/AAAA` mas
+   *   ordena pelo ISO (lexicográfico = cronológico). Valores não-ISO (ex.:
+   *   "Sem previsão") passam intactos.
    */
-  tipo: "texto" | "numero" | "moeda" | "percentual" | "tag" | "tags";
+  tipo: "texto" | "numero" | "moeda" | "percentual" | "tag" | "tags" | "data";
   /**
    * Para `tipo: "tag"|"tags"`: mapa valor->classe Tailwind do badge. O valor sem
    * mapa cai numa cor neutra. Ex.: `{ Atrasado: "bg-rose-500/10 text-rose-400" }`.
@@ -70,6 +76,20 @@ interface DataTableProps<T> {
  * nenhum id está presente. Evita que ordenar ou pesquisar reassocie o DOM
  * por posição.
  */
+/** Opções de "registros por página" (value string p/ o Select base-ui). */
+const POR_PAGINA_ITENS = [
+  { value: "50", label: "50" },
+  { value: "100", label: "100" },
+  { value: "500", label: "500" },
+];
+
+/** Formata uma data ISO (`YYYY-MM-DD…`) para `DD/MM/AAAA`. Valores que não
+ * casam com o padrão ISO (ex.: "Sem previsão") são devolvidos intactos. */
+function formatarDataBR(valor: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(valor);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : valor;
+}
+
 function rowKey(row: Record<string, unknown>, index: number): string | number {
   for (const k of ["produtoId", "odooId", "id", "saldoHojeId"]) {
     const v = row[k];
@@ -172,6 +192,7 @@ export function DataTable<T extends Record<string, unknown>>({
 
   // --- filtro por coluna (valores distintos, estilo Router) ---
   const [colFiltros, setColFiltros] = useState<Record<string, string[]>>({});
+  const [filtroBusca, setFiltroBusca] = useState("");
   function toggleColFiltro(key: string, val: string) {
     setColFiltros((prev) => {
       const cur = prev[key] ?? [];
@@ -372,44 +393,75 @@ export function DataTable<T extends Record<string, unknown>>({
                   </button>
                 )}
               </div>
+              {/* Busca dentro do filtro , reduz a lista de valores */}
+              <div className="border-b border-border/60 p-2">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
+                  <Input
+                    value={filtroBusca}
+                    onChange={(e) => setFiltroBusca(e.target.value)}
+                    placeholder="Buscar valor…"
+                    className="h-7 pl-7 text-xs"
+                    aria-label="Buscar valor nos filtros"
+                  />
+                </div>
+              </div>
               <div className="flex max-h-72 flex-col gap-3 overflow-y-auto p-2">
-                {colunasFiltráveis.map((c) => {
-                  const sel = colFiltros[c.key] ?? [];
-                  return (
-                    <div key={c.key}>
-                      <p className="mb-1 px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        {c.header}
+                {(() => {
+                  const q = filtroBusca.trim().toLowerCase();
+                  const secoes = colunasFiltráveis
+                    .map((c) => ({
+                      c,
+                      vals: q
+                        ? valoresPorColuna[c.key].filter((v) => v.toLowerCase().includes(q))
+                        : valoresPorColuna[c.key],
+                    }))
+                    .filter((s) => s.vals.length > 0);
+                  if (secoes.length === 0) {
+                    return (
+                      <p className="py-3 text-center text-xs text-muted-foreground">
+                        Nenhum valor encontrado.
                       </p>
-                      <ul role="listbox" aria-label={`Filtrar ${c.header}`} className="flex flex-col gap-0.5">
-                        {valoresPorColuna[c.key].map((val) => {
-                          const on = sel.includes(val);
-                          return (
-                            <li key={val} role="presentation">
-                              <button
-                                type="button"
-                                role="option"
-                                aria-selected={on}
-                                onClick={() => toggleColFiltro(c.key, val)}
-                                className="flex w-full cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 text-left text-sm transition-colors hover:bg-muted"
-                              >
-                                <span
-                                  className={cn(
-                                    "flex size-4 shrink-0 items-center justify-center rounded border border-border bg-background transition-colors",
-                                    on && "border-primary bg-primary text-primary-foreground",
-                                  )}
-                                  aria-hidden
+                    );
+                  }
+                  return secoes.map(({ c, vals }) => {
+                    const sel = colFiltros[c.key] ?? [];
+                    return (
+                      <div key={c.key}>
+                        <p className="mb-1 px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          {c.header}
+                        </p>
+                        <ul role="listbox" aria-label={`Filtrar ${c.header}`} className="flex flex-col gap-0.5">
+                          {vals.map((val) => {
+                            const on = sel.includes(val);
+                            return (
+                              <li key={val} role="presentation">
+                                <button
+                                  type="button"
+                                  role="option"
+                                  aria-selected={on}
+                                  onClick={() => toggleColFiltro(c.key, val)}
+                                  className="flex w-full cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 text-left text-sm transition-colors hover:bg-muted"
                                 >
-                                  {on ? <Check className="size-3" /> : null}
-                                </span>
-                                <span className="truncate">{val}</span>
-                              </button>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </div>
-                  );
-                })}
+                                  <span
+                                    className={cn(
+                                      "flex size-4 shrink-0 items-center justify-center rounded border border-border bg-background transition-colors",
+                                      on && "border-primary bg-primary text-primary-foreground",
+                                    )}
+                                    aria-hidden
+                                  >
+                                    {on ? <Check className="size-3" /> : null}
+                                  </span>
+                                  <span className="truncate">{val}</span>
+                                </button>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             </PopoverContent>
           </Popover>
@@ -578,6 +630,8 @@ export function DataTable<T extends Record<string, unknown>>({
                                         {String(row[c.key] ?? "")}
                                       </span>
                                     )
+                                  : c.tipo === "data"
+                                    ? formatarDataBR(String(row[c.key] ?? ""))
                                   : c.tipo === "tags"
                                     ? (
                                         <div className="flex flex-wrap gap-1">
@@ -646,20 +700,24 @@ export function DataTable<T extends Record<string, unknown>>({
           </Button>
         </div>
 
-        {/* DIREITA , registros por página */}
-        <label className="flex items-center gap-1.5 justify-self-center sm:justify-self-end">
-          Por página
-          <select
-            value={porPagina}
-            onChange={(e) => setPorPagina(Number(e.target.value))}
-            className="h-7 rounded-md border border-border bg-background px-1.5 text-xs"
-            aria-label="Registros por página"
+        {/* DIREITA , registros por página (Select do design system) */}
+        <div className="flex items-center gap-1.5 justify-self-center sm:justify-self-end">
+          <span>Por página</span>
+          <Select
+            items={POR_PAGINA_ITENS}
+            value={String(porPagina)}
+            onValueChange={(v) => setPorPagina(Number(v))}
           >
-            {[50, 100, 500].map((n) => (
-              <option key={n} value={n}>{n}</option>
-            ))}
-          </select>
-        </label>
+            <SelectTrigger size="sm" className="w-[4.75rem]" aria-label="Registros por página">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent side="top" className="min-w-[4.75rem]">
+              {POR_PAGINA_ITENS.map((it) => (
+                <SelectItem key={it.value} value={it.value}>{it.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
     </div>
   );

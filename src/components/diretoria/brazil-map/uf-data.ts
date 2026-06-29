@@ -1,22 +1,12 @@
-// Adaptador dos paths do pacote @svg-maps/brazil para o nosso componente.
-// O pacote exporta default { viewBox, locations: [{ id (minúsculo), name, path }] }.
-// Normalizamos o id para a sigla maiúscula (UF) usada no resto do app.
+// Geometria das UFs usada pelo BrazilMap. Os paths são uma versão SIMPLIFICADA
+// (Ramer-Douglas-Peucker) dos contornos do pacote @svg-maps/brazil , o original
+// trazia detalhe de litoral em excesso (5.857 pontos). A simplificação fica em
+// `uf-paths.gen.ts`, gerada por `scripts/gen-uf-paths.mjs`. Para regerar (ex.:
+// ajustar a tolerância), rode `node scripts/gen-uf-paths.mjs`.
 
-import brazilMap from "@svg-maps/brazil";
+import { BRAZIL_VIEWBOX as VIEWBOX, UF_PATHS_GEN } from "./uf-paths.gen";
 
-interface SvgMapLocation {
-  id: string;
-  name: string;
-  path: string;
-}
-interface SvgMap {
-  viewBox: string;
-  locations: SvgMapLocation[];
-}
-
-const mapa = brazilMap as unknown as SvgMap;
-
-export const BRAZIL_VIEWBOX = mapa.viewBox;
+export const BRAZIL_VIEWBOX = VIEWBOX;
 
 export interface UfPath {
   uf: string; // sigla maiúscula
@@ -24,8 +14,4 @@ export interface UfPath {
   path: string;
 }
 
-export const UF_PATHS: UfPath[] = mapa.locations.map((l) => ({
-  uf: l.id.toUpperCase(),
-  nome: l.name,
-  path: l.path,
-}));
+export const UF_PATHS: UfPath[] = UF_PATHS_GEN;
