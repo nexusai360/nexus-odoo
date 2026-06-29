@@ -184,6 +184,50 @@ export function ConstrutorGrid({
       ) : null}
 
       {/* Grid */}
+      {/* UX de edição: placeholder violeta (não vermelho) + alças visíveis nas
+          bordas/cantos com realce no hover. */}
+      <style>{`
+        .diretoria-construtor .react-grid-placeholder{
+          background: color-mix(in srgb, var(--primary) 20%, transparent) !important;
+          border: 2px dashed color-mix(in srgb, var(--primary) 60%, transparent) !important;
+          border-radius: 1rem !important; opacity: 1 !important;
+          transition: transform .12s ease;
+        }
+        .diretoria-construtor .react-grid-item.react-draggable-dragging,
+        .diretoria-construtor .react-grid-item.resizing{
+          z-index: 30; box-shadow: 0 12px 40px rgba(0,0,0,.45);
+        }
+        .diretoria-construtor .react-grid-item.react-draggable-dragging > section{
+          outline: 2px solid color-mix(in srgb, var(--primary) 70%, transparent);
+        }
+        .diretoria-construtor .react-resizable-handle{
+          opacity: 0; transition: opacity .15s ease; z-index: 6;
+        }
+        .diretoria-construtor .react-grid-item:hover > .react-resizable-handle{ opacity: .9; }
+        /* esconde a setinha default e desenha alças violeta nas bordas/cantos */
+        .diretoria-construtor .react-resizable-handle::after{ display:none !important; }
+        .diretoria-construtor .react-resizable-handle-e,
+        .diretoria-construtor .react-resizable-handle-w{
+          top:50%; width:6px; height:34px; transform:translateY(-50%);
+          border-radius:4px; background: color-mix(in srgb, var(--primary) 75%, transparent);
+        }
+        .diretoria-construtor .react-resizable-handle-e{ right:3px; }
+        .diretoria-construtor .react-resizable-handle-w{ left:3px; }
+        .diretoria-construtor .react-resizable-handle-n,
+        .diretoria-construtor .react-resizable-handle-s{
+          left:50%; width:34px; height:6px; transform:translateX(-50%);
+          border-radius:4px; background: color-mix(in srgb, var(--primary) 75%, transparent);
+        }
+        .diretoria-construtor .react-resizable-handle-n{ top:3px; }
+        .diretoria-construtor .react-resizable-handle-s{ bottom:3px; }
+        .diretoria-construtor .react-resizable-handle-se,
+        .diretoria-construtor .react-resizable-handle-sw,
+        .diretoria-construtor .react-resizable-handle-ne,
+        .diretoria-construtor .react-resizable-handle-nw{
+          width:14px; height:14px; border-radius:4px;
+          background: color-mix(in srgb, var(--primary) 85%, transparent);
+        }
+      `}</style>
       <Grid
         className="diretoria-construtor"
         layout={layout}
@@ -192,6 +236,7 @@ export function ConstrutorGrid({
         margin={[12, 12]}
         isDraggable={editando}
         isResizable={editando}
+        resizeHandles={editando ? ["s", "e", "se", "sw", "ne", "nw", "n", "w"] : []}
         draggableHandle=".bloco-grip"
         compactType="vertical"
         onLayoutChange={onLayoutChange}
