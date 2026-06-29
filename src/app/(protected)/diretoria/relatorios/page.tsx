@@ -12,7 +12,7 @@ import {
 } from "@/lib/diretoria/queries/estoque";
 import { carregarLayout } from "@/lib/diretoria/builder/layout-repo";
 import type { BlocoLayout } from "@/lib/diretoria/builder/layout";
-import { ConstrutorGrid } from "@/components/diretoria/builder/construtor-grid";
+import { ConstrutorEstoque } from "@/components/diretoria/builder/construtor-estoque";
 import type { EstoqueData } from "@/components/diretoria/estoque/estoque-screen";
 import { FreshnessBadge } from "@/components/diretoria/freshness-badge";
 import { ultimaSyncIso } from "@/lib/diretoria/freshness";
@@ -74,7 +74,7 @@ export default async function DiretoriaRelatoriosPage() {
         subtitle="Tela montada por componentes. Edite para reorganizar em quadrantes 8×8."
         actions={<FreshnessBadge iso={freshIso} />}
       />
-      <ConstrutorGrid
+      <ConstrutorEstoque
         tela="estoque"
         data={data}
         layoutInicial={layoutInicial}

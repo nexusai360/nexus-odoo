@@ -101,14 +101,20 @@ export const CATALOGO: ComponenteCatalogo[] = [
   comp({ id: "A-08", nome: "Matriz por fornecedor", dominio: "K", tipo: "tabela", fonteDado: "real" }),
   comp({ id: "A-10", nome: "Compras ao longo do tempo (NF entrada)", dominio: "K", tipo: "widget", fonteDado: "real" }),
   comp({ id: "K-01", nome: "Ranking de compras por fornecedor", dominio: "K", tipo: "widget", fonteDado: "real" }),
-  // Vendas (loaders reusam queries/vendas.ts)
+  // Vendas (C-*)
   comp({ id: "C-01", nome: "Indicadores de vendas", dominio: "C", tipo: "kpi", fonteDado: "estimado", consome: ["periodo"] }),
-  comp({ id: "C-02", nome: "Vendas por estado", dominio: "C", tipo: "grafico", fonteDado: "real", publica: ["uf"], consome: ["periodo"] }),
+  comp({ id: "C-02", nome: "Vendas por estado (mapa)", dominio: "C", tipo: "mapa", fonteDado: "real", publica: ["uf"], consome: ["periodo"] }),
   comp({ id: "C-03", nome: "Vendas por marca", dominio: "C", tipo: "grafico", fonteDado: "real", consome: ["periodo"] }),
-  comp({ id: "C-05", nome: "Modalidades e maior pedido", dominio: "C", tipo: "grafico", fonteDado: "real", consome: ["periodo"] }),
+  comp({ id: "C-04", nome: "Ranking de estados", dominio: "C", tipo: "widget", fonteDado: "real", consome: ["periodo"] }),
+  comp({ id: "C-05", nome: "Modalidades de operação", dominio: "C", tipo: "grafico", fonteDado: "real", consome: ["periodo"] }),
   comp({ id: "C-07", nome: "Formas de pagamento", dominio: "C", tipo: "grafico", fonteDado: "real", consome: ["periodo"] }),
-  // Demandas
+  comp({ id: "C-09", nome: "Distribuição dinâmica (marca/estado/pagamento)", dominio: "C", tipo: "widget", fonteDado: "real", consome: ["periodo"] }),
+  // Pedidos & Entregas (B-*)
+  comp({ id: "B-01", nome: "Indicadores de demandas", dominio: "B", tipo: "kpi", fonteDado: "real" }),
+  comp({ id: "B-02", nome: "Mapa de demandas por estado", dominio: "B", tipo: "mapa", fonteDado: "real", publica: ["uf"] }),
   comp({ id: "B-03", nome: "Mapa de demandas por estado", dominio: "B", tipo: "mapa", fonteDado: "real", publica: ["uf"] }),
+  comp({ id: "B-04", nome: "Pedidos pendentes", dominio: "B", tipo: "tabela", fonteDado: "real" }),
+  comp({ id: "B-05", nome: "Ranking de estados (demandas)", dominio: "B", tipo: "widget", fonteDado: "real" }),
 ];
 
 const PORID = new Map(CATALOGO.map((c) => [c.id, c]));

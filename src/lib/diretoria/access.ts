@@ -78,10 +78,16 @@ export async function diretoriaNavFor(
   const itens = DIRETORIA_AREAS.filter((a) => caps.has(`diretoria.${a}.view`)).map(
     (a) => ({ label: AREA_LABEL[a], href: AREA_HREF[a] }),
   );
-  // Construtor modular (montável): aparece para quem vê Estoque & Compras, logo
-  // após a tela BI clássica. É a versão por componentes arrastáveis da mesma área.
+  // Construtores modulares (montáveis): versão por componentes arrastáveis de
+  // cada área, logo após as telas BI clássicas, gated pela capability da área.
   if (caps.has("diretoria.estoque.view")) {
     itens.push({ label: "Estoque montável", href: "/diretoria/relatorios" });
+  }
+  if (caps.has("diretoria.vendas.view")) {
+    itens.push({ label: "Vendas montável", href: "/diretoria/relatorios-vendas" });
+  }
+  if (caps.has("diretoria.pedidos.view")) {
+    itens.push({ label: "Pedidos montável", href: "/diretoria/relatorios-pedidos" });
   }
   return itens;
 }

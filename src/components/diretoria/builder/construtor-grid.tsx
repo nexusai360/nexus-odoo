@@ -13,23 +13,17 @@ import { useRouter } from "next/navigation";
 import GridLayout, { WidthProvider, type Layout } from "react-grid-layout";
 import { GripVertical, X, Plus, Save, RotateCcw, Pencil, Check } from "lucide-react";
 
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import {
   CATALOGO, GRID_COLS, componentePorId, travasDoTipo, type FonteDado,
 } from "@/lib/diretoria/builder/catalogo";
 import type { BlocoLayout } from "@/lib/diretoria/builder/layout";
-import { renderBlocoEstoque } from "@/components/diretoria/blocos/blocos-estoque";
-import type { EstoqueData } from "@/components/diretoria/estoque/estoque-screen";
 import type { DiretoriaArea } from "@/lib/diretoria/capabilities";
 import { salvarLayoutAction, restaurarLayoutPessoalAction } from "@/lib/actions/diretoria-layout";
-import { FiltrosGlobais } from "@/components/diretoria/builder/filtros-globais";
-import {
-  derivarEstoque, opcoesEstoque, temFiltro, FILTROS_VAZIOS, type FiltrosEstoque,
-} from "@/lib/diretoria/derivar-estoque";
+import { FiltrosGlobais, type DimensaoFiltro, type ValoresFiltro } from "@/components/diretoria/builder/filtros-globais";
 import { PeriodPills } from "@/components/reports/period-pills";
 import type { PeriodKey } from "@/lib/datetime-core";
-
-const numFmt = new Intl.NumberFormat("pt-BR");
 
 const Grid = WidthProvider(GridLayout);
 const ROW_H = 64;
@@ -39,28 +33,53 @@ const SELO: Record<Exclude<FonteDado, "real">, string> = {
   sem_fonte: "Sem fonte",
 };
 
-export function ConstrutorGrid({
+/** Configuração opcional de filtros globais de dimensão (estoque usa; outras telas podem adotar). */
+export interface FiltroDimensaoConfig<T> {
+  dimensoes: DimensaoFiltro[];
+  /** Recalcula o `data` aplicando os filtros ativos (cruzado e consistente). */
+  derivar: (data: T, filtros: ValoresFiltro) => T;
+  /** Resumo do efeito (ex.: "312 de 1.894 modelos"). */
+  contar?: (dataFiltrado: T, dataBase: T) => string | undefined;
+}
+
+export type RenderBloco<T> = (
+  id: string,
+  data: T,
+  periodo: PeriodKey,
+  customRange?: { start: string; end: string },
+) => ReactNode;
+
+export function ConstrutorGrid<T>({
   tela,
   data,
   layoutInicial,
   dominios,
   podeEditarPessoal,
   podeEditarGlobal,
+  renderBloco,
+  filtroConfig,
+  comPeriodo = true,
 }: {
   tela: DiretoriaArea;
-  data: EstoqueData;
+  data: T;
   layoutInicial: BlocoLayout[];
   /** Domínios cujos componentes aparecem na paleta (ex.: ["A","K"]). */
   dominios: string[];
   podeEditarPessoal: boolean;
   podeEditarGlobal: boolean;
+  /** Mapeia o componenteId para o render BI do domínio (estoque/vendas/pedidos). */
+  renderBloco: RenderBloco<T>;
+  /** Filtros globais de dimensão (opcional). */
+  filtroConfig?: FiltroDimensaoConfig<T>;
+  /** Mostra a barra de pílulas de período (só telas com bloco temporal). */
+  comPeriodo?: boolean;
 }) {
   const router = useRouter();
   const [editando, setEditando] = useState(false);
   const [blocos, setBlocos] = useState<BlocoLayout[]>(layoutInicial);
   const [salvando, start] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
-  const [filtros, setFiltros] = useState<FiltrosEstoque>(FILTROS_VAZIOS);
+  const [filtros, setFiltros] = useState<ValoresFiltro>({});
   // Pílula de período global (comanda os blocos temporais, ex.: A-10).
   const [periodo, setPeriodo] = useState<PeriodKey>("semana_atual");
   const [customRange, setCustomRange] = useState<{ start: string; end: string } | undefined>();
@@ -71,21 +90,15 @@ export function ConstrutorGrid({
   const [montado, setMontado] = useState(false);
   useEffect(() => setMontado(true), []);
 
-  // Opções dos dropdowns globais derivadas das linhas granulares.
-  const opcoes = useMemo(() => opcoesEstoque(data.granular), [data.granular]);
+  // Dado efetivo: quando há filtro de dimensão ativo, recomputa os pedaços do
+  // domínio de forma cruzada e consistente. Sem filtroConfig, passa o data direto.
+  const ativo = !!filtroConfig && Object.values(filtros).some((v) => v != null);
+  const dataEfetiva = useMemo<T>(() => {
+    if (!filtroConfig || !ativo) return data;
+    return filtroConfig.derivar(data, filtros);
+  }, [data, filtros, ativo, filtroConfig]);
 
-  // Dado efetivo: quando há filtro ativo, recomputa os pedaços de estoque
-  // (indicadores/donuts/local/catálogo) de forma cruzada e consistente. Os
-  // blocos de compras não dependem dessas dimensões e ficam intactos.
-  const ativo = temFiltro(filtros);
-  const dataEfetiva = useMemo<EstoqueData>(() => {
-    if (!ativo) return data;
-    return { ...data, ...derivarEstoque(data.granular, filtros) };
-  }, [data, filtros, ativo]);
-
-  const contagemFiltro = ativo
-    ? `${numFmt.format(dataEfetiva.catalogo.total)} de ${numFmt.format(data.catalogo.total)} modelos`
-    : undefined;
+  const contagemFiltro = filtroConfig?.contar && ativo ? filtroConfig.contar(dataEfetiva, data) : undefined;
 
   const layout: Layout[] = useMemo(
     () =>
@@ -200,24 +213,27 @@ export function ConstrutorGrid({
         </div>
       </div>
 
-      {/* Pílulas de período , comandam os blocos temporais (A-10) */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-border/60 bg-card/40 px-3 py-2">
-        <span className="text-xs font-medium text-foreground/80">Período</span>
-        <PeriodPills
-          value={periodo}
-          customRange={customRange}
-          onChange={(next, range) => { setPeriodo(next); setCustomRange(range); }}
-        />
-      </div>
+      {/* Pílulas de período , comandam os blocos temporais (ex.: A-10) */}
+      {comPeriodo ? (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-border/60 bg-card/40 px-3 py-2">
+          <span className="text-xs font-medium text-foreground/80">Período</span>
+          <PeriodPills
+            value={periodo}
+            customRange={customRange}
+            onChange={(next, range) => { setPeriodo(next); setCustomRange(range); }}
+          />
+        </div>
+      ) : null}
 
-      {/* Filtros globais , cruzam todos os componentes de estoque ao mesmo tempo */}
-      <FiltrosGlobais
-        opcoes={opcoes}
-        filtros={filtros}
-        onChange={setFiltros}
-        ativo={ativo}
-        contagem={contagemFiltro}
-      />
+      {/* Filtros globais de dimensão , cruzam todos os componentes (se houver) */}
+      {filtroConfig ? (
+        <FiltrosGlobais
+          dimensoes={filtroConfig.dimensoes}
+          filtros={filtros}
+          onChange={setFiltros}
+          contagem={contagemFiltro}
+        />
+      ) : null}
 
       {/* Paleta de componentes (modo edição) */}
       {editando && paleta.length ? (
@@ -332,7 +348,7 @@ export function ConstrutorGrid({
                     </div>
                   ) : null}
                 </header>
-                <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4">{renderBlocoEstoque(b.componenteId, dataEfetiva, periodo, customRange)}</div>
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4">{renderBloco(b.componenteId, dataEfetiva, periodo, customRange)}</div>
               </section>
             </div>
           );

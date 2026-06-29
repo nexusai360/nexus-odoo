@@ -76,6 +76,7 @@ describe("diretoriaNavFor", () => {
     expect(nav.map((n) => n.href)).toEqual([
       "/diretoria/visao-geral",
       "/diretoria/vendas",
+      "/diretoria/relatorios-vendas",
     ]);
   });
 

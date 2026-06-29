@@ -16,10 +16,14 @@ import { getColorByIndex } from "@/components/charts/colors";
 import { brl, brlCompacto } from "@/components/diretoria/kit/format";
 
 interface LinhaAgrupada { chave: string; valorTotal: number }
-type Dimensao = "familia" | "marca" | "local";
 type Tipo = "rosca" | "barras";
 
-const ROTULO_DIM: Record<Dimensao, string> = { familia: "Família", marca: "Marca", local: "Local" };
+/** Uma dimensão selecionável (ex.: Família, Marca, Estado). */
+export interface DimensaoDistribuicao {
+  chave: string;
+  rotulo: string;
+  linhas: LinhaAgrupada[];
+}
 
 function topComOutros(linhas: LinhaAgrupada[], max: number) {
   if (linhas.length <= max) return linhas.map((l) => ({ name: l.chave, value: l.valorTotal }));
@@ -47,19 +51,13 @@ function Pilula({ ativo, onClick, children }: { ativo: boolean; onClick: () => v
   );
 }
 
-export function DistribuicaoDinamica({
-  familia,
-  marca,
-  local,
-}: {
-  familia: LinhaAgrupada[];
-  marca: LinhaAgrupada[];
-  local: LinhaAgrupada[];
-}) {
-  const [dim, setDim] = useState<Dimensao>("familia");
+export function DistribuicaoDinamica({ dimensoes }: { dimensoes: DimensaoDistribuicao[] }) {
+  const [dimChave, setDimChave] = useState(dimensoes[0]?.chave ?? "");
   const [tipo, setTipo] = useState<Tipo>("rosca");
 
-  const fonte = dim === "familia" ? familia : dim === "marca" ? marca : local;
+  const dimAtiva = dimensoes.find((d) => d.chave === dimChave) ?? dimensoes[0];
+  const fonte = dimAtiva?.linhas ?? [];
+  const rotuloAtual = (dimAtiva?.rotulo ?? "").toLowerCase();
   const total = useMemo(() => fonte.reduce((s, l) => s + l.valorTotal, 0), [fonte]);
   const dadosDonut = useMemo(() => topComOutros(fonte, 7).map((s, i) => ({ ...s, color: getColorByIndex(i) })), [fonte]);
   const dadosBarras = useMemo(() => topComOutros(fonte, 8).map((s) => ({ name: s.name, valor: s.value })), [fonte]);
@@ -68,8 +66,8 @@ export function DistribuicaoDinamica({
     <div className="flex h-full flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-1.5">
-          {(["familia", "marca", "local"] as const).map((dd) => (
-            <Pilula key={dd} ativo={dim === dd} onClick={() => setDim(dd)}>{ROTULO_DIM[dd]}</Pilula>
+          {dimensoes.map((dd) => (
+            <Pilula key={dd.chave} ativo={dimChave === dd.chave} onClick={() => setDimChave(dd.chave)}>{dd.rotulo}</Pilula>
           ))}
         </div>
         {/* Toggle de tipo de visualização */}
@@ -99,14 +97,14 @@ export function DistribuicaoDinamica({
         {tipo === "rosca" ? (
           <DonutWithCenter
             data={dadosDonut}
-            centerLabel={`Total ${ROTULO_DIM[dim].toLowerCase()}`}
+            centerLabel={`Total ${rotuloAtual}`}
             centerValue={brlCompacto(total)}
             formatValue={(v) => brl.format(v)}
             height={250}
             innerRadius={64}
             outerRadius={96}
             tooltipPosition="top-left"
-            ariaLabel={`Distribuição do estoque por ${ROTULO_DIM[dim].toLowerCase()}`}
+            ariaLabel={`Distribuição por ${rotuloAtual}`}
           />
         ) : (
           <InteractiveBarChart
@@ -117,7 +115,7 @@ export function DistribuicaoDinamica({
             yAxisWidth={120}
             showLegend={false}
             formatValue={(v) => brlCompacto(v)}
-            ariaLabel={`Valor de estoque por ${ROTULO_DIM[dim].toLowerCase()} (barras)`}
+            ariaLabel={`Distribuição por ${rotuloAtual} (barras)`}
           />
         )}
       </div>

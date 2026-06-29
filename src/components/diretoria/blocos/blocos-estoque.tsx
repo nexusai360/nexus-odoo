@@ -133,9 +133,11 @@ function RankingComprasFornecedor({ d }: { d: EstoqueData }) {
 function Distribuicao({ d }: { d: EstoqueData }) {
   return (
     <DistribuicaoDinamica
-      familia={d.porFamilia.linhas}
-      marca={d.porMarca.linhas}
-      local={d.porLocal.linhas}
+      dimensoes={[
+        { chave: "familia", rotulo: "Família", linhas: d.porFamilia.linhas },
+        { chave: "marca", rotulo: "Marca", linhas: d.porMarca.linhas },
+        { chave: "local", rotulo: "Local", linhas: d.porLocal.linhas },
+      ]}
     />
   );
 }
