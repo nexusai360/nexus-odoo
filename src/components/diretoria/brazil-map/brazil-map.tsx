@@ -34,18 +34,24 @@ const brl = new Intl.NumberFormat("pt-BR", {
   maximumFractionDigits: 0,
 });
 
-const COR_SEM_DADO = "hsl(240 6% 14%)";
+// Cor de estado SEM dado: token neutro do tema (cinza claro no tema claro,
+// cinza escuro no escuro). Nunca preto-sobre-branco.
+const COR_SEM_DADO = "var(--muted)";
+
+// Violeta base do mapa de calor (independe do --primary).
+const ROXO = "hsl(262 83% 58%)";
 
 /**
- * Cor sequencial roxa por intensidade (0..1) , rampa do produto. Vai de um
- * violeta escuro porém visível a um violeta vivo e saturado, para o mapa de
- * calor diferenciar bem estados de valor baixo, médio e alto.
+ * Cor do mapa de calor por intensidade (0..1). Mistura o violeta do produto com
+ * a cor do CARD (token do tema) , então adapta sozinho ao tema: no claro, valor
+ * baixo fica violeta clarinho (sobre branco) e alto fica violeta forte; no
+ * escuro, baixo fica violeta escuro e alto fica violeta vivo. Sem cor fixa que
+ * vire preto no tema claro.
  */
 export function corPorIntensidade(t: number): string {
   const clamp = Math.max(0, Math.min(1, t));
-  const light = 24 + clamp * 48; // 24%..72%
-  const sat = 50 + clamp * 42; // 50%..92%
-  return `hsl(262 ${sat}% ${light}%)`;
+  const pct = 14 + clamp * 86; // 14%..100% de violeta sobre o card
+  return `color-mix(in srgb, ${ROXO} ${pct.toFixed(1)}%, var(--card))`;
 }
 
 export function BrazilMap({
@@ -161,8 +167,9 @@ export function BrazilMap({
                     key={p.uf}
                     d={p.path}
                     fill={cor}
-                    stroke={isSel ? "hsl(258 90% 80%)" : "hsl(240 10% 4%)"}
-                    strokeWidth={isSel ? 1.2 : 0.4}
+                    stroke={isSel ? "var(--foreground)" : "var(--border)"}
+                    strokeWidth={isSel ? 1.2 : 0.5}
+                    strokeLinejoin="round"
                     tabIndex={0}
                     role="button"
                     aria-label={`${p.nome}${d ? `, ${metric} ${formatValor(d.valor)}` : ", sem dados"}${isSel ? " (selecionado)" : ""}`}
@@ -195,9 +202,9 @@ export function BrazilMap({
                 <motion.path
                   key={`foco-${focoUf}`}
                   d={focoPath.path}
-                  fill={corPorIntensidade(Math.max(0.5, intensidadeDe(focoDatum.valor)))}
-                  stroke="hsl(0 0% 100%)"
-                  strokeWidth={1.4}
+                  fill={corPorIntensidade(Math.max(0.55, intensidadeDe(focoDatum.valor)))}
+                  stroke="var(--foreground)"
+                  strokeWidth={1.6}
                   strokeLinejoin="round"
                   pointerEvents="none"
                   initial={false}

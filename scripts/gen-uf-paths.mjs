@@ -8,7 +8,7 @@ const require = createRequire(import.meta.url);
 const m = require("@svg-maps/brazil");
 const map = m.default || m;
 
-const TOL = 1.7; // tolerância RDP (unidades do viewBox 613x639)
+const TOL = 1.2; // tolerância RDP (unidades do viewBox 613x639); curvas suavizam o resto
 
 /** Converte um path relativo (só m/z) em lista de subpaths absolutos [[x,y],...]. */
 function parsePath(d) {
@@ -70,6 +70,31 @@ function bboxArea(pts) {
 
 const r = (n) => Math.round(n * 10) / 10;
 
+/**
+ * Curva fechada suave (Catmull-Rom -> Bézier cúbica) passando por todos os
+ * pontos. Arredonda os cantos angulosos do RDP, deixando o contorno do estado
+ * limpo/orgânico em vez de "low-poly". Tensão padrão 1/6.
+ */
+function smoothClosed(ptsIn) {
+  const pts = ptsIn.slice();
+  // remove ponto de fechamento duplicado (RDP pode repetir o primeiro no fim)
+  const a = pts[0], z = pts[pts.length - 1];
+  if (Math.abs(a[0] - z[0]) < 0.01 && Math.abs(a[1] - z[1]) < 0.01) pts.pop();
+  const n = pts.length;
+  if (n < 3) return null;
+  let d = `M${r(pts[0][0])},${r(pts[0][1])}`;
+  for (let i = 0; i < n; i++) {
+    const p0 = pts[(i - 1 + n) % n];
+    const p1 = pts[i];
+    const p2 = pts[(i + 1) % n];
+    const p3 = pts[(i + 2) % n];
+    const c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = p1[1] + (p2[1] - p0[1]) / 6;
+    const c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = p2[1] - (p3[1] - p1[1]) / 6;
+    d += `C${r(c1x)},${r(c1y)} ${r(c2x)},${r(c2y)} ${r(p2[0])},${r(p2[1])}`;
+  }
+  return d + "Z";
+}
+
 let totalIn = 0, totalOut = 0;
 const out = map.locations.map((loc) => {
   const subs = parsePath(loc.path);
@@ -79,15 +104,14 @@ const out = map.locations.map((loc) => {
   // emaranhado de linhas no mapa. Para um mapa de calor, a massa principal basta.
   const areas = subs.map(bboxArea);
   const maxIdx = areas.indexOf(Math.max(...areas));
-  const kept = [{ pts: rdp(subs[maxIdx], TOL) }].filter((s) => s.pts.length >= 3);
-  totalOut += kept.reduce((s, k) => s + k.pts.length, 0);
-  const dStr = kept
-    .map((k) => "M" + k.pts.map(([x, y]) => `${r(x)},${r(y)}`).join("L") + "Z")
-    .join("");
+  const pts = rdp(subs[maxIdx], TOL);
+  totalOut += pts.length;
+  // Suaviza o contorno (curvas) em vez de polilinha angular.
+  const dStr = smoothClosed(pts) ?? ("M" + pts.map(([x, y]) => `${r(x)},${r(y)}`).join("L") + "Z");
   return { uf: loc.id.toUpperCase(), nome: loc.name, path: dStr };
 });
 
-const header = `// GERADO por scripts/gen-uf-paths.mjs , NÃO editar à mão.\n// Geometria simplificada (RDP tol=${TOL}) do mapa do Brasil. ${totalIn} -> ${totalOut} pontos.\n`;
+const header = `// GERADO por scripts/gen-uf-paths.mjs , NÃO editar à mão.\n// Contorno SIMPLIFICADO (RDP tol=${TOL}) e SUAVIZADO (Catmull-Rom) do mapa do Brasil. ${totalIn} -> ${totalOut} pontos.\n`;
 const body =
   `export const BRAZIL_VIEWBOX = ${JSON.stringify(map.viewBox)} as const;\n\n` +
   `export interface UfPathGen { uf: string; nome: string; path: string; }\n\n` +
