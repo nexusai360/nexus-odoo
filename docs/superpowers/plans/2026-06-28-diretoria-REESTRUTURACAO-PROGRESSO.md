@@ -56,6 +56,25 @@ pedidos-pendentes-table.tsx (substituídos pelos *-screen.tsx).
 ## STATUS: as 5 áreas da Diretoria estão reconstruídas/elevadas e validadas.
 Nada mergeado (regra F6/cliente). Branch feat/menu-diretoria pushada.
 
+## Feedback do cliente (2026-06-29) , FASE A feita, FASE B especificada
+**FASE A , ajustes de qualidade (commit e8d084a0, VALIDADO por screenshot):**
+- KPIs abreviados (R$ X,Y mi / R$ N mil) com valor cheio no hover , resolve o
+  estouro na Visão geral. Módulo `kit/format.ts`. Aplicado em Visão geral e Pedidos.
+- Pílulas de período enxutas: Hoje / Esta semana / Este mês / Este ano / Tudo /
+  Personalizado (removidos ano anterior e últimos 7/30/90).
+- Mapa do Brasil maior; tooltip e ranking com "% do total" (não "% do líder");
+  hover no mapa realça o estado no ranking lateral.
+- Sync automático: `/api/diretoria/freshness` + FreshnessBadge dá soft-refresh
+  quando o ciclo nativo grava timestamp novo (sem refresh manual).
+
+**FASE B , construtor modular (SPEC: 2026-06-29-diretoria-construtor-modular-SPEC.md):**
+Decisões do cliente: provar em Estoque & Compras primeiro; layout duplo (oficial
+global + pessoal). A infra do builder JÁ existe (schema DiretoriaRelatorio/Bloco,
+catalogo.ts com travas, loaders/layout-repo/gating, grid-relatorio/render-componente)
+, REAPROVEITAR. Onda 1: catálogo A-*, grid 4×4 arrastável (react-grid-layout),
+modo de edição com paleta, persistência dupla, filtros globais. É grande , execução
+dedicada. Próximo passo: auditar a infra do builder e executar a Onda 1.
+
 ### Pendências/melhorias (próxima onda, opcional, dependem de feedback)
 - A7 drill-in da compra com itens da OC: NÃO viável hoje (não existe
   FatoCompraItem no schema; só FatoCompra cabeçalho). Exigiria ingestão de itens.
