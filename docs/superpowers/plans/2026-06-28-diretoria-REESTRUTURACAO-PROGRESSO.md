@@ -88,3 +88,28 @@ dedicada. Próximo passo: auditar a infra do builder e executar a Onda 1.
   país; revisar tamanho/choropleth (reclamação do cliente). Fazer na aba Vendas.
 - A7 drill-in (itens da OC + 10 KPIs): a query `queryComprasAtivas` não traz
   itens nem vrPago por OC; enriquecer quando for fazer o detalhe da compra.
+
+## Construtor modular , ONDA 1 FEITA E VALIDADA (commits dfdb09cc, 6b6f1f26, 72e29663)
+Rota `/diretoria/relatorios` = construtor de Estoque & Compras:
+- Componentes IDENTIFICADOS no catálogo (A-01,A-02,A-03,A-04,A-05,A-06,A-07,A-08,
+  A-09,K-01), com badge do id + nome + selo de fonte.
+- Grid de OITAVOS (8x8) via react-grid-layout: modo view (estático) e modo
+  edição (mãozinha p/ arrastar, redimensionar pelas bordas com travas por tipo,
+  paleta p/ adicionar, X p/ remover).
+- Salvar OFICIAL (admin/super_admin) ou PESSOAL; "Restaurar oficial" apaga o
+  pessoal. Persistência via DiretoriaRelatorio (isPadrao/donoUserId) + x,y no
+  configJson (sem migration). Cascata pessoal>oficial>padrão-em-código.
+- Renders BI de qualidade (KpiButton/DonutChart/DataTable) , sem barras chapadas.
+- E2E validado: salvar+carregar preservam meio-passo (5 de 8); travas clampam;
+  restaurar cai p/ oficial. tsc + 21 testes do builder verdes. Screenshot view+edição.
+
+### Onda 2 (próxima, não feita)
+- Integrar o construtor às telas com ABAS (cada aba = tela montável) e adicionar
+  submenu/entrada no menu (hoje só via URL /diretoria/relatorios).
+- Espalhar catálogo p/ Vendas (C-*), Pedidos (B-*), Visão (V/G-*), Agenda.
+- Filtros globais (período + UF/local) publicados às pílulas → componentes que
+  consomem re-renderizam; filtro por componente interno.
+- RBAC fino (capabilities diretoria.layout.edit / .global) em capabilities.ts
+  (hoje: editar pessoal = tem acesso; oficial = admin/super_admin por role).
+- Responsivo mobile (breakpoints do react-grid-layout) e renomear campos de
+  schema p/ oitavos (larguraOitavos/alturaOitavos) via migration cirúrgica.
