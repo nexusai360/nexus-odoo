@@ -16,6 +16,29 @@ export const pct1 = (v: number) =>
 /** Placeholder de vazio (nunca vírgula solta). */
 export const DASH = "-";
 
+/** UF legível: troca código vazio/desconhecido ("??") por "Sem UF". */
+export function rotuloUf(uf: string | null | undefined): string {
+  const u = (uf ?? "").trim();
+  return !u || u === "??" ? "Sem UF" : u;
+}
+
+const UFS_VALIDAS = new Set([
+  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG",
+  "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO",
+]);
+/** UF com geografia no mapa (exclui "??"/nula, que não tem posição). */
+export function ufValida(uf: string | null | undefined): boolean {
+  return UFS_VALIDAS.has((uf ?? "").trim().toUpperCase());
+}
+
+/** Razão social legível: remove o CNPJ (XX.XXX.XXX/XXXX-XX) e separadores soltos. */
+export function nomeLimpo(raw: string | null | undefined, maxLen = 34): string {
+  let s = (raw ?? "").replace(/\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/g, "").trim();
+  s = s.replace(/^[-–\s]+|[-–\s]+$/g, "").trim(); // separadores nas pontas
+  if (!s) s = (raw ?? "").trim();
+  return s.length > maxLen ? `${s.slice(0, maxLen - 1)}…` : s;
+}
+
 /**
  * Moeda compacta para cards estreitos: >= 1 mi vira "R$ X,Y mi"; >= 10 mil vira
  * "R$ N mil"; abaixo disso, moeda cheia. O valor cheio deve ir no title.

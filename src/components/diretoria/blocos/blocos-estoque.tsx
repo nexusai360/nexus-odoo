@@ -20,7 +20,7 @@ import { DonutWithCenter } from "@/components/charts/interactive/donut-with-cent
 import { InteractiveBarChart } from "@/components/charts/interactive/bar-chart";
 import { getColorByIndex } from "@/components/charts/colors";
 import type { PeriodKey } from "@/lib/datetime-core";
-import { brl, brlCompacto, num, pct1, DASH } from "@/components/diretoria/kit/format";
+import { brl, brlCompacto, num, pct1, DASH, nomeLimpo } from "@/components/diretoria/kit/format";
 import type { EstoqueData } from "@/components/diretoria/estoque/estoque-screen";
 
 function KpisEstoque({ d }: { d: EstoqueData }) {
@@ -109,19 +109,12 @@ function BarrasMarca({ d }: { d: EstoqueData }) {
   );
 }
 
-/** Razão social legível: remove o CNPJ prefixo ("12.345.../0001-00 - X") e trunca. */
-function nomeFornecedor(raw: string): string {
-  const aposCnpj = raw.includes(" - ") ? raw.split(" - ").slice(1).join(" - ") : raw;
-  const limpo = aposCnpj.trim() || raw.trim();
-  return limpo.length > 32 ? `${limpo.slice(0, 31)}…` : limpo;
-}
-
 // K-01 , Compras por fornecedor (NF entrada): LISTA DE CARDS RANQUEADA. Razões
 // sociais longas não cabem em barras; o ranking de cards mostra posição + nome +
-// valor + proporção, com ordenação (pedido do cliente).
+// valor + proporção, com ordenação (pedido do cliente). `nomeLimpo` remove o CNPJ.
 function RankingComprasFornecedor({ d }: { d: EstoqueData }) {
   const itens = d.comprasFornecedor.linhas.map((c) => ({
-    nome: nomeFornecedor(c.fornecedor),
+    nome: nomeLimpo(c.fornecedor),
     valor: c.valorTotal,
     sub: `${num.format(c.notas)} ${c.notas === 1 ? "nota" : "notas"}`,
   }));

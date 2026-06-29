@@ -14,7 +14,7 @@ import { RankingCards } from "@/components/diretoria/charts/ranking-cards";
 import { DistribuicaoDinamica } from "@/components/diretoria/charts/distribuicao-dinamica";
 import { BrazilMap } from "@/components/diretoria/brazil-map/brazil-map";
 import { getColorByIndex } from "@/components/charts/colors";
-import { brl, brlCompacto, num, pct1 } from "@/components/diretoria/kit/format";
+import { brl, brlCompacto, num, pct1, rotuloUf, ufValida } from "@/components/diretoria/kit/format";
 import type { VendasData } from "@/components/diretoria/vendas/vendas-screen";
 
 function topComOutros(linhas: { chave: string; valorTotal: number }[], max = 7) {
@@ -39,7 +39,9 @@ function KpisVendas({ d }: { d: VendasData }) {
 
 // C-02 , Vendas por estado: MAPA do Brasil coroplético.
 function MapaVendas({ d }: { d: VendasData }) {
-  return <BrazilMap data={d.porUf.linhas.map((l) => ({ uf: l.uf, valor: l.valorTotal }))} metric="Faturamento" formatValor={(v) => brl.format(v)} />;
+  // Só UFs com geografia (exclui "Sem UF", que não tem posição no mapa).
+  const data = d.porUf.linhas.filter((l) => ufValida(l.uf)).map((l) => ({ uf: l.uf, valor: l.valorTotal }));
+  return <BrazilMap data={data} metric="Faturamento" formatValor={(v) => brl.format(v)} />;
 }
 
 // C-03 , Vendas por marca: BARRAS horizontais.
@@ -61,7 +63,7 @@ function BarrasMarca({ d }: { d: VendasData }) {
 
 // C-04 , Ranking de estados por faturamento: LISTA DE CARDS.
 function RankingEstados({ d }: { d: VendasData }) {
-  const itens = d.porUf.linhas.map((l) => ({ nome: l.uf, valor: l.valorTotal, sub: `${num.format(l.quantidade)} ${l.quantidade === 1 ? "venda" : "vendas"}` }));
+  const itens = d.porUf.linhas.map((l) => ({ nome: rotuloUf(l.uf), valor: l.valorTotal, sub: `${num.format(l.quantidade)} ${l.quantidade === 1 ? "venda" : "vendas"}` }));
   return <RankingCards itens={itens} max={15} rotuloValor="faturamento" />;
 }
 
@@ -106,7 +108,7 @@ function DistribuicaoVendas({ d }: { d: VendasData }) {
     <DistribuicaoDinamica
       dimensoes={[
         { chave: "marca", rotulo: "Marca", linhas: d.porMarca.linhas.map((l) => ({ chave: l.marca, valorTotal: l.valorTotal })) },
-        { chave: "uf", rotulo: "Estado", linhas: d.porUf.linhas.map((l) => ({ chave: l.uf, valorTotal: l.valorTotal })) },
+        { chave: "uf", rotulo: "Estado", linhas: d.porUf.linhas.map((l) => ({ chave: rotuloUf(l.uf), valorTotal: l.valorTotal })) },
         { chave: "pagamento", rotulo: "Pagamento", linhas: d.formasPagamento.linhas.map((l) => ({ chave: l.formaPagamento, valorTotal: l.valorTotal })) },
       ]}
     />

@@ -11,7 +11,7 @@ import { KpiButton } from "@/components/diretoria/kit/kpi-button";
 import { RankingCards } from "@/components/diretoria/charts/ranking-cards";
 import { BrazilMap } from "@/components/diretoria/brazil-map/brazil-map";
 import { DataTable, type ColumnDef } from "@/components/charts/data-table";
-import { brl, brlCompacto, num, DASH } from "@/components/diretoria/kit/format";
+import { brl, brlCompacto, num, DASH, rotuloUf, ufValida, nomeLimpo } from "@/components/diretoria/kit/format";
 import type { PedidosData } from "@/components/diretoria/pedidos/pedidos-screen";
 
 // B-01 , Indicadores de demandas (KPIs).
@@ -29,12 +29,13 @@ function KpisDemandas({ d }: { d: PedidosData }) {
 
 // B-02 / B-03 , Mapa de demandas por estado.
 function MapaDemandas({ d }: { d: PedidosData }) {
-  return <BrazilMap data={d.porUf.linhas.map((l) => ({ uf: l.uf, valor: l.valorTotal }))} metric="Demandas a entregar" formatValor={(v) => brl.format(v)} />;
+  const data = d.porUf.linhas.filter((l) => ufValida(l.uf)).map((l) => ({ uf: l.uf, valor: l.valorTotal }));
+  return <BrazilMap data={data} metric="Demandas a entregar" formatValor={(v) => brl.format(v)} />;
 }
 
 // B-05 , Ranking de estados por demanda: LISTA DE CARDS.
 function RankingDemandasUf({ d }: { d: PedidosData }) {
-  const itens = d.porUf.linhas.map((l) => ({ nome: l.uf, valor: l.valorTotal, sub: `${num.format(l.quantidade)} ${l.quantidade === 1 ? "demanda" : "demandas"}` }));
+  const itens = d.porUf.linhas.map((l) => ({ nome: rotuloUf(l.uf), valor: l.valorTotal, sub: `${num.format(l.quantidade)} ${l.quantidade === 1 ? "demanda" : "demandas"}` }));
   return <RankingCards itens={itens} max={15} rotuloValor="valor a entregar" />;
 }
 
@@ -42,8 +43,8 @@ function RankingDemandasUf({ d }: { d: PedidosData }) {
 function Pendentes({ d }: { d: PedidosData }) {
   const linhas = d.pendentes.linhas.map((l) => ({
     numero: l.numero ?? DASH,
-    cliente: l.cliente ?? DASH,
-    uf: l.uf,
+    cliente: nomeLimpo(l.cliente) || DASH,
+    uf: rotuloUf(l.uf),
     etapa: l.etapa ?? DASH,
     situacao: l.atrasado ? "Atrasado" : "No prazo",
     previsao: l.dataPrevista ?? "Sem previsão",
