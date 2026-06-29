@@ -75,12 +75,15 @@ export async function diretoriaNavFor(
   user: AuthUser,
 ): Promise<{ label: string; href: string }[]> {
   const caps = await userCapabilities(user);
-  return DIRETORIA_AREAS.filter((a) => caps.has(`diretoria.${a}.view`)).map(
+  const itens = DIRETORIA_AREAS.filter((a) => caps.has(`diretoria.${a}.view`)).map(
     (a) => ({ label: AREA_LABEL[a], href: AREA_HREF[a] }),
   );
-  // NOTA: a rota /diretoria/relatorios (construtor) existe mas saiu do menu , a
-  // reconstrução foca nas telas reais (Estoque & Compras etc.) feitas com
-  // qualidade BI antes de reabilitar o construtor.
+  // Construtor modular (montável): aparece para quem vê Estoque & Compras, logo
+  // após a tela BI clássica. É a versão por componentes arrastáveis da mesma área.
+  if (caps.has("diretoria.estoque.view")) {
+    itens.push({ label: "Estoque montável", href: "/diretoria/relatorios" });
+  }
+  return itens;
 }
 
 /**
