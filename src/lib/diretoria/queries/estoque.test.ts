@@ -5,6 +5,7 @@ import {
   queryComprasAtivas,
   queryCatalogoEstoque,
   queryResumoCompras,
+  queryIndicadoresAvancadosEstoque,
 } from "./estoque";
 
 describe("queryIndicadoresEstoque (A4)", () => {
@@ -104,6 +105,43 @@ describe("queryCatalogoEstoque (A3)", () => {
     expect(r.linhas[0].quantidade).toBe(3);
     expect(r.linhas[0].valorTotal).toBe(150);
     expect(r.linhas[0].locais).toBe(0);
+  });
+});
+
+describe("queryIndicadoresAvancadosEstoque (A4)", () => {
+  const hoje = new Date("2026-06-28T00:00:00Z");
+  it("calcula idade média, cobertura e giro", async () => {
+    const prisma = {
+      fatoEstoqueSaldo: { findMany: jest.fn().mockResolvedValue([
+        { quantidade: 300, vrSaldo: 3000, produtoId: 1 },
+        { quantidade: 300, vrSaldo: 1000, produtoId: 2 },
+      ]) },
+      fatoNotaFiscalItem: { findMany: jest.fn().mockResolvedValue([
+        { quantidade: 30 }, { quantidade: 30 },
+      ]) }, // 60 em 30 dias = 2/dia
+      fatoSerial: { findMany: jest.fn().mockResolvedValue([
+        { dataCompra: new Date("2026-06-18T00:00:00Z") }, // 10 dias
+        { dataCompra: new Date("2026-06-08T00:00:00Z") }, // 20 dias
+      ]) },
+    } as unknown as Parameters<typeof queryIndicadoresAvancadosEstoque>[0];
+    const r = await queryIndicadoresAvancadosEstoque(prisma, hoje);
+    expect(r.idadeMediaDias).toBe(15);
+    expect(r.coberturaDias).toBe(300); // 600 estoque / 2 por dia
+    expect(r.giroAnual).toBe(1.2); // 60*12/600
+    expect(r.valorMedioProduto).toBe(2000); // 4000/2
+  });
+
+  it("cobertura/giro null quando não há demanda/estoque", async () => {
+    const prisma = {
+      fatoEstoqueSaldo: { findMany: jest.fn().mockResolvedValue([]) },
+      fatoNotaFiscalItem: { findMany: jest.fn().mockResolvedValue([]) },
+      fatoSerial: { findMany: jest.fn().mockResolvedValue([]) },
+    } as unknown as Parameters<typeof queryIndicadoresAvancadosEstoque>[0];
+    const r = await queryIndicadoresAvancadosEstoque(prisma, hoje);
+    expect(r.idadeMediaDias).toBeNull();
+    expect(r.coberturaDias).toBeNull();
+    expect(r.giroAnual).toBeNull();
+    expect(r.valorMedioProduto).toBe(0);
   });
 });
 

@@ -324,6 +324,66 @@ export async function queryResumoCompras(
   };
 }
 
+export interface IndicadoresAvancados {
+  idadeMediaDias: number | null;
+  coberturaDias: number | null;
+  giroAnual: number | null;
+  valorMedioProduto: number;
+}
+
+/**
+ * A4 , Indicadores avançados de estoque (BI). Idade média via fato_serial
+ * (seriais em estoque, dataCompra→hoje); cobertura = estoque ÷ demanda diária dos
+ * últimos 30 dias; giro anualizado = (vendido 30d × 12) ÷ estoque; valor médio por
+ * produto. `hoje` injetado. Métricas de demanda dependem de NF de saída do período.
+ */
+export async function queryIndicadoresAvancadosEstoque(
+  prisma: PrismaClient,
+  hoje: Date,
+): Promise<IndicadoresAvancados> {
+  const MS = 86_400_000;
+  const desde30 = new Date(hoje.getTime() - 30 * MS);
+
+  const [saldos, vendidos, seriais] = await Promise.all([
+    prisma.fatoEstoqueSaldo.findMany({ select: { quantidade: true, vrSaldo: true, produtoId: true } }),
+    prisma.fatoNotaFiscalItem.findMany({
+      where: { entradaSaida: "1", dataEmissao: { gte: desde30, lte: hoje } },
+      select: { quantidade: true },
+    }),
+    prisma.fatoSerial.findMany({
+      where: { dataSaida: null, dataCompra: { not: null } },
+      select: { dataCompra: true },
+    }),
+  ]);
+
+  let estoqueQtd = 0;
+  let valorEstoque = 0;
+  const produtos = new Set<number>();
+  for (const s of saldos) {
+    estoqueQtd += Number(s.quantidade ?? 0);
+    valorEstoque += Number(s.vrSaldo ?? 0);
+    if (s.produtoId != null) produtos.add(s.produtoId);
+  }
+  const vendidoQtd = vendidos.reduce((acc, v) => acc + Number(v.quantidade ?? 0), 0);
+  const demandaDiaria = vendidoQtd / 30;
+
+  let idadeMediaDias: number | null = null;
+  if (seriais.length) {
+    const soma = seriais.reduce(
+      (acc, s) => acc + Math.floor((hoje.getTime() - (s.dataCompra as Date).getTime()) / MS),
+      0,
+    );
+    idadeMediaDias = Math.round(soma / seriais.length);
+  }
+
+  return {
+    idadeMediaDias,
+    coberturaDias: demandaDiaria > 0 ? Math.round(estoqueQtd / demandaDiaria) : null,
+    giroAnual: estoqueQtd > 0 ? Number(((vendidoQtd * 12) / estoqueQtd).toFixed(2)) : null,
+    valorMedioProduto: produtos.size > 0 ? valorEstoque / produtos.size : 0,
+  };
+}
+
 export interface CompraAtivaLinha {
   numero: string | null;
   fornecedor: string | null;

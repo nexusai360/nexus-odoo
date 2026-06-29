@@ -1,4 +1,4 @@
-import { Boxes, Package, Layers, Warehouse, ShoppingCart, Wallet, AlertTriangle } from "lucide-react";
+import { Boxes, Package, Layers, Warehouse, ShoppingCart, Wallet, AlertTriangle, Clock, Timer, RefreshCw, Coins } from "lucide-react";
 
 import { PageShell } from "@/components/layout/page-shell";
 import { PageHeader } from "@/components/page-header";
@@ -13,6 +13,7 @@ import {
   queryComprasPorFornecedor,
   queryComprasAtivas,
   queryResumoCompras,
+  queryIndicadoresAvancadosEstoque,
   querySeriais,
 } from "@/lib/diretoria/queries/estoque";
 import type { StatusPrazo } from "@/lib/diretoria/cores";
@@ -94,7 +95,7 @@ function TabelaValor({
 export default async function DiretoriaEstoquePage() {
   const user = await requireDiretoriaArea("estoque");
 
-  const [indicadores, porLocal, porFamilia, porMarca, catalogo, compras, comprasAtivas, resumoCompras, seriais] =
+  const [indicadores, porLocal, porFamilia, porMarca, catalogo, compras, comprasAtivas, resumoCompras, avancados, seriais] =
     await Promise.all([
       queryIndicadoresEstoque(prisma),
       queryEstoquePorLocal(prisma),
@@ -104,6 +105,7 @@ export default async function DiretoriaEstoquePage() {
       queryComprasPorFornecedor(prisma, {}),
       queryComprasAtivas(prisma, new Date(), 50),
       queryResumoCompras(prisma, new Date()),
+      queryIndicadoresAvancadosEstoque(prisma, new Date()),
       querySeriais(prisma, new Date(), 50),
     ]);
 
@@ -147,6 +149,26 @@ export default async function DiretoriaEstoquePage() {
               <div className="mt-3 font-[var(--font-space-grotesk)] text-2xl font-semibold tabular-nums">
                 {k.valor}
               </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Indicadores avançados (A4) */}
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {[
+            { label: "Idade média", valor: avancados.idadeMediaDias != null ? `${num.format(avancados.idadeMediaDias)} dias` : "-", icon: Clock },
+            { label: "Cobertura", valor: avancados.coberturaDias != null ? `${num.format(avancados.coberturaDias)} dias` : "-", icon: Timer },
+            { label: "Giro anual", valor: avancados.giroAnual != null ? `${avancados.giroAnual}x` : "-", icon: RefreshCw },
+            { label: "Valor médio/produto", valor: brl.format(avancados.valorMedioProduto), icon: Coins },
+          ].map((k) => (
+            <div key={k.label} className="rounded-2xl border border-border/60 bg-card/60 p-5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{k.label}</span>
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-600/10">
+                  <k.icon className="h-4 w-4 text-violet-500" />
+                </span>
+              </div>
+              <div className="mt-3 font-[var(--font-space-grotesk)] text-2xl font-semibold tabular-nums">{k.valor}</div>
             </div>
           ))}
         </div>
