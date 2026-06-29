@@ -42,6 +42,11 @@ interface DataTableProps<T> {
    * Default: "relatorio"
    */
   exportFilename?: string;
+  /**
+   * Inicia em modo compacto (trunca colunas de texto longas, revelando as
+   * colunas numéricas à direita sem scroll). Default: false.
+   */
+  compactoInicial?: boolean;
 }
 
 /**
@@ -114,6 +119,7 @@ export function DataTable<T extends Record<string, unknown>>({
   searchable = false,
   expandDetail,
   exportFilename = "relatorio",
+  compactoInicial = false,
 }: DataTableProps<T>) {
   // --- busca (debounced) ---
   const [query, setQuery] = useState("");
@@ -145,7 +151,7 @@ export function DataTable<T extends Record<string, unknown>>({
   }
 
   // --- modo compacto ---
-  const [compacto, setCompacto] = useState(false);
+  const [compacto, setCompacto] = useState(compactoInicial);
 
   // --- linhas expandidas ---
   const [expandedKeys, setExpandedKeys] = useState<Set<string | number>>(new Set());

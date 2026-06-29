@@ -4,6 +4,7 @@
 // mostra tooltip confinado, legenda lateral com cor/rótulo/valor/%, e o total no
 // centro. Sem libs (SVG puro). Respeita prefers-reduced-motion.
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 
 export interface DonutDatum {
   label: string;
@@ -35,12 +36,26 @@ export function DonutChart({
   data,
   formatValor = (v) => brl.format(v),
   maxFatias = 7,
+  onSelect,
+  selecionado = null,
 }: {
   data: DonutDatum[];
   formatValor?: (v: number) => string;
   maxFatias?: number;
+  /**
+   * Quando presente, fatias e itens da legenda viram clicáveis (filtro). A fatia
+   * agrupada "Outros" não dispara seleção. Recebe o rótulo original.
+   */
+  onSelect?: (label: string) => void;
+  /** Rótulo atualmente selecionado (realce). */
+  selecionado?: string | null;
 }) {
   const [hover, setHover] = useState<number | null>(null);
+  const clicavel = typeof onSelect === "function";
+  const handleSelect = (label: string) => {
+    if (!clicavel || label === "Outros") return;
+    onSelect?.(label === selecionado ? "" : label);
+  };
 
   if (!data.length) {
     return <p className="py-6 text-center text-sm text-muted-foreground">Sem dados.</p>;
@@ -72,17 +87,24 @@ export function DonutChart({
     <div className="flex h-full flex-col items-center gap-4 sm:flex-row sm:items-center">
       <div className="relative shrink-0">
         <svg viewBox="0 0 180 180" className="h-[180px] w-[180px]">
-          {segs.map((s) => (
-            <path
-              key={s.i}
-              d={arco(cx, cy, r, s.a0, s.a1)}
-              fill={s.cor}
-              opacity={hover == null || hover === s.i ? 1 : 0.35}
-              style={{ transition: "opacity .15s" }}
-              onMouseEnter={() => setHover(s.i)}
-              onMouseLeave={() => setHover(null)}
-            />
-          ))}
+          {segs.map((s) => {
+            const dim =
+              hover != null
+                ? hover !== s.i
+                : selecionado != null && selecionado !== "" && s.label !== selecionado;
+            return (
+              <path
+                key={s.i}
+                d={arco(cx, cy, r, s.a0, s.a1)}
+                fill={s.cor}
+                opacity={dim ? 0.32 : 1}
+                style={{ transition: "opacity .15s", cursor: clicavel && s.label !== "Outros" ? "pointer" : "default" }}
+                onMouseEnter={() => setHover(s.i)}
+                onMouseLeave={() => setHover(null)}
+                onClick={() => handleSelect(s.label)}
+              />
+            );
+          })}
           {/* furo central */}
           <circle cx={cx} cy={cy} r={rInner} className="fill-card" />
           <text x={cx} y={cy - 6} textAnchor="middle" className="fill-muted-foreground text-[9px]">
@@ -94,21 +116,43 @@ export function DonutChart({
         </svg>
       </div>
       <ul className="flex min-w-0 flex-1 flex-col gap-1.5 self-stretch overflow-auto text-sm">
-        {segs.map((s) => (
-          <li
-            key={s.i}
-            className="flex items-center justify-between gap-2 rounded-md px-1.5 py-0.5"
-            style={{ background: hover === s.i ? "color-mix(in srgb, var(--muted) 60%, transparent)" : "transparent" }}
-            onMouseEnter={() => setHover(s.i)}
-            onMouseLeave={() => setHover(null)}
-          >
-            <span className="flex min-w-0 items-center gap-2">
-              <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: s.cor }} />
-              <span className="truncate">{s.label}</span>
-            </span>
-            <span className="shrink-0 tabular-nums text-muted-foreground">{formatValor(s.valor)}</span>
-          </li>
-        ))}
+        {segs.map((s) => {
+          const sel = selecionado != null && selecionado !== "" && s.label === selecionado;
+          const podeClicar = clicavel && s.label !== "Outros";
+          return (
+            <li
+              key={s.i}
+              role={podeClicar ? "button" : undefined}
+              tabIndex={podeClicar ? 0 : undefined}
+              className="flex items-center justify-between gap-2 rounded-md px-1.5 py-1 transition-colors"
+              style={{
+                background: sel
+                  ? "color-mix(in srgb, var(--primary) 18%, transparent)"
+                  : hover === s.i
+                    ? "color-mix(in srgb, var(--muted) 60%, transparent)"
+                    : "transparent",
+                cursor: podeClicar ? "pointer" : "default",
+              }}
+              onMouseEnter={() => setHover(s.i)}
+              onMouseLeave={() => setHover(null)}
+              onClick={() => handleSelect(s.label)}
+              onKeyDown={(e) => {
+                if (podeClicar && (e.key === "Enter" || e.key === " ")) {
+                  e.preventDefault();
+                  handleSelect(s.label);
+                }
+              }}
+            >
+              <span className="flex min-w-0 items-center gap-2">
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: s.cor }} />
+                <span className={cn("truncate", sel && "font-semibold text-foreground")}>{s.label}</span>
+              </span>
+              <span className="shrink-0 tabular-nums text-muted-foreground">
+                {formatValor(s.valor)} · {(s.frac * 100).toFixed(1)}%
+              </span>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
