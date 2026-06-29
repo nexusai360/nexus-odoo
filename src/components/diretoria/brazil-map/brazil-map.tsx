@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { useReducedMotion } from "framer-motion";
 
 import { cn } from "@/lib/utils";
 import { BRAZIL_VIEWBOX, UF_PATHS } from "./uf-data";
@@ -126,8 +126,11 @@ export function BrazilMap({
       ? "selecionado"
       : "lider";
   const focoDatum = focoUf ? porUf.get(focoUf) : null;
-  const focoPath = focoUf ? UF_PATHS.find((p) => p.uf === focoUf) : null;
   const focoShare = focoDatum && total > 0 ? (focoDatum.valor / total) * 100 : 0;
+
+  // Estado "levantado" (efeito 3D) , SÓ em interação real (hover ou clique),
+  // nunca o líder por padrão. Renderizado por último para ficar SOBRE os vizinhos.
+  const liftUf = hover ?? selectedUf;
 
   const hoverDatum = hover ? porUf.get(hover) : null;
   const hoverNome = hover ? nomeDe(hover) : null;
@@ -158,65 +161,71 @@ export function BrazilMap({
                 .join(", ")}.`}
               className="mx-auto block h-[clamp(340px,56vh,580px)] w-auto max-w-full overflow-visible"
             >
-              {UF_PATHS.map((p, i) => {
-                const d = porUf.get(p.uf);
-                const cor = d ? corPorIntensidade(intensidadeDe(d.valor)) : COR_SEM_DADO;
-                const isSel = selected.includes(p.uf);
-                return (
-                  <motion.path
-                    key={p.uf}
-                    d={p.path}
-                    fill={cor}
-                    stroke={isSel ? "var(--foreground)" : "var(--border)"}
-                    strokeWidth={isSel ? 1.2 : 0.5}
-                    strokeLinejoin="round"
-                    tabIndex={0}
-                    role="button"
-                    aria-label={`${p.nome}${d ? `, ${metric} ${formatValor(d.valor)}` : ", sem dados"}${isSel ? " (selecionado)" : ""}`}
-                    aria-pressed={isSel}
-                    initial={reduce ? false : { opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={
-                      reduce ? { duration: 0 } : { delay: i * 0.012, duration: 0.22, ease: "easeOut" }
-                    }
-                    style={{ cursor: "pointer", outline: "none" }}
-                    onMouseEnter={() => setHover(p.uf)}
-                    onMouseMove={trackMouse}
-                    onMouseLeave={() => setHover((h) => (h === p.uf ? null : h))}
-                    onFocus={() => setHover(p.uf)}
-                    onBlur={() => setHover((h) => (h === p.uf ? null : h))}
-                    onClick={() => toggle(p.uf)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        toggle(p.uf);
-                      }
-                    }}
-                  />
-                );
-              })}
-
-              {/* Overlay do estado em foco: sobe (scale) com contorno claro e
-                  sombra , o "destaque pra cima" sincronizado com o tooltip. */}
-              {focoPath && focoDatum ? (
-                <motion.path
-                  key={`foco-${focoUf}`}
-                  d={focoPath.path}
-                  fill={corPorIntensidade(Math.max(0.55, intensidadeDe(focoDatum.valor)))}
-                  stroke="var(--foreground)"
-                  strokeWidth={1.6}
-                  strokeLinejoin="round"
-                  pointerEvents="none"
-                  initial={false}
-                  animate={{ scale: reduce ? 1 : 1.07 }}
-                  transition={reduce ? { duration: 0 } : { type: "spring", stiffness: 280, damping: 20 }}
-                  style={{
-                    transformBox: "fill-box",
-                    transformOrigin: "center",
-                    filter: "drop-shadow(0 3px 8px hsl(262 80% 50% / 0.5))",
-                  }}
-                />
-              ) : null}
+              {(() => {
+                // Renderiza o estado levantado por ÚLTIMO (fica sobre os vizinhos),
+                // sem duplicar o path , é o PRÓPRIO estado que ganha o efeito 3D.
+                const ordem = [...UF_PATHS];
+                if (liftUf) {
+                  const idx = ordem.findIndex((p) => p.uf === liftUf);
+                  if (idx >= 0) ordem.push(ordem.splice(idx, 1)[0]);
+                }
+                return ordem.map((p) => {
+                  const d = porUf.get(p.uf);
+                  const base = d ? corPorIntensidade(intensidadeDe(d.valor)) : COR_SEM_DADO;
+                  const isSel = selected.includes(p.uf);
+                  const isLift = p.uf === liftUf;
+                  const algumLevantado = liftUf != null;
+                  // Cor mais viva quando levantado; demais esmaecem para dar destaque.
+                  const fill = isLift && d
+                    ? corPorIntensidade(Math.max(0.62, intensidadeDe(d.valor) + 0.12))
+                    : base;
+                  return (
+                    <path
+                      key={p.uf}
+                      d={p.path}
+                      fill={fill}
+                      stroke={isLift || isSel ? "var(--foreground)" : "var(--border)"}
+                      strokeWidth={isLift ? 1.5 : isSel ? 1.1 : 0.5}
+                      strokeLinejoin="round"
+                      tabIndex={0}
+                      role="button"
+                      aria-label={`${p.nome}${d ? `, ${metric} ${formatValor(d.valor)}` : ", sem dados"}${isSel ? " (selecionado)" : ""}`}
+                      aria-pressed={isSel}
+                      onMouseEnter={() => setHover(p.uf)}
+                      onMouseMove={trackMouse}
+                      onMouseLeave={() => setHover((h) => (h === p.uf ? null : h))}
+                      onFocus={() => setHover(p.uf)}
+                      onBlur={() => setHover((h) => (h === p.uf ? null : h))}
+                      onClick={() => toggle(p.uf)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          toggle(p.uf);
+                        }
+                      }}
+                      style={{
+                        cursor: "pointer",
+                        outline: "none",
+                        transformBox: "fill-box",
+                        transformOrigin: "center",
+                        // Esmaece quem NÃO está levantado, realçando o estado em foco.
+                        opacity: algumLevantado && !isLift ? 0.45 : 1,
+                        // "Lift" 3D: sobe + cresce a partir do próprio centro.
+                        transform: isLift && !reduce ? "translateY(-6px) scale(1.12)" : "none",
+                        // Sombra em camadas = profundidade real (contato + brilho violeta).
+                        filter: isLift
+                          ? "drop-shadow(0 1px 1px hsl(240 60% 4% / .55)) drop-shadow(0 10px 16px hsl(240 60% 4% / .45)) drop-shadow(0 0 18px hsl(262 90% 60% / .55))"
+                          : "none",
+                        willChange: isLift ? "transform, filter" : undefined,
+                        // Pop elástico (overshoot) na entrada; saída suave.
+                        transition: reduce
+                          ? "none"
+                          : "transform .34s cubic-bezier(.34,1.56,.64,1), filter .3s ease, opacity .3s ease, fill .3s ease",
+                      }}
+                    />
+                  );
+                });
+              })()}
             </svg>
 
             {/* Tooltip que segue o cursor e some fora do país */}
