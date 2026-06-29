@@ -25,11 +25,16 @@ Interação clicar-fatia-filtra-catálogo comprovada por screenshot.
 - GAP de dado honesto: `fato_serial` não tem custo/data/local/idade (0 de 8.699).
   A aba Seriais sinaliza e mostra só serial+modelo + agregação por modelo.
 
+### Vendas , FEITA E VALIDADA (commit afc54404)
+4 abas: Visão geral / Por estado / Por marca / Pagamentos. Barra de período (C1)
+preservada + UF-scoping. MAPA do Brasil coroplético com tooltip que SEGUE o
+cursor e some fora do país (BrazilMap refinado, era fixo no canto). Dado real
+(R$59,4M este mês). Honestidade: "Operações dos pedidos"/"Maior pedido" vêm de
+fato_pedido (misturam vendas/compras/transferências), rotulado; margem "estimada".
+
 ### Próximas áreas (a fazer, mesma régua)
-- Vendas (cap 06 perícia): C1-C10, mapa do Brasil (cliente AMOU tooltip que
-  segue o mouse e some fora do país , refinar BrazilMap: hoje tooltip é fixo no
-  canto, precisa seguir o cursor), pizza por estado/marca, comparativo de estados.
-- Pedidos & Demandas (cap 05): B1-B8, mapa por estado, drill-in.
+- Pedidos & Demandas (cap 05): B1-B8, mapa por estado, drill-in. queries em
+  src/lib/diretoria/queries/pedidos.ts.
 - Visão Geral executiva.
 - Agenda interativa (cap 02).
 - Polimento global (reduced-motion, responsivo, saneamento "-").
