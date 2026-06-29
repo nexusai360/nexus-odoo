@@ -20,10 +20,18 @@
 - FEITO: persistência POR ABA destravada , `salvarLayoutAction`/`restaurar` e
   `ConstrutorGrid.tela` agora aceitam `string` ("estoque:visao"); o guard usa o
   prefixo (área). Schema `DiretoriaRelatorio.tela` já é String.
-- FALTA (itens 1,4,5,6 abaixo): adaptar ConstrutorGrid p/ `editando` EXTERNO +
-  esconder botão "Editar tela" interno quando controlado; integrar nas *-screen
-  (botão "Editar layout" global + um grid por aba); tabela (filtro/paginação/drill);
-  donut com legenda lateral.
+- FEITO: `ConstrutorGrid` aceita `editando`/`onEditandoChange` EXTERNOS , quando
+  a tela controla, o botão "Editar tela" interno some e a barra só aparece em edição.
+  Pronto para uma tela com abas controlar vários grids com 1 botão "Editar layout".
+- FALTA (o que dá o VISÍVEL): plugar nas *-screen. Criar `EstoqueMontavel` (client)
+  com estado `editando` + botão "Editar layout" (gated) + `<Tabs>`; cada aba renderiza
+  `<ConstrutorGrid tela={"estoque:"+aba} data={data} layoutInicial={layoutsPorAba[aba]}
+  editando={editando} renderBloco={renderBlocoEstoque} comPeriodo={false} />`. A page
+  de estoque resolve `carregarLayout("estoque:"+aba)` p/ cada aba (PADRAO por aba) e
+  passa. Depois replicar Vendas/Pedidos. ENTÃO: tabela (filtro/paginação/drill) e
+  donut com legenda lateral (item 5 e 6). Componentes por aba (sugestão):
+  visao=[A-01,A-09,A-10,A-03,A-04]; estoque=[A-02,A-05]; distribuicao=[A-11,A-03,A-04];
+  seriais=[A-06]; compras=[A-07,A-10]; fornecedores=[A-08,K-01].
 
 ## A construir (continuação)
 
