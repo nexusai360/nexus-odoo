@@ -8,7 +8,7 @@
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import GridLayout, { WidthProvider, type Layout } from "react-grid-layout";
 import { GripVertical, X, Plus, Save, RotateCcw, Pencil, Check } from "lucide-react";
@@ -59,6 +59,12 @@ export function ConstrutorGrid({
   const [salvando, start] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
   const [filtros, setFiltros] = useState<FiltrosEstoque>(FILTROS_VAZIOS);
+  // O react-grid-layout calcula posições absolutas medindo a largura no client.
+  // No SSR não há medida, então o HTML do server diverge do client (hydration
+  // mismatch). Render do grid só após montar: server e 1º render client mostram
+  // o mesmo placeholder, eliminando o mismatch.
+  const [montado, setMontado] = useState(false);
+  useEffect(() => setMontado(true), []);
 
   // Opções dos dropdowns globais derivadas das linhas granulares.
   const opcoes = useMemo(() => opcoesEstoque(data.granular), [data.granular]);
@@ -260,6 +266,13 @@ export function ConstrutorGrid({
           background: color-mix(in srgb, var(--primary) 85%, transparent);
         }
       `}</style>
+      {!montado ? (
+        <div className="flex flex-col gap-3" aria-hidden>
+          {blocos.map((b) => (
+            <div key={b.componenteId} className="h-44 animate-pulse rounded-2xl border border-border/60 bg-card/40" />
+          ))}
+        </div>
+      ) : (
       <Grid
         className="diretoria-construtor"
         layout={layout}
@@ -300,12 +313,13 @@ export function ConstrutorGrid({
                     </div>
                   ) : null}
                 </header>
-                <div className="min-h-0 flex-1 overflow-auto p-4">{renderBlocoEstoque(b.componenteId, dataEfetiva)}</div>
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4">{renderBlocoEstoque(b.componenteId, dataEfetiva)}</div>
               </section>
             </div>
           );
         })}
       </Grid>
+      )}
     </div>
   );
 }

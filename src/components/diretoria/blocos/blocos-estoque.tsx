@@ -59,7 +59,7 @@ function EstoquePorLocal({ d }: { d: EstoqueData }) {
     { key: "valorTotal", header: "Valor", tipo: "moeda" },
     { key: "participacao", header: "% do total", tipo: "percentual" },
   ];
-  return <DataTable columns={colunas} rows={linhas} searchable compactoInicial exportFilename="estoque-por-local" estado={linhas.length === 0 ? "vazio" : "ok"} />;
+  return <DataTable columns={colunas} rows={linhas} searchable compactoInicial alturaFluida exportFilename="estoque-por-local" estado={linhas.length === 0 ? "vazio" : "ok"} />;
 }
 
 /** Agrupa o excedente em "Outros" para não poluir o gráfico (mantém o total). */
@@ -107,19 +107,29 @@ function BarrasMarca({ d }: { d: EstoqueData }) {
   );
 }
 
-// K-01 , Compras por fornecedor (NF entrada): BARRAS HORIZONTAIS.
-function BarrasComprasFornecedor({ d }: { d: EstoqueData }) {
-  const linhas = d.comprasFornecedor.linhas.slice(0, 8).map((c) => ({ name: c.fornecedor, valor: c.valorTotal }));
+/** Razão social legível: remove o CNPJ prefixo ("12.345.../0001-00 - X") e trunca. */
+function nomeFornecedor(raw: string): string {
+  const aposCnpj = raw.includes(" - ") ? raw.split(" - ").slice(1).join(" - ") : raw;
+  const limpo = aposCnpj.trim() || raw.trim();
+  return limpo.length > 32 ? `${limpo.slice(0, 31)}…` : limpo;
+}
+
+// K-01 , Compras por fornecedor (NF entrada): DONUT rico. Barras horizontais
+// ficam ilegíveis com razões sociais longas; no donut o nome vai ao tooltip.
+function DonutComprasFornecedor({ d }: { d: EstoqueData }) {
+  const linhas = d.comprasFornecedor.linhas.map((c) => ({ chave: nomeFornecedor(c.fornecedor), valorTotal: c.valorTotal }));
+  const data = topComOutros(linhas, 7).map((s, i) => ({ ...s, color: getColorByIndex(i) }));
   return (
-    <InteractiveBarChart
-      data={linhas}
-      series={[{ key: "valor", label: "Compras (NF)", color: getColorByIndex(4) }]}
-      layout="horizontal"
+    <DonutWithCenter
+      data={data}
+      centerLabel="Total compras"
+      centerValue={brlCompacto(d.comprasFornecedor.valorGeral)}
+      formatValue={(v) => brl.format(v)}
       height={240}
-      yAxisWidth={140}
-      showLegend={false}
-      formatValue={(v) => brlCompacto(v)}
-      ariaLabel="Compras por fornecedor (barras horizontais)"
+      innerRadius={62}
+      outerRadius={92}
+      tooltipPosition="top-left"
+      ariaLabel="Compras por fornecedor (NF de entrada)"
     />
   );
 }
@@ -164,6 +174,7 @@ function Catalogo({ d }: { d: EstoqueData }) {
       rows={linhas}
       searchable
       compactoInicial
+      alturaFluida
       exportFilename="catalogo-estoque"
       estado={linhas.length === 0 ? "vazio" : "ok"}
       expandDetail={(row) => (
@@ -191,7 +202,7 @@ function Seriais({ d }: { d: EstoqueData }) {
     { key: "serial", header: "Serial", tipo: "texto" },
     { key: "produto", header: "Produto", tipo: "texto" },
   ];
-  return <DataTable columns={colunas} rows={linhas} searchable compactoInicial exportFilename="seriais" estado={linhas.length === 0 ? "vazio" : "ok"} />;
+  return <DataTable columns={colunas} rows={linhas} searchable compactoInicial alturaFluida exportFilename="seriais" estado={linhas.length === 0 ? "vazio" : "ok"} />;
 }
 
 /** Rótulo + cor de tag a partir do status de prazo da compra. */
@@ -235,7 +246,7 @@ function ComprasAtivas({ d }: { d: EstoqueData }) {
         <KpiButton rotulo="Atrasadas" valor={num.format(c.atrasadas)} icone={AlertTriangle} tone={c.atrasadas > 0 ? "danger" : "success"} hint="Prazo vencido" />
       </div>
       <div className="min-h-0 flex-1">
-        <DataTable columns={colunas} rows={linhas} searchable compactoInicial exportFilename="compras-ativas" estado={linhas.length === 0 ? "vazio" : "ok"} />
+        <DataTable columns={colunas} rows={linhas} searchable compactoInicial alturaFluida exportFilename="compras-ativas" estado={linhas.length === 0 ? "vazio" : "ok"} />
       </div>
     </div>
   );
@@ -274,7 +285,7 @@ function MatrizFornecedor({ d }: { d: EstoqueData }) {
         <KpiButton rotulo="A pagar" valor={brlCompacto(r.totalAPagar)} valorCompleto={brl.format(r.totalAPagar)} icone={Wallet} tone="warning" hint="Saldo pendente" />
       </div>
       <div className="min-h-0 flex-1">
-        <DataTable columns={colunas} rows={linhas} searchable compactoInicial exportFilename="fornecedores" estado={linhas.length === 0 ? "vazio" : "ok"} />
+        <DataTable columns={colunas} rows={linhas} searchable compactoInicial alturaFluida exportFilename="fornecedores" estado={linhas.length === 0 ? "vazio" : "ok"} />
       </div>
     </div>
   );
@@ -294,7 +305,7 @@ export function renderBlocoEstoque(id: string, d: EstoqueData): ReactNode {
     case "A-07": return <ComprasAtivas d={d} />;
     case "A-08": return <MatrizFornecedor d={d} />;
     case "A-10": return <SerieCompras d={d} />;
-    case "K-01": return <BarrasComprasFornecedor d={d} />;
+    case "K-01": return <DonutComprasFornecedor d={d} />;
     default:
       return <p className="py-6 text-center text-sm text-muted-foreground">Componente em breve.</p>;
   }

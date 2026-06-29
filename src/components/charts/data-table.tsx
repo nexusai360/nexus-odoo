@@ -57,6 +57,12 @@ interface DataTableProps<T> {
    * colunas numéricas à direita sem scroll). Default: false.
    */
   compactoInicial?: boolean;
+  /**
+   * Quando true, a tabela preenche a altura do contêiner pai (flex) e rola
+   * internamente, mantendo o cabeçalho fixo. Use dentro de blocos de altura
+   * fixa (construtor). Default: false (usa `max-h-[70vh]`, como nas telas).
+   */
+  alturaFluida?: boolean;
 }
 
 /**
@@ -130,6 +136,7 @@ export function DataTable<T extends Record<string, unknown>>({
   expandDetail,
   exportFilename = "relatorio",
   compactoInicial = false,
+  alturaFluida = false,
 }: DataTableProps<T>) {
   // --- busca (debounced) ---
   const [query, setQuery] = useState("");
@@ -223,7 +230,7 @@ export function DataTable<T extends Record<string, unknown>>({
   const hasExpand = Boolean(expandDetail);
 
   return (
-    <div className="flex flex-col gap-3 w-full">
+    <div className={cn("flex flex-col gap-3 w-full", alturaFluida && "h-full min-h-0")}>
       {/* Barra de controles */}
       <div className="flex flex-wrap items-center gap-2">
         {searchable && (
@@ -316,7 +323,7 @@ export function DataTable<T extends Record<string, unknown>>({
       </div>
 
       {/* Tabela com scroll interno e cabeçalho sticky */}
-      <div className="max-h-[70vh] w-full overflow-auto rounded-xl border border-border">
+      <div className={cn("w-full overflow-auto rounded-xl border border-border", alturaFluida ? "min-h-0 flex-1" : "max-h-[70vh]")}>
         <table className="w-full caption-bottom text-sm">
           <TableHeader className="sticky top-0 z-20 bg-muted backdrop-blur-sm">
             <TableRow>
