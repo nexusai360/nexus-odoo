@@ -32,6 +32,26 @@
         itens/1894 produtos/68 locais; A-03 top JOHNSON; A-04 top MATRIX). Rota compila (302).
   - VALIDAÇÃO VISUAL no browser (logado) pendente p/ o usuário: localhost:3000/diretoria/relatorios.
 
+## FOCO ATUAL (decisão do cliente): tela ESTOQUE & COMPRAS fiel e completa
+> Reconstruir /diretoria/estoque (no menu, fluxo normal) fiel ao HTML. Roteiro =
+> perícia MESTRE/03-estoque.md + 04-compras.md. VALIDAR CADA PASSO POR SCREENSHOT
+> (playwright instalado --no-save; user de teste render-check@local.test senha
+> Teste@12345 super_admin, criar/deletar via tsx; screenshot via chromium em
+> /tmp). NUNCA entregar sem ver o screenshot (lição: entreguei prévia pobre 2x).
+- [x] Mapa do Brasil CONTIDO (brazil-map.tsx altura clamp; corrige "mapa gigante"). commit 7054c0b4
+- [x] Donuts interativos A5 (família + marca) na tela de estoque (DonutChart SVG,
+      hover/legenda/total, cores). Validado por screenshot. commit fb9c69c5
+- [ ] A4 indicadores completos: valor médio/produto, qtd média/local, IDADE MÉDIA,
+      TEMPO DE COBERTURA (precisa query nova; ver 03-estoque fórmulas cobertura=estoque/demanda*30).
+- [ ] A7 detalhe da compra: lista de OCs + itens (4 col) + 10 KPIs + contagem
+      regressiva + 2 donuts (ver 04-compras). Hoje só há "compras ativas" tabela.
+- [ ] A8 resumo de compras: 6 KPIs + ranking fornecedores + MATRIZ 11 colunas +
+      alertas (ver 04-compras). Hoje só "compras por fornecedor" tabela simples.
+- [ ] A3 estoque ideal (config + alertas de cobertura) , tabela diretoria_config_estoque_ideal.
+- [ ] A6 seriais , já existe; pode polir.
+- Depois que a tela Estoque&Compras estiver fiel/completa e o cliente aprovar por
+  screenshot: replicar padrão (donuts/KPIs ricos) nas demais telas + retomar ondas 3-8.
+
 ## ONDA 2 em andamento (componentes de dado)
 - [x] Vendas: C-01 (KPIs+margem est.), C-02 (por estado), C-03 (por marca), C-05
       (modalidades+maior pedido), C-07 (formas de pagamento) , no catálogo+loaders+render,
