@@ -26,6 +26,8 @@ import { FiltrosGlobais } from "@/components/diretoria/builder/filtros-globais";
 import {
   derivarEstoque, opcoesEstoque, temFiltro, FILTROS_VAZIOS, type FiltrosEstoque,
 } from "@/lib/diretoria/derivar-estoque";
+import { PeriodPills } from "@/components/reports/period-pills";
+import type { PeriodKey } from "@/lib/datetime-core";
 
 const numFmt = new Intl.NumberFormat("pt-BR");
 
@@ -59,6 +61,9 @@ export function ConstrutorGrid({
   const [salvando, start] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
   const [filtros, setFiltros] = useState<FiltrosEstoque>(FILTROS_VAZIOS);
+  // Pílula de período global (comanda os blocos temporais, ex.: A-10).
+  const [periodo, setPeriodo] = useState<PeriodKey>("semana_atual");
+  const [customRange, setCustomRange] = useState<{ start: string; end: string } | undefined>();
   // O react-grid-layout calcula posições absolutas medindo a largura no client.
   // No SSR não há medida, então o HTML do server diverge do client (hydration
   // mismatch). Render do grid só após montar: server e 1º render client mostram
@@ -195,6 +200,16 @@ export function ConstrutorGrid({
         </div>
       </div>
 
+      {/* Pílulas de período , comandam os blocos temporais (A-10) */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-border/60 bg-card/40 px-3 py-2">
+        <span className="text-xs font-medium text-foreground/80">Período</span>
+        <PeriodPills
+          value={periodo}
+          customRange={customRange}
+          onChange={(next, range) => { setPeriodo(next); setCustomRange(range); }}
+        />
+      </div>
+
       {/* Filtros globais , cruzam todos os componentes de estoque ao mesmo tempo */}
       <FiltrosGlobais
         opcoes={opcoes}
@@ -313,7 +328,7 @@ export function ConstrutorGrid({
                     </div>
                   ) : null}
                 </header>
-                <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4">{renderBlocoEstoque(b.componenteId, dataEfetiva)}</div>
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4">{renderBlocoEstoque(b.componenteId, dataEfetiva, periodo, customRange)}</div>
               </section>
             </div>
           );

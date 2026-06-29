@@ -14,10 +14,12 @@ import {
 import { KpiButton } from "@/components/diretoria/kit/kpi-button";
 import { SerieTemporalCompras } from "@/components/diretoria/charts/serie-temporal";
 import { DistribuicaoDinamica } from "@/components/diretoria/charts/distribuicao-dinamica";
+import { RankingCards } from "@/components/diretoria/charts/ranking-cards";
 import { DataTable, type ColumnDef } from "@/components/charts/data-table";
 import { DonutWithCenter } from "@/components/charts/interactive/donut-with-center";
 import { InteractiveBarChart } from "@/components/charts/interactive/bar-chart";
 import { getColorByIndex } from "@/components/charts/colors";
+import type { PeriodKey } from "@/lib/datetime-core";
 import { brl, brlCompacto, num, pct1, DASH } from "@/components/diretoria/kit/format";
 import type { EstoqueData } from "@/components/diretoria/estoque/estoque-screen";
 
@@ -114,24 +116,16 @@ function nomeFornecedor(raw: string): string {
   return limpo.length > 32 ? `${limpo.slice(0, 31)}…` : limpo;
 }
 
-// K-01 , Compras por fornecedor (NF entrada): DONUT rico. Barras horizontais
-// ficam ilegíveis com razões sociais longas; no donut o nome vai ao tooltip.
-function DonutComprasFornecedor({ d }: { d: EstoqueData }) {
-  const linhas = d.comprasFornecedor.linhas.map((c) => ({ chave: nomeFornecedor(c.fornecedor), valorTotal: c.valorTotal }));
-  const data = topComOutros(linhas, 7).map((s, i) => ({ ...s, color: getColorByIndex(i) }));
-  return (
-    <DonutWithCenter
-      data={data}
-      centerLabel="Total compras"
-      centerValue={brlCompacto(d.comprasFornecedor.valorGeral)}
-      formatValue={(v) => brl.format(v)}
-      height={240}
-      innerRadius={62}
-      outerRadius={92}
-      tooltipPosition="top-left"
-      ariaLabel="Compras por fornecedor (NF de entrada)"
-    />
-  );
+// K-01 , Compras por fornecedor (NF entrada): LISTA DE CARDS RANQUEADA. Razões
+// sociais longas não cabem em barras; o ranking de cards mostra posição + nome +
+// valor + proporção, com ordenação (pedido do cliente).
+function RankingComprasFornecedor({ d }: { d: EstoqueData }) {
+  const itens = d.comprasFornecedor.linhas.map((c) => ({
+    nome: nomeFornecedor(c.fornecedor),
+    valor: c.valorTotal,
+    sub: `${num.format(c.notas)} ${c.notas === 1 ? "nota" : "notas"}`,
+  }));
+  return <RankingCards itens={itens} max={15} rotuloValor="compras" />;
 }
 
 // A-11 , Distribuição dinâmica: o usuário troca a dimensão (família/marca/local)
@@ -146,9 +140,6 @@ function Distribuicao({ d }: { d: EstoqueData }) {
   );
 }
 
-function SerieCompras({ d }: { d: EstoqueData }) {
-  return <SerieTemporalCompras serie={d.comprasSerie} />;
-}
 
 function Catalogo({ d }: { d: EstoqueData }) {
   const total = d.catalogo.valorGeral || 1;
@@ -291,8 +282,14 @@ function MatrizFornecedor({ d }: { d: EstoqueData }) {
   );
 }
 
-/** Mapeia o componenteId do catálogo para o render BI, usando o EstoqueData. */
-export function renderBlocoEstoque(id: string, d: EstoqueData): ReactNode {
+/** Mapeia o componenteId do catálogo para o render BI, usando o EstoqueData.
+ * `periodo`/`customRange` (pílula global) comandam os blocos temporais (A-10). */
+export function renderBlocoEstoque(
+  id: string,
+  d: EstoqueData,
+  periodo: PeriodKey = "semana_atual",
+  customRange?: { start: string; end: string },
+): ReactNode {
   switch (id) {
     case "A-01": return <KpisEstoque d={d} />;
     case "A-09": return <KpisAvancados d={d} />;
@@ -304,8 +301,8 @@ export function renderBlocoEstoque(id: string, d: EstoqueData): ReactNode {
     case "A-06": return <Seriais d={d} />;
     case "A-07": return <ComprasAtivas d={d} />;
     case "A-08": return <MatrizFornecedor d={d} />;
-    case "A-10": return <SerieCompras d={d} />;
-    case "K-01": return <DonutComprasFornecedor d={d} />;
+    case "A-10": return <SerieTemporalCompras serie={d.comprasSerie} periodo={periodo} customRange={customRange} />;
+    case "K-01": return <RankingComprasFornecedor d={d} />;
     default:
       return <p className="py-6 text-center text-sm text-muted-foreground">Componente em breve.</p>;
   }

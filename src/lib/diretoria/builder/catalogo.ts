@@ -99,7 +99,7 @@ export const CATALOGO: ComponenteCatalogo[] = [
   comp({ id: "A-07", nome: "Compras ativas", dominio: "K", tipo: "widget", fonteDado: "real" }),
   comp({ id: "A-08", nome: "Matriz por fornecedor", dominio: "K", tipo: "tabela", fonteDado: "real" }),
   comp({ id: "A-10", nome: "Compras ao longo do tempo (NF entrada)", dominio: "K", tipo: "widget", fonteDado: "real" }),
-  comp({ id: "K-01", nome: "Compras por fornecedor (NF entrada)", dominio: "K", tipo: "grafico", fonteDado: "real" }),
+  comp({ id: "K-01", nome: "Ranking de compras por fornecedor", dominio: "K", tipo: "widget", fonteDado: "real" }),
   // Vendas (loaders reusam queries/vendas.ts)
   comp({ id: "C-01", nome: "Indicadores de vendas", dominio: "C", tipo: "kpi", fonteDado: "estimado", consome: ["periodo"] }),
   comp({ id: "C-02", nome: "Vendas por estado", dominio: "C", tipo: "grafico", fonteDado: "real", publica: ["uf"], consome: ["periodo"] }),

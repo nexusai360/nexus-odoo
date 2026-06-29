@@ -30,8 +30,8 @@ const PADRAO_ESTOQUE: BlocoLayout[] = [
   { componenteId: "A-02", ordem: 6, largura: 4, altura: 5, x: 0, y: 20 },
   { componenteId: "A-05", ordem: 7, largura: 4, altura: 5, x: 4, y: 20 },
   { componenteId: "A-07", ordem: 8, largura: 8, altura: 5, x: 0, y: 25 },
-  { componenteId: "A-08", ordem: 9, largura: 5, altura: 5, x: 0, y: 30 },
-  { componenteId: "K-01", ordem: 10, largura: 3, altura: 5, x: 5, y: 30 },
+  { componenteId: "A-08", ordem: 9, largura: 4, altura: 5, x: 0, y: 30 },
+  { componenteId: "K-01", ordem: 10, largura: 4, altura: 6, x: 4, y: 30 },
   { componenteId: "A-06", ordem: 11, largura: 4, altura: 5, x: 0, y: 35 },
 ];
 
