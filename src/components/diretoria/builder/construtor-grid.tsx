@@ -22,6 +22,12 @@ import { renderBlocoEstoque } from "@/components/diretoria/blocos/blocos-estoque
 import type { EstoqueData } from "@/components/diretoria/estoque/estoque-screen";
 import type { DiretoriaArea } from "@/lib/diretoria/capabilities";
 import { salvarLayoutAction, restaurarLayoutPessoalAction } from "@/lib/actions/diretoria-layout";
+import { FiltrosGlobais } from "@/components/diretoria/builder/filtros-globais";
+import {
+  derivarEstoque, opcoesEstoque, temFiltro, FILTROS_VAZIOS, type FiltrosEstoque,
+} from "@/lib/diretoria/derivar-estoque";
+
+const numFmt = new Intl.NumberFormat("pt-BR");
 
 const Grid = WidthProvider(GridLayout);
 const ROW_H = 64;
@@ -52,6 +58,23 @@ export function ConstrutorGrid({
   const [blocos, setBlocos] = useState<BlocoLayout[]>(layoutInicial);
   const [salvando, start] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
+  const [filtros, setFiltros] = useState<FiltrosEstoque>(FILTROS_VAZIOS);
+
+  // Opções dos dropdowns globais derivadas das linhas granulares.
+  const opcoes = useMemo(() => opcoesEstoque(data.granular), [data.granular]);
+
+  // Dado efetivo: quando há filtro ativo, recomputa os pedaços de estoque
+  // (indicadores/donuts/local/catálogo) de forma cruzada e consistente. Os
+  // blocos de compras não dependem dessas dimensões e ficam intactos.
+  const ativo = temFiltro(filtros);
+  const dataEfetiva = useMemo<EstoqueData>(() => {
+    if (!ativo) return data;
+    return { ...data, ...derivarEstoque(data.granular, filtros) };
+  }, [data, filtros, ativo]);
+
+  const contagemFiltro = ativo
+    ? `${numFmt.format(dataEfetiva.catalogo.total)} de ${numFmt.format(data.catalogo.total)} modelos`
+    : undefined;
 
   const layout: Layout[] = useMemo(
     () =>
@@ -166,6 +189,15 @@ export function ConstrutorGrid({
         </div>
       </div>
 
+      {/* Filtros globais , cruzam todos os componentes de estoque ao mesmo tempo */}
+      <FiltrosGlobais
+        opcoes={opcoes}
+        filtros={filtros}
+        onChange={setFiltros}
+        ativo={ativo}
+        contagem={contagemFiltro}
+      />
+
       {/* Paleta de componentes (modo edição) */}
       {editando && paleta.length ? (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-card/40 p-3">
@@ -268,7 +300,7 @@ export function ConstrutorGrid({
                     </div>
                   ) : null}
                 </header>
-                <div className="min-h-0 flex-1 overflow-auto p-4">{renderBlocoEstoque(b.componenteId, data)}</div>
+                <div className="min-h-0 flex-1 overflow-auto p-4">{renderBlocoEstoque(b.componenteId, dataEfetiva)}</div>
               </section>
             </div>
           );

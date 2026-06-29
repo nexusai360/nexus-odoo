@@ -7,6 +7,7 @@ import {
   queryResumoCompras,
   queryIndicadoresAvancadosEstoque,
   queryComprasSerie,
+  queryEstoqueGranular,
 } from "./estoque";
 
 describe("queryIndicadoresEstoque (A4)", () => {
@@ -63,6 +64,22 @@ describe("queryComprasPorFornecedor (A8)", () => {
     expect(r.valorGeral).toBe(4500);
     expect(r.linhas[0]).toEqual({ fornecedor: "Fornecedor Y", notas: 1, valorTotal: 3000 });
     expect(r.linhas[1]).toEqual({ fornecedor: "Fornecedor X", notas: 2, valorTotal: 1500 });
+  });
+});
+
+describe("queryEstoqueGranular (filtros globais)", () => {
+  it("mapeia linhas de saldo com nomes normalizados (sem nome -> rótulo padrão)", async () => {
+    const prisma = {
+      fatoEstoqueSaldo: {
+        findMany: jest.fn().mockResolvedValue([
+          { produtoId: 1, produtoNome: "Esteira X", familiaNome: "Cardio", marcaNome: "Matrix", localNome: "SP", quantidade: 2, vrSaldo: 1000 },
+          { produtoId: null, produtoNome: null, familiaNome: null, marcaNome: null, localNome: null, quantidade: 1, vrSaldo: 50 },
+        ]),
+      },
+    } as unknown as Parameters<typeof queryEstoqueGranular>[0];
+    const linhas = await queryEstoqueGranular(prisma);
+    expect(linhas[0]).toEqual({ produtoId: 1, produto: "Esteira X", familia: "Cardio", marca: "Matrix", local: "SP", quantidade: 2, valor: 1000 });
+    expect(linhas[1]).toEqual({ produtoId: null, produto: "Sem nome", familia: "Sem família", marca: "Sem marca", local: "Sem local", quantidade: 1, valor: 50 });
   });
 });
 

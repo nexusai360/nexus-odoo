@@ -30,6 +30,7 @@ import type {
   IndicadoresEstoque, LinhaAgrupada, CatalogoModelo, CatalogoEstoque,
   SerialLinha, CompraFornecedor, CompraAtivaLinha, ComprasAtivas,
   ResumoCompras, FornecedorResumo, IndicadoresAvancados, ComprasSerie,
+  LinhaEstoqueGranular,
 } from "@/lib/diretoria/queries/estoque";
 import type { StatusPrazo } from "@/lib/diretoria/cores";
 
@@ -62,6 +63,8 @@ export interface EstoqueData {
   comprasAtivas: ComprasAtivas;
   resumoCompras: ResumoCompras;
   comprasSerie: ComprasSerie;
+  /** Linhas granulares (produto×local) para os filtros globais do construtor. */
+  granular: LinhaEstoqueGranular[];
 }
 
 // ---------------------------------------------------------------------------

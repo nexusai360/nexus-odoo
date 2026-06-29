@@ -253,6 +253,38 @@ export async function queryComprasPorFornecedor(
   return { linhas, valorGeral };
 }
 
+export interface LinhaEstoqueGranular {
+  produtoId: number | null;
+  produto: string;
+  familia: string;
+  marca: string;
+  local: string;
+  quantidade: number;
+  valor: number;
+}
+
+/**
+ * Linhas GRANULARES do saldo (produto×local) com família/marca/local resolvidos.
+ * Base dos filtros globais cruzados do construtor: o client filtra estas linhas e
+ * recomputa indicadores, donuts, estoque por local e catálogo de forma consistente.
+ */
+export async function queryEstoqueGranular(
+  prisma: PrismaClient,
+): Promise<LinhaEstoqueGranular[]> {
+  const rows = await prisma.fatoEstoqueSaldo.findMany({
+    select: { produtoId: true, produtoNome: true, familiaNome: true, marcaNome: true, localNome: true, quantidade: true, vrSaldo: true },
+  });
+  return rows.map((r) => ({
+    produtoId: r.produtoId,
+    produto: r.produtoNome ?? "Sem nome",
+    familia: r.familiaNome ?? "Sem família",
+    marca: r.marcaNome ?? "Sem marca",
+    local: r.localNome ?? "Sem local",
+    quantidade: Number(r.quantidade ?? 0),
+    valor: Number(r.vrSaldo ?? 0),
+  }));
+}
+
 export interface PontoSerie {
   /** Chave temporal: "YYYY-MM-DD" na série diária; "YYYY-MM" na mensal. */
   data: string;

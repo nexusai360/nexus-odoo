@@ -8,7 +8,7 @@ import {
   queryIndicadoresEstoque, queryEstoquePorLocal, queryEstoquePorFamilia,
   queryEstoquePorMarca, queryCatalogoEstoque, queryComprasPorFornecedor,
   queryComprasAtivas, queryResumoCompras, queryIndicadoresAvancadosEstoque,
-  querySeriais, queryComprasSerie,
+  querySeriais, queryComprasSerie, queryEstoqueGranular,
 } from "@/lib/diretoria/queries/estoque";
 import { carregarLayout } from "@/lib/diretoria/builder/layout-repo";
 import type { BlocoLayout } from "@/lib/diretoria/builder/layout";
@@ -40,7 +40,7 @@ export default async function DiretoriaRelatoriosPage() {
 
   const [
     indicadores, porLocal, porFamilia, porMarca, catalogo,
-    comprasFornecedor, comprasAtivas, resumoCompras, avancados, seriais, comprasSerie, salvo, freshIso,
+    comprasFornecedor, comprasAtivas, resumoCompras, avancados, seriais, comprasSerie, granular, salvo, freshIso,
   ] = await Promise.all([
     queryIndicadoresEstoque(prisma),
     queryEstoquePorLocal(prisma),
@@ -53,13 +53,14 @@ export default async function DiretoriaRelatoriosPage() {
     queryIndicadoresAvancadosEstoque(prisma, hoje),
     querySeriais(prisma, hoje, 200),
     queryComprasSerie(prisma),
+    queryEstoqueGranular(prisma),
     carregarLayout(prisma, "estoque", user.id),
     ultimaSyncIso(prisma),
   ]);
 
   const data: EstoqueData = {
     indicadores, avancados, porLocal, porFamilia, porMarca, catalogo, seriais,
-    comprasFornecedor, comprasAtivas, resumoCompras, comprasSerie,
+    comprasFornecedor, comprasAtivas, resumoCompras, comprasSerie, granular,
   };
   const layoutInicial = salvo.length ? salvo : PADRAO_ESTOQUE;
   const podeEditarGlobal = user.platformRole === "super_admin" || user.platformRole === "admin";

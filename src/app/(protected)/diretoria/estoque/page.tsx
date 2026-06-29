@@ -16,6 +16,7 @@ import {
   queryIndicadoresAvancadosEstoque,
   querySeriais,
   queryComprasSerie,
+  queryEstoqueGranular,
 } from "@/lib/diretoria/queries/estoque";
 import { SyncNowButton } from "@/components/diretoria/sync-now-button";
 import { FreshnessBadge } from "@/components/diretoria/freshness-badge";
@@ -43,7 +44,10 @@ export default async function DiretoriaEstoquePage() {
     queryIndicadoresAvancadosEstoque(prisma, hoje),
     querySeriais(prisma, hoje, 200),
   ]);
-  const comprasSerie = await queryComprasSerie(prisma);
+  const [comprasSerie, granular] = await Promise.all([
+    queryComprasSerie(prisma),
+    queryEstoqueGranular(prisma),
+  ]);
 
   const podeSync = await canDiretoria(user, "diretoria.sync.force");
   const freshIso = await ultimaSyncIso(prisma);
@@ -60,6 +64,7 @@ export default async function DiretoriaEstoquePage() {
     comprasAtivas,
     resumoCompras,
     comprasSerie,
+    granular,
   };
 
   return (
