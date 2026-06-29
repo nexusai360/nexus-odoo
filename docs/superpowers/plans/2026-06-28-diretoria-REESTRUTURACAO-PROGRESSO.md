@@ -168,7 +168,24 @@ mapeei os componentes reais (Explore). Correção: REUSAR os componentes ricos.
 
 tsc verde; 177 testes (25 suites) verdes. Nada mergeado (regra F6).
 
-### Onda 3.3 (próxima, a validar com cliente)
+**Onda 3.2b , correções do 2º feedback (commit fix hydration):**
+- ERRO de hydration (react-grid-layout calcula posições no client): mount-gate no
+  ConstrutorGrid (placeholder no SSR+1º render; grid real só após montar). Zero erros.
+- K-01 ilegível (barras com razão+CNPJ gigantes) → 1ª tentativa DonutWithCenter.
+- Cabeçalho de tabela travado: prop `alturaFluida` no DataTable (preenche o bloco,
+  rola interno, header sticky). Container do bloco vira flex-col/overflow-hidden.
+
+**Onda 3.3 , período comandando o gráfico + ranking de cards (commit pilulas+ranking):**
+- `PeriodPills` (reusa o do Consumo, com calendário no Personalizado) no topo do
+  construtor. Comanda o A-10: a pílula define granularidade+janela e a seta ‹ ›
+  navega nela (Este mês → jun/26 com série diária; Tudo → mensal). serie-temporal
+  refatorada p/ janela por datas reais (UTC); seguro pós mount-gate.
+- K-01 vira `RankingCards` (3ª iteração, pedido do cliente): LISTA DE CARDS ranqueada
+  , posição/pódio + nome + valor + nº de notas + barra de proporção + % + ordenação
+  (Maior/Menor). Visualização além de pizza/barra/linha. Validado por screenshot.
+- tsc verde; 170 testes verdes. Nada mergeado (regra F6).
+
+### Onda 3.4 (próxima, a validar com cliente)
 - Gráfico temporal correlacionado com PÍLULAS de período (Esta semana→navega semana,
   Este mês→navega mês, igual "Custo por dia" do Consumo). Reusar `PeriodNavigator`
   (`dashboard/period-navigator.tsx`). Hoje o A-10 tem navegação própria (toggle dia/mês + ‹ ›).
