@@ -35,10 +35,13 @@ jest.mock("@svg-maps/brazil", () => {
 });
 
 describe("corPorIntensidade", () => {
-  it("rampa de UM tom (roxo hsl 263), saturação variando por intensidade", () => {
-    expect(corPorIntensidade(0)).toContain("hsl(263");
-    expect(corPorIntensidade(1)).toContain("hsl(263");
-    expect(corPorIntensidade(0)).not.toBe(corPorIntensidade(1));
+  it("rampa de roxo (hsl) puxando pro azul conforme a intensidade", () => {
+    expect(corPorIntensidade(0)).toMatch(/^hsl\(/);
+    expect(corPorIntensidade(1)).toMatch(/^hsl\(/);
+    // hue diminui (puxa pro azul) do menor para o maior
+    const h0 = Number(corPorIntensidade(0).match(/hsl\(([\d.]+)/)![1]);
+    const h1 = Number(corPorIntensidade(1).match(/hsl\(([\d.]+)/)![1]);
+    expect(h1).toBeLessThan(h0);
     expect(corPorIntensidade(0.5)).not.toBe(corPorIntensidade(0));
   });
   it("faz clamp fora de [0,1]", () => {

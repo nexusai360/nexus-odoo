@@ -40,17 +40,18 @@ const brl = new Intl.NumberFormat("pt-BR", {
 const COR_SEM_DADO = "var(--mapa-sem-dado)";
 
 /**
- * Rampa de calor de UM TOM SÓ (roxo). A intensidade é codificada pela
- * SATURAÇÃO (não pela mistura com o fundo nem por trocar de matiz): valor baixo
- * = roxo fraco porém VISÍVEL (acinzentado, não apagado); valor alto = roxo bem
- * forte e presente. Como a lightness fica quase constante (~55-60%), as mesmas
- * cores são legíveis tanto no tema claro quanto no escuro.
+ * Rampa de calor em ROXO (sem azul/magenta puro). A intensidade puxa o ROXO em
+ * direção ao AZUL conforme cresce: valor baixo = lavanda mais quente/rosado e
+ * suave; valor alto = roxo mais frio (azulado), mais saturado e mais profundo ,
+ * dando o contraste pedido. A lightness varia pouco (65%..52%) para as mesmas
+ * cores ficarem legíveis tanto no tema claro quanto no escuro.
  */
 export function corPorIntensidade(t: number): string {
   const c = Math.max(0, Math.min(1, t));
-  const s = 38 + c * 54; // 38%..92% , fraco (acinzentado) -> forte (saturado)
-  const l = 55 + c * 5;  // 55%..60% , quase constante p/ servir aos 2 temas
-  return `hsl(263 ${s.toFixed(1)}% ${l.toFixed(1)}%)`;
+  const h = 285 - c * 27; // 285 (lavanda rosada) -> 258 (roxo azulado)
+  const s = 45 + c * 51;  // 45%..96% , mais saturado no alto
+  const l = 65 - c * 13;  // 65%..52% , mais profundo no alto (sem sumir nos 2 temas)
+  return `hsl(${h.toFixed(1)} ${s.toFixed(1)}% ${l.toFixed(1)}%)`;
 }
 
 export function BrazilMap({

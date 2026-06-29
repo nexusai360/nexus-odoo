@@ -8,7 +8,12 @@ const require = createRequire(import.meta.url);
 const m = require("@svg-maps/brazil");
 const map = m.default || m;
 
-const TOL = 1.2; // tolerância RDP (unidades do viewBox 613x639); curvas suavizam o resto
+// Tolerância RDP baixa: as bordas ficam próximas do original (que ENCAIXA bem
+// entre estados vizinhos), então a divergência entre bordas compartilhadas fica
+// sub-pixel e não aparecem "slivers"/resquícios. Sem suavização por curva (o
+// Catmull-Rom com overshoot fazia um estado invadir o vizinho). Com tolerância
+// baixa há pontos suficientes para o contorno ficar liso mesmo com retas.
+const TOL = 0.45;
 
 /** Converte um path relativo (só m/z) em lista de subpaths absolutos [[x,y],...]. */
 function parsePath(d) {
@@ -104,14 +109,21 @@ const out = map.locations.map((loc) => {
   // emaranhado de linhas no mapa. Para um mapa de calor, a massa principal basta.
   const areas = subs.map(bboxArea);
   const maxIdx = areas.indexOf(Math.max(...areas));
-  const pts = rdp(subs[maxIdx], TOL);
+  // Snap a uma grade fina (0,5) ANTES do RDP: vértices de bordas compartilhadas
+  // entre estados vizinhos, que eram quase idênticos, passam a ser idênticos , o
+  // que faz as bordas coincidirem e elimina os "slivers" entre estados.
+  const snapped = subs[maxIdx].map(([x, y]) => [Math.round(x * 2) / 2, Math.round(y * 2) / 2]);
+  const pts = rdp(snapped, TOL);
   totalOut += pts.length;
-  // Suaviza o contorno (curvas) em vez de polilinha angular.
-  const dStr = smoothClosed(pts) ?? ("M" + pts.map(([x, y]) => `${r(x)},${r(y)}`).join("L") + "Z");
+  // Retas (sem curva): tolerância baixa já deixa o contorno liso e as bordas
+  // encaixam; o smoothing por Catmull-Rom causava overshoot (um estado invadindo
+  // o vizinho). smoothClosed permanece no arquivo, mas não é usado.
+  void smoothClosed;
+  const dStr = "M" + pts.map(([x, y]) => `${r(x)},${r(y)}`).join("L") + "Z";
   return { uf: loc.id.toUpperCase(), nome: loc.name, path: dStr };
 });
 
-const header = `// GERADO por scripts/gen-uf-paths.mjs , NÃO editar à mão.\n// Contorno SIMPLIFICADO (RDP tol=${TOL}) e SUAVIZADO (Catmull-Rom) do mapa do Brasil. ${totalIn} -> ${totalOut} pontos.\n`;
+const header = `// GERADO por scripts/gen-uf-paths.mjs , NÃO editar à mão.\n// Contorno SIMPLIFICADO (RDP tol=${TOL}, snap 0.5, sem suavização) do mapa do Brasil. ${totalIn} -> ${totalOut} pontos.\n`;
 const body =
   `export const BRAZIL_VIEWBOX = ${JSON.stringify(map.viewBox)} as const;\n\n` +
   `export interface UfPathGen { uf: string; nome: string; path: string; }\n\n` +
