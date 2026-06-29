@@ -14,6 +14,17 @@
   `builder/construtor-grid.tsx` (vira base do GridEditavel), `kit/format` (rotuloUf/
   nomeLimpo/ufValida), `derivar-estoque`, catálogo, `layout-repo`/`layout`/`gating`.
 
+## ESTRUTURA PRINCIPAL = FEITA E VALIDADA (2026-06-29) , as 3 telas
+- Estoque (`/diretoria/estoque`), Vendas (`/diretoria/vendas`) e Pedidos
+  (`/diretoria/pedidos`) são as telas REAIS, com ABAS, + botão "Editar layout"
+  (gated) que ativa edição embutida (arrastar/redimensionar/paleta/salvar
+  global ou pessoal POR ABA, chave `area:aba`). EstoqueMontavel/VendasMontavel/
+  PedidosMontavel reusam ConstrutorGrid (editando controlado pela tela) + os
+  blocos ricos. Alças novas + ROW_H 100. Validado por screenshot, 0 hydration.
+- FALTA só REFINAMENTO (não estrutural): item 5 (tabela: filtro por coluna +
+  paginação 3 zonas + drill-down) e item 6 (donut com legenda lateral). É daqui
+  que a próxima sessão continua.
+
 ## Progresso (2026-06-29 manhã)
 - FEITO: alças refeitas (quadradinhos nas diagonais, violeta no hover do BLOCO;
   bordas n/s/e/w invisíveis só com cursor de resize); `ROW_H` 64->100.
