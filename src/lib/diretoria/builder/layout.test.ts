@@ -1,10 +1,10 @@
-import { normalizar, spanColunas, spanLinhas, type BlocoLayout } from "./layout";
+import { normalizar, type BlocoLayout } from "./layout";
 
-describe("normalizar layout", () => {
+describe("normalizar layout (grid 8x8)", () => {
   it("descarta componente inexistente no catálogo", () => {
     const blocos: BlocoLayout[] = [
-      { componenteId: "ZZ-99", ordem: 0, largura: 2, altura: 2 },
-      { componenteId: "A-01", ordem: 1, largura: 2, altura: 1 },
+      { componenteId: "ZZ-99", ordem: 0, largura: 2, altura: 2, x: 0, y: 0 },
+      { componenteId: "A-01", ordem: 1, largura: 2, altura: 2, x: 0, y: 0 },
     ];
     const r = normalizar(blocos);
     expect(r).toHaveLength(1);
@@ -13,38 +13,39 @@ describe("normalizar layout", () => {
 
   it("ordena por ordem", () => {
     const blocos: BlocoLayout[] = [
-      { componenteId: "A-02", ordem: 5, largura: 2, altura: 2 },
-      { componenteId: "A-01", ordem: 1, largura: 1, altura: 1 },
+      { componenteId: "A-02", ordem: 5, largura: 4, altura: 3, x: 0, y: 0 },
+      { componenteId: "A-01", ordem: 1, largura: 2, altura: 2, x: 0, y: 0 },
     ];
     const r = normalizar(blocos);
     expect(r.map((b) => b.componenteId)).toEqual(["A-01", "A-02"]);
   });
 
-  it("clampa largura de KPI ao máximo 2", () => {
-    // A-01 é kpi (largura 1-2). largura 4 deve virar 2.
-    const r = normalizar([{ componenteId: "A-01", ordem: 0, largura: 4, altura: 1 }]);
-    expect(r[0].largura).toBe(2);
+  it("clampa largura de KPI ao máximo 4", () => {
+    // A-01 é kpi (largura 2-4). largura 8 deve virar 4.
+    const r = normalizar([{ componenteId: "A-01", ordem: 0, largura: 8, altura: 2, x: 0, y: 0 }]);
+    expect(r[0].largura).toBe(4);
   });
 
-  it("clampa altura inválida (5) para valor do conjunto permitido", () => {
-    // A-03 é grafico (altura 2-4). altura 5 não está no conjunto {1,2,3,4,6};
-    // dentro de [2,4] o mais próximo de 5 é 4.
-    const r = normalizar([{ componenteId: "A-03", ordem: 0, largura: 2, altura: 5 }]);
-    expect(r[0].altura).toBe(4);
+  it("clampa largura de gráfico abaixo do mínimo (2 -> 3)", () => {
+    // A-03 é grafico (largura mín 3). largura 2 deve virar 3.
+    const r = normalizar([{ componenteId: "A-03", ordem: 0, largura: 2, altura: 3, x: 0, y: 0 }]);
+    expect(r[0].largura).toBe(3);
   });
 
-  it("clampa largura de gráfico abaixo do mínimo (1 -> 2)", () => {
-    const r = normalizar([{ componenteId: "A-03", ordem: 0, largura: 1, altura: 2 }]);
-    expect(r[0].largura).toBe(2);
+  it("clampa x para caber no grid de 8 colunas", () => {
+    // largura 4 em x=6 estouraria (6+4>8); x deve virar 4.
+    const r = normalizar([{ componenteId: "A-02", ordem: 0, largura: 4, altura: 3, x: 6, y: 2 }]);
+    expect(r[0].x).toBe(4);
+    expect(r[0].y).toBe(2);
+  });
+
+  it("nunca aceita tamanho 1 (mínimo é 2)", () => {
+    const r = normalizar([{ componenteId: "A-01", ordem: 0, largura: 1, altura: 1, x: 0, y: 0 }]);
+    expect(r[0].largura).toBeGreaterThanOrEqual(2);
+    expect(r[0].altura).toBeGreaterThanOrEqual(2);
   });
 
   it("lista vazia retorna vazia", () => {
     expect(normalizar([])).toEqual([]);
-  });
-
-  it("spans: largura em quartos vira span de 3 colunas; altura = span de linhas", () => {
-    expect(spanColunas(1)).toBe(3);
-    expect(spanColunas(4)).toBe(12);
-    expect(spanLinhas(2)).toBe(2);
   });
 });

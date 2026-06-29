@@ -2,9 +2,9 @@ import { filtrarPermitidos } from "./gating";
 import type { BlocoLayout } from "./layout";
 
 const blocos: BlocoLayout[] = [
-  { componenteId: "A-01", ordem: 0, largura: 2, altura: 1 }, // diretoria.estoque.view
-  { componenteId: "C-01", ordem: 1, largura: 2, altura: 1 }, // diretoria.vendas.view (não está no catálogo da onda)
-  { componenteId: "ZZ-99", ordem: 2, largura: 2, altura: 1 }, // inexistente
+  { componenteId: "A-01", ordem: 0, largura: 2, altura: 2, x: 0, y: 0 }, // diretoria.estoque.view
+  { componenteId: "C-01", ordem: 1, largura: 2, altura: 2, x: 0, y: 0 }, // diretoria.vendas.view
+  { componenteId: "ZZ-99", ordem: 2, largura: 2, altura: 2, x: 0, y: 0 }, // inexistente
 ];
 
 describe("filtrarPermitidos", () => {

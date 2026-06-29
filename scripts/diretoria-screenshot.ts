@@ -30,7 +30,7 @@ async function main() {
   await page.fill('input[name="email"]', EMAIL);
   await page.fill('input[name="password"]', SENHA);
   await Promise.all([
-    page.waitForURL((u) => !u.pathname.includes("/login"), { timeout: 20000 }).catch(() => {}),
+    page.waitForURL((u: URL) => !u.pathname.includes("/login"), { timeout: 20000 }).catch(() => {}),
     page.click('button[type="submit"]'),
   ]);
   await page.waitForTimeout(1500);

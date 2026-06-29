@@ -15,7 +15,7 @@ describe("carregarLayout", () => {
       return { blocos: [{ componenteId: "PADRAO", ordem: 0, larguraQuartos: 4, alturaU: 2 }] };
     });
     const r = await carregarLayout(prisma, "estoque", "u1");
-    expect(r).toEqual([{ componenteId: "A-01", ordem: 0, largura: 2, altura: 1 }]);
+    expect(r).toEqual([{ componenteId: "A-01", ordem: 0, largura: 2, altura: 1, x: 0, y: 0 }]);
   });
 
   it("cai no padrão quando o usuário não tem layout", async () => {
@@ -25,7 +25,7 @@ describe("carregarLayout", () => {
       return null;
     });
     const r = await carregarLayout(prisma, "estoque", "u1");
-    expect(r).toEqual([{ componenteId: "A-02", ordem: 1, largura: 2, altura: 2 }]);
+    expect(r).toEqual([{ componenteId: "A-02", ordem: 1, largura: 2, altura: 2, x: 0, y: 0 }]);
   });
 
   it("retorna vazio quando não há nenhum layout", async () => {
