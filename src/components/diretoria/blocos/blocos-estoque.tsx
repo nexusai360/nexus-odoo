@@ -101,12 +101,27 @@ function Seriais({ d }: { d: EstoqueData }) {
   return <DataTable columns={colunas} rows={linhas} searchable compactoInicial exportFilename="seriais" estado={linhas.length === 0 ? "vazio" : "ok"} />;
 }
 
+/** Rótulo + cor de tag a partir do status de prazo da compra. */
+const SITUACAO_PRAZO: Record<string, string> = {
+  Atrasada: "bg-rose-500/10 text-rose-400 ring-1 ring-inset ring-rose-500/20",
+  Atenção: "bg-amber-500/10 text-amber-400 ring-1 ring-inset ring-amber-500/20",
+  "No prazo": "bg-emerald-500/10 text-emerald-400 ring-1 ring-inset ring-emerald-500/20",
+  "Sem previsão": "bg-muted text-muted-foreground",
+};
+function rotuloSituacao(status: string | null): string {
+  if (status === "atrasado") return "Atrasada";
+  if (status === "atencao") return "Atenção";
+  if (status === "no_prazo") return "No prazo";
+  return "Sem previsão";
+}
+
 function ComprasAtivas({ d }: { d: EstoqueData }) {
   const c = d.comprasAtivas;
   const linhas = c.linhas.map((l) => ({
     numero: l.numero ?? DASH,
     fornecedor: l.fornecedor ?? DASH,
     etapa: l.etapa ?? DASH,
+    situacao: rotuloSituacao(l.statusPrazo),
     prazo: l.statusPrazo === "atrasado" ? `Atrasada ${Math.abs(l.diasRestantes ?? 0)}d` : l.diasRestantes == null ? "Sem previsão" : `Em ${l.diasRestantes}d`,
     valor: l.valor,
   }));
@@ -114,6 +129,7 @@ function ComprasAtivas({ d }: { d: EstoqueData }) {
     { key: "numero", header: "Número", tipo: "texto" },
     { key: "fornecedor", header: "Fornecedor", tipo: "texto" },
     { key: "etapa", header: "Etapa", tipo: "texto" },
+    { key: "situacao", header: "Situação", tipo: "tag", tagCores: SITUACAO_PRAZO },
     { key: "prazo", header: "Prazo", tipo: "texto" },
     { key: "valor", header: "Valor", tipo: "moeda" },
   ];
@@ -140,6 +156,7 @@ function MatrizFornecedor({ d }: { d: EstoqueData }) {
     pago: f.pago,
     aPagar: f.aPagar,
     atrasadas: f.atrasadas,
+    situacao: f.atrasadas > 0 ? "Com atraso" : "Em dia",
   }));
   const colunas: ColumnDef<(typeof linhas)[number]>[] = [
     { key: "fornecedor", header: "Fornecedor", tipo: "texto" },
@@ -148,6 +165,10 @@ function MatrizFornecedor({ d }: { d: EstoqueData }) {
     { key: "pago", header: "Pago", tipo: "moeda" },
     { key: "aPagar", header: "A pagar", tipo: "moeda" },
     { key: "atrasadas", header: "Atrasadas", tipo: "numero" },
+    { key: "situacao", header: "Situação", tipo: "tag", tagCores: {
+      "Com atraso": "bg-rose-500/10 text-rose-400 ring-1 ring-inset ring-rose-500/20",
+      "Em dia": "bg-emerald-500/10 text-emerald-400 ring-1 ring-inset ring-emerald-500/20",
+    } },
   ];
   const pagoPct = r.totalComprado > 0 ? (r.totalPago / r.totalComprado) * 100 : 0;
   return (
