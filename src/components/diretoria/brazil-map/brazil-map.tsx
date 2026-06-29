@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 
 import { cn } from "@/lib/utils";
@@ -52,6 +52,15 @@ export function BrazilMap({
   const reduce = useReducedMotion();
   const [hover, setHover] = useState<string | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
+  // Posição do cursor (relativa ao container) para o tooltip que SEGUE o mouse
+  // e some quando sai do país. null = sem tooltip.
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  function trackMouse(e: { clientX: number; clientY: number }) {
+    const rect = wrapRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+  }
 
   const porUf = useMemo(() => {
     const m = new Map<string, BrazilMapDatum>();
@@ -90,7 +99,14 @@ export function BrazilMap({
   return (
     <div className={cn("flex flex-col gap-4 lg:flex-row", className)}>
       {/* Mapa */}
-      <div className="relative flex-1 min-w-0">
+      <div
+        ref={wrapRef}
+        className="relative flex-1 min-w-0"
+        onMouseLeave={() => {
+          setHover(null);
+          setPos(null);
+        }}
+      >
         {!temDados ? (
           <div className="flex h-64 items-center justify-center rounded-xl border border-border/60 text-sm text-muted-foreground">
             Sem dados no período selecionado.
@@ -134,6 +150,7 @@ export function BrazilMap({
                       outline: "none",
                     }}
                     onMouseEnter={() => setHover(p.uf)}
+                    onMouseMove={trackMouse}
                     onMouseLeave={() => setHover((h) => (h === p.uf ? null : h))}
                     onFocus={() => setHover(p.uf)}
                     onBlur={() => setHover((h) => (h === p.uf ? null : h))}
@@ -149,16 +166,26 @@ export function BrazilMap({
               })}
             </svg>
 
-            {/* Tooltip */}
-            {hoverNome ? (
+            {/* Tooltip que segue o cursor e some fora do país */}
+            {hoverNome && pos ? (
               <div
                 role="status"
-                className="pointer-events-none absolute left-3 top-3 rounded-lg border border-border/60 bg-card/95 px-3 py-2 text-xs shadow-lg backdrop-blur"
+                className="pointer-events-none absolute z-20 rounded-lg border border-border/60 bg-card/95 px-3 py-2 text-xs shadow-xl backdrop-blur"
+                style={{
+                  left: pos.x + 14,
+                  top: pos.y + 14,
+                  transform: "translateZ(0)",
+                }}
               >
                 <div className="font-medium">{hoverNome}</div>
                 <div className="text-muted-foreground tabular-nums">
                   {hoverDatum ? formatValor(hoverDatum.valor) : "Sem dados"}
                 </div>
+                {hoverDatum && max > 0 ? (
+                  <div className="mt-0.5 text-[10px] text-muted-foreground tabular-nums">
+                    {((hoverDatum.valor / max) * 100).toFixed(0)}% do líder
+                  </div>
+                ) : null}
               </div>
             ) : null}
 
