@@ -214,7 +214,7 @@ function AbaPendentes({ data }: { data: PedidosData }) {
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  ativo ? "border-violet-500/60 bg-violet-600/15 text-violet-200" : "border-border bg-muted/30 text-muted-foreground hover:border-foreground/25 hover:text-foreground",
+                  ativo ? "border-violet-500/60 bg-violet-600/15 text-violet-700 dark:text-violet-200" : "border-border bg-muted/30 text-muted-foreground hover:border-foreground/25 hover:text-foreground",
                 )}
               >
                 {o.label}

@@ -25,14 +25,14 @@ const TIPO_LABEL: Record<DiretoriaEventoTipo, string> = {
 };
 
 const TIPO_COR: Record<DiretoriaEventoTipo, string> = {
-  reuniao: "bg-violet-600/30 text-violet-200",
-  entrega: "bg-emerald-600/30 text-emerald-200",
-  inventario: "bg-amber-600/30 text-amber-200",
-  prospeccao: "bg-sky-600/30 text-sky-200",
-  carregamento: "bg-orange-600/30 text-orange-200",
-  organizacao_estoque: "bg-teal-600/30 text-teal-200",
-  assembleia: "bg-rose-600/30 text-rose-200",
-  visita: "bg-indigo-600/30 text-indigo-200",
+  reuniao: "bg-violet-600/30 text-violet-700 dark:text-violet-200",
+  entrega: "bg-emerald-600/30 text-emerald-700 dark:text-emerald-200",
+  inventario: "bg-amber-600/30 text-amber-700 dark:text-amber-200",
+  prospeccao: "bg-sky-600/30 text-sky-700 dark:text-sky-200",
+  carregamento: "bg-orange-600/30 text-orange-700 dark:text-orange-200",
+  organizacao_estoque: "bg-teal-600/30 text-teal-700 dark:text-teal-200",
+  assembleia: "bg-rose-600/30 text-rose-700 dark:text-rose-200",
+  visita: "bg-indigo-600/30 text-indigo-700 dark:text-indigo-200",
 };
 
 // Ponto colorido por tipo (para o painel do dia).
@@ -256,7 +256,7 @@ export function AgendaCalendar({
                       className={cn(
                         "rounded-full border px-2.5 py-1 text-xs transition-colors",
                         ativo
-                          ? "border-violet-500 bg-violet-600/20 text-violet-200"
+                          ? "border-violet-500 bg-violet-600/20 text-violet-700 dark:text-violet-200"
                           : "border-border/60 hover:bg-muted/60",
                       )}
                     >
@@ -309,7 +309,7 @@ export function AgendaCalendar({
               >
                 {dia ? (
                   <>
-                    <div className={cn("mb-1 text-xs tabular-nums", sel ? "font-semibold text-violet-200" : "text-muted-foreground")}>{dia}</div>
+                    <div className={cn("mb-1 text-xs tabular-nums", sel ? "font-semibold text-violet-700 dark:text-violet-200" : "text-muted-foreground")}>{dia}</div>
                     <div className="space-y-1">
                       {eventosCel.slice(0, 3).map((e) => (
                         <span
@@ -401,7 +401,7 @@ export function AgendaCalendar({
             <button
               type="button"
               onClick={() => setAberto(true)}
-              className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-violet-500/40 bg-violet-600/10 px-3 py-1.5 text-sm text-violet-200 transition-colors hover:bg-violet-600/20"
+              className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-violet-500/40 bg-violet-600/10 px-3 py-1.5 text-sm text-violet-700 dark:text-violet-200 transition-colors hover:bg-violet-600/20"
             >
               <Plus className="h-4 w-4" /> Novo evento neste dia
             </button>

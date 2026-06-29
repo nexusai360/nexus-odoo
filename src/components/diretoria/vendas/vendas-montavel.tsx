@@ -36,7 +36,7 @@ export function VendasMontavel({
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-end gap-2">
         {editando ? (
-          <span className="mr-auto text-xs text-violet-300">
+          <span className="mr-auto text-xs text-violet-700 dark:text-violet-300">
             Modo de edição: arraste pela alça, redimensione pelos cantos/bordas. Salve em cada aba.
           </span>
         ) : null}
@@ -46,8 +46,8 @@ export function VendasMontavel({
           className={cn(
             "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors",
             editando
-              ? "border-emerald-500/40 bg-emerald-600/10 text-emerald-200 hover:bg-emerald-600/20"
-              : "border-violet-500/40 bg-violet-600/10 text-violet-200 hover:bg-violet-600/20",
+              ? "border-emerald-500/40 bg-emerald-600/10 text-emerald-700 dark:text-emerald-200 hover:bg-emerald-600/20"
+              : "border-violet-500/40 bg-violet-600/10 text-violet-700 dark:text-violet-200 hover:bg-violet-600/20",
           )}
         >
           {editando ? <Check className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}

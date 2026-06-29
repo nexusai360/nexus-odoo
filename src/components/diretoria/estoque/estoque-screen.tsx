@@ -111,7 +111,7 @@ function ChipsFiltro<T extends string>({
               "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               ativo
-                ? "border-violet-500/60 bg-violet-600/15 text-violet-200"
+                ? "border-violet-500/60 bg-violet-600/15 text-violet-700 dark:text-violet-200"
                 : "border-border bg-muted/30 text-muted-foreground hover:border-foreground/25 hover:text-foreground",
             )}
           >
@@ -371,12 +371,12 @@ function AbaEstoque({
           <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span>Filtros ativos:</span>
             {familiaSel ? (
-              <button type="button" onClick={() => setFamiliaSel("")} className="inline-flex items-center gap-1 rounded-full bg-violet-600/15 px-2 py-0.5 text-violet-200 hover:bg-violet-600/25">
+              <button type="button" onClick={() => setFamiliaSel("")} className="inline-flex items-center gap-1 rounded-full bg-violet-600/15 px-2 py-0.5 text-violet-700 dark:text-violet-200 hover:bg-violet-600/25">
                 família: {familiaSel} ✕
               </button>
             ) : null}
             {marcaSel ? (
-              <button type="button" onClick={() => setMarcaSel("")} className="inline-flex items-center gap-1 rounded-full bg-violet-600/15 px-2 py-0.5 text-violet-200 hover:bg-violet-600/25">
+              <button type="button" onClick={() => setMarcaSel("")} className="inline-flex items-center gap-1 rounded-full bg-violet-600/15 px-2 py-0.5 text-violet-700 dark:text-violet-200 hover:bg-violet-600/25">
                 marca: {marcaSel} ✕
               </button>
             ) : null}

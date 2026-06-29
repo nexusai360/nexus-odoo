@@ -88,7 +88,7 @@ export function RankingCards({
                 <span
                   className={cn(
                     "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold tabular-nums",
-                    podio ? "bg-violet-600/25 text-violet-200 ring-1 ring-violet-500/40" : "bg-muted text-muted-foreground",
+                    podio ? "bg-violet-600/25 text-violet-700 dark:text-violet-200 ring-1 ring-violet-500/40" : "bg-muted text-muted-foreground",
                   )}
                 >
                   {posReal}

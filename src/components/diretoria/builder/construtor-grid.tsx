@@ -199,7 +199,7 @@ export function ConstrutorGrid<T>({
             <button
               type="button"
               onClick={() => { setEditando(true); setMsg(null); }}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-violet-500/40 bg-violet-600/10 px-3 py-1.5 text-sm text-violet-200 hover:bg-violet-600/20"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-violet-500/40 bg-violet-600/10 px-3 py-1.5 text-sm text-violet-700 dark:text-violet-200 hover:bg-violet-600/20"
             >
               <Pencil className="h-3.5 w-3.5" /> Editar tela
             </button>
@@ -211,7 +211,7 @@ export function ConstrutorGrid<T>({
                   <Save className="h-3.5 w-3.5" /> Salvar oficial
                 </button>
               ) : null}
-              <button type="button" disabled={salvando} onClick={() => salvar("pessoal")} className="inline-flex items-center gap-1.5 rounded-lg border border-violet-500/40 bg-violet-600/10 px-3 py-1.5 text-sm text-violet-200 disabled:opacity-40">
+              <button type="button" disabled={salvando} onClick={() => salvar("pessoal")} className="inline-flex items-center gap-1.5 rounded-lg border border-violet-500/40 bg-violet-600/10 px-3 py-1.5 text-sm text-violet-700 dark:text-violet-200 disabled:opacity-40">
                 <Check className="h-3.5 w-3.5" /> Salvar p/ mim
               </button>
               <button type="button" disabled={salvando} onClick={restaurar} className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted/60 disabled:opacity-40">
@@ -259,7 +259,7 @@ export function ConstrutorGrid<T>({
               onClick={() => adicionar(c.id)}
               className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/30 px-2.5 py-1 text-xs text-foreground/80 hover:border-violet-500/50 hover:text-foreground"
             >
-              <Plus className="h-3 w-3" /> <span className="font-mono text-[10px] text-violet-300">{c.id}</span> {c.nome}
+              <Plus className="h-3 w-3" /> <span className="font-mono text-[10px] text-violet-700 dark:text-violet-300">{c.id}</span> {c.nome}
             </button>
           ))}
         </div>
@@ -344,7 +344,7 @@ export function ConstrutorGrid<T>({
               <section className={cn("flex h-full min-h-0 flex-col rounded-2xl border border-border/70 bg-card/50", editando && "ring-1 ring-violet-500/30")}>
                 <header className="flex items-center justify-between gap-2 border-b border-border/50 px-4 py-2.5">
                   <div className="flex min-w-0 items-center gap-2">
-                    <span className="shrink-0 rounded bg-violet-600/15 px-1.5 py-0.5 font-mono text-[10px] text-violet-300">{comp.id}</span>
+                    <span className="shrink-0 rounded bg-violet-600/15 px-1.5 py-0.5 font-mono text-[10px] text-violet-700 dark:text-violet-300">{comp.id}</span>
                     <h2 className="truncate text-sm font-semibold">{comp.nome}</h2>
                     {comp.fonteDado !== "real" ? (
                       <span className="shrink-0 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-400">
