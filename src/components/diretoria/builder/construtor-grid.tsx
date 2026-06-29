@@ -26,7 +26,9 @@ import { PeriodPills } from "@/components/reports/period-pills";
 import type { PeriodKey } from "@/lib/datetime-core";
 
 const Grid = WidthProvider(GridLayout);
-const ROW_H = 64;
+// Altura de cada unidade (oitavo). ~100px faz 8 unidades encherem a altura útil
+// da tela (cliente: esticava ao máximo e o bloco não passava de ~75%).
+const ROW_H = 100;
 
 const SELO: Record<Exclude<FonteDado, "real">, string> = {
   estimado: "Estimado",
@@ -270,36 +272,38 @@ export function ConstrutorGrid<T>({
           outline: 1.5px solid color-mix(in srgb, var(--primary) 55%, transparent);
         }
         .diretoria-construtor .react-resizable-handle::after{ display:none !important; }
-        /* ocultas por padrão; sutis no hover do bloco; violeta só no hover da alça */
-        .diretoria-construtor .react-resizable-handle{
-          opacity: 0; z-index: 6;
-          background: color-mix(in srgb, var(--muted-foreground) 35%, transparent);
-          border-radius: 999px;
-          transition: opacity .15s ease, background-color .15s ease;
-        }
-        .diretoria-construtor .react-grid-item:hover > .react-resizable-handle{ opacity: .5; }
-        .diretoria-construtor .react-resizable-handle:hover{
-          opacity: 1 !important;
-          background: color-mix(in srgb, var(--primary) 85%, transparent);
-        }
-        .diretoria-construtor .react-resizable-handle-e,
-        .diretoria-construtor .react-resizable-handle-w{
-          top:50%; width:3px; height:22px; transform:translateY(-50%);
-        }
-        .diretoria-construtor .react-resizable-handle-e{ right:4px; }
-        .diretoria-construtor .react-resizable-handle-w{ left:4px; }
+        /* Bordas (n/s/e/w): invisíveis, cobrem a borda inteira; só dão o CURSOR de
+           redimensionar ao passar o mouse , nada de bolinha/traço. */
         .diretoria-construtor .react-resizable-handle-n,
         .diretoria-construtor .react-resizable-handle-s{
-          left:50%; width:22px; height:3px; transform:translateX(-50%);
+          left:0; width:100%; height:12px; transform:none; background:none; opacity:1; z-index:6;
         }
-        .diretoria-construtor .react-resizable-handle-n{ top:4px; }
-        .diretoria-construtor .react-resizable-handle-s{ bottom:4px; }
+        .diretoria-construtor .react-resizable-handle-n{ top:-3px; cursor:ns-resize; }
+        .diretoria-construtor .react-resizable-handle-s{ bottom:-3px; cursor:ns-resize; }
+        .diretoria-construtor .react-resizable-handle-e,
+        .diretoria-construtor .react-resizable-handle-w{
+          top:0; height:100%; width:12px; transform:none; background:none; opacity:1; z-index:6;
+        }
+        .diretoria-construtor .react-resizable-handle-e{ right:-3px; cursor:ew-resize; }
+        .diretoria-construtor .react-resizable-handle-w{ left:-3px; cursor:ew-resize; }
+        /* Cantos (diagonais): quadradinhos que ficam VIOLETA quando o mouse passa
+           no BLOCO (sem precisar mirar na alça); redimensionam altura+largura. */
         .diretoria-construtor .react-resizable-handle-se,
         .diretoria-construtor .react-resizable-handle-sw,
         .diretoria-construtor .react-resizable-handle-ne,
         .diretoria-construtor .react-resizable-handle-nw{
-          width:8px; height:8px; border-radius:3px;
+          width:11px; height:11px; border-radius:3px; z-index:8; opacity:0;
+          background: color-mix(in srgb, var(--primary) 90%, transparent);
+          transition: opacity .15s ease;
         }
+        .diretoria-construtor .react-grid-item:hover > .react-resizable-handle-se,
+        .diretoria-construtor .react-grid-item:hover > .react-resizable-handle-sw,
+        .diretoria-construtor .react-grid-item:hover > .react-resizable-handle-ne,
+        .diretoria-construtor .react-grid-item:hover > .react-resizable-handle-nw{ opacity:1; }
+        .diretoria-construtor .react-resizable-handle-se{ right:3px; bottom:3px; cursor:nwse-resize; }
+        .diretoria-construtor .react-resizable-handle-nw{ left:3px; top:3px; cursor:nwse-resize; }
+        .diretoria-construtor .react-resizable-handle-ne{ right:3px; top:3px; cursor:nesw-resize; }
+        .diretoria-construtor .react-resizable-handle-sw{ left:3px; bottom:3px; cursor:nesw-resize; }
       `}</style>
       {!montado ? (
         <div className="flex flex-col gap-3" aria-hidden>
