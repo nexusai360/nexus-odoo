@@ -28,7 +28,8 @@ export interface Travas {
 export function travasDoTipo(tipo: TipoComponente): Travas {
   switch (tipo) {
     case "kpi":
-      return { larguraMin: 2, larguraMax: 4, alturaMin: 2, alturaMax: 3 };
+      // Faixa de KPIs (ex.: A-01 = 4 cards): pode ocupar de 2 a 8 colunas; baixa.
+      return { larguraMin: 2, larguraMax: 8, alturaMin: 2, alturaMax: 3 };
     case "tabela":
       return { larguraMin: 3, larguraMax: 8, alturaMin: 3, alturaMax: 8 };
     case "grafico":

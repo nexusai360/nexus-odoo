@@ -39,8 +39,8 @@ describe("catálogo de componentes", () => {
     expect(componentePorId("ZZ-99")).toBeNull();
   });
 
-  it("KPI tem trava de largura 2-4 e altura 2-3 (escala 8x8)", () => {
+  it("KPI (faixa) tem trava de largura 2-8 e altura 2-3 (escala 8x8)", () => {
     const tr = travasDoTipo("kpi");
-    expect(tr).toEqual({ larguraMin: 2, larguraMax: 4, alturaMin: 2, alturaMax: 3 });
+    expect(tr).toEqual({ larguraMin: 2, larguraMax: 8, alturaMin: 2, alturaMax: 3 });
   });
 });
