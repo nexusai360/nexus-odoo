@@ -73,6 +73,8 @@ export function BrazilMap({
     [data],
   );
 
+  const total = useMemo(() => data.reduce((acc, d) => acc + d.valor, 0), [data]);
+
   const ranking = useMemo(
     () => [...data].sort((a, b) => b.valor - a.valor),
     [data],
@@ -120,7 +122,7 @@ export function BrazilMap({
                 .slice(0, 3)
                 .map((r) => `${r.uf} ${formatValor(r.valor)}`)
                 .join(", ")}.`}
-              className="mx-auto block h-[clamp(220px,38vh,360px)] w-auto max-w-full"
+              className="mx-auto block h-[clamp(340px,56vh,580px)] w-auto max-w-full"
             >
               {UF_PATHS.map((p, i) => {
                 const d = porUf.get(p.uf);
@@ -181,9 +183,9 @@ export function BrazilMap({
                 <div className="text-muted-foreground tabular-nums">
                   {hoverDatum ? formatValor(hoverDatum.valor) : "Sem dados"}
                 </div>
-                {hoverDatum && max > 0 ? (
+                {hoverDatum && total > 0 ? (
                   <div className="mt-0.5 text-[10px] text-muted-foreground tabular-nums">
-                    {((hoverDatum.valor / max) * 100).toFixed(0)}% do líder
+                    {((hoverDatum.valor / total) * 100).toFixed(1)}% do total
                   </div>
                 ) : null}
               </div>
@@ -208,19 +210,24 @@ export function BrazilMap({
       {temDados ? (
         <ol className="w-full shrink-0 space-y-1 lg:w-56" aria-label={`Ranking de ${metric} por estado`}>
           {ranking.slice(0, 10).map((r, i) => {
-            const isSel = selected.includes(r.uf.toUpperCase());
+            const ufU = r.uf.toUpperCase();
+            const isSel = selected.includes(ufU);
+            const isHover = hover === ufU;
+            const share = total > 0 ? (r.valor / total) * 100 : 0;
             return (
               <li key={r.uf}>
                 <button
                   type="button"
-                  onClick={() => toggle(r.uf.toUpperCase())}
-                  onMouseEnter={() => setHover(r.uf.toUpperCase())}
-                  onMouseLeave={() => setHover(null)}
+                  onClick={() => toggle(ufU)}
+                  onMouseEnter={() => setHover(ufU)}
+                  onMouseLeave={() => setHover((h) => (h === ufU ? null : h))}
                   className={cn(
                     "flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors",
                     isSel
                       ? "bg-violet-600/20 ring-1 ring-violet-500/50"
-                      : "hover:bg-muted/60",
+                      : isHover
+                        ? "bg-violet-600/10 ring-1 ring-violet-500/30"
+                        : "hover:bg-muted/60",
                   )}
                 >
                   <span className="flex items-center gap-2">
@@ -230,7 +237,10 @@ export function BrazilMap({
                       <span className="text-muted-foreground">{r.label}</span>
                     ) : null}
                   </span>
-                  <span className="tabular-nums">{formatValor(r.valor)}</span>
+                  <span className="flex items-baseline gap-1.5 tabular-nums">
+                    <span>{formatValor(r.valor)}</span>
+                    <span className="text-[10px] text-muted-foreground">{share.toFixed(1)}%</span>
+                  </span>
                 </button>
               </li>
             );

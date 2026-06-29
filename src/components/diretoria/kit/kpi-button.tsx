@@ -39,8 +39,10 @@ const selectedRing: Record<KpiTone, string> = {
 
 interface KpiButtonProps {
   rotulo: string;
-  /** Valor já formatado (BRL/número/texto). */
+  /** Valor já formatado (BRL/número/texto), abreviado quando grande. */
   valor: string;
+  /** Valor por extenso (cheio) exibido no hover/title do número. */
+  valorCompleto?: string;
   icone?: LucideIcon;
   tone?: KpiTone;
   /** Texto auxiliar abaixo do valor. */
@@ -55,6 +57,7 @@ interface KpiButtonProps {
 export function KpiButton({
   rotulo,
   valor,
+  valorCompleto,
   icone: Icon = Activity,
   tone = "default",
   hint,
@@ -79,7 +82,10 @@ export function KpiButton({
           <Icon className={cn("h-3.5 w-3.5", iconColor[tone])} aria-hidden />
         </span>
       </div>
-      <div className="mt-2 text-2xl font-bold leading-none tracking-tight tabular-nums">
+      <div
+        className="mt-2 truncate text-2xl font-bold leading-none tracking-tight tabular-nums"
+        title={valorCompleto ?? undefined}
+      >
         {valor}
       </div>
       {hint ? (

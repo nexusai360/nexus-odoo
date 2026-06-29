@@ -23,13 +23,17 @@ export const DIRETORIA_PERIODO_PRESETS: {
   { id: "hoje", label: "Hoje" },
   { id: "semana", label: "Esta semana" },
   { id: "este_mes", label: "Este mês" },
-  { id: "ano_atual", label: "Ano atual" },
-  { id: "ano_anterior", label: "Ano anterior" },
-  { id: "ultimos_7", label: "Últimos 7 dias" },
-  { id: "ultimos_30", label: "Últimos 30 dias" },
-  { id: "ultimos_90", label: "Últimos 90 dias" },
+  { id: "ano_atual", label: "Este ano" },
   { id: "tudo", label: "Tudo" },
   { id: "custom", label: "Personalizado" },
+];
+
+// Presets ainda aceitos na URL (compatibilidade), embora não exibidos como pílula.
+const PRESETS_OCULTOS: DiretoriaPeriodoPreset[] = [
+  "ano_anterior",
+  "ultimos_7",
+  "ultimos_30",
+  "ultimos_90",
 ];
 
 export interface PeriodoDirParams {
@@ -54,9 +58,10 @@ function addDias(d: Date, n: number): Date {
   return r;
 }
 
-const PRESETS_VALIDOS = new Set<DiretoriaPeriodoPreset>(
-  DIRETORIA_PERIODO_PRESETS.map((p) => p.id),
-);
+const PRESETS_VALIDOS = new Set<DiretoriaPeriodoPreset>([
+  ...DIRETORIA_PERIODO_PRESETS.map((p) => p.id),
+  ...PRESETS_OCULTOS,
+]);
 
 export function resolverPeriodoDir(
   params: PeriodoDirParams,

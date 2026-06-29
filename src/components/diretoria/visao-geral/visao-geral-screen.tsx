@@ -14,9 +14,7 @@ import { KpiButton } from "@/components/diretoria/kit/kpi-button";
 import { SectionCard } from "@/components/diretoria/kit/section-card";
 import { BrazilMap } from "@/components/diretoria/brazil-map/brazil-map";
 import { DonutChart, type DonutDatum } from "@/components/diretoria/charts/donut-chart";
-
-const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
-const num = new Intl.NumberFormat("pt-BR");
+import { brl, brlCompacto, num } from "@/components/diretoria/kit/format";
 
 const ATALHO_ICON: Record<string, LucideIcon> = {
   "/diretoria/vendas": TrendingUp,
@@ -45,11 +43,11 @@ export function VisaoGeralScreen({ data }: { data: VisaoGeralData }) {
     <div className="flex flex-col gap-5">
       {/* KPIs globais */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
-        <KpiButton rotulo="Faturamento" valor={brl.format(data.faturamento)} icone={TrendingUp} hint="Vendas no período" />
-        <KpiButton rotulo="Ticket médio" valor={brl.format(data.ticketMedio)} icone={Receipt} tone="info" hint={`${num.format(data.numPedidos)} pedidos`} />
-        <KpiButton rotulo="A receber" valor={brl.format(data.aReceber)} icone={HandCoins} tone="warning" hint="Clientes em aberto" />
-        <KpiButton rotulo="A pagar" valor={brl.format(data.aPagar)} icone={Wallet} tone="warning" hint="Fornecedores em aberto" />
-        <KpiButton rotulo="Valor em estoque" valor={brl.format(data.valorEstoque)} icone={Boxes} hint={`${num.format(data.produtos)} produtos`} />
+        <KpiButton rotulo="Faturamento" valor={brlCompacto(data.faturamento)} valorCompleto={brl.format(data.faturamento)} icone={TrendingUp} hint="Vendas no período" />
+        <KpiButton rotulo="Ticket médio" valor={brlCompacto(data.ticketMedio)} valorCompleto={brl.format(data.ticketMedio)} icone={Receipt} tone="info" hint={`${num.format(data.numPedidos)} pedidos`} />
+        <KpiButton rotulo="A receber" valor={brlCompacto(data.aReceber)} valorCompleto={brl.format(data.aReceber)} icone={HandCoins} tone="warning" hint="Clientes em aberto" />
+        <KpiButton rotulo="A pagar" valor={brlCompacto(data.aPagar)} valorCompleto={brl.format(data.aPagar)} icone={Wallet} tone="warning" hint="Fornecedores em aberto" />
+        <KpiButton rotulo="Valor em estoque" valor={brlCompacto(data.valorEstoque)} valorCompleto={brl.format(data.valorEstoque)} icone={Boxes} hint={`${num.format(data.produtos)} produtos`} />
         <KpiButton rotulo="Demandas a entregar" valor={num.format(data.demandasTotal)} icone={Truck} tone={data.demandasAtrasadas > 0 ? "danger" : "info"} hint={`${num.format(data.demandasAtrasadas)} atrasadas`} />
       </div>
 

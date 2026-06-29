@@ -20,12 +20,8 @@ import { SectionCard } from "@/components/diretoria/kit/section-card";
 import { DataTable, type ColumnDef } from "@/components/charts/data-table";
 import { DonutChart } from "@/components/diretoria/charts/donut-chart";
 import { BrazilMap } from "@/components/diretoria/brazil-map/brazil-map";
+import { brl, brlCompacto, num, pct1, DASH } from "@/components/diretoria/kit/format";
 import type { IndicadoresDemandas, DemandaUf, DemandaLinha } from "@/lib/diretoria/queries/pedidos";
-
-const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
-const num = new Intl.NumberFormat("pt-BR");
-const pct1 = (v: number) => `${v.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
-const DASH = "-";
 
 export interface PedidosData {
   indicadores: IndicadoresDemandas;
@@ -65,9 +61,9 @@ function KpisTopo({ data }: { data: PedidosData }) {
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       <KpiButton rotulo="Demandas a entregar" valor={num.format(indicadores.totalPendentes)} icone={Truck} tone="info" hint="Pedidos não finalizados" />
-      <KpiButton rotulo="Valor a entregar" valor={brl.format(indicadores.valorAEntregar)} icone={PackageCheck} hint="Total dos produtos pendentes" />
+      <KpiButton rotulo="Valor a entregar" valor={brlCompacto(indicadores.valorAEntregar)} valorCompleto={brl.format(indicadores.valorAEntregar)} icone={PackageCheck} hint="Total dos produtos pendentes" />
       <KpiButton rotulo="Atrasadas" valor={num.format(indicadores.atrasadas)} icone={AlertTriangle} tone={indicadores.atrasadas > 0 ? "danger" : "success"} hint="Data prevista vencida" />
-      <KpiButton rotulo="A receber de clientes" valor={brl.format(aReceber)} icone={HandCoins} tone="warning" hint="Contas a receber em aberto" />
+      <KpiButton rotulo="A receber de clientes" valor={brlCompacto(aReceber)} valorCompleto={brl.format(aReceber)} icone={HandCoins} tone="warning" hint="Contas a receber em aberto" />
     </div>
   );
 }
