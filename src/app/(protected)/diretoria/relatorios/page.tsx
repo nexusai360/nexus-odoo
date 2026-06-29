@@ -8,7 +8,7 @@ import {
   queryIndicadoresEstoque, queryEstoquePorLocal, queryEstoquePorFamilia,
   queryEstoquePorMarca, queryCatalogoEstoque, queryComprasPorFornecedor,
   queryComprasAtivas, queryResumoCompras, queryIndicadoresAvancadosEstoque,
-  querySeriais,
+  querySeriais, queryComprasSerie,
 } from "@/lib/diretoria/queries/estoque";
 import { carregarLayout } from "@/lib/diretoria/builder/layout-repo";
 import type { BlocoLayout } from "@/lib/diretoria/builder/layout";
@@ -23,14 +23,15 @@ export const dynamic = "force-dynamic";
 const PADRAO_ESTOQUE: BlocoLayout[] = [
   { componenteId: "A-01", ordem: 0, largura: 8, altura: 2, x: 0, y: 0 },
   { componenteId: "A-09", ordem: 1, largura: 8, altura: 2, x: 0, y: 2 },
-  { componenteId: "A-03", ordem: 2, largura: 4, altura: 4, x: 0, y: 4 },
-  { componenteId: "A-04", ordem: 3, largura: 4, altura: 4, x: 4, y: 4 },
-  { componenteId: "A-02", ordem: 4, largura: 4, altura: 5, x: 0, y: 8 },
-  { componenteId: "A-05", ordem: 5, largura: 4, altura: 5, x: 4, y: 8 },
-  { componenteId: "A-07", ordem: 6, largura: 8, altura: 5, x: 0, y: 13 },
-  { componenteId: "A-08", ordem: 7, largura: 5, altura: 5, x: 0, y: 18 },
-  { componenteId: "K-01", ordem: 8, largura: 3, altura: 4, x: 5, y: 18 },
-  { componenteId: "A-06", ordem: 9, largura: 4, altura: 5, x: 0, y: 23 },
+  { componenteId: "A-10", ordem: 2, largura: 8, altura: 6, x: 0, y: 4 },
+  { componenteId: "A-03", ordem: 3, largura: 4, altura: 4, x: 0, y: 10 },
+  { componenteId: "A-04", ordem: 4, largura: 4, altura: 4, x: 4, y: 10 },
+  { componenteId: "A-02", ordem: 5, largura: 4, altura: 5, x: 0, y: 14 },
+  { componenteId: "A-05", ordem: 6, largura: 4, altura: 5, x: 4, y: 14 },
+  { componenteId: "A-07", ordem: 7, largura: 8, altura: 5, x: 0, y: 19 },
+  { componenteId: "A-08", ordem: 8, largura: 5, altura: 5, x: 0, y: 24 },
+  { componenteId: "K-01", ordem: 9, largura: 3, altura: 4, x: 5, y: 24 },
+  { componenteId: "A-06", ordem: 10, largura: 4, altura: 5, x: 0, y: 29 },
 ];
 
 export default async function DiretoriaRelatoriosPage() {
@@ -39,7 +40,7 @@ export default async function DiretoriaRelatoriosPage() {
 
   const [
     indicadores, porLocal, porFamilia, porMarca, catalogo,
-    comprasFornecedor, comprasAtivas, resumoCompras, avancados, seriais, salvo, freshIso,
+    comprasFornecedor, comprasAtivas, resumoCompras, avancados, seriais, comprasSerie, salvo, freshIso,
   ] = await Promise.all([
     queryIndicadoresEstoque(prisma),
     queryEstoquePorLocal(prisma),
@@ -51,13 +52,14 @@ export default async function DiretoriaRelatoriosPage() {
     queryResumoCompras(prisma, hoje),
     queryIndicadoresAvancadosEstoque(prisma, hoje),
     querySeriais(prisma, hoje, 200),
+    queryComprasSerie(prisma),
     carregarLayout(prisma, "estoque", user.id),
     ultimaSyncIso(prisma),
   ]);
 
   const data: EstoqueData = {
     indicadores, avancados, porLocal, porFamilia, porMarca, catalogo, seriais,
-    comprasFornecedor, comprasAtivas, resumoCompras,
+    comprasFornecedor, comprasAtivas, resumoCompras, comprasSerie,
   };
   const layoutInicial = salvo.length ? salvo : PADRAO_ESTOQUE;
   const podeEditarGlobal = user.platformRole === "super_admin" || user.platformRole === "admin";

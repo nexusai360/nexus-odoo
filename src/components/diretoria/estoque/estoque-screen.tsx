@@ -29,7 +29,7 @@ import { DonutChart } from "@/components/diretoria/charts/donut-chart";
 import type {
   IndicadoresEstoque, LinhaAgrupada, CatalogoModelo, CatalogoEstoque,
   SerialLinha, CompraFornecedor, CompraAtivaLinha, ComprasAtivas,
-  ResumoCompras, FornecedorResumo, IndicadoresAvancados,
+  ResumoCompras, FornecedorResumo, IndicadoresAvancados, ComprasSerie,
 } from "@/lib/diretoria/queries/estoque";
 import type { StatusPrazo } from "@/lib/diretoria/cores";
 
@@ -61,6 +61,7 @@ export interface EstoqueData {
   comprasFornecedor: { linhas: CompraFornecedor[]; valorGeral: number };
   comprasAtivas: ComprasAtivas;
   resumoCompras: ResumoCompras;
+  comprasSerie: ComprasSerie;
 }
 
 // ---------------------------------------------------------------------------

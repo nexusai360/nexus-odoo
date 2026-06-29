@@ -253,6 +253,50 @@ export async function queryComprasPorFornecedor(
   return { linhas, valorGeral };
 }
 
+export interface PontoSerie {
+  /** Chave temporal: "YYYY-MM-DD" na série diária; "YYYY-MM" na mensal. */
+  data: string;
+  valor: number;
+  notas: number;
+}
+
+export interface ComprasSerie {
+  diaria: PontoSerie[];
+  mensal: PontoSerie[];
+}
+
+/**
+ * A-10 , Série temporal de compras (NF de entrada). Agrega fato_dfe por dia e
+ * por mês a partir de dataEmissao + vrNf. A UI fatia janelas (semana/mês) e
+ * navega com ‹ ›. Ignora notas sem dataEmissao. Ordenado crescente.
+ */
+export async function queryComprasSerie(
+  prisma: PrismaClient,
+): Promise<ComprasSerie> {
+  const rows = await prisma.fatoDfe.findMany({
+    where: { dataEmissao: { not: null } },
+    select: { dataEmissao: true, vrNf: true },
+  });
+  const dia = new Map<string, { valor: number; notas: number }>();
+  const mes = new Map<string, { valor: number; notas: number }>();
+  for (const r of rows) {
+    if (!r.dataEmissao) continue;
+    const iso = r.dataEmissao.toISOString();
+    const kDia = iso.slice(0, 10); // YYYY-MM-DD
+    const kMes = iso.slice(0, 7); // YYYY-MM
+    const v = Number(r.vrNf ?? 0);
+    const cd = dia.get(kDia);
+    if (cd) { cd.valor += v; cd.notas += 1; } else dia.set(kDia, { valor: v, notas: 1 });
+    const cm = mes.get(kMes);
+    if (cm) { cm.valor += v; cm.notas += 1; } else mes.set(kMes, { valor: v, notas: 1 });
+  }
+  const ordena = (m: Map<string, { valor: number; notas: number }>): PontoSerie[] =>
+    [...m.entries()]
+      .map(([data, v]) => ({ data, ...v }))
+      .sort((a, b) => a.data.localeCompare(b.data));
+  return { diaria: ordena(dia), mensal: ordena(mes) };
+}
+
 export interface FornecedorResumo {
   fornecedor: string;
   ativas: number;

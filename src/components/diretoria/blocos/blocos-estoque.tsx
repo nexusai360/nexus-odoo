@@ -13,6 +13,7 @@ import {
 
 import { KpiButton } from "@/components/diretoria/kit/kpi-button";
 import { DonutChart } from "@/components/diretoria/charts/donut-chart";
+import { SerieTemporalCompras } from "@/components/diretoria/charts/serie-temporal";
 import { DataTable, type ColumnDef } from "@/components/charts/data-table";
 import { brl, brlCompacto, num, pct1, DASH } from "@/components/diretoria/kit/format";
 import type { EstoqueData } from "@/components/diretoria/estoque/estoque-screen";
@@ -66,6 +67,9 @@ function DonutMarca({ d }: { d: EstoqueData }) {
 }
 function DonutComprasFornecedor({ d }: { d: EstoqueData }) {
   return <DonutChart data={d.comprasFornecedor.linhas.map((c) => ({ label: c.fornecedor, valor: c.valorTotal }))} maxFatias={8} />;
+}
+function SerieCompras({ d }: { d: EstoqueData }) {
+  return <SerieTemporalCompras serie={d.comprasSerie} />;
 }
 
 function Catalogo({ d }: { d: EstoqueData }) {
@@ -172,6 +176,7 @@ export function renderBlocoEstoque(id: string, d: EstoqueData): ReactNode {
     case "A-06": return <Seriais d={d} />;
     case "A-07": return <ComprasAtivas d={d} />;
     case "A-08": return <MatrizFornecedor d={d} />;
+    case "A-10": return <SerieCompras d={d} />;
     case "K-01": return <DonutComprasFornecedor d={d} />;
     default:
       return <p className="py-6 text-center text-sm text-muted-foreground">Componente em breve.</p>;

@@ -6,6 +6,7 @@ import {
   queryCatalogoEstoque,
   queryResumoCompras,
   queryIndicadoresAvancadosEstoque,
+  queryComprasSerie,
 } from "./estoque";
 
 describe("queryIndicadoresEstoque (A4)", () => {
@@ -62,6 +63,43 @@ describe("queryComprasPorFornecedor (A8)", () => {
     expect(r.valorGeral).toBe(4500);
     expect(r.linhas[0]).toEqual({ fornecedor: "Fornecedor Y", notas: 1, valorTotal: 3000 });
     expect(r.linhas[1]).toEqual({ fornecedor: "Fornecedor X", notas: 2, valorTotal: 1500 });
+  });
+});
+
+describe("queryComprasSerie (A-10, série temporal)", () => {
+  it("agrega NF de entrada por dia e por mês, ordenado crescente", async () => {
+    const prisma = {
+      fatoDfe: {
+        findMany: jest.fn().mockResolvedValue([
+          { dataEmissao: new Date("2026-06-22T10:00:00Z"), vrNf: 1000 },
+          { dataEmissao: new Date("2026-06-22T18:00:00Z"), vrNf: 500 },
+          { dataEmissao: new Date("2026-06-24T09:00:00Z"), vrNf: 2000 },
+          { dataEmissao: new Date("2026-05-15T09:00:00Z"), vrNf: 800 },
+          { dataEmissao: null, vrNf: 999 },
+        ]),
+      },
+    } as unknown as Parameters<typeof queryComprasSerie>[0];
+    const r = await queryComprasSerie(prisma);
+    // Diária: ignora dataEmissao null; soma valor e conta notas por dia.
+    expect(r.diaria).toEqual([
+      { data: "2026-05-15", valor: 800, notas: 1 },
+      { data: "2026-06-22", valor: 1500, notas: 2 },
+      { data: "2026-06-24", valor: 2000, notas: 1 },
+    ]);
+    // Mensal: agrega por YYYY-MM.
+    expect(r.mensal).toEqual([
+      { data: "2026-05", valor: 800, notas: 1 },
+      { data: "2026-06", valor: 3500, notas: 3 },
+    ]);
+  });
+
+  it("retorna séries vazias quando não há notas", async () => {
+    const prisma = {
+      fatoDfe: { findMany: jest.fn().mockResolvedValue([]) },
+    } as unknown as Parameters<typeof queryComprasSerie>[0];
+    const r = await queryComprasSerie(prisma);
+    expect(r.diaria).toEqual([]);
+    expect(r.mensal).toEqual([]);
   });
 });
 
