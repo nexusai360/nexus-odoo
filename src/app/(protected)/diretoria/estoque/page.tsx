@@ -8,6 +8,7 @@ import {
   queryIndicadoresEstoque,
   queryEstoquePorLocal,
   queryEstoquePorFamilia,
+  queryEstoquePorMarca,
   queryCatalogoEstoque,
   queryComprasPorFornecedor,
   queryComprasAtivas,
@@ -17,6 +18,7 @@ import type { StatusPrazo } from "@/lib/diretoria/cores";
 import { SyncNowButton } from "@/components/diretoria/sync-now-button";
 import { FreshnessBadge } from "@/components/diretoria/freshness-badge";
 import { ultimaSyncIso } from "@/lib/diretoria/freshness";
+import { DonutChart } from "@/components/diretoria/charts/donut-chart";
 
 export const dynamic = "force-dynamic";
 
@@ -91,11 +93,12 @@ function TabelaValor({
 export default async function DiretoriaEstoquePage() {
   const user = await requireDiretoriaArea("estoque");
 
-  const [indicadores, porLocal, porFamilia, catalogo, compras, comprasAtivas, seriais] =
+  const [indicadores, porLocal, porFamilia, porMarca, catalogo, compras, comprasAtivas, seriais] =
     await Promise.all([
       queryIndicadoresEstoque(prisma),
       queryEstoquePorLocal(prisma),
       queryEstoquePorFamilia(prisma),
+      queryEstoquePorMarca(prisma),
       queryCatalogoEstoque(prisma, 100),
       queryComprasPorFornecedor(prisma, {}),
       queryComprasAtivas(prisma, new Date(), 50),
@@ -146,11 +149,20 @@ export default async function DiretoriaEstoquePage() {
           ))}
         </div>
 
-        {/* Estoque por local (A2) + distribuição por família (A5) */}
+        {/* Estoque por local (A2) */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <TabelaValor titulo="Estoque por local" rotulo="Local" linhas={porLocal.linhas} />
-          <TabelaValor titulo="Distribuição por família" rotulo="Família" linhas={porFamilia.linhas} />
+          <section className="rounded-2xl border border-border/60 bg-card/60 p-5">
+            <h2 className="mb-4 text-sm font-semibold">Distribuição por família</h2>
+            <DonutChart data={porFamilia.linhas.map((l) => ({ label: l.chave, valor: l.valorTotal }))} />
+          </section>
         </div>
+
+        {/* Distribuição por marca (A5) */}
+        <section className="rounded-2xl border border-border/60 bg-card/60 p-5">
+          <h2 className="mb-4 text-sm font-semibold">Distribuição por marca</h2>
+          <DonutChart data={porMarca.linhas.map((l) => ({ label: l.chave, valor: l.valorTotal }))} />
+        </section>
 
         {/* Modelos do catálogo em estoque (A3) */}
         <section className="rounded-2xl border border-border/60 bg-card/60 p-5">
