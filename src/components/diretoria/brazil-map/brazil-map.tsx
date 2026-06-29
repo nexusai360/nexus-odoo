@@ -104,7 +104,7 @@ export function BrazilMap({
                 .slice(0, 3)
                 .map((r) => `${r.uf} ${formatValor(r.valor)}`)
                 .join(", ")}.`}
-              className="h-auto w-full"
+              className="mx-auto block h-[clamp(220px,38vh,360px)] w-auto max-w-full"
             >
               {UF_PATHS.map((p, i) => {
                 const d = porUf.get(p.uf);

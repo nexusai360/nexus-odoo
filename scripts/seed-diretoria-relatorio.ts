@@ -10,7 +10,7 @@ const TELA = "estoque-demo";
 // Vitrine do construtor: KPIs no topo + gráficos 2x2 (estoque e vendas).
 // O gating por componente esconde os de Vendas para quem não tem a capability.
 const BLOCOS = [
-  { componenteId: "B-03", ordem: 0, larguraQuartos: 4, alturaU: 4 },
+  { componenteId: "B-03", ordem: 0, larguraQuartos: 3, alturaU: 3 },
   { componenteId: "C-01", ordem: 1, larguraQuartos: 2, alturaU: 2 },
   { componenteId: "A-01", ordem: 2, larguraQuartos: 2, alturaU: 2 },
   { componenteId: "C-02", ordem: 3, larguraQuartos: 2, alturaU: 2 },
