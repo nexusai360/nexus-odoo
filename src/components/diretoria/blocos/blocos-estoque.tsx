@@ -12,9 +12,12 @@ import {
 } from "lucide-react";
 
 import { KpiButton } from "@/components/diretoria/kit/kpi-button";
-import { DonutChart } from "@/components/diretoria/charts/donut-chart";
 import { SerieTemporalCompras } from "@/components/diretoria/charts/serie-temporal";
+import { DistribuicaoDinamica } from "@/components/diretoria/charts/distribuicao-dinamica";
 import { DataTable, type ColumnDef } from "@/components/charts/data-table";
+import { DonutWithCenter } from "@/components/charts/interactive/donut-with-center";
+import { InteractiveBarChart } from "@/components/charts/interactive/bar-chart";
+import { getColorByIndex } from "@/components/charts/colors";
 import { brl, brlCompacto, num, pct1, DASH } from "@/components/diretoria/kit/format";
 import type { EstoqueData } from "@/components/diretoria/estoque/estoque-screen";
 
@@ -59,15 +62,80 @@ function EstoquePorLocal({ d }: { d: EstoqueData }) {
   return <DataTable columns={colunas} rows={linhas} searchable compactoInicial exportFilename="estoque-por-local" estado={linhas.length === 0 ? "vazio" : "ok"} />;
 }
 
+/** Agrupa o excedente em "Outros" para não poluir o gráfico (mantém o total). */
+function topComOutros(linhas: { chave: string; valorTotal: number }[], max = 7) {
+  if (linhas.length <= max) return linhas.map((l) => ({ name: l.chave, value: l.valorTotal }));
+  const top = linhas.slice(0, max).map((l) => ({ name: l.chave, value: l.valorTotal }));
+  const resto = linhas.slice(max).reduce((s, l) => s + l.valorTotal, 0);
+  return [...top, { name: "Outros", value: resto }];
+}
+
+// A-03 , Distribuição por família: DONUT rico (centro com total, hover esmaece,
+// tooltip com %). Reusa o donut interativo do Agente Nex.
 function DonutFamilia({ d }: { d: EstoqueData }) {
-  return <DonutChart data={d.porFamilia.linhas.map((l) => ({ label: l.chave, valor: l.valorTotal }))} maxFatias={8} />;
+  const data = topComOutros(d.porFamilia.linhas).map((s, i) => ({ ...s, color: getColorByIndex(i) }));
+  return (
+    <DonutWithCenter
+      data={data}
+      centerLabel="Total"
+      centerValue={brlCompacto(d.porFamilia.valorGeral)}
+      formatValue={(v) => brl.format(v)}
+      height={240}
+      innerRadius={62}
+      outerRadius={92}
+      tooltipPosition="top-left"
+      ariaLabel="Distribuição do valor de estoque por família"
+    />
+  );
 }
-function DonutMarca({ d }: { d: EstoqueData }) {
-  return <DonutChart data={d.porMarca.linhas.map((l) => ({ label: l.chave, valor: l.valorTotal }))} maxFatias={8} />;
+
+// A-04 , Distribuição por marca: BARRAS HORIZONTAIS (variedade real, não outro
+// donut). Reusa o bar chart interativo.
+function BarrasMarca({ d }: { d: EstoqueData }) {
+  const data = topComOutros(d.porMarca.linhas, 8).map((s) => ({ name: s.name, valor: s.value }));
+  return (
+    <InteractiveBarChart
+      data={data}
+      series={[{ key: "valor", label: "Valor em estoque", color: getColorByIndex(2) }]}
+      layout="horizontal"
+      height={240}
+      yAxisWidth={120}
+      showLegend={false}
+      formatValue={(v) => brlCompacto(v)}
+      ariaLabel="Valor de estoque por marca (barras horizontais)"
+    />
+  );
 }
-function DonutComprasFornecedor({ d }: { d: EstoqueData }) {
-  return <DonutChart data={d.comprasFornecedor.linhas.map((c) => ({ label: c.fornecedor, valor: c.valorTotal }))} maxFatias={8} />;
+
+// K-01 , Compras por fornecedor (NF entrada): BARRAS HORIZONTAIS.
+function BarrasComprasFornecedor({ d }: { d: EstoqueData }) {
+  const linhas = d.comprasFornecedor.linhas.slice(0, 8).map((c) => ({ name: c.fornecedor, valor: c.valorTotal }));
+  return (
+    <InteractiveBarChart
+      data={linhas}
+      series={[{ key: "valor", label: "Compras (NF)", color: getColorByIndex(4) }]}
+      layout="horizontal"
+      height={240}
+      yAxisWidth={140}
+      showLegend={false}
+      formatValue={(v) => brlCompacto(v)}
+      ariaLabel="Compras por fornecedor (barras horizontais)"
+    />
+  );
 }
+
+// A-11 , Distribuição dinâmica: o usuário troca a dimensão (família/marca/local)
+// e o gráfico muda (donut <-> barras). É o "gráfico dinâmico" pedido.
+function Distribuicao({ d }: { d: EstoqueData }) {
+  return (
+    <DistribuicaoDinamica
+      familia={d.porFamilia.linhas}
+      marca={d.porMarca.linhas}
+      local={d.porLocal.linhas}
+    />
+  );
+}
+
 function SerieCompras({ d }: { d: EstoqueData }) {
   return <SerieTemporalCompras serie={d.comprasSerie} />;
 }
@@ -194,13 +262,14 @@ export function renderBlocoEstoque(id: string, d: EstoqueData): ReactNode {
     case "A-09": return <KpisAvancados d={d} />;
     case "A-02": return <EstoquePorLocal d={d} />;
     case "A-03": return <DonutFamilia d={d} />;
-    case "A-04": return <DonutMarca d={d} />;
+    case "A-04": return <BarrasMarca d={d} />;
+    case "A-11": return <Distribuicao d={d} />;
     case "A-05": return <Catalogo d={d} />;
     case "A-06": return <Seriais d={d} />;
     case "A-07": return <ComprasAtivas d={d} />;
     case "A-08": return <MatrizFornecedor d={d} />;
     case "A-10": return <SerieCompras d={d} />;
-    case "K-01": return <DonutComprasFornecedor d={d} />;
+    case "K-01": return <BarrasComprasFornecedor d={d} />;
     default:
       return <p className="py-6 text-center text-sm text-muted-foreground">Componente em breve.</p>;
   }

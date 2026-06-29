@@ -24,14 +24,15 @@ const PADRAO_ESTOQUE: BlocoLayout[] = [
   { componenteId: "A-01", ordem: 0, largura: 8, altura: 2, x: 0, y: 0 },
   { componenteId: "A-09", ordem: 1, largura: 8, altura: 2, x: 0, y: 2 },
   { componenteId: "A-10", ordem: 2, largura: 8, altura: 6, x: 0, y: 4 },
-  { componenteId: "A-03", ordem: 3, largura: 4, altura: 4, x: 0, y: 10 },
-  { componenteId: "A-04", ordem: 4, largura: 4, altura: 4, x: 4, y: 10 },
-  { componenteId: "A-02", ordem: 5, largura: 4, altura: 5, x: 0, y: 14 },
-  { componenteId: "A-05", ordem: 6, largura: 4, altura: 5, x: 4, y: 14 },
-  { componenteId: "A-07", ordem: 7, largura: 8, altura: 5, x: 0, y: 19 },
-  { componenteId: "A-08", ordem: 8, largura: 5, altura: 5, x: 0, y: 24 },
-  { componenteId: "K-01", ordem: 9, largura: 3, altura: 4, x: 5, y: 24 },
-  { componenteId: "A-06", ordem: 10, largura: 4, altura: 5, x: 0, y: 29 },
+  { componenteId: "A-11", ordem: 3, largura: 8, altura: 5, x: 0, y: 10 },
+  { componenteId: "A-03", ordem: 4, largura: 4, altura: 5, x: 0, y: 15 },
+  { componenteId: "A-04", ordem: 5, largura: 4, altura: 5, x: 4, y: 15 },
+  { componenteId: "A-02", ordem: 6, largura: 4, altura: 5, x: 0, y: 20 },
+  { componenteId: "A-05", ordem: 7, largura: 4, altura: 5, x: 4, y: 20 },
+  { componenteId: "A-07", ordem: 8, largura: 8, altura: 5, x: 0, y: 25 },
+  { componenteId: "A-08", ordem: 9, largura: 5, altura: 5, x: 0, y: 30 },
+  { componenteId: "K-01", ordem: 10, largura: 3, altura: 5, x: 5, y: 30 },
+  { componenteId: "A-06", ordem: 11, largura: 4, altura: 5, x: 0, y: 35 },
 ];
 
 export default async function DiretoriaRelatoriosPage() {

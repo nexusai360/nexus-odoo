@@ -9,7 +9,8 @@ import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { LineChartCard } from "@/components/charts/line-chart";
+import { InteractiveAreaChart } from "@/components/charts/interactive/area-chart";
+import { CHART_COLORS } from "@/components/charts/colors";
 import type { ComprasSerie, PontoSerie } from "@/lib/diretoria/queries/estoque";
 import { brl, brlCompacto } from "@/components/diretoria/kit/format";
 
@@ -69,7 +70,7 @@ export function SerieTemporalCompras({ serie }: { serie: ComprasSerie }) {
     setOffset(0);
   }
 
-  const dataChart = janela.map((p) => ({ rotulo: rotuloEixo(p.data, g), valor: p.valor, notas: p.notas }));
+  const dataChart = janela.map((p) => ({ name: rotuloEixo(p.data, g), valor: p.valor }));
 
   return (
     <div className="flex h-full flex-col gap-3">
@@ -126,10 +127,16 @@ export function SerieTemporalCompras({ serie }: { serie: ComprasSerie }) {
       </div>
 
       <div className="min-h-0 flex-1">
-        <LineChartCard
+        <InteractiveAreaChart
           data={dataChart}
-          config={{ xKey: "rotulo", formato: "moeda", series: [{ key: "valor", label: "Compras (NF entrada)" }] }}
-          estado={dataChart.length === 0 ? "vazio" : "ok"}
+          series={[{ key: "valor", label: "Compras (NF entrada)", color: CHART_COLORS.violet }]}
+          height={240}
+          showGrid
+          showLegend={false}
+          formatValue={(v) => brlCompacto(v)}
+          emptyMessage="Sem compras no período"
+          emptyHint="Mude o período com as setas acima."
+          ariaLabel="Compras (NF de entrada) ao longo do período"
         />
       </div>
     </div>

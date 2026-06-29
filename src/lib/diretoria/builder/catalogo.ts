@@ -93,6 +93,7 @@ export const CATALOGO: ComponenteCatalogo[] = [
   comp({ id: "A-02", nome: "Estoque por local", dominio: "A", tipo: "tabela", fonteDado: "real" }),
   comp({ id: "A-03", nome: "Distribuição por família", dominio: "A", tipo: "grafico", fonteDado: "real", publica: ["familia"] }),
   comp({ id: "A-04", nome: "Distribuição por marca", dominio: "A", tipo: "grafico", fonteDado: "real", publica: ["marca"] }),
+  comp({ id: "A-11", nome: "Distribuição dinâmica (rosca/barras)", dominio: "A", tipo: "widget", fonteDado: "real" }),
   comp({ id: "A-05", nome: "Catálogo de modelos", dominio: "A", tipo: "tabela", fonteDado: "real", consome: ["familia", "marca"] }),
   comp({ id: "A-06", nome: "Seriais em estoque", dominio: "A", tipo: "tabela", fonteDado: "real" }),
   comp({ id: "A-07", nome: "Compras ativas", dominio: "K", tipo: "widget", fonteDado: "real" }),
