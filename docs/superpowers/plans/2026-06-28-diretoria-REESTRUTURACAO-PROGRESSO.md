@@ -142,6 +142,40 @@ ONDA 2 (a fazer) , REUSAR os componentes que a plataforma JÁ tem (recharts 3.8.
 - Mini gráficos (sparklines) nos KPIs (padrão Router).
 - Integrar o construtor às telas com ABAS (cada aba = tela montável) + entrada no menu.
 
+## ONDA 3 , ELEVAÇÃO DE QUALIDADE (2026-06-29 ~02h-02h40) , feedback forte do cliente
+Cliente reprovou a Onda 2: "tudo é pizza/tabela, sem variedade nem criatividade;
+a plataforma JÁ TEM componentes melhores (Consumo do Nex, Router, Aprendizado) e o
+construtor não usa". Diagnóstico correto: a Diretoria usava o ecossistema
+DECLARATIVO (`charts/` raiz: LineChartCard, donut caseiro), enquanto o Agente Nex
+usa o INTERATIVO RICO (`charts/interactive/`). Estudei as 12 referências (prints) +
+mapeei os componentes reais (Explore). Correção: REUSAR os componentes ricos.
+
+**Onda 3.1 , variedade real de gráficos (commit graficos ricos):**
+- A-03 família → `DonutWithCenter` (donut rico: centro com total, hover esmaece, tooltip %).
+- A-04 marca e K-01 fornecedor → `InteractiveBarChart` horizontal (não mais donut).
+- A-10 compras → `InteractiveAreaChart` (gradient, tooltip rico) no lugar do LineChartCard.
+- A-11 NOVO `DistribuicaoDinamica`: pílulas Família/Marca/Local + toggle rosca↔barras
+  → o "gráfico dinâmico" pedido (muda dimensão e tipo ao clicar). Eixos em moeda compacta.
+- Componentes de `src/components/charts/interactive/` (InteractiveAreaChart,
+  InteractiveBarChart, DonutWithCenter) , os MESMOS do Consumo/Router. Validado por screenshot.
+
+**Onda 3.2 , tabela rica padrão Router (commit tabela rica):**
+- DataTable ganhou tipo de coluna `tags` (várias pílulas por célula, estilo fiscal/comercial).
+- `PageJumpNavigator` (seletor "Página N de M" com busca/lista) no lugar de Anterior/Próxima
+  , reusa o componente real do Consumo (`agent/consumo/page-jump-navigator.tsx`).
+- Drill-down no catálogo A-05: expandir a linha mostra valor total/médio/% do estoque/presença.
+- 43 testes do DataTable verdes. Validado por screenshot (tags JOHNSON+MATRIX + drill-down).
+
+tsc verde; 177 testes (25 suites) verdes. Nada mergeado (regra F6).
+
+### Onda 3.3 (próxima, a validar com cliente)
+- Gráfico temporal correlacionado com PÍLULAS de período (Esta semana→navega semana,
+  Este mês→navega mês, igual "Custo por dia" do Consumo). Reusar `PeriodNavigator`
+  (`dashboard/period-navigator.tsx`). Hoje o A-10 tem navegação própria (toggle dia/mês + ‹ ›).
+- Pílulas de período globais + "Personalizado" de datas diferenciado no construtor.
+- Cores nas tags de família/marca (hoje neutras); filtros dropdown por coluna na tabela.
+- Espalhar o padrão rico para Vendas/Pedidos/Visão.
+
 ## ONDA 2 , FEITA E VALIDADA (2026-06-29 ~01h30-02h)
 As 4 frentes entregues, cada uma validada por screenshot e com TDD onde há query.
 tsc verde; 170 testes (24 suites) verdes. Nada mergeado (regra F6).
