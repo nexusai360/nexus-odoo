@@ -76,16 +76,7 @@ describe("diretoriaNavFor", () => {
     expect(nav.map((n) => n.href)).toEqual([
       "/diretoria/visao-geral",
       "/diretoria/vendas",
-      "/diretoria/relatorios-vendas",
     ]);
-  });
-
-  it("inclui o construtor montável quando tem estoque.view", async () => {
-    accessFindMany.mockResolvedValueOnce([
-      { capability: "diretoria.estoque.view" },
-    ]);
-    const nav = await diretoriaNavFor(vw);
-    expect(nav.map((n) => n.href)).toContain("/diretoria/relatorios");
   });
 });
 
