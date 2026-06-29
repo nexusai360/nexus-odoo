@@ -35,11 +35,11 @@ jest.mock("@svg-maps/brazil", () => {
 });
 
 describe("corPorIntensidade", () => {
-  it("mistura o violeta com o card do tema (color-mix), variando por intensidade", () => {
-    expect(corPorIntensidade(0)).toContain("color-mix");
-    expect(corPorIntensidade(0)).toContain("var(--card)");
-    expect(corPorIntensidade(1)).toContain("color-mix");
+  it("rampa de calor vívida em rgb, variando por intensidade", () => {
+    expect(corPorIntensidade(0)).toMatch(/^rgb\(/);
+    expect(corPorIntensidade(1)).toMatch(/^rgb\(/);
     expect(corPorIntensidade(0)).not.toBe(corPorIntensidade(1));
+    expect(corPorIntensidade(0.5)).not.toBe(corPorIntensidade(0));
   });
   it("faz clamp fora de [0,1]", () => {
     expect(corPorIntensidade(-5)).toBe(corPorIntensidade(0));

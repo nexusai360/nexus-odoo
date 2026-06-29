@@ -38,20 +38,29 @@ const brl = new Intl.NumberFormat("pt-BR", {
 // cinza escuro no escuro). Nunca preto-sobre-branco.
 const COR_SEM_DADO = "var(--muted)";
 
-// Violeta base do mapa de calor (independe do --primary).
-const ROXO = "hsl(262 83% 58%)";
-
 /**
- * Cor do mapa de calor por intensidade (0..1). Mistura o violeta do produto com
- * a cor do CARD (token do tema) , então adapta sozinho ao tema: no claro, valor
- * baixo fica violeta clarinho (sobre branco) e alto fica violeta forte; no
- * escuro, baixo fica violeta escuro e alto fica violeta vivo. Sem cor fixa que
- * vire preto no tema claro.
+ * Rampa de calor VÍVIDA (índigo -> violeta -> magenta). Cores saturadas de
+ * lightness média: nítidas e bem diferenciadas TANTO no tema claro quanto no
+ * escuro (não somem no fundo como a mistura antiga fazia). A progressão de
+ * matiz (azul-violeta no baixo, magenta no alto) separa os estados muito melhor
+ * que só variar o tom de um único roxo.
  */
+const HEAT_STOPS: [number, number, number][] = [
+  [79, 70, 229],   // indigo-600  #4f46e5 , menor
+  [139, 92, 246],  // violet-500  #8b5cf6
+  [192, 64, 236],  // entre roxo e magenta
+  [232, 62, 175],  // magenta/pink #e83eaf , maior
+];
+
 export function corPorIntensidade(t: number): string {
-  const clamp = Math.max(0, Math.min(1, t));
-  const pct = 14 + clamp * 86; // 14%..100% de violeta sobre o card
-  return `color-mix(in srgb, ${ROXO} ${pct.toFixed(1)}%, var(--card))`;
+  const c = Math.max(0, Math.min(1, t));
+  const seg = c * (HEAT_STOPS.length - 1);
+  const i = Math.min(Math.floor(seg), HEAT_STOPS.length - 2);
+  const f = seg - i;
+  const a = HEAT_STOPS[i];
+  const b = HEAT_STOPS[i + 1];
+  const ch = (k: number) => Math.round(a[k] + (b[k] - a[k]) * f);
+  return `rgb(${ch(0)} ${ch(1)} ${ch(2)})`;
 }
 
 export function BrazilMap({
@@ -81,10 +90,14 @@ export function BrazilMap({
     return m;
   }, [data]);
 
-  const max = useMemo(
-    () => data.reduce((acc, d) => Math.max(acc, d.valor), 0),
-    [data],
-  );
+  // Extremos dos valores COM dado (>0), para a escala logarítmica.
+  const { minPos, maxPos } = useMemo(() => {
+    let mn = Infinity, mx = 0;
+    for (const d of data) {
+      if (d.valor > 0) { if (d.valor < mn) mn = d.valor; if (d.valor > mx) mx = d.valor; }
+    }
+    return { minPos: Number.isFinite(mn) ? mn : 0, maxPos: mx };
+  }, [data]);
 
   const total = useMemo(() => data.reduce((acc, d) => acc + d.valor, 0), [data]);
 
@@ -110,10 +123,14 @@ export function BrazilMap({
     return UF_PATHS.find((p) => p.uf === uf)?.nome ?? uf;
   }
 
-  // Intensidade realçada (raiz) para diferenciar melhor valores baixos/médios.
+  // Escala LOGARÍTMICA: como os valores são bem concentrados (um estado domina),
+  // o log espalha os demais pela rampa, deixando cada estado nitidamente
+  // diferente em vez de quase todos no mesmo tom apagado.
   function intensidadeDe(v: number) {
-    if (max <= 0) return 0;
-    return Math.pow(v / max, 0.6);
+    if (v <= 0 || maxPos <= 0) return 0;
+    if (maxPos <= minPos) return 1;
+    const t = (Math.log(v) - Math.log(minPos)) / (Math.log(maxPos) - Math.log(minPos));
+    return Math.max(0, Math.min(1, t));
   }
 
   // Estado "em foco": o que o usuário está vendo agora , hover tem prioridade,
