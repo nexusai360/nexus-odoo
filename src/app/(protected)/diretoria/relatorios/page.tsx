@@ -3,77 +3,81 @@ import { LayoutDashboard } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
 import { PageHeader } from "@/components/page-header";
 import { prisma } from "@/lib/prisma";
+import { requireDiretoriaArea } from "@/lib/diretoria/access";
 import {
-  requireDiretoriaArea,
-  userCapabilities,
-  seesAllDiretoria,
-  userUfs,
-} from "@/lib/diretoria/access";
+  queryIndicadoresEstoque, queryEstoquePorLocal, queryEstoquePorFamilia,
+  queryEstoquePorMarca, queryCatalogoEstoque, queryComprasPorFornecedor,
+  queryComprasAtivas, queryResumoCompras, queryIndicadoresAvancadosEstoque,
+  querySeriais,
+} from "@/lib/diretoria/queries/estoque";
 import { carregarLayout } from "@/lib/diretoria/builder/layout-repo";
-import { normalizar } from "@/lib/diretoria/builder/layout";
-import { filtrarPermitidos } from "@/lib/diretoria/builder/gating";
-import { resolverBlocos } from "@/lib/diretoria/builder/loaders";
-import { componentePorId } from "@/lib/diretoria/builder/catalogo";
-import { GridRelatorio, BlocoCard } from "@/components/diretoria/builder/grid-relatorio";
-import { renderComponente } from "@/components/diretoria/builder/render-componente";
+import type { BlocoLayout } from "@/lib/diretoria/builder/layout";
+import { ConstrutorGrid } from "@/components/diretoria/builder/construtor-grid";
+import type { EstoqueData } from "@/components/diretoria/estoque/estoque-screen";
+import { FreshnessBadge } from "@/components/diretoria/freshness-badge";
+import { ultimaSyncIso } from "@/lib/diretoria/freshness";
 
 export const dynamic = "force-dynamic";
 
-// Prévia do construtor de relatórios (Onda 1). Monta a tela "estoque-demo" a
-// partir do layout salvo, com gating no server. As telas finais migram para este
-// motor nas ondas seguintes.
+// Layout oficial padrão (em código) usado quando não há nada salvo no banco.
+const PADRAO_ESTOQUE: BlocoLayout[] = [
+  { componenteId: "A-01", ordem: 0, largura: 8, altura: 2, x: 0, y: 0 },
+  { componenteId: "A-09", ordem: 1, largura: 8, altura: 2, x: 0, y: 2 },
+  { componenteId: "A-03", ordem: 2, largura: 4, altura: 4, x: 0, y: 4 },
+  { componenteId: "A-04", ordem: 3, largura: 4, altura: 4, x: 4, y: 4 },
+  { componenteId: "A-02", ordem: 4, largura: 4, altura: 5, x: 0, y: 8 },
+  { componenteId: "A-05", ordem: 5, largura: 4, altura: 5, x: 4, y: 8 },
+  { componenteId: "A-07", ordem: 6, largura: 8, altura: 5, x: 0, y: 13 },
+  { componenteId: "A-08", ordem: 7, largura: 5, altura: 5, x: 0, y: 18 },
+  { componenteId: "K-01", ordem: 8, largura: 3, altura: 4, x: 5, y: 18 },
+  { componenteId: "A-06", ordem: 9, largura: 4, altura: 5, x: 0, y: 23 },
+];
+
 export default async function DiretoriaRelatoriosPage() {
   const user = await requireDiretoriaArea("estoque");
+  const hoje = new Date();
 
-  const brutos = await carregarLayout(prisma, "estoque-demo", user.id);
-  const blocos = normalizar(brutos);
+  const [
+    indicadores, porLocal, porFamilia, porMarca, catalogo,
+    comprasFornecedor, comprasAtivas, resumoCompras, avancados, seriais, salvo, freshIso,
+  ] = await Promise.all([
+    queryIndicadoresEstoque(prisma),
+    queryEstoquePorLocal(prisma),
+    queryEstoquePorFamilia(prisma),
+    queryEstoquePorMarca(prisma),
+    queryCatalogoEstoque(prisma, 500),
+    queryComprasPorFornecedor(prisma, {}),
+    queryComprasAtivas(prisma, hoje, 200),
+    queryResumoCompras(prisma, hoje),
+    queryIndicadoresAvancadosEstoque(prisma, hoje),
+    querySeriais(prisma, hoje, 200),
+    carregarLayout(prisma, "estoque", user.id),
+    ultimaSyncIso(prisma),
+  ]);
 
-  const caps = await userCapabilities(user);
-  const todas = seesAllDiretoria(user.platformRole);
-  const pode = (cap: string) => todas || caps.has(cap);
-  const permitidos = filtrarPermitidos(blocos, pode);
-
-  const escopoUfs = await userUfs(user);
-  const resultados = await resolverBlocos(
-    prisma,
-    permitidos.map((b) => b.componenteId),
-    { escopoUfs },
-  );
+  const data: EstoqueData = {
+    indicadores, avancados, porLocal, porFamilia, porMarca, catalogo, seriais,
+    comprasFornecedor, comprasAtivas, resumoCompras,
+  };
+  const layoutInicial = salvo.length ? salvo : PADRAO_ESTOQUE;
+  const podeEditarGlobal = user.platformRole === "super_admin" || user.platformRole === "admin";
 
   return (
     <PageShell variant="wide">
       <PageHeader
         icon={LayoutDashboard}
-        title="Relatórios (prévia do construtor)"
-        subtitle="Montagem por componentes do catálogo. Layout salvo, com permissão por componente."
+        title="Estoque & Compras (montável)"
+        subtitle="Tela montada por componentes. Edite para reorganizar em quadrantes 8×8."
+        actions={<FreshnessBadge iso={freshIso} />}
       />
-      {permitidos.length === 0 ? (
-        <p className="py-10 text-center text-sm text-muted-foreground">
-          Nenhum componente disponível para o seu acesso.
-        </p>
-      ) : (
-        <GridRelatorio>
-          {permitidos.map((b) => {
-            const comp = componentePorId(b.componenteId)!;
-            const res = resultados.get(b.componenteId);
-            return (
-              <BlocoCard
-                key={`${b.componenteId}-${b.ordem}`}
-                titulo={comp.nome}
-                fonteDado={comp.fonteDado}
-                largura={b.largura}
-                altura={b.altura}
-              >
-                {res?.ok ? (
-                  renderComponente(b.componenteId, res.dado)
-                ) : (
-                  <p className="py-6 text-center text-sm text-muted-foreground">Indisponível.</p>
-                )}
-              </BlocoCard>
-            );
-          })}
-        </GridRelatorio>
-      )}
+      <ConstrutorGrid
+        tela="estoque"
+        data={data}
+        layoutInicial={layoutInicial}
+        dominios={["A", "K"]}
+        podeEditarPessoal
+        podeEditarGlobal={podeEditarGlobal}
+      />
     </PageShell>
   );
 }
