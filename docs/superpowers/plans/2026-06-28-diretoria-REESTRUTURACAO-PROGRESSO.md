@@ -32,12 +32,31 @@ cursor e some fora do país (BrazilMap refinado, era fixo no canto). Dado real
 (R$59,4M este mês). Honestidade: "Operações dos pedidos"/"Maior pedido" vêm de
 fato_pedido (misturam vendas/compras/transferências), rotulado; margem "estimada".
 
-### Próximas áreas (a fazer, mesma régua)
-- Pedidos & Demandas (cap 05): B1-B8, mapa por estado, drill-in. queries em
-  src/lib/diretoria/queries/pedidos.ts.
-- Visão Geral executiva.
-- Agenda interativa (cap 02).
-- Polimento global (reduced-motion, responsivo, saneamento "-").
+### Pedidos & Entregas , FEITA E VALIDADA (commit 9fe1cfdc)
+3 abas: Visão geral / Mapa / Pendentes. KPIs (608 demandas, R$146,3M, 109
+atrasadas, a receber), donut por etapa, mapa do Brasil de demandas, lista de
+pendentes com chips de filtro por prazo (contagem) + busca + badges de previsão.
+
+### Visão Geral (home executiva) , FEITA E VALIDADA (commit 9c7599fa)
+6 KPIs globais + mapa do Brasil em destaque + 2 donuts (vendas por marca /
+estoque por família) + atalhos drill-in gated por capability. Fix importante:
+ícones lucide não cruzam server->client; composição virou VisaoGeralScreen client.
+
+### Agenda , AVALIADA, MANTIDA (sem retrabalho)
+A Agenda (/diretoria/agenda) já é funcional e limpa (calendário mensal dark,
+"Novo evento", infra completa: schema DiretoriaEvento*, actions diretoria-agenda,
+AgendaCalendar). NÃO é o "lixo simplório" que o cliente apontou (que eram os
+dashboards de dados). Mantida. Melhoria futura opcional (cap 02): painel do dia
+lateral + month picker multi-mês.
+
+### Pendências/melhorias (próxima onda, opcional)
+- Agenda cap 02 completa (painel do dia, month picker 1/2/3/6/12, colaboradores).
+- A7 drill-in da compra (itens da OC + 10 KPIs): enriquecer queryComprasAtivas
+  (hoje sem itens nem vrPago por OC).
+- Polimento global (reduced-motion, responsivo fino, remover componentes órfãos
+  vendas-charts.tsx / vendas-mapa-comparativo.tsx, agora sem uso).
+- "Maior pedido"/"Operações" da tela Vendas vêm de fato_pedido (mistura tipos);
+  filtrar só operações de venda quando o campo permitir.
 
 ## Pendências/melhorias registradas
 - BrazilMap: tooltip deve SEGUIR o mouse (hoje fixo top-left) e sumir fora do
