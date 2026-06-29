@@ -21,9 +21,17 @@
   global ou pessoal POR ABA, chave `area:aba`). EstoqueMontavel/VendasMontavel/
   PedidosMontavel reusam ConstrutorGrid (editando controlado pela tela) + os
   blocos ricos. Alças novas + ROW_H 100. Validado por screenshot, 0 hydration.
-- FALTA só REFINAMENTO (não estrutural): item 5 (tabela: filtro por coluna +
-  paginação 3 zonas + drill-down) e item 6 (donut com legenda lateral). É daqui
-  que a próxima sessão continua.
+- REFINAMENTOS CONCLUÍDOS (2026-06-29, commit b2093390, validados por screenshot):
+  - item 5 , DataTable: botão "Filtros" (popover estilo Router, valores distintos
+    por coluna texto/tag/tags, 2 a 60 valores); paginação em 3 zonas (esq
+    "Mostrando X a Y de Z" · meio prev/PageJump/next · dir "Por página" 50/100/500,
+    default 50); drill-down (expandDetail) em Compras ativas (A-07) e Matriz por
+    fornecedor (A-08), painel rico via helper DetalheGrid (reusado pelo Catálogo).
+  - item 6 , donut com legenda lateral: DonutChart clássico (bolinha+valor+% +
+    "clique numa fatia para filtrar") no lugar do DonutWithCenter só-tooltip em
+    A-03, C-07 e na Distribuição dinâmica (A-11/C-09). Hint de clique no DonutChart.
+- NADA pendente de refinamento. NÃO mergear (regra F6). Aguardar validação do
+  usuário antes de qualquer merge para main.
 
 ## Progresso (2026-06-29 manhã)
 - FEITO: alças refeitas (quadradinhos nas diagonais, violeta no hover do BLOCO;
