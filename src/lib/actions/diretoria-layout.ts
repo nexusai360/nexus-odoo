@@ -14,12 +14,18 @@ function podeOficial(role: string): boolean {
   return role === "super_admin" || role === "admin";
 }
 
+/** A `tela` pode ser a área ("estoque") ou área:aba ("estoque:visao"); o guard
+ *  de permissão usa só a área (prefixo). */
+function areaDe(tela: string): DiretoriaArea {
+  return tela.split(":")[0] as DiretoriaArea;
+}
+
 export async function salvarLayoutAction(
-  tela: DiretoriaArea,
+  tela: string,
   blocos: BlocoLayout[],
   escopo: "pessoal" | "oficial",
 ): Promise<{ ok: boolean; erro?: string }> {
-  const user = await requireDiretoriaArea(tela);
+  const user = await requireDiretoriaArea(areaDe(tela));
   if (escopo === "oficial" && !podeOficial(user.platformRole)) {
     return { ok: false, erro: "Sem permissão para salvar o layout oficial." };
   }
@@ -33,9 +39,9 @@ export async function salvarLayoutAction(
 }
 
 export async function restaurarLayoutPessoalAction(
-  tela: DiretoriaArea,
+  tela: string,
 ): Promise<{ ok: boolean }> {
-  const user = await requireDiretoriaArea(tela);
+  const user = await requireDiretoriaArea(areaDe(tela));
   await excluirLayoutPessoal(prisma, tela, user.id);
   return { ok: true };
 }

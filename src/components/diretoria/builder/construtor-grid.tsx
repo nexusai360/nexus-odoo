@@ -62,7 +62,8 @@ export function ConstrutorGrid<T>({
   filtroConfig,
   comPeriodo = true,
 }: {
-  tela: DiretoriaArea;
+  /** Chave de persistência: área ("estoque") ou área:aba ("estoque:visao"). */
+  tela: string;
   data: T;
   layoutInicial: BlocoLayout[];
   /** Domínios cujos componentes aparecem na paleta (ex.: ["A","K"]). */

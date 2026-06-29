@@ -14,7 +14,18 @@
   `builder/construtor-grid.tsx` (vira base do GridEditavel), `kit/format` (rotuloUf/
   nomeLimpo/ufValida), `derivar-estoque`, catálogo, `layout-repo`/`layout`/`gating`.
 
-## A construir (próxima sessão, contexto fresco)
+## Progresso (2026-06-29 manhã)
+- FEITO: alças refeitas (quadradinhos nas diagonais, violeta no hover do BLOCO;
+  bordas n/s/e/w invisíveis só com cursor de resize); `ROW_H` 64->100.
+- FEITO: persistência POR ABA destravada , `salvarLayoutAction`/`restaurar` e
+  `ConstrutorGrid.tela` agora aceitam `string` ("estoque:visao"); o guard usa o
+  prefixo (área). Schema `DiretoriaRelatorio.tela` já é String.
+- FALTA (itens 1,4,5,6 abaixo): adaptar ConstrutorGrid p/ `editando` EXTERNO +
+  esconder botão "Editar tela" interno quando controlado; integrar nas *-screen
+  (botão "Editar layout" global + um grid por aba); tabela (filtro/paginação/drill);
+  donut com legenda lateral.
+
+## A construir (continuação)
 
 ### 1. `GridEditavel` (extrair/adaptar de construtor-grid.tsx)
 Componente client que renderiza UM conjunto de componentes num react-grid-layout.
