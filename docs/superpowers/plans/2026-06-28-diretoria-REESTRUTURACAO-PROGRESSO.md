@@ -42,21 +42,27 @@ pendentes com chips de filtro por prazo (contagem) + busca + badges de previsão
 estoque por família) + atalhos drill-in gated por capability. Fix importante:
 ícones lucide não cruzam server->client; composição virou VisaoGeralScreen client.
 
-### Agenda , AVALIADA, MANTIDA (sem retrabalho)
-A Agenda (/diretoria/agenda) já é funcional e limpa (calendário mensal dark,
-"Novo evento", infra completa: schema DiretoriaEvento*, actions diretoria-agenda,
-AgendaCalendar). NÃO é o "lixo simplório" que o cliente apontou (que eram os
-dashboards de dados). Mantida. Melhoria futura opcional (cap 02): painel do dia
-lateral + month picker multi-mês.
+### Agenda , FEITA E VALIDADA (commit a3062902)
+Elevada ao cap 02: layout 2 colunas (calendário mensal + painel do dia lateral).
+Clicar num dia seleciona (realce violeta); painel lista eventos do dia com hora,
+tipo, local, colaboradores e excluir; "Novo evento" cria no dia selecionado;
+eventos coloridos por tipo na célula. Validado por screenshot com eventos de
+teste (depois removidos). Reusa actions diretoria-agenda; sem mudança de schema.
 
-### Pendências/melhorias (próxima onda, opcional)
-- Agenda cap 02 completa (painel do dia, month picker 1/2/3/6/12, colaboradores).
-- A7 drill-in da compra (itens da OC + 10 KPIs): enriquecer queryComprasAtivas
-  (hoje sem itens nem vrPago por OC).
-- Polimento global (reduced-motion, responsivo fino, remover componentes órfãos
-  vendas-charts.tsx / vendas-mapa-comparativo.tsx, agora sem uso).
-- "Maior pedido"/"Operações" da tela Vendas vêm de fato_pedido (mistura tipos);
-  filtrar só operações de venda quando o campo permitir.
+### Limpeza (commit e7736dd0)
+Removidos órfãos: vendas-charts.tsx, vendas-mapa-comparativo.tsx,
+pedidos-pendentes-table.tsx (substituídos pelos *-screen.tsx).
+
+## STATUS: as 5 áreas da Diretoria estão reconstruídas/elevadas e validadas.
+Nada mergeado (regra F6/cliente). Branch feat/menu-diretoria pushada.
+
+### Pendências/melhorias (próxima onda, opcional, dependem de feedback)
+- A7 drill-in da compra com itens da OC: NÃO viável hoje (não existe
+  FatoCompraItem no schema; só FatoCompra cabeçalho). Exigiria ingestão de itens.
+- Agenda: month picker multi-mês (1/2/3/6/12) e anexos (cap 02), se desejado.
+- "Maior pedido"/"Operações" da tela Vendas vêm de fato_pedido (mistura
+  vendas/compras/transferências); filtrar só venda quando houver campo de tipo.
+- Polimento responsivo fino (mobile) e revisão reduced-motion.
 
 ## Pendências/melhorias registradas
 - BrazilMap: tooltip deve SEGUIR o mouse (hoje fixo top-left) e sumir fora do
