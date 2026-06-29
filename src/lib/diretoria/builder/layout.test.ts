@@ -20,10 +20,11 @@ describe("normalizar layout (grid 8x8)", () => {
     expect(r.map((b) => b.componenteId)).toEqual(["A-01", "A-02"]);
   });
 
-  it("clampa largura de gráfico ao máximo 6", () => {
-    // A-03 é grafico (largura 3-6). largura 8 deve virar 6.
-    const r = normalizar([{ componenteId: "A-03", ordem: 0, largura: 8, altura: 4, x: 0, y: 0 }]);
-    expect(r[0].largura).toBe(6);
+  it("aceita gráfico até 8×8 (trava ampliada , cliente)", () => {
+    // A-03 é grafico (agora 3-8 em ambos os eixos). 8×8 deve ser preservado.
+    const r = normalizar([{ componenteId: "A-03", ordem: 0, largura: 8, altura: 8, x: 0, y: 0 }]);
+    expect(r[0].largura).toBe(8);
+    expect(r[0].altura).toBe(8);
   });
 
   it("clampa largura de gráfico abaixo do mínimo (2 -> 3)", () => {

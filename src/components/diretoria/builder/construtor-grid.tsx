@@ -237,12 +237,12 @@ export function ConstrutorGrid({
       ) : null}
 
       {/* Grid */}
-      {/* UX de edição: placeholder violeta (não vermelho) + alças visíveis nas
-          bordas/cantos com realce no hover. */}
+      {/* UX de edição: alças DISCRETAS , cinza translúcido por padrão, violeta só
+          no hover da própria alça. Nada de "rabisco" colorido em todas as quinas. */}
       <style>{`
         .diretoria-construtor .react-grid-placeholder{
-          background: color-mix(in srgb, var(--primary) 20%, transparent) !important;
-          border: 2px dashed color-mix(in srgb, var(--primary) 60%, transparent) !important;
+          background: color-mix(in srgb, var(--primary) 12%, transparent) !important;
+          border: 1.5px dashed color-mix(in srgb, var(--primary) 45%, transparent) !important;
           border-radius: 1rem !important; opacity: 1 !important;
           transition: transform .12s ease;
         }
@@ -251,34 +251,38 @@ export function ConstrutorGrid({
           z-index: 30; box-shadow: 0 12px 40px rgba(0,0,0,.45);
         }
         .diretoria-construtor .react-grid-item.react-draggable-dragging > section{
-          outline: 2px solid color-mix(in srgb, var(--primary) 70%, transparent);
+          outline: 1.5px solid color-mix(in srgb, var(--primary) 55%, transparent);
         }
-        .diretoria-construtor .react-resizable-handle{
-          opacity: 0; transition: opacity .15s ease; z-index: 6;
-        }
-        .diretoria-construtor .react-grid-item:hover > .react-resizable-handle{ opacity: .9; }
-        /* esconde a setinha default e desenha alças violeta nas bordas/cantos */
         .diretoria-construtor .react-resizable-handle::after{ display:none !important; }
+        /* ocultas por padrão; sutis no hover do bloco; violeta só no hover da alça */
+        .diretoria-construtor .react-resizable-handle{
+          opacity: 0; z-index: 6;
+          background: color-mix(in srgb, var(--muted-foreground) 35%, transparent);
+          border-radius: 999px;
+          transition: opacity .15s ease, background-color .15s ease;
+        }
+        .diretoria-construtor .react-grid-item:hover > .react-resizable-handle{ opacity: .5; }
+        .diretoria-construtor .react-resizable-handle:hover{
+          opacity: 1 !important;
+          background: color-mix(in srgb, var(--primary) 85%, transparent);
+        }
         .diretoria-construtor .react-resizable-handle-e,
         .diretoria-construtor .react-resizable-handle-w{
-          top:50%; width:6px; height:34px; transform:translateY(-50%);
-          border-radius:4px; background: color-mix(in srgb, var(--primary) 75%, transparent);
+          top:50%; width:3px; height:22px; transform:translateY(-50%);
         }
-        .diretoria-construtor .react-resizable-handle-e{ right:3px; }
-        .diretoria-construtor .react-resizable-handle-w{ left:3px; }
+        .diretoria-construtor .react-resizable-handle-e{ right:4px; }
+        .diretoria-construtor .react-resizable-handle-w{ left:4px; }
         .diretoria-construtor .react-resizable-handle-n,
         .diretoria-construtor .react-resizable-handle-s{
-          left:50%; width:34px; height:6px; transform:translateX(-50%);
-          border-radius:4px; background: color-mix(in srgb, var(--primary) 75%, transparent);
+          left:50%; width:22px; height:3px; transform:translateX(-50%);
         }
-        .diretoria-construtor .react-resizable-handle-n{ top:3px; }
-        .diretoria-construtor .react-resizable-handle-s{ bottom:3px; }
+        .diretoria-construtor .react-resizable-handle-n{ top:4px; }
+        .diretoria-construtor .react-resizable-handle-s{ bottom:4px; }
         .diretoria-construtor .react-resizable-handle-se,
         .diretoria-construtor .react-resizable-handle-sw,
         .diretoria-construtor .react-resizable-handle-ne,
         .diretoria-construtor .react-resizable-handle-nw{
-          width:14px; height:14px; border-radius:4px;
-          background: color-mix(in srgb, var(--primary) 85%, transparent);
+          width:8px; height:8px; border-radius:3px;
         }
       `}</style>
       {!montado ? (

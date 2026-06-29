@@ -33,7 +33,8 @@ export function travasDoTipo(tipo: TipoComponente): Travas {
     case "tabela":
       return { larguraMin: 3, larguraMax: 8, alturaMin: 3, alturaMax: 8 };
     case "grafico":
-      return { larguraMin: 3, larguraMax: 6, alturaMin: 3, alturaMax: 6 };
+      // Antes travava em 6×6 (cliente reclamou que a vertical não ia até 8).
+      return { larguraMin: 3, larguraMax: 8, alturaMin: 3, alturaMax: 8 };
     case "mapa":
       return { larguraMin: 4, larguraMax: 8, alturaMin: 4, alturaMax: 8 };
     case "widget":
