@@ -102,7 +102,7 @@ export const CATALOGO: ComponenteCatalogo[] = [
   comp({ id: "A-10", nome: "Compras ao longo do tempo (NF entrada)", dominio: "K", tipo: "widget", fonteDado: "real" }),
   comp({ id: "K-01", nome: "Ranking de compras por fornecedor", dominio: "K", tipo: "widget", fonteDado: "real" }),
   // Vendas (C-*)
-  comp({ id: "C-01", nome: "Indicadores de vendas", dominio: "C", tipo: "kpi", fonteDado: "estimado", consome: ["periodo"] }),
+  comp({ id: "C-01", nome: "Indicadores de vendas", dominio: "C", tipo: "kpi", fonteDado: "real", consome: ["periodo"] }),
   comp({ id: "C-02", nome: "Vendas por estado (mapa)", dominio: "C", tipo: "mapa", fonteDado: "real", publica: ["uf"], consome: ["periodo"] }),
   comp({ id: "C-03", nome: "Vendas por marca", dominio: "C", tipo: "grafico", fonteDado: "real", consome: ["periodo"] }),
   comp({ id: "C-04", nome: "Ranking de estados", dominio: "C", tipo: "widget", fonteDado: "real", consome: ["periodo"] }),

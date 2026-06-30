@@ -9,6 +9,9 @@ import { useState } from "react";
 
 import { cn } from "@/lib/utils";
 import { brl, brlCompacto } from "@/components/diretoria/kit/format";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 
 export interface ItemRanking {
   nome: string;
@@ -26,9 +29,8 @@ const ORDENS: { valor: Ordenacao; label: string }[] = [
   { valor: "nome_desc", label: "Nome (Z → A)" },
 ];
 const QUANTIDADES = [10, 15, 25, 50, 100, 0]; // 0 = todos
-
-const selectCls =
-  "h-7 cursor-pointer rounded-md border border-border bg-muted/30 px-2 text-xs text-foreground transition-colors hover:border-foreground/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+const ORDENS_ITENS = ORDENS.map((o) => ({ value: o.valor, label: o.label }));
+const QTD_ITENS = QUANTIDADES.map((q) => ({ value: String(q), label: q === 0 ? "Todos" : `Top ${q}` }));
 
 export function RankingCards({
   itens,
@@ -62,14 +64,22 @@ export function RankingCards({
           {topN === 0 ? `Todos (${ordenado.length})` : `Top ${ordenado.length}`} por {rotuloValor}
         </span>
         <div className="flex items-center gap-1.5">
-          <label className="sr-only" htmlFor="rank-ord">Ordenar por</label>
-          <select id="rank-ord" className={selectCls} value={ord} onChange={(e) => setOrd(e.target.value as Ordenacao)}>
-            {ORDENS.map((o) => <option key={o.valor} value={o.valor}>{o.label}</option>)}
-          </select>
-          <label className="sr-only" htmlFor="rank-qtd">Quantidade</label>
-          <select id="rank-qtd" className={selectCls} value={topN} onChange={(e) => setTopN(Number(e.target.value))}>
-            {QUANTIDADES.map((q) => <option key={q} value={q}>{q === 0 ? "Todos" : `Top ${q}`}</option>)}
-          </select>
+          <Select items={ORDENS_ITENS} value={ord} onValueChange={(v) => setOrd(String(v) as Ordenacao)}>
+            <SelectTrigger size="sm" className="text-xs" aria-label="Ordenar por">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {ORDENS_ITENS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select items={QTD_ITENS} value={String(topN)} onValueChange={(v) => setTopN(Number(v))}>
+            <SelectTrigger size="sm" className="text-xs" aria-label="Quantidade">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {QTD_ITENS.map((q) => <SelectItem key={q.value} value={q.value}>{q.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

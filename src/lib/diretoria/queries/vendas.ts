@@ -27,6 +27,21 @@ function periodoWhere(
   };
 }
 
+// Faturamento REAL = só operações de VENDA. Exclui transferências entre empresas
+// do grupo (natureza/CFOP "TRANSFERENCIA"), devoluções, remessas e retornos , que
+// são saídas, mas não faturamento de venda. Confirmado contra o cache real: das
+// saídas autorizadas (~365 mi), só ~161 mi são venda; ~83 mi eram transferência
+// intra-grupo. O filtro casa qualquer natureza/CFOP que contenha "venda".
+const SO_VENDA_NATUREZA = {
+  naturezaOperacaoNome: { contains: "venda", mode: "insensitive" as const },
+};
+const SO_VENDA_CFOP = {
+  cfopNome: { contains: "venda", mode: "insensitive" as const },
+};
+const SO_VENDA_OPERACAO = {
+  operacaoNome: { contains: "venda", mode: "insensitive" as const },
+};
+
 export interface LinhaFormaPagamento {
   formaPagamento: string;
   quantidade: number;
@@ -91,6 +106,7 @@ export async function queryVendasPorMarca(
   const itens = await prisma.fatoNotaFiscalItem.findMany({
     where: {
       entradaSaida: "1",
+      ...SO_VENDA_CFOP,
       ...periodoWhere(filtros.periodoDe, filtros.periodoAte, "dataEmissao"),
     },
     select: { produtoId: true, vrProdutos: true },
@@ -159,6 +175,7 @@ export async function queryVendasPorUf(
     where: {
       entradaSaida: "1",
       situacaoNfe: "autorizada",
+      ...SO_VENDA_NATUREZA,
       ...periodoWhere(filtros.periodoDe, filtros.periodoAte, "dataEmissao"),
     },
     select: { participanteId: true, vrNf: true },
@@ -284,6 +301,7 @@ export async function queryIndicadoresVendas(
     where: {
       entradaSaida: "1",
       situacaoNfe: "autorizada",
+      ...SO_VENDA_NATUREZA,
       ...periodoWhere(filtros.periodoDe, filtros.periodoAte, "dataEmissao"),
     },
     select: { vrNf: true },
@@ -291,7 +309,10 @@ export async function queryIndicadoresVendas(
   const faturamento = notas.reduce((s, n) => s + Number(n.vrNf), 0);
 
   const numPedidos = await prisma.fatoPedido.count({
-    where: periodoWhere(filtros.periodoDe, filtros.periodoAte, "dataOrcamento"),
+    where: {
+      ...SO_VENDA_OPERACAO,
+      ...periodoWhere(filtros.periodoDe, filtros.periodoAte, "dataOrcamento"),
+    },
   });
 
   const ticketMedio = numPedidos > 0 ? faturamento / numPedidos : 0;
@@ -318,6 +339,7 @@ export async function queryMargemEstimada(
   const itens = await prisma.fatoNotaFiscalItem.findMany({
     where: {
       entradaSaida: "1",
+      ...SO_VENDA_CFOP,
       ...periodoWhere(filtros.periodoDe, filtros.periodoAte, "dataEmissao"),
     },
     select: { produtoId: true, vrProdutos: true, quantidade: true },

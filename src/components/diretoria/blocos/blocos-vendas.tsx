@@ -67,16 +67,22 @@ function RankingEstados({ d }: { d: VendasData }) {
   return <RankingCards itens={itens} max={15} rotuloValor="faturamento" />;
 }
 
-// C-05 , Modalidades de operação: BARRAS.
+// C-05 , Modalidades de operação: BARRAS horizontais. Os nomes de operação são
+// MUITO longos (ex.: "VENDA DE MERCADORIA ADQUIRIDA OU RECEBIDA DE TERCEIROS") e
+// se sobrepunham no eixo. Encurtamos o rótulo (1 linha) e damos altura/folga.
+function encurtar(s: string, max = 26): string {
+  const t = s.trim();
+  return t.length > max ? `${t.slice(0, max - 1)}…` : t;
+}
 function ModalidadesVendas({ d }: { d: VendasData }) {
-  const data = d.modalidades.slice(0, 8).map((m) => ({ name: m.modalidade, valor: m.valorTotal }));
+  const data = d.modalidades.slice(0, 8).map((m) => ({ name: encurtar(m.modalidade), valor: m.valorTotal }));
   return (
     <InteractiveBarChart
       data={data}
       series={[{ key: "valor", label: "Valor", color: getColorByIndex(5) }]}
       layout="horizontal"
-      height={240}
-      yAxisWidth={140}
+      height={340}
+      yAxisWidth={200}
       showLegend={false}
       formatValue={(v) => brlCompacto(v)}
       ariaLabel="Valor por modalidade de operação"
@@ -95,6 +101,7 @@ function DonutPagamento({ d }: { d: VendasData }) {
       formatValor={(v) => brl.format(v)}
       onSelect={(label) => setSel(label || null)}
       selecionado={sel}
+      vertical
     />
   );
 }

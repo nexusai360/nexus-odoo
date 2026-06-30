@@ -38,6 +38,7 @@ export function DonutChart({
   maxFatias = 7,
   onSelect,
   selecionado = null,
+  vertical = false,
 }: {
   data: DonutDatum[];
   formatValor?: (v: number) => string;
@@ -49,6 +50,8 @@ export function DonutChart({
   onSelect?: (label: string) => void;
   /** Rótulo atualmente selecionado (realce). */
   selecionado?: string | null;
+  /** Layout vertical: rosca GRANDE em cima, legenda embaixo (em 2 colunas). */
+  vertical?: boolean;
 }) {
   const [hover, setHover] = useState<number | null>(null);
   const clicavel = typeof onSelect === "function";
@@ -84,9 +87,12 @@ export function DonutChart({
   const ativo = hover != null ? segs[hover] : null;
 
   return (
-    <div className="flex h-full flex-col items-center gap-4 sm:flex-row sm:items-center">
+    <div className={cn(
+      "flex h-full flex-col items-center gap-4",
+      !vertical && "sm:flex-row sm:items-center",
+    )}>
       <div className="relative shrink-0">
-        <svg viewBox="0 0 180 180" className="h-[180px] w-[180px]">
+        <svg viewBox="0 0 180 180" className={cn(vertical ? "h-[230px] w-[230px]" : "h-[180px] w-[180px]")}>
           {segs.map((s) => {
             const dim =
               hover != null
@@ -115,8 +121,11 @@ export function DonutChart({
           </text>
         </svg>
       </div>
-      <div className="flex min-w-0 flex-1 flex-col gap-1.5 self-stretch">
-      <ul className="flex min-w-0 flex-col gap-1.5 overflow-auto text-sm">
+      <div className={cn("flex min-w-0 flex-col gap-1.5 self-stretch", vertical ? "w-full" : "flex-1")}>
+      <ul className={cn(
+        "min-w-0 overflow-auto text-sm",
+        vertical ? "grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2" : "flex flex-col gap-1.5",
+      )}>
         {segs.map((s) => {
           const sel = selecionado != null && selecionado !== "" && s.label === selecionado;
           const podeClicar = clicavel && s.label !== "Outros";

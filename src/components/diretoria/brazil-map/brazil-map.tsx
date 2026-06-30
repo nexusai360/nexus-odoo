@@ -125,14 +125,11 @@ export function BrazilMap({
   }
 
   // Estado "em foco": o que o usuário está vendo agora , hover tem prioridade,
-  // depois o selecionado, e por fim o líder do ranking (sempre algo no topo).
+  // depois o selecionado. SEM interação (nada sob o mouse e nada clicado) o
+  // cartão mostra o TOTAL do período , não um estado "líder" travado.
   const selectedUf = selected.length ? selected[selected.length - 1] : null;
-  const focoUf = hover ?? selectedUf ?? (ranking[0]?.uf.toUpperCase() ?? null);
-  const focoOrigem: "hover" | "selecionado" | "lider" = hover
-    ? "hover"
-    : selectedUf
-      ? "selecionado"
-      : "lider";
+  const focoUf = hover ?? selectedUf;
+  const focoOrigem: "hover" | "selecionado" = hover ? "hover" : "selecionado";
   const focoDatum = focoUf ? porUf.get(focoUf) : null;
   const focoShare = focoDatum && total > 0 ? (focoDatum.valor / total) * 100 : 0;
 
@@ -273,30 +270,46 @@ export function BrazilMap({
       {/* Painel lateral: destaque do estado em foco + ranking completo */}
       {temDados ? (
         <div className="flex w-full shrink-0 flex-col gap-2 lg:w-72">
-          {/* Cartão de destaque , sempre mostra o que o usuário está vendo */}
-          {focoDatum ? (
-            <div className="rounded-xl border border-violet-500/30 bg-violet-600/10 px-3.5 py-3">
-              <div className="text-[10px] font-medium uppercase tracking-wide text-violet-700/80 dark:text-violet-300/80">
-                {focoOrigem === "hover"
-                  ? "Em foco"
-                  : focoOrigem === "selecionado"
-                    ? "Selecionado"
-                    : "Líder"}
-              </div>
-              <div className="mt-0.5 truncate text-sm font-semibold text-foreground">
-                {nomeDe(focoUf!)}{" "}
-                <span className="text-muted-foreground">({focoUf})</span>
-              </div>
-              <div className="mt-1.5 flex items-end justify-between gap-2">
-                <span className="text-lg font-bold tabular-nums text-foreground leading-none">
-                  {formatValor(focoDatum.valor)}
-                </span>
-                <span className="text-2xl font-bold tabular-nums text-violet-700 dark:text-violet-300 leading-none">
-                  {focoShare.toFixed(1)}%
-                </span>
-              </div>
-            </div>
-          ) : null}
+          {/* Cartão de destaque: estado em foco (hover/clique) OU o TOTAL quando
+              não há interação. */}
+          <div className="rounded-xl border border-violet-500/30 bg-violet-600/10 px-3.5 py-3">
+            {focoDatum ? (
+              <>
+                <div className="text-[10px] font-medium uppercase tracking-wide text-violet-700/80 dark:text-violet-300/80">
+                  {focoOrigem === "hover" ? "Em foco" : "Selecionado"}
+                </div>
+                <div className="mt-0.5 truncate text-sm font-semibold text-foreground">
+                  {nomeDe(focoUf!)}{" "}
+                  <span className="text-muted-foreground">({focoUf})</span>
+                </div>
+                <div className="mt-1.5 flex items-end justify-between gap-2">
+                  <span className="text-lg font-bold tabular-nums text-foreground leading-none">
+                    {formatValor(focoDatum.valor)}
+                  </span>
+                  <span className="text-2xl font-bold tabular-nums text-violet-700 dark:text-violet-300 leading-none">
+                    {focoShare.toFixed(1)}%
+                  </span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="text-[10px] font-medium uppercase tracking-wide text-violet-700/80 dark:text-violet-300/80">
+                  Total
+                </div>
+                <div className="mt-0.5 truncate text-sm font-semibold text-foreground">
+                  {metric} , todos os estados
+                </div>
+                <div className="mt-1.5 flex items-end justify-between gap-2">
+                  <span className="text-lg font-bold tabular-nums text-foreground leading-none">
+                    {formatValor(total)}
+                  </span>
+                  <span className="text-xs font-medium tabular-nums text-muted-foreground leading-none">
+                    {ranking.length} {ranking.length === 1 ? "estado" : "estados"}
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
 
           {/* Ranking completo (todos os estados com valor) , rolável */}
           <ol
