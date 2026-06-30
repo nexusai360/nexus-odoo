@@ -2,6 +2,7 @@ import {
   Activity,
   BarChart3,
   BookOpen,
+  Building2,
   Cable,
   FlaskConical,
   Home,
@@ -35,6 +36,15 @@ export const SECTION_LABELS: Record<NavSection, string> = {
 
 export const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: Home },
+  {
+    // Submenu da Diretoria. href é o prefixo do grupo (não navega); os
+    // children são resolvidos por capability no layout server
+    // (diretoriaNavFor) e injetados antes de chegar à Sidebar.
+    label: "Diretoria",
+    href: "/diretoria",
+    icon: Building2,
+    children: [],
+  },
   { label: "Relatórios", href: "/relatorios", icon: BarChart3 },
   {
     // href é o prefixo do grupo , usado como chave de openGroups e por

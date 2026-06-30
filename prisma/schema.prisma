@@ -186,6 +186,10 @@ model User {
   passwordResetTokens    PasswordResetToken[]
   emailChangeTokens      EmailChangeToken[]
   domainAccess           UserDomainAccess[]      @relation("UserDomainAccess")
+  diretoriaAccess        UserDiretoriaAccess[]   @relation("UserDiretoriaAccess")
+  diretoriaUfs           UserDiretoriaUf[]       @relation("UserDiretoriaUf")
+  eventosCriados         DiretoriaEvento[]       @relation("DiretoriaEventoCriador")
+  eventosColaborador     DiretoriaEventoColaborador[] @relation("DiretoriaEventoColaborador")
   reportPresets          ReportPreset[]
   // F5
   conversations          Conversation[]
@@ -316,6 +320,175 @@ model UserDomainAccess {
   @@unique([userId, domain])
   @@index([userId])
   @@map("user_domain_access")
+}
+
+/// Concessão granular de capability do menu Diretoria a um usuário. super_admin
+/// não tem linhas (vê tudo, bypass). Demais papéis: default por papel + estes
+/// grants como override. Capability é string namespaced (ex "diretoria.vendas.view").
+model UserDiretoriaAccess {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  capability  String
+  grantedById String?  @map("granted_by_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  user        User     @relation("UserDiretoriaAccess", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, capability])
+  @@index([userId])
+  @@map("user_diretoria_access")
+}
+
+/// Recorte geográfico (UF-scoping) do acesso à Diretoria. Ausência de linhas =
+/// usuário enxerga todas as UFs. Aplicado como filtro nas queries das telas.
+model UserDiretoriaUf {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  uf     String @db.VarChar(2)
+  user   User   @relation("UserDiretoriaUf", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, uf])
+  @@index([userId])
+  @@map("user_diretoria_uf")
+}
+
+/// Tipo de evento da agenda da Diretoria (dado nativo da plataforma, não-Odoo).
+enum DiretoriaEventoTipo {
+  reuniao
+  entrega
+  inventario
+  prospeccao
+  carregamento
+  organizacao_estoque
+  assembleia
+  visita
+}
+
+/// Evento da agenda da Diretoria (reunião, inventário, prospecção, assembleia...).
+model DiretoriaEvento {
+  id          String             @id @default(uuid()) @db.Uuid
+  titulo      String
+  tipo        DiretoriaEventoTipo
+  inicio      DateTime           @map("inicio")
+  fim         DateTime?          @map("fim")
+  diaInteiro  Boolean            @default(false) @map("dia_inteiro")
+  descricao   String?
+  local       String?
+  criadoPorId String             @map("criado_por_id") @db.Uuid
+  criadoPor   User               @relation("DiretoriaEventoCriador", fields: [criadoPorId], references: [id])
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+  colaboradores DiretoriaEventoColaborador[]
+  anexos      DiretoriaEventoAnexo[]
+
+  @@index([inicio])
+  @@map("diretoria_evento")
+}
+
+/// Colaborador vinculado a um evento da agenda.
+model DiretoriaEventoColaborador {
+  id       String          @id @default(uuid()) @db.Uuid
+  eventoId String          @map("evento_id") @db.Uuid
+  userId   String          @map("user_id") @db.Uuid
+  evento   DiretoriaEvento @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  user     User            @relation("DiretoriaEventoColaborador", fields: [userId], references: [id])
+
+  @@unique([eventoId, userId])
+  @@index([userId])
+  @@map("diretoria_evento_colaborador")
+}
+
+/// Anexo de um evento da agenda (referência por URL; upload real fica para depois).
+model DiretoriaEventoAnexo {
+  id       String          @id @default(uuid()) @db.Uuid
+  eventoId String          @map("evento_id") @db.Uuid
+  nome     String
+  url      String
+  mime     String?
+  tamanho  Int?
+  evento   DiretoriaEvento @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+
+  @@index([eventoId])
+  @@map("diretoria_evento_anexo")
+}
+
+/// Construtor de relatórios (Diretoria v2). Um relatório por tela: o PADRÃO
+/// (dono nulo + isPadrao) ou o personalizado de um usuário. Blocos referenciam
+/// componentes do catálogo (catalogo.ts). Posição é derivada de ordem+largura+
+/// altura via CSS grid (sem x/y). Schema aplicado por SQL cirúrgico.
+model DiretoriaRelatorio {
+  id         String                    @id @default(uuid()) @db.Uuid
+  tela       String
+  donoUserId String?                   @map("dono_user_id") @db.Uuid
+  isPadrao   Boolean                   @default(false) @map("is_padrao")
+  createdAt  DateTime                  @default(now()) @map("created_at")
+  updatedAt  DateTime                  @updatedAt @map("updated_at")
+  blocos     DiretoriaRelatorioBloco[]
+
+  @@index([tela])
+  @@index([donoUserId])
+  @@map("diretoria_relatorio")
+}
+
+model DiretoriaRelatorioBloco {
+  id             String             @id @default(uuid()) @db.Uuid
+  relatorioId    String             @map("relatorio_id") @db.Uuid
+  componenteId   String             @map("componente_id")
+  ordem          Int
+  larguraQuartos Int                @map("largura_quartos")
+  alturaU        Int                @map("altura_u")
+  configJson     Json?              @map("config_json")
+  relatorio      DiretoriaRelatorio @relation(fields: [relatorioId], references: [id], onDelete: Cascade)
+
+  @@index([relatorioId])
+  @@map("diretoria_relatorio_bloco")
+}
+
+/// Fato de seriais (A6 da Diretoria). Cada equipamento por número de série.
+/// Fonte: raw_sped_produto_lote_serie. Construído pelo builder rebuildFatoSerial.
+model FatoSerial {
+  odooId      Int       @id @map("odoo_id")
+  serial      String?
+  produtoId   Int?      @map("produto_id")
+  produtoNome String?   @map("produto_nome")
+  localId     Int?      @map("local_id")
+  localNome   String?   @map("local_nome")
+  valorCusto  Decimal?  @map("valor_custo") @db.Decimal(18, 4)
+  dataCompra  DateTime? @map("data_compra")
+  dataSaida   DateTime? @map("data_saida")
+  quantidade  Decimal?  @db.Decimal(18, 4)
+
+  @@index([produtoId])
+  @@map("fato_serial")
+}
+
+// A7 (Diretoria): compras (ordens de compra) extraídas de raw_pedido_documento
+// onde tipo = "compra". Guarda todas; a query filtra as ATIVAS (não recebidas e
+// não canceladas). `recebida` = estoque_finalizado do Odoo.
+model FatoCompra {
+  odooId         Int       @id @map("odoo_id")
+  numero         String?
+  etapaId        Int?      @map("etapa_id")
+  etapaNome      String?   @map("etapa_nome")
+  operacaoId     Int?      @map("operacao_id")
+  operacaoNome   String?   @map("operacao_nome")
+  fornecedorId   Int?      @map("fornecedor_id")
+  fornecedorNome String?   @map("fornecedor_nome")
+  compradorId    Int?      @map("comprador_id")
+  compradorNome  String?   @map("comprador_nome")
+  empresaId      Int?      @map("empresa_id")
+  empresaNome    String?   @map("empresa_nome")
+  dataOrcamento  DateTime? @map("data_orcamento")
+  dataPrevista   DateTime? @map("data_prevista")
+  dataAprovacao  DateTime? @map("data_aprovacao")
+  vrProdutos     Decimal?  @map("vr_produtos") @db.Decimal(18, 4)
+  vrNf           Decimal?  @map("vr_nf") @db.Decimal(18, 4)
+  vrPago         Decimal?  @map("vr_pago") @db.Decimal(18, 4)
+  vrSaldo        Decimal?  @map("vr_saldo") @db.Decimal(18, 4)
+  recebida       Boolean   @default(false)
+  cancelada      Boolean   @default(false)
+
+  @@index([recebida, cancelada])
+  @@map("fato_compra")
 }
 
 model PasswordResetToken {

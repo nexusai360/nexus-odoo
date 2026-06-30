@@ -61,6 +61,8 @@
   --secondary-foreground: #18181b;
   --muted: #e9e9ee;
   --muted-foreground: #52525b;
+  /* Cinza do mapa (estado sem dado) , tema claro: mais presente que o --muted */
+  --mapa-sem-dado: #cfcfd8;
   --accent: #e9e4fc;
   --accent-foreground: #18181b;
   --destructive: #dc2626;
@@ -97,6 +99,8 @@
   --secondary-foreground: #fafafa;
   --muted: #27272a;
   --muted-foreground: #a1a1aa;
+  /* Cinza do mapa (estado sem dado) , tema escuro: um pouco mais claro p/ não ficar apagado */
+  --mapa-sem-dado: #3c3c45;
   --accent: #27272a;
   --accent-foreground: #fafafa;
   --destructive: #ef4444;

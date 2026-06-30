@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { motion } from "framer-motion";
 import {
+  Building2,
   Crown,
   Eye,
   Pencil,
@@ -68,6 +69,7 @@ import type { PlatformRole } from "@/generated/prisma/client";
 import type { AuthUser } from "@/lib/auth-helpers";
 
 import { UserFormDialog } from "./user-form-dialog";
+import { DiretoriaAccessDialog } from "./diretoria-access-dialog";
 
 type RoleValue = PlatformRole;
 type StatusValue = "active" | "inactive";
@@ -155,6 +157,7 @@ export function UsersContent({ currentUser }: UsersContentProps) {
   const [editingUser, setEditingUser] = useState<UserListItem | null>(null);
   const [editingUserDomains, setEditingUserDomains] = useState<ReportDomainId[]>([]);
   const [confirmDelete, setConfirmDelete] = useState<UserListItem | null>(null);
+  const [diretoriaUser, setDiretoriaUser] = useState<UserListItem | null>(null);
 
   const [actionPending, setActionPending] = useState(false);
   const [deletePending, setDeletePending] = useState(false);
@@ -447,6 +450,23 @@ export function UsersContent({ currentUser }: UsersContentProps) {
                             <TooltipContent>Editar usuário</TooltipContent>
                           </Tooltip>
                         ) : null}
+                        {canEdit ? (
+                          <Tooltip>
+                            <TooltipTrigger
+                              render={
+                                <button
+                                  type="button"
+                                  onClick={() => setDiretoriaUser(u)}
+                                  aria-label={`Acesso à Diretoria de ${u.name}`}
+                                  className={ACTION_BTN}
+                                />
+                              }
+                            >
+                              <Building2 className="h-4 w-4" aria-hidden="true" />
+                            </TooltipTrigger>
+                            <TooltipContent>Acesso à Diretoria</TooltipContent>
+                          </Tooltip>
+                        ) : null}
                         {canDel ? (
                           <Tooltip>
                             <TooltipTrigger
@@ -477,6 +497,14 @@ export function UsersContent({ currentUser }: UsersContentProps) {
         )}
       </div>
 
+      <DiretoriaAccessDialog
+        userId={diretoriaUser?.id ?? null}
+        userName={diretoriaUser?.name ?? null}
+        open={diretoriaUser !== null}
+        onOpenChange={(o) => {
+          if (!o) setDiretoriaUser(null);
+        }}
+      />
       <UserFormDialog
         mode="create"
         open={createOpen}

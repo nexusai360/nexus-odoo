@@ -1,7 +1,7 @@
 "use client";
 
-import { Fragment, useCallback, useMemo, useRef, useState } from "react";
-import { Columns2, WrapText, ChevronRight, Download } from "lucide-react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Columns2, WrapText, ChevronLeft, ChevronRight, Download, ListFilter, Check, X, Search } from "lucide-react";
 import {
   TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -9,6 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ChartPreparing, ChartEmpty, ChartError } from "./chart-states";
@@ -17,12 +20,25 @@ import {
   sortRows, filterRows, toggleSortStack, type SortEntry,
 } from "./data-table-utils";
 import { gerarCsv, downloadCsv } from "./export-csv";
+import { PageJumpNavigator } from "@/components/agent/consumo/page-jump-navigator";
 import type { ReactNode } from "react";
 
 export interface ColumnDef<T> {
   key: keyof T & string;
   header: string;
-  tipo: "texto" | "numero" | "moeda" | "percentual";
+  /**
+   * - `tag`: 1 pílula colorida (valor string).
+   * - `tags`: VÁRIAS pílulas por célula (valor `string[]`), estilo Router.
+   * - `data`: o valor é uma data ISO (`YYYY-MM-DD`); exibe `DD/MM/AAAA` mas
+   *   ordena pelo ISO (lexicográfico = cronológico). Valores não-ISO (ex.:
+   *   "Sem previsão") passam intactos.
+   */
+  tipo: "texto" | "numero" | "moeda" | "percentual" | "tag" | "tags" | "data";
+  /**
+   * Para `tipo: "tag"|"tags"`: mapa valor->classe Tailwind do badge. O valor sem
+   * mapa cai numa cor neutra. Ex.: `{ Atrasado: "bg-rose-500/10 text-rose-400" }`.
+   */
+  tagCores?: Record<string, string>;
 }
 
 interface DataTableProps<T> {
@@ -42,6 +58,17 @@ interface DataTableProps<T> {
    * Default: "relatorio"
    */
   exportFilename?: string;
+  /**
+   * Inicia em modo compacto (trunca colunas de texto longas, revelando as
+   * colunas numéricas à direita sem scroll). Default: false.
+   */
+  compactoInicial?: boolean;
+  /**
+   * Quando true, a tabela preenche a altura do contêiner pai (flex) e rola
+   * internamente, mantendo o cabeçalho fixo. Use dentro de blocos de altura
+   * fixa (construtor). Default: false (usa `max-h-[70vh]`, como nas telas).
+   */
+  alturaFluida?: boolean;
 }
 
 /**
@@ -49,6 +76,20 @@ interface DataTableProps<T> {
  * nenhum id está presente. Evita que ordenar ou pesquisar reassocie o DOM
  * por posição.
  */
+/** Opções de "registros por página" (value string p/ o Select base-ui). */
+const POR_PAGINA_ITENS = [
+  { value: "50", label: "50" },
+  { value: "100", label: "100" },
+  { value: "500", label: "500" },
+];
+
+/** Formata uma data ISO (`YYYY-MM-DD…`) para `DD/MM/AAAA`. Valores que não
+ * casam com o padrão ISO (ex.: "Sem previsão") são devolvidos intactos. */
+function formatarDataBR(valor: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(valor);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : valor;
+}
+
 function rowKey(row: Record<string, unknown>, index: number): string | number {
   for (const k of ["produtoId", "odooId", "id", "saldoHojeId"]) {
     const v = row[k];
@@ -114,6 +155,8 @@ export function DataTable<T extends Record<string, unknown>>({
   searchable = false,
   expandDetail,
   exportFilename = "relatorio",
+  compactoInicial = false,
+  alturaFluida = false,
 }: DataTableProps<T>) {
   // --- busca (debounced) ---
   const [query, setQuery] = useState("");
@@ -145,7 +188,43 @@ export function DataTable<T extends Record<string, unknown>>({
   }
 
   // --- modo compacto ---
-  const [compacto, setCompacto] = useState(false);
+  const [compacto, setCompacto] = useState(compactoInicial);
+
+  // --- filtro por coluna (valores distintos, estilo Router) ---
+  const [colFiltros, setColFiltros] = useState<Record<string, string[]>>({});
+  const [filtroBusca, setFiltroBusca] = useState("");
+  function toggleColFiltro(key: string, val: string) {
+    setColFiltros((prev) => {
+      const cur = prev[key] ?? [];
+      const next = cur.includes(val) ? cur.filter((x) => x !== val) : [...cur, val];
+      return { ...prev, [key]: next };
+    });
+  }
+  // Valores distintos por coluna textual/tag (até 60 valores; acima disso a busca
+  // dá conta e o popover viraria uma lista infinita).
+  const valoresPorColuna = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    for (const c of columns) {
+      if (c.tipo !== "texto" && c.tipo !== "tag" && c.tipo !== "tags") continue;
+      const set = new Set<string>();
+      for (const r of rows) {
+        const v = r[c.key];
+        if (c.tipo === "tags" && Array.isArray(v)) v.forEach((x) => set.add(String(x)));
+        else if (v != null && v !== "") set.add(String(v));
+      }
+      map[c.key] = [...set].sort((a, b) => a.localeCompare(b, "pt-BR"));
+    }
+    return map;
+  }, [rows, columns]);
+  const colunasFiltráveis = columns.filter((c) => {
+    const vals = valoresPorColuna[c.key];
+    return vals && vals.length >= 2 && vals.length <= 60;
+  });
+  const totalFiltrosAtivos = Object.values(colFiltros).reduce((s, v) => s + v.length, 0);
+
+  // --- paginação ---
+  const [porPagina, setPorPagina] = useState(50);
+  const [pagina, setPagina] = useState(1);
 
   // --- linhas expandidas ---
   const [expandedKeys, setExpandedKeys] = useState<Set<string | number>>(new Set());
@@ -158,16 +237,43 @@ export function DataTable<T extends Record<string, unknown>>({
     });
   }
 
-  // --- pipeline: filtro → sort ---
+  // --- pipeline: busca → filtro por coluna → sort ---
   const filtered = useMemo(
     () => filterRows(rows, debouncedQuery),
     [rows, debouncedQuery],
   );
 
+  const colFiltered = useMemo(() => {
+    const ativos = Object.entries(colFiltros).filter(([, v]) => v.length > 0);
+    if (ativos.length === 0) return filtered;
+    return filtered.filter((row) =>
+      ativos.every(([key, vals]) => {
+        const col = columns.find((c) => c.key === key);
+        const v = row[key];
+        if (col?.tipo === "tags" && Array.isArray(v)) {
+          return (v as unknown[]).some((x) => vals.includes(String(x)));
+        }
+        return vals.includes(String(v ?? ""));
+      }),
+    );
+  }, [filtered, colFiltros, columns]);
+
   const sorted = useMemo(
-    () => sortRows(filtered, sortStack, columns),
-    [filtered, sortStack, columns],
+    () => sortRows(colFiltered, sortStack, columns),
+    [colFiltered, sortStack, columns],
   );
+
+  // --- paginação derivada ---
+  const totalPaginas = Math.max(1, Math.ceil(sorted.length / porPagina));
+  const paginaSegura = Math.min(pagina, totalPaginas);
+  const paginadas = useMemo(
+    () => sorted.slice((paginaSegura - 1) * porPagina, paginaSegura * porPagina),
+    [sorted, paginaSegura, porPagina],
+  );
+  // Volta à primeira página quando busca/filtro/ordenação/dados/tamanho mudam.
+  useEffect(() => {
+    setPagina(1);
+  }, [debouncedQuery, sortStack, rows, porPagina, colFiltros]);
 
   // --- exportação CSV ---
   function handleExport() {
@@ -191,7 +297,7 @@ export function DataTable<T extends Record<string, unknown>>({
   const hasExpand = Boolean(expandDetail);
 
   return (
-    <div className="flex flex-col gap-3 w-full">
+    <div className={cn("flex flex-col gap-3 w-full", alturaFluida && "h-full min-h-0")}>
       {/* Barra de controles */}
       <div className="flex flex-wrap items-center gap-2">
         {searchable && (
@@ -250,6 +356,117 @@ export function DataTable<T extends Record<string, unknown>>({
           </PopoverContent>
         </Popover>
 
+        {/* Filtro por coluna (valores distintos) */}
+        {colunasFiltráveis.length > 0 && (
+          <Popover>
+            <PopoverTrigger
+              render={
+                <Button
+                  variant={totalFiltrosAtivos > 0 ? "default" : "outline"}
+                  size="sm"
+                  className="h-8 gap-1.5 text-xs"
+                  aria-label="Filtrar por coluna"
+                >
+                  <ListFilter className="size-3.5" aria-hidden />
+                  Filtros
+                  {totalFiltrosAtivos > 0 && (
+                    <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-background/25 px-1 text-[10px] font-bold tabular-nums">
+                      {totalFiltrosAtivos}
+                    </span>
+                  )}
+                </Button>
+              }
+            />
+            <PopoverContent align="start" className="w-64 p-0">
+              <div className="flex items-center justify-between border-b border-border px-3 py-2">
+                <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Filtrar por coluna
+                </span>
+                {totalFiltrosAtivos > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setColFiltros({})}
+                    className="inline-flex items-center gap-1 rounded px-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground cursor-pointer"
+                  >
+                    <X className="size-3" aria-hidden />
+                    Limpar
+                  </button>
+                )}
+              </div>
+              {/* Busca dentro do filtro , reduz a lista de valores */}
+              <div className="border-b border-border/60 p-2">
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
+                  <Input
+                    value={filtroBusca}
+                    onChange={(e) => setFiltroBusca(e.target.value)}
+                    placeholder="Buscar valor…"
+                    className="h-7 pl-7 text-xs"
+                    aria-label="Buscar valor nos filtros"
+                  />
+                </div>
+              </div>
+              <div className="flex max-h-72 flex-col gap-3 overflow-y-auto p-2">
+                {(() => {
+                  const q = filtroBusca.trim().toLowerCase();
+                  const secoes = colunasFiltráveis
+                    .map((c) => ({
+                      c,
+                      vals: q
+                        ? valoresPorColuna[c.key].filter((v) => v.toLowerCase().includes(q))
+                        : valoresPorColuna[c.key],
+                    }))
+                    .filter((s) => s.vals.length > 0);
+                  if (secoes.length === 0) {
+                    return (
+                      <p className="py-3 text-center text-xs text-muted-foreground">
+                        Nenhum valor encontrado.
+                      </p>
+                    );
+                  }
+                  return secoes.map(({ c, vals }) => {
+                    const sel = colFiltros[c.key] ?? [];
+                    return (
+                      <div key={c.key}>
+                        <p className="mb-1 px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          {c.header}
+                        </p>
+                        <ul role="listbox" aria-label={`Filtrar ${c.header}`} className="flex flex-col gap-0.5">
+                          {vals.map((val) => {
+                            const on = sel.includes(val);
+                            return (
+                              <li key={val} role="presentation">
+                                <button
+                                  type="button"
+                                  role="option"
+                                  aria-selected={on}
+                                  onClick={() => toggleColFiltro(c.key, val)}
+                                  className="flex w-full cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 text-left text-sm transition-colors hover:bg-muted"
+                                >
+                                  <span
+                                    className={cn(
+                                      "flex size-4 shrink-0 items-center justify-center rounded border border-border bg-background transition-colors",
+                                      on && "border-primary bg-primary text-primary-foreground",
+                                    )}
+                                    aria-hidden
+                                  >
+                                    {on ? <Check className="size-3" /> : null}
+                                  </span>
+                                  <span className="truncate">{val}</span>
+                                </button>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+
         {/* Toggle compacto */}
         <Button
           variant={compacto ? "default" : "outline"}
@@ -284,7 +501,7 @@ export function DataTable<T extends Record<string, unknown>>({
       </div>
 
       {/* Tabela com scroll interno e cabeçalho sticky */}
-      <div className="max-h-[70vh] w-full overflow-auto rounded-xl border border-border">
+      <div className={cn("w-full overflow-auto rounded-xl border border-border", alturaFluida ? "min-h-0 flex-1" : "max-h-[70vh]")}>
         <table className="w-full caption-bottom text-sm">
           <TableHeader className="sticky top-0 z-20 bg-muted backdrop-blur-sm">
             <TableRow>
@@ -347,7 +564,7 @@ export function DataTable<T extends Record<string, unknown>>({
                 </TableCell>
               </TableRow>
             ) : (
-              sorted.map((row, i) => {
+              paginadas.map((row, i) => {
                 const key = rowKey(row, i);
                 const expanded = expandedKeys.has(key);
                 const detailNode = expandDetail ? expandDetail(row) : null;
@@ -404,7 +621,31 @@ export function DataTable<T extends Record<string, unknown>>({
                               ? formatNumber(Number(row[c.key] ?? 0), "moeda")
                               : c.tipo === "percentual"
                                 ? `${Number(row[c.key] ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
-                                : String(row[c.key] ?? "")}
+                                : c.tipo === "tag"
+                                  ? (
+                                      <span className={cn(
+                                        "inline-flex rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ring-border/60",
+                                        c.tagCores?.[String(row[c.key] ?? "")] ?? "bg-muted text-muted-foreground",
+                                      )}>
+                                        {String(row[c.key] ?? "")}
+                                      </span>
+                                    )
+                                  : c.tipo === "data"
+                                    ? formatarDataBR(String(row[c.key] ?? ""))
+                                  : c.tipo === "tags"
+                                    ? (
+                                        <div className="flex flex-wrap gap-1">
+                                          {(Array.isArray(row[c.key]) ? (row[c.key] as unknown as string[]) : []).map((t, ti) => (
+                                            <span key={`${t}-${ti}`} className={cn(
+                                              "inline-flex rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ring-border/60",
+                                              c.tagCores?.[t] ?? "bg-muted text-muted-foreground",
+                                            )}>
+                                              {t}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      )
+                                    : String(row[c.key] ?? "")}
                         </TableCell>
                       ))}
                     </TableRow>
@@ -432,6 +673,51 @@ export function DataTable<T extends Record<string, unknown>>({
             )}
           </TableBody>
         </table>
+      </div>
+
+      {/* Rodapé: paginação em 3 zonas (esq: contagem · meio: navegação · dir: por página) */}
+      <div className="grid grid-cols-1 items-center gap-2 text-xs text-muted-foreground sm:grid-cols-3">
+        {/* ESQUERDA , "Mostrando X a Y de Z" */}
+        <span className="tabular-nums justify-self-center sm:justify-self-start">
+          {sorted.length === 0
+            ? "Nenhum registro"
+            : `Mostrando ${(paginaSegura - 1) * porPagina + 1} a ${Math.min(paginaSegura * porPagina, sorted.length)} de ${sorted.length}`}
+        </span>
+
+        {/* MEIO , navegador de páginas */}
+        <div className="flex items-center justify-center gap-2 justify-self-center">
+          <Button variant="outline" size="icon" className="h-7 w-7" aria-label="Página anterior" disabled={paginaSegura <= 1} onClick={() => setPagina((p) => Math.max(1, p - 1))}>
+            <ChevronLeft className="h-3.5 w-3.5" />
+          </Button>
+          <PageJumpNavigator
+            page={paginaSegura - 1}
+            totalPages={totalPaginas}
+            onJump={(idx) => setPagina(idx + 1)}
+            disabled={totalPaginas <= 1}
+          />
+          <Button variant="outline" size="icon" className="h-7 w-7" aria-label="Próxima página" disabled={paginaSegura >= totalPaginas} onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}>
+            <ChevronRight className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+
+        {/* DIREITA , registros por página (Select do design system) */}
+        <div className="flex items-center gap-1.5 justify-self-center sm:justify-self-end">
+          <span>Por página</span>
+          <Select
+            items={POR_PAGINA_ITENS}
+            value={String(porPagina)}
+            onValueChange={(v) => setPorPagina(Number(v))}
+          >
+            <SelectTrigger size="sm" className="w-[4.75rem]" aria-label="Registros por página">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent side="top" className="min-w-[4.75rem]">
+              {POR_PAGINA_ITENS.map((it) => (
+                <SelectItem key={it.value} value={it.value}>{it.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
     </div>
   );

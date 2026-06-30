@@ -11,6 +11,7 @@ import { seesAll, REPORT_DOMAINS, type ReportDomainId } from "@/lib/reports/doma
 import { getUserDomains } from "@/lib/actions/domain-access";
 import { getActiveConversationId } from "@/lib/actions/active-conversation";
 import { roleMeetsChannelLevel } from "@/lib/agent/channel-access";
+import { diretoriaNavFor } from "@/lib/diretoria/access";
 
 export default async function ProtectedLayout({
   children,
@@ -26,6 +27,11 @@ export default async function ProtectedLayout({
     platformRole: user.platformRole,
     avatarUrl: user.avatarUrl,
   };
+
+  // Submenu da Diretoria resolvido por capability no server. Passa só dados
+  // serializáveis (label/href) à Sidebar; o ícone é reanexado lá (componentes
+  // React não cruzam a fronteira server→client). Usa `user` (com id).
+  const dirChildren = await diretoriaNavFor(user);
 
   // RBAC v2 (SPEC §6.5): a bubble do agente aparece para quem CONSEGUE usar o
   // Nex. super_admin/admin veem tudo (short-circuit seesAll, sem query).
@@ -103,7 +109,7 @@ export default async function ProtectedLayout({
   return (
     <TourProvider>
       <div className="flex h-screen overflow-hidden bg-background">
-        <Sidebar user={sidebarUser} />
+        <Sidebar user={sidebarUser} diretoriaNav={dirChildren} />
         <main className="flex-1 overflow-y-auto overscroll-contain">
           <div className="pt-16 pb-8 sm:pt-8">{children}</div>
         </main>
