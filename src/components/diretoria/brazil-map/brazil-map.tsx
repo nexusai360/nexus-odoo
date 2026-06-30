@@ -211,16 +211,18 @@ export function BrazilMap({
                       style={{
                         cursor: "pointer",
                         outline: "none",
-                        // Destaque SEM mover a geometria (nada de scale/translate): o
-                        // estado em foco ganha brilho (glow) + contorno claro e os
-                        // demais escurecem. Mexer no tamanho fazia a borda passar
-                        // por baixo/longe do cursor durante a animação e disparava
-                        // hover repetido , o "tremido". Só cor/brilho/opacidade.
-                        opacity: algumLevantado && !isLift ? 0.4 : 1,
-                        filter: isLift ? "drop-shadow(0 0 6px hsl(262 90% 62% / .9))" : "none",
-                        transition: reduce
-                          ? "none"
-                          : "opacity .18s ease, filter .18s ease, fill .18s ease",
+                        // Destaque SEM mover a geometria: o estado em foco ganha brilho
+                        // (glow) + contorno claro e os demais ESCURECEM. O escurecer usa
+                        // `filter` (brightness/saturate) e NÃO `opacity`: opacity mistura
+                        // com o FUNDO (preto no escuro, branco no claro), então a cor dos
+                        // estados esmaecidos mudava de tema p/ tema (lavava no claro). O
+                        // filtro age sobre a cor do próprio estado , mesma base nos 2 temas.
+                        filter: isLift
+                          ? "drop-shadow(0 0 6px hsl(262 90% 62% / .9))"
+                          : algumLevantado
+                            ? "brightness(0.55) saturate(0.9)"
+                            : "none",
+                        transition: reduce ? "none" : "filter .18s ease, fill .18s ease",
                       }}
                     />
                   );
