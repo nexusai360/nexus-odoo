@@ -179,8 +179,7 @@ export function BrazilMap({
                   const base = d ? corPorIntensidade(intensidadeDe(d.valor)) : COR_SEM_DADO;
                   const isSel = selected.includes(p.uf);
                   const isLift = p.uf === liftUf;
-                  const algumLevantado = liftUf != null;
-                  // Cor mais viva quando levantado; demais esmaecem para dar destaque.
+                  // Cor mais viva quando em foco.
                   const fill = isLift && d
                     ? corPorIntensidade(Math.max(0.62, intensidadeDe(d.valor) + 0.12))
                     : base;
@@ -211,17 +210,11 @@ export function BrazilMap({
                       style={{
                         cursor: "pointer",
                         outline: "none",
-                        // Destaque SEM mover a geometria: o estado em foco ganha brilho
-                        // (glow) + contorno claro e os demais ESCURECEM. O escurecer usa
-                        // `filter` (brightness/saturate) e NÃO `opacity`: opacity mistura
-                        // com o FUNDO (preto no escuro, branco no claro), então a cor dos
-                        // estados esmaecidos mudava de tema p/ tema (lavava no claro). O
-                        // filtro age sobre a cor do próprio estado , mesma base nos 2 temas.
-                        filter: isLift
-                          ? "drop-shadow(0 0 6px hsl(262 90% 62% / .9))"
-                          : algumLevantado
-                            ? "brightness(0.55) saturate(0.9)"
-                            : "none",
+                        // Efeito SUTIL e pontual: só o estado sob o mouse muda , fica um
+                        // pouco mais vivo (fill) + brilho (glow) + contorno claro. Os
+                        // demais NÃO mudam (nada de escurecer o cenário todo), então cada
+                        // tema mantém a sua cara.
+                        filter: isLift ? "drop-shadow(0 0 6px hsl(262 90% 62% / .9))" : "none",
                         transition: reduce ? "none" : "filter .18s ease, fill .18s ease",
                       }}
                     />
