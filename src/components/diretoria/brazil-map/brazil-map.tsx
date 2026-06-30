@@ -253,7 +253,7 @@ export function BrazilMap({
                     onMouseLeave={() => setHover((h) => (h === SEM_UF ? null : h))}
                     aria-label={`Sem UF, ${metric} ${formatValor(semUfDatum.valor)}`}
                     aria-pressed={selected.includes(SEM_UF)}
-                    className="absolute left-0 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center gap-1"
+                    className="absolute left-0 top-[80%] z-10 flex -translate-y-1/2 flex-col items-center gap-1"
                     style={{
                       filter: ativo ? "drop-shadow(0 0 6px hsl(262 90% 62% / .9))" : "none",
                       opacity: algumLevantado && !ativo ? 0.72 : 1,
@@ -262,7 +262,7 @@ export function BrazilMap({
                     }}
                   >
                     <span
-                      className="block h-9 w-14 rounded-md"
+                      className="block h-8 w-[3.15rem] rounded-md"
                       style={{
                         background: corPorIntensidade(intensidadeDe(semUfDatum.valor)),
                         outline: ativo ? "1.5px solid var(--foreground)" : "0.5px solid var(--border)",
