@@ -74,24 +74,29 @@ export function KpiButton({
 
   const conteudo = (
     <>
-      <div className="flex items-start justify-between gap-2">
-        <p className="min-w-0 truncate text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+      <div className="flex items-start justify-between gap-2.5">
+        <p className="min-w-0 text-[11px] font-medium uppercase leading-tight tracking-wide text-muted-foreground">
           {rotulo}
         </p>
         <span
           className={cn(
-            "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg",
+            "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg",
             iconBg[tone],
           )}
         >
           <Icon className={cn("h-3.5 w-3.5", iconColor[tone])} aria-hidden />
         </span>
       </div>
-      <div
-        className="mt-2 truncate text-2xl font-bold leading-none tracking-tight tabular-nums"
-        title={valorCompleto ?? undefined}
-      >
-        {valor}
+      {/* Tooltip instantâneo (CSS group-hover, sem o atraso de 1-2s do title nativo). */}
+      <div className="group/val relative mt-2.5 w-fit max-w-full">
+        <div className="truncate text-2xl font-bold leading-none tracking-tight tabular-nums">
+          {valor}
+        </div>
+        {valorCompleto && valorCompleto !== valor ? (
+          <span className="pointer-events-none absolute bottom-full left-0 z-30 mb-1.5 whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 text-xs font-semibold tabular-nums text-popover-foreground opacity-0 shadow-lg transition-opacity duration-100 group-hover/val:opacity-100">
+            {valorCompleto}
+          </span>
+        ) : null}
       </div>
       {hint ? (
         <p className="mt-1.5 line-clamp-2 text-[11px] leading-snug text-muted-foreground">
@@ -105,7 +110,7 @@ export function KpiButton({
   );
 
   const base =
-    "rounded-xl border bg-muted/30 p-3.5 text-left transition-all duration-150";
+    "rounded-xl border bg-muted/30 p-4 text-left transition-all duration-150";
 
   if (!clicavel) {
     return (

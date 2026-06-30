@@ -41,12 +41,14 @@ export function nomeLimpo(raw: string | null | undefined, maxLen = 34): string {
 
 /**
  * Moeda compacta para cards estreitos: >= 1 mi vira "R$ X,Y mi"; >= 10 mil vira
- * "R$ N mil"; abaixo disso, moeda cheia. O valor cheio deve ir no title.
+ * "R$ N,Y mil" (1 casa só quando há resto, ex.: 134.501 -> "R$ 134,5 mil",
+ * 50.000 -> "R$ 50 mil"); abaixo disso, moeda cheia. O valor cheio vai no hover.
  */
 export function brlCompacto(v: number): string {
   const a = Math.abs(v);
   if (a >= 1_000_000)
     return `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} mi`;
-  if (a >= 10_000) return `R$ ${Math.round(v / 1000).toLocaleString("pt-BR")} mil`;
+  if (a >= 10_000)
+    return `R$ ${(v / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} mil`;
   return brl.format(v);
 }
