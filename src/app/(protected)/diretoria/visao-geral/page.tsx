@@ -4,6 +4,7 @@ import { PageShell } from "@/components/layout/page-shell";
 import { PageHeader } from "@/components/page-header";
 import { prisma } from "@/lib/prisma";
 import { requireDiretoriaArea, userUfs, canDiretoria } from "@/lib/diretoria/access";
+import { SEM_UF } from "@/lib/diretoria/uf";
 import { resolverPeriodoDir } from "@/lib/diretoria/periodo";
 import {
   queryIndicadoresVendas,
@@ -75,7 +76,9 @@ export default async function DiretoriaVisaoGeralPage({
     produtos: estoque.produtos,
     demandasTotal: demandas.totalPendentes,
     demandasAtrasadas: demandas.atrasadas,
-    mapData: vendasUf.linhas.filter((l) => l.uf !== "??").map((l) => ({ uf: l.uf, valor: l.valorTotal })),
+    // Mantém o bucket "Sem UF" (uf "??") como pseudo-estado SEM_UF, para o total
+    // do mapa bater com o KPI de faturamento (mesma query agrupada por UF).
+    mapData: vendasUf.linhas.map((l) => ({ uf: l.uf === "??" ? SEM_UF : l.uf, valor: l.valorTotal })),
     vendasMarca: vendasMarca.linhas.map((m) => ({ label: m.marca, valor: m.valorTotal })),
     estoqueFamilia: estoqueFamilia.linhas.map((f) => ({ label: f.chave, valor: f.valorTotal })),
     atalhos,

@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { useReducedMotion } from "framer-motion";
 
 import { cn } from "@/lib/utils";
+import { SEM_UF } from "@/lib/diretoria/uf";
 import { BRAZIL_VIEWBOX, UF_PATHS } from "./uf-data";
 
 export interface BrazilMapDatum {
@@ -111,8 +112,13 @@ export function BrazilMap({
   }
 
   function nomeDe(uf: string) {
+    if (uf === SEM_UF) return "Sem UF";
     return UF_PATHS.find((p) => p.uf === uf)?.nome ?? uf;
   }
+
+  // Datum do pseudo-estado "Sem UF" (clientes sem estado resolvido). Quando
+  // presente, vira um quadrado no mapa e uma linha no ranking, somando ao total.
+  const semUfDatum = porUf.get(SEM_UF);
 
   // Escala LOGARÍTMICA: como os valores são bem concentrados (um estado domina),
   // o log espalha os demais pela rampa, deixando cada estado nitidamente
@@ -230,6 +236,48 @@ export function BrazilMap({
               })()}
             </svg>
 
+            {/* Pseudo-estado "Sem UF": clientes sem estado resolvido. Fica um
+                quadrado no canto esquerdo (onde sobra espaço ao lado do mapa),
+                pintado pelo MESMO heatmap dos estados, hoverável/clicável e
+                somando ao total , para o mapa fechar com o KPI de faturamento. */}
+            {semUfDatum && semUfDatum.valor > 0 ? (
+              (() => {
+                const ativo = hover === SEM_UF || selected.includes(SEM_UF);
+                const algumLevantado = liftUf != null;
+                return (
+                  <button
+                    type="button"
+                    onClick={() => toggle(SEM_UF)}
+                    onMouseEnter={() => setHover(SEM_UF)}
+                    onMouseMove={trackMouse}
+                    onMouseLeave={() => setHover((h) => (h === SEM_UF ? null : h))}
+                    aria-label={`Sem UF, ${metric} ${formatValor(semUfDatum.valor)}`}
+                    aria-pressed={selected.includes(SEM_UF)}
+                    className="absolute left-0 top-1/2 z-10 flex -translate-y-1/2 flex-col items-center gap-1"
+                    style={{
+                      filter: ativo ? "drop-shadow(0 0 6px hsl(262 90% 62% / .9))" : "none",
+                      opacity: algumLevantado && !ativo ? 0.72 : 1,
+                      transition: reduce ? "none" : "filter .18s ease, opacity .18s ease",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <span
+                      className="block h-9 w-14 rounded-md"
+                      style={{
+                        background: corPorIntensidade(intensidadeDe(semUfDatum.valor)),
+                        outline: ativo ? "1.5px solid var(--foreground)" : "0.5px solid var(--border)",
+                      }}
+                      aria-hidden
+                    />
+                    <span className="text-[11px] font-medium leading-none text-foreground">Sem UF</span>
+                    <span className="text-[10px] leading-none tabular-nums text-muted-foreground">
+                      {formatValor(semUfDatum.valor)}
+                    </span>
+                  </button>
+                );
+              })()
+            ) : null}
+
             {/* Tooltip que segue o cursor e some fora do país */}
             {hoverNome && pos ? (
               <div
@@ -279,8 +327,10 @@ export function BrazilMap({
                   {focoOrigem === "hover" ? "Em foco" : "Selecionado"}
                 </div>
                 <div className="mt-0.5 truncate text-sm font-semibold text-foreground">
-                  {nomeDe(focoUf)}{" "}
-                  <span className="text-muted-foreground">({focoUf})</span>
+                  {nomeDe(focoUf)}
+                  {focoUf !== SEM_UF ? (
+                    <span className="text-muted-foreground"> ({focoUf})</span>
+                  ) : null}
                 </div>
                 <div className="mt-1.5 flex items-end justify-between gap-2">
                   <span className="text-lg font-bold tabular-nums text-foreground leading-none">
@@ -353,7 +403,7 @@ export function BrazilMap({
                         style={{ background: corPorIntensidade(intensidadeDe(r.valor)) }}
                         aria-hidden
                       />
-                      <span className="font-medium">{r.uf}</span>
+                      <span className="font-medium">{r.uf === SEM_UF ? "Sem UF" : r.uf}</span>
                       {r.label ? (
                         <span className="truncate text-muted-foreground">{r.label}</span>
                       ) : null}

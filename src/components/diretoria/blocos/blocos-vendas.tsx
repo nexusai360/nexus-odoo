@@ -15,6 +15,7 @@ import { DistribuicaoDinamica } from "@/components/diretoria/charts/distribuicao
 import { BrazilMap } from "@/components/diretoria/brazil-map/brazil-map";
 import { getColorByIndex } from "@/components/charts/colors";
 import { brl, brlCompacto, num, pct1, rotuloUf, ufValida } from "@/components/diretoria/kit/format";
+import { SEM_UF } from "@/lib/diretoria/uf";
 import type { VendasData } from "@/components/diretoria/vendas/vendas-screen";
 
 function topComOutros(linhas: { chave: string; valorTotal: number }[], max = 7) {
@@ -37,10 +38,11 @@ function KpisVendas({ d }: { d: VendasData }) {
   );
 }
 
-// C-02 , Vendas por estado: MAPA do Brasil coroplético.
+// C-02 , Vendas por estado: MAPA do Brasil coroplético. UFs sem geografia ("??")
+// viram o pseudo-estado SEM_UF (quadrado "Sem UF"), para o total do mapa bater
+// com o faturamento real do período.
 function MapaVendas({ d }: { d: VendasData }) {
-  // Só UFs com geografia (exclui "Sem UF", que não tem posição no mapa).
-  const data = d.porUf.linhas.filter((l) => ufValida(l.uf)).map((l) => ({ uf: l.uf, valor: l.valorTotal }));
+  const data = d.porUf.linhas.map((l) => ({ uf: ufValida(l.uf) ? l.uf : SEM_UF, valor: l.valorTotal }));
   return <BrazilMap data={data} metric="Faturamento" formatValor={(v) => brl.format(v)} />;
 }
 

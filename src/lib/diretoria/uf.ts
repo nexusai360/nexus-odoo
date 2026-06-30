@@ -2,6 +2,12 @@
 // nome do estado vindo do Odoo no formato "São Paulo (BR)", não a sigla. O Mapa
 // do Brasil e o UF-scoping trabalham com siglas, então normalizamos aqui.
 
+// Sentinel do bucket "Sem UF": notas de venda cujo cliente não tem estado
+// resolvido no cadastro. Entra no mapa/ranking como um pseudo-estado (quadrado
+// "Sem UF"), para o total do mapa bater com o KPI de faturamento. A query usa
+// "??" internamente; este é o código estável que o Mapa do Brasil reconhece.
+export const SEM_UF = "SEM_UF";
+
 const NOME_PARA_SIGLA: Record<string, string> = {
   acre: "AC",
   alagoas: "AL",
