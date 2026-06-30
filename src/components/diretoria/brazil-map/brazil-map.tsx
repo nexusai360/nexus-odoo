@@ -268,22 +268,28 @@ export function BrazilMap({
           {/* Cartão de destaque: estado em foco (hover/clique) OU o TOTAL quando
               não há interação. */}
           <div className="rounded-xl border border-violet-500/30 bg-violet-600/10 px-3.5 py-3">
-            {focoDatum ? (
+            {focoUf ? (
               <>
                 <div className="text-[10px] font-medium uppercase tracking-wide text-violet-700/80 dark:text-violet-300/80">
                   {focoOrigem === "hover" ? "Em foco" : "Selecionado"}
                 </div>
                 <div className="mt-0.5 truncate text-sm font-semibold text-foreground">
-                  {nomeDe(focoUf!)}{" "}
+                  {nomeDe(focoUf)}{" "}
                   <span className="text-muted-foreground">({focoUf})</span>
                 </div>
                 <div className="mt-1.5 flex items-end justify-between gap-2">
                   <span className="text-lg font-bold tabular-nums text-foreground leading-none">
-                    {formatValor(focoDatum.valor)}
+                    {formatValor(focoDatum ? focoDatum.valor : 0)}
                   </span>
-                  <span className="text-2xl font-bold tabular-nums text-violet-700 dark:text-violet-300 leading-none">
-                    {focoShare.toFixed(1)}%
-                  </span>
+                  {focoDatum ? (
+                    <span className="text-2xl font-bold tabular-nums text-violet-700 dark:text-violet-300 leading-none">
+                      {focoShare.toFixed(1)}%
+                    </span>
+                  ) : (
+                    <span className="text-xs font-medium tabular-nums text-muted-foreground leading-none">
+                      Sem dados
+                    </span>
+                  )}
                 </div>
               </>
             ) : (
@@ -306,10 +312,14 @@ export function BrazilMap({
             )}
           </div>
 
-          {/* Ranking completo (todos os estados com valor) , rolável */}
+          {/* Ranking completo (todos os estados com valor) , rolável. O hover só
+              é limpo ao sair da LISTA inteira (onMouseLeave do <ol>), não a cada
+              item , senão, no vão entre dois itens, o hover virava null por um
+              instante e o cartão piscava o "Total" no meio da transição. */}
           <ol
             className="flex max-h-[clamp(260px,46vh,460px)] flex-col gap-1 overflow-y-auto pr-1"
             aria-label={`Ranking de ${metric} por estado`}
+            onMouseLeave={() => setHover(null)}
           >
             {ranking.map((r, i) => {
               const ufU = r.uf.toUpperCase();
@@ -322,7 +332,6 @@ export function BrazilMap({
                     type="button"
                     onClick={() => toggle(ufU)}
                     onMouseEnter={() => setHover(ufU)}
-                    onMouseLeave={() => setHover((h) => (h === ufU ? null : h))}
                     className={cn(
                       "flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors",
                       isSel
