@@ -179,6 +179,7 @@ export function BrazilMap({
                   const base = d ? corPorIntensidade(intensidadeDe(d.valor)) : COR_SEM_DADO;
                   const isSel = selected.includes(p.uf);
                   const isLift = p.uf === liftUf;
+                  const algumLevantado = liftUf != null;
                   // Cor mais viva quando em foco.
                   const fill = isLift && d
                     ? corPorIntensidade(Math.max(0.62, intensidadeDe(d.valor) + 0.12))
@@ -210,12 +211,18 @@ export function BrazilMap({
                       style={{
                         cursor: "pointer",
                         outline: "none",
-                        // Efeito SUTIL e pontual: só o estado sob o mouse muda , fica um
-                        // pouco mais vivo (fill) + brilho (glow) + contorno claro. Os
-                        // demais NÃO mudam (nada de escurecer o cenário todo), então cada
-                        // tema mantém a sua cara.
-                        filter: isLift ? "drop-shadow(0 0 6px hsl(262 90% 62% / .9))" : "none",
-                        transition: reduce ? "none" : "filter .18s ease, fill .18s ease",
+                        // Profundidade de campo: ao passar o mouse, o estado em foco fica
+                        // NÍTIDO (com brilho/contorno) e os demais recebem um DESFOQUE
+                        // (blur) leve + leve fade. O blur é independente de tema , o
+                        // efeito fica coerente no claro e no escuro (não depende de
+                        // misturar com o fundo, que foi o que lavava a cor no tema claro).
+                        filter: isLift
+                          ? "drop-shadow(0 0 6px hsl(262 90% 62% / .9))"
+                          : algumLevantado
+                            ? "blur(1.1px) saturate(0.85)"
+                            : "none",
+                        opacity: algumLevantado && !isLift ? 0.72 : 1,
+                        transition: reduce ? "none" : "filter .18s ease, opacity .18s ease, fill .18s ease",
                       }}
                     />
                   );
