@@ -268,8 +268,11 @@ export function BrazilMap({
       {temDados ? (
         <div className="flex w-full shrink-0 flex-col gap-2 lg:w-72">
           {/* Cartão de destaque: estado em foco (hover/clique) OU o TOTAL quando
-              não há interação. */}
-          <div className="rounded-xl border border-violet-500/30 bg-violet-600/10 px-3.5 py-3">
+              não há interação. Altura FIXA: as duas variações (estado e Total)
+              têm o mesmo tamanho, então alternar entre elas não reflui a lista
+              abaixo , o que causava o flicker ao passar o mouse entre o card e o
+              primeiro item da lista. */}
+          <div className="min-h-[5.75rem] rounded-xl border border-violet-500/30 bg-violet-600/10 px-3.5 py-3">
             {focoUf ? (
               <>
                 <div className="text-[10px] font-medium uppercase tracking-wide text-violet-700/80 dark:text-violet-300/80">
@@ -300,7 +303,7 @@ export function BrazilMap({
                   Total
                 </div>
                 <div className="mt-0.5 truncate text-sm font-semibold text-foreground">
-                  {metric} , todos os estados
+                  {metric}
                 </div>
                 <div className="mt-1.5 flex items-end justify-between gap-2">
                   <span className="text-lg font-bold tabular-nums text-foreground leading-none">
