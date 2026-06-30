@@ -211,21 +211,16 @@ export function BrazilMap({
                       style={{
                         cursor: "pointer",
                         outline: "none",
-                        transformBox: "fill-box",
-                        transformOrigin: "center",
-                        // Esmaece quem NÃO está levantado, realçando o estado em foco.
-                        opacity: algumLevantado && !isLift ? 0.45 : 1,
-                        // "Lift" 3D: sobe + cresce a partir do próprio centro.
-                        transform: isLift && !reduce ? "translateY(-6px) scale(1.12)" : "none",
-                        // Sombra em camadas = profundidade real (contato + brilho violeta).
-                        filter: isLift
-                          ? "drop-shadow(0 1px 1px hsl(240 60% 4% / .55)) drop-shadow(0 10px 16px hsl(240 60% 4% / .45)) drop-shadow(0 0 18px hsl(262 90% 60% / .55))"
-                          : "none",
-                        willChange: isLift ? "transform, filter" : undefined,
-                        // Pop elástico (overshoot) na entrada; saída suave.
+                        // Destaque SEM mover a geometria (nada de scale/translate): o
+                        // estado em foco ganha brilho (glow) + contorno claro e os
+                        // demais escurecem. Mexer no tamanho fazia a borda passar
+                        // por baixo/longe do cursor durante a animação e disparava
+                        // hover repetido , o "tremido". Só cor/brilho/opacidade.
+                        opacity: algumLevantado && !isLift ? 0.4 : 1,
+                        filter: isLift ? "drop-shadow(0 0 6px hsl(262 90% 62% / .9))" : "none",
                         transition: reduce
                           ? "none"
-                          : "transform .34s cubic-bezier(.34,1.56,.64,1), filter .3s ease, opacity .3s ease, fill .3s ease",
+                          : "opacity .18s ease, filter .18s ease, fill .18s ease",
                       }}
                     />
                   );
