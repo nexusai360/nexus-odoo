@@ -446,24 +446,18 @@ export async function querySeriaisProduto(
 }> {
   const limite = Math.min(Math.max(filtros.limite ?? 20, 1), 100);
   const padrao = filtros.produto ? `%${filtros.produto}%` : "%";
+  // Lê direto de fato_serial (data_saida enriquecida pelo builder via rastreabilidade):
+  // parado = ainda em estoque (sem data de saída); saiu = já vendido/baixado em nota.
+  // Antes cruzava raw_sped_documento_item_rastreabilidade, que o role read-only do MCP
+  // NÃO acessa (só fato_*) , dava "Erro interno" pela rota do Agente Nex.
   const rows = await prisma.$queryRaw<
     { produto_nome: string | null; total: number; parados: number; sairam: number }[]
   >`
-    WITH sairam AS (
-      SELECT DISTINCT r.data->'lote_serie_id'->>1 AS serial
-      FROM raw_sped_documento_item_rastreabilidade r
-      JOIN fato_nota_fiscal_item ii
-        ON ii.odoo_id = CASE WHEN (r.data->'item_id'->>0) ~ '^[0-9]+$'
-                             THEN (r.data->'item_id'->>0)::int END
-      JOIN fato_nota_fiscal n ON n.odoo_id = ii.documento_id
-      WHERE n.entrada_saida = '1' AND n.situacao_nfe = 'autorizada'
-    )
     SELECT s.produto_nome,
            count(*)::int AS total,
-           count(*) FILTER (WHERE sa.serial IS NULL)::int AS parados,
-           count(*) FILTER (WHERE sa.serial IS NOT NULL)::int AS sairam
+           count(*) FILTER (WHERE s.data_saida IS NULL)::int AS parados,
+           count(*) FILTER (WHERE s.data_saida IS NOT NULL)::int AS sairam
     FROM fato_serial s
-    LEFT JOIN sairam sa ON sa.serial = s.serial
     WHERE s.produto_nome ILIKE ${padrao}
     GROUP BY s.produto_nome
     ORDER BY count(*) DESC
