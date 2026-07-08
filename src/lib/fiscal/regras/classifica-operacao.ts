@@ -28,17 +28,23 @@ export interface ClassificacaoOperacao {
   intragrupo: boolean;
   /** Entra no FATURAMENTO DE VENDA REAL (receita E nao intragrupo). */
   entraFaturamentoVenda: boolean;
-  /** Entra na DEMANDA (venda a cliente comprometida; inclui venda futura /
-   *  simples_faturamento porque a mercadoria segue comprometida; exclui
-   *  transferencia/remessa/bonificacao/demonstracao e intragrupo). */
+  /** Entra na DEMANDA (venda a cliente comprometida = saida fisica pendente do
+   *  estoque). Inclui venda (5102...) e exportacao. A REMESSA de entrega futura
+   *  (x117: 5117/6117) e classificada como `venda`, entao ja entra por aqui , e ela
+   *  a "venda de fato" que representa a demanda da venda futura. EXCLUI
+   *  transferencia/remessa/bonificacao/demonstracao, intragrupo e o SIMPLES
+   *  FATURAMENTO (5922/6922): a nota de simples faturamento nao movimenta estoque,
+   *  logo nao e demanda (regra da Mariane, 2026-07-08). */
   entraDemanda: boolean;
 }
 
-/** Categorias que representam compromisso de venda a cliente (base da demanda). */
+/** Categorias que representam saida fisica pendente ao cliente (base da demanda).
+ *  NAO inclui `simples_faturamento` (5922/6922): a nota de venda futura so cobra,
+ *  nao movimenta estoque; a demanda dela e a remessa x117 (categoria `venda`).
+ *  Decisao da Mariane, 2026-07-08 , ver 09-PERGUNTA-MARIANE-VENDA-FUTURA.md. */
 const CATEGORIAS_DEMANDA: ReadonlySet<CategoriaGerencial> = new Set<CategoriaGerencial>([
   "venda",
   "exportacao",
-  "simples_faturamento",
 ]);
 
 export function classificaOperacao(

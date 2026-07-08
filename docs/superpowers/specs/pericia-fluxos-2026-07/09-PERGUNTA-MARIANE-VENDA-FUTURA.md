@@ -41,7 +41,28 @@ em `src/lib/fiscal/regras/venda-futura-policy.ts`:
 Ao ligar o faturamento na emissão, validar a de-para para o x117 da mesma venda não
 contar de novo (há um teste que trava isso de propósito como lembrete).
 
-**Resposta da Mariane (preencher):**
-- Faturamento conta em: ( ) emissão da cobrança (5922/6922)  ( ) remessa/entrega (x117)
-- Estoque da venda futura: ( ) segue disponível  ( ) reservado até a remessa
-- Observações:
+**Resposta da Mariane (2026-07-08):**
+
+> "Quando a gente faz uma venda futura, o CFOP 6922 é a venda futura, que é a nota
+> que NÃO tem movimentação de estoque. Quando você passa dessa etapa, quando você
+> emite a nota, você gera um novo pedido, uma operação derivada, que vem com o CFOP
+> 5117/6117, que é o CFOP de venda de fato, de nota originada de venda futura. Aí a
+> gente considera essa operação 5117/6117, se ela não estiver concluída, como uma
+> demanda aberta."
+
+**Interpretação e decisão aplicada:**
+- **Faturamento conta em:** (X) remessa/entrega (x117). A "venda de fato" é a remessa
+  5117/6117; a 5922/6922 é só a cobrança antecipada, não é receita. `RECONHECE_FATURAMENTO_NA_EMISSAO`
+  permanece `false` (nenhuma mudança , já era o padrão e a Mariane confirma).
+- **Estoque/demanda:** a **DEMANDA é a remessa x117 (5117/6117)** enquanto não concluída;
+  a **5922/6922 (simples faturamento) NÃO é demanda** (não movimenta estoque). Ajuste
+  feito em `src/lib/fiscal/regras/classifica-operacao.ts`: `simples_faturamento` foi
+  REMOVIDO de `CATEGORIAS_DEMANDA` (a remessa x117 já é `venda`, então continua na
+  demanda). `RESERVA_ESTOQUE_ATE_REMESSA` permanece `false` (a 6922 não reserva; o
+  comprometimento do estoque vem da demanda da remessa x117).
+- **Impacto no dado:** nenhum pedido de simples faturamento estava como demanda ABERTA
+  hoje (0), então o baseline de demanda (399 pedidos / R$79M) não muda; os pedidos
+  5922/6922 que estavam FECHADA passam a IGNORAR (fora da demanda), como deve ser.
+
+**Observações:** a de-para de não-duplicação segue garantida , só a remessa x117
+(`venda`) conta receita e demanda; o simples faturamento fica fora de ambos.

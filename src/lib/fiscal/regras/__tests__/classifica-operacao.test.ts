@@ -32,11 +32,23 @@ describe("classificaOperacao , venda externa x intragrupo x demanda", () => {
     expect(r.entraDemanda).toBe(false);
   });
 
-  it("venda futura 5922 (simples_faturamento): NAO e receita, MAS entra na demanda", () => {
+  // Regra da Mariane (2026-07-08): na venda futura, a nota 5922/6922 (simples
+  // faturamento) NAO tem movimentacao de estoque , NAO e demanda. A demanda e a
+  // operacao derivada de REMESSA (x117: 5117/6117, "venda de fato"), enquanto nao
+  // concluida. Ver docs .../09-PERGUNTA-MARIANE-VENDA-FUTURA.md.
+  it("venda futura 5922 (simples_faturamento): NAO e receita e NAO e demanda (a demanda e a remessa x117)", () => {
     const r = classificaOperacao({ cfop: "5922", ...EXTERNO }, SEM_GRUPO);
     expect(r.categoria).toBe("simples_faturamento");
     expect(r.ehReceita).toBe(false);
     expect(r.entraFaturamentoVenda).toBe(false);
+    expect(r.entraDemanda).toBe(false);
+  });
+
+  it("remessa de entrega futura 6117 (venda de fato): receita e demanda", () => {
+    const r = classificaOperacao({ cfop: "6117", ...EXTERNO }, SEM_GRUPO);
+    expect(r.categoria).toBe("venda");
+    expect(r.ehReceita).toBe(true);
+    expect(r.entraFaturamentoVenda).toBe(true);
     expect(r.entraDemanda).toBe(true);
   });
 

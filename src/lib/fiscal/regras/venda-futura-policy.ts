@@ -10,6 +10,14 @@
 // emissão da nota de simples faturamento , evita contar a mesma venda duas vezes.
 // Esse é o comportamento PADRÃO abaixo (ambas as flags = false).
 //
+// CONFIRMADO pela Mariane (2026-07-08): a nota 5922/6922 "é a venda futura, a nota
+// que NÃO tem movimentação de estoque"; ao entregar, gera um pedido derivado com
+// CFOP x117 (5117/6117), "a venda de fato", e "considera essa operação x117, se não
+// concluída, como demanda aberta". Ou seja: (a) FATURAMENTO segue na remessa x117
+// (flag = false, mantido); (b) a DEMANDA é a remessa x117 (categoria `venda`), e o
+// simples faturamento 5922/6922 NÃO é demanda , isso vive em `classifica-operacao.ts`
+// (`CATEGORIAS_DEMANDA` sem `simples_faturamento`), não nas flags abaixo.
+//
 // >>> COMO MUDAR (está ENGATILHADO): basta trocar a flag correspondente para true.
 //     A mudança propaga para TODA a plataforma (Nex, relatórios e diretoria), pois
 //     tudo lê a mesma classificação (`classificaOperacao`/`isVendaExterna`) e o
