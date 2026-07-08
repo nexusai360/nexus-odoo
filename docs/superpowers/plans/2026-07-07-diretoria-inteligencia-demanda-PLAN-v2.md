@@ -1,8 +1,9 @@
-# PLAN v3 (FINAL) , Inteligência de Demanda, Faturamento de Venda Real, Estoque Disponível e Seriais
+# PLAN v2 , Inteligência de Demanda, Faturamento de Venda Real, Estoque Disponível e Seriais
 
-> Base: SPEC v3 + 2 reviews do plano (granularidade/ordem + integração técnica),
-> comprovados no código real. É o plano de execução. TDD onde há lógica; E2E contra o
-> cache real; tudo LOCAL; merge só com "sim" do usuário.
+> Base: SPEC v3 + verificação #1 do plano (granularidade/ordem + integração técnica)
+> já aplicada. Esta v2 passa AINDA por UMA verificação #2 (mais profunda, sobre esta
+> v2) para virar a v3 de execução. TDD onde há lógica; E2E contra o cache real; tudo
+> LOCAL; merge só com "sim" do usuário.
 
 ## Regras de integração cravadas (dos reviews)
 - **[A4] Dois codepaths de faturamento** existem e ambos precisam da MESMA correção:

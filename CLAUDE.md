@@ -299,6 +299,9 @@ autônomo até o fim.
 **[2] Design UI/UX — `ui-ux-pro-max`, OBRIGATÓRIO.** A skill `ui-ux-pro-max` é a autoridade de design e é de uso **obrigatório em tudo que for frontend** — layout, telas, componentes, ícones, gráficos, cores, tipografia, espaçamento, animação e interação. Nenhuma UI é construída ou alterada sem consultá-la primeiro. Alimenta a spec e o plano, e é reaplicada durante a execução de qualquer task com UI.
 **[3–4] Double-check da SPEC — REGRA DE RAIZ, inegociável.**
 > A spec passa por **duas reviews genuinamente críticas** antes de virar plano.
+> **As duas reviews são SEQUENCIAIS, NUNCA em paralelo (regra de raiz):** a #2 só
+> começa depois que a #1 foi aplicada e virou a v2, porque a #2 revisa a **v2 já
+> corrigida**. É PROIBIDO disparar as duas ao mesmo tempo sobre a mesma versão.
 > - **[3] Review da spec #1 → SPEC v2** — auditoria adversarial: achar erro,
 >   inconsistência, premissa frágil, requisito ambíguo, o que está faltando ou
 >   esquecido. Aplicar os achados gera a **SPEC v2**.
@@ -311,6 +314,9 @@ autônomo até o fim.
 **[6–7] Double-check do plano — REGRA DE RAIZ, inegociável.**
 > Duas reviews **genuinamente críticas**, sem passar pano. A review não é
 > carimbo — é auditoria adversarial do próprio plano. Vale para TODA fase.
+> **SEQUENCIAIS, NUNCA em paralelo (regra de raiz):** PLAN v1 → review #1 → aplicar
+> → PLAN v2 → review #2 (mais profunda, sobre a v2) → aplicar → PLAN v3. A #2 só
+> começa depois da v2 existir. Proibido disparar as duas ao mesmo tempo.
 > Critérios de qualidade que o plano precisa cumprir para sair do loop:
 > - **Decomposição máxima.** Cada task é uma unidade pequena, de escopo único,
 >   verificável isoladamente. Se uma task descreve "portar a tela X" com
