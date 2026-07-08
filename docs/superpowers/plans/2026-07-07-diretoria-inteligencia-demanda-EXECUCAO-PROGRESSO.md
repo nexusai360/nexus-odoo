@@ -118,10 +118,26 @@ seriais_produto + fato_pedido_item). Faturamento de venda validado (Fase 2.5, in
   usa as 5 tools novas. Ativa end-to-end (prompt -> markdown -> render). tsc/eslint verdes.
 - FALTA validar visualmente (subir dev, perguntar demanda ao Nex, ver a tabela).
 
-## Onda D , FALTA (unica pendencia do sub-projeto): PAINEIS DA DIRETORIA
-Frente grande de UI (API src/app/api/diretoria/*, menu, RBAC, paineis de demanda/estoque
-em src/app/(protected)/diretoria/*). Fazer na sessao principal com ui-ux-pro-max, com
-paridade de dado (painel == tool). Comecar com contexto fresco.
+## Onda D , PAINEIS DA DIRETORIA , COMPLETA (2026-07-08, tudo local)
+Sub-projeto Inteligencia de Demanda FECHADO (Ondas 0/A/B/C/tabela-Nex/diretoria).
+Integrado ao builder de layout existente (nao criou rota/API nova , reusa o RBAC de
+area por dominio: B->pedidos, A->estoque, capability herdada por requireDiretoriaArea).
+- **Backend (TDD):** reapontou `src/lib/diretoria/queries/pedidos.ts` de
+  `etapaFinaliza:false` para `bucketDemanda:'ABERTA'` (paridade painel==tool). Novas
+  agregacoes `queryDemandaPorEtapa` e `queryDemandasMaisParadas` (dias parado via
+  fato_pedido_historico, fallback aprovacao/orcamento) + UF-scoping nos indicadores.
+  Nova `queryEstoqueDisponivelDiretoria` em `estoque.ts` (saldo - demanda aberta).
+  Testes: pedidos 10/10, estoque 15/15, diretoria total 101/101.
+- **UI (ui-ux-pro-max, sessao principal):** 3 blocos no catalogo/builder:
+  B-06 Demanda por etapa (rosca), B-07 Demandas mais paradas (tabela + selo
+  Critico/Atencao/Recente), A-12 Estoque disponivel a comprar (tabela + selo Comprar/OK,
+  vermelho reforcado por texto WCAG, KPIs produtos/negativos/unidades). Layouts padrao:
+  B-06 na aba visao, B-07 na aba pendentes (pedidos); A-12 na aba estoque.
+- **E2E contra o cache real (paridade confirmada):** demanda ABERTA 395 pedidos /
+  R$77.601.197,95; estoque 1894 produtos, 484 negativos, 6.970 unidades a comprar;
+  T600X (id=52) saldo 549 - demanda 772 = -223. tsc=0, eslint=0. Dev no ar (rotas 302).
+- **Pendencia (nao bloqueia):** validacao VISUAL na tela pelo usuario (dev em
+  localhost:3000) e da tabela do Nex no chat. Merge para main SO com "sim" do usuario.
 
 ## (obsoleto) plano antigo Onda D
 1. Tabela no Nex: estender MarkdownLite (novo Block type:"table", parser separador

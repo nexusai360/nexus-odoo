@@ -1,8 +1,15 @@
 # STATUS — nexus-odoo
 
 > **2026-07-08 (INTELIGÊNCIA DE DEMANDA , branch feat/menu-diretoria, LOCAL, NÃO
-> mergeado) , Ondas 0/A/B/C + tabela do Nex COMPLETAS; falta só os painéis da
-> diretoria.** Ponto de retomada rico:
+> mergeado) , SUB-PROJETO COMPLETO: Ondas 0/A/B/C + tabela do Nex + PAINÉIS DA
+> DIRETORIA.** Falta só a validação visual do usuário e o merge (com "sim").
+> **Painéis da diretoria (sessão 2, 2026-07-08):** `queries/pedidos.ts` reapontado de
+> `etapaFinaliza:false` para `bucketDemanda:'ABERTA'` (paridade painel==tool) +
+> `queryDemandaPorEtapa`/`queryDemandasMaisParadas`/`queryEstoqueDisponivelDiretoria` (TDD);
+> blocos ui-ux-pro-max B-06 (rosca por etapa), B-07 (mais paradas), A-12 (estoque a comprar)
+> no builder de layout; RBAC herdado por área. E2E cache: demanda 395/R$77,6M, estoque
+> 1894/484 negativos/6.970 un., T600X -223. tsc=0, diretoria 101/101, dev no ar.
+> Ponto de retomada rico:
 > `docs/superpowers/plans/2026-07-08-HANDOFF-inteligencia-demanda.md` (LER PRIMEIRO).
 > Entregue e testado no dado real (catálogo 128 tools, integração 53/53):
 > - **Motor de demanda por ETAPA** (descarta o `vr_nf` furado): colunas materializadas

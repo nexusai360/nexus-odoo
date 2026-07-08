@@ -50,7 +50,20 @@ Materialização mantida pelo worker (imagem `nexus-odoo:local` rebuildada 03:30
   números à direita, divisores em light/dark, zebra, overflow-x). Regra de prompt
   `8-tab` em `src/lib/agent/prompt/identity-base.ts`. FALTA validar na tela.
 
-## 2. PRÓXIMA AÇÃO (a única frente pendente): PAINÉIS DA DIRETORIA
+## STATUS 2026-07-08 (sessão 2): PAINÉIS DA DIRETORIA , COMPLETOS
+Sub-projeto **FECHADO** (tudo local, nada em produção). Entregue nesta sessão:
+- Backend TDD: `queries/pedidos.ts` reapontado para `bucketDemanda:'ABERTA'` (paridade
+  painel==tool) + `queryDemandaPorEtapa`/`queryDemandasMaisParadas` + UF-scoping;
+  `queryEstoqueDisponivelDiretoria` em `queries/estoque.ts`. Pedidos 10/10, estoque 15/15.
+- UI ui-ux-pro-max: blocos B-06 (Demanda por etapa/rosca), B-07 (Mais paradas/tabela+selo),
+  A-12 (Estoque disponível a comprar/tabela+selo). Integrados ao builder existente; RBAC
+  herdado por área (B->pedidos, A->estoque); layouts padrão atualizados nas 2 páginas.
+- E2E cache real: demanda 395/R$77,6M; estoque 1894 produtos/484 negativos/6.970 un.;
+  T600X -223. tsc=0, eslint=0, diretoria 101/101. Dev no ar (localhost:3000, rotas 302).
+- FALTA só a validação VISUAL do usuário (painéis + tabela do Nex no chat) e o MERGE
+  (com "sim" explícito). Commits: query-pedidos, query-estoque, UI-painéis, docs.
+
+## 2. (histórico) PLANO EXECUTADO: PAINÉIS DA DIRETORIA
 A diretoria já EXISTE e é robusta: páginas em `src/app/(protected)/diretoria/`
 (page, pedidos, vendas, agenda, estoque, visao-geral), queries em
 `src/lib/diretoria/queries/*`, componentes em `src/components/diretoria/*`, acesso via
