@@ -1505,6 +1505,26 @@
       "examples": []
     },
     {
+      "id": "comercial_pedido_situacao",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Situacao detalhada de um pedido (imersao): por onde passou (trilha de etapas), em que etapa esta agora, ha quantos dias esta parado, e os dados-chave (operacao, empresa, cliente, valor, aprovacao). Use para 'situacao do pedido PV-xxxx', 'por que o pedido esta parado', 'o que falta no pedido'.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "numero"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "numero",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "examples": []
+    },
+    {
       "id": "fiscal_faturamento_periodo",
       "operation": "read",
       "module": "fiscal",
@@ -4378,6 +4398,6 @@
       "examples": []
     }
   ],
-  "count": 124,
-  "generatedAt": "2026-07-08T02:45:41.513Z"
+  "count": 125,
+  "generatedAt": "2026-07-08T02:55:45.743Z"
 }

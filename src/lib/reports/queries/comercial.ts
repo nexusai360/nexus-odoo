@@ -161,6 +161,83 @@ export async function queryDemandaEmAberta(
   return { totalPedidos, valorTotal, porEtapa, lista, ordenadoPor: ordenacao };
 }
 
+/**
+ * Situacao (imersao) de um pedido: por onde passou (trilha), em que etapa esta, ha
+ * quanto tempo (dias parado na etapa atual) e os dados-chave. Busca por numero
+ * (ex.: "PV-2037/26"); aceita match parcial/case-insensitive para tolerar variacoes.
+ */
+export async function queryPedidoSituacao(
+  prisma: PrismaClient,
+  filtros: { numero: string },
+): Promise<{
+  encontrado: boolean;
+  pedido: {
+    numero: string | null;
+    etapaNome: string | null;
+    bucketDemanda: string | null;
+    categoriaOperacao: string | null;
+    operacaoNome: string | null;
+    empresaNome: string | null;
+    participanteNome: string | null;
+    vendedorNome: string | null;
+    valorProdutos: number;
+    dataAprovacao: string | null;
+    dataPrevista: string | null;
+    diasParado: number | null;
+  } | null;
+  trilha: {
+    etapaNome: string | null;
+    entrouEm: string | null;
+    tempoEtapaDias: number | null;
+  }[];
+}> {
+  const alvo = filtros.numero.trim();
+  const pedido = await prisma.fatoPedido.findFirst({
+    where: { numero: { contains: alvo, mode: "insensitive" } },
+    orderBy: { dataOrcamento: "desc" },
+  });
+  if (!pedido) return { encontrado: false, pedido: null, trilha: [] };
+
+  const historico = await prisma.fatoPedidoHistorico.findMany({
+    where: { pedidoId: pedido.odooId },
+    orderBy: [{ dataEntrada: "asc" }, { odooId: "asc" }],
+    select: { etapaId: true, etapaNome: true, dataEntrada: true, tempoEtapaDias: true },
+  });
+
+  // Dias parado = desde a ULTIMA entrada na etapa ATUAL (fallback aprovacao/orcamento).
+  const entradasEtapaAtual = historico
+    .filter((h) => h.etapaId === pedido.etapaId && h.dataEntrada)
+    .map((h) => h.dataEntrada!.getTime());
+  const refMs = entradasEtapaAtual.length
+    ? Math.max(...entradasEtapaAtual)
+    : (pedido.dataAprovacao ?? pedido.dataOrcamento)?.getTime() ?? null;
+  const diasParado =
+    refMs != null ? Math.floor((Date.now() - refMs) / 86_400_000) : null;
+
+  return {
+    encontrado: true,
+    pedido: {
+      numero: pedido.numero,
+      etapaNome: pedido.etapaNome,
+      bucketDemanda: pedido.bucketDemanda,
+      categoriaOperacao: pedido.categoriaOperacao,
+      operacaoNome: pedido.operacaoNome,
+      empresaNome: pedido.empresaNome,
+      participanteNome: pedido.participanteNome,
+      vendedorNome: pedido.vendedorNome,
+      valorProdutos: Number(pedido.vrProdutos),
+      dataAprovacao: pedido.dataAprovacao?.toISOString() ?? null,
+      dataPrevista: pedido.dataPrevista?.toISOString() ?? null,
+      diasParado,
+    },
+    trilha: historico.map((h) => ({
+      etapaNome: h.etapaNome,
+      entrouEm: h.dataEntrada?.toISOString() ?? null,
+      tempoEtapaDias: h.tempoEtapaDias,
+    })),
+  };
+}
+
 export async function queryPedidosPorVendedor(
   prisma: PrismaClient,
   filtros: { periodoDe?: string; periodoAte?: string },
