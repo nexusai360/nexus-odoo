@@ -5,7 +5,6 @@
 // `withFreshness` vive no handler MCP, não aqui.
 
 import type { PrismaClient } from "@/generated/prisma/client";
-import { Prisma } from "@/generated/prisma/client";
 import { diasAtraso } from "../../../../mcp/lib/dias-atraso";
 
 export async function queryPedidosPeriodo(
@@ -94,23 +93,20 @@ export async function queryDemandaEmAberta(
 }> {
   const limite = Math.min(Math.max(filtros.limite ?? 20, 1), 100);
   const ordenacao = filtros.ordenacao ?? "tempo_parado";
-  const empresaCond =
-    filtros.empresaId != null
-      ? Prisma.sql`AND f.empresa_id = ${filtros.empresaId}`
-      : Prisma.empty;
 
-  const rows = await prisma.$queryRaw<
+  const todas = await prisma.$queryRaw<
     {
       numero: string | null;
       etapa_nome: string | null;
+      empresa_id: number | null;
       empresa_nome: string | null;
       participante_nome: string | null;
       valor: number;
       dias_parado: number | null;
       data_orcamento: Date | null;
     }[]
-  >(Prisma.sql`
-    SELECT f.numero, f.etapa_nome, f.empresa_nome, f.participante_nome,
+  >`
+    SELECT f.numero, f.etapa_nome, f.empresa_id, f.empresa_nome, f.participante_nome,
            f.vr_produtos::float8 AS valor,
            EXTRACT(DAY FROM now() - COALESCE(h.data_entrada, f.data_aprovacao, f.data_orcamento))::int AS dias_parado,
            f.data_orcamento
@@ -120,8 +116,13 @@ export async function queryDemandaEmAberta(
       FROM fato_pedido_historico h
       WHERE h.pedido_id = f.odoo_id AND h.etapa_id = f.etapa_id
     ) h ON true
-    WHERE f.bucket_demanda = 'ABERTA' ${empresaCond}
-  `);
+    WHERE f.bucket_demanda = 'ABERTA'
+  `;
+  // Filtro de empresa em memoria (volume pequeno, ~395), evita SQL condicional.
+  const rows =
+    filtros.empresaId != null
+      ? todas.filter((r) => r.empresa_id === filtros.empresaId)
+      : todas;
 
   const totalPedidos = rows.length;
   const valorTotal = rows.reduce((s, r) => s + (r.valor ?? 0), 0);

@@ -1468,6 +1468,43 @@
       "examples": []
     },
     {
+      "id": "comercial_demanda_em_aberta",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Demanda em aberta (pedidos de venda a cliente externo, aprovados, ainda sem nota fiscal ao consumidor final). Devolve o total em pedidos e em R$, a quebra por etapa (etapa: quantidade) e a lista das demandas mais paradas. Use para 'quanto temos de demanda em aberto', 'pedidos parados', 'carteira a faturar'. Aceita filtro por empresa e ordenacao (tempo_parado padrao, valor, data_criacao).",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "empresaId",
+        "limite",
+        "ordenacao"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "empresaId",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "ordenacao",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "tempo_parado",
+            "valor",
+            "data_criacao"
+          ]
+        }
+      ],
+      "examples": []
+    },
+    {
       "id": "fiscal_faturamento_periodo",
       "operation": "read",
       "module": "fiscal",
@@ -4341,6 +4378,6 @@
       "examples": []
     }
   ],
-  "count": 123,
-  "generatedAt": "2026-06-19T14:04:12.047Z"
+  "count": 124,
+  "generatedAt": "2026-07-08T02:45:41.513Z"
 }

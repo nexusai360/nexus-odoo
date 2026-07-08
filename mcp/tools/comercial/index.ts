@@ -21,6 +21,7 @@ import { comercialPedidoHistoricoEtapas } from "./pedido-historico-etapas.js";
 import { comercialPedidoTravadosPorEtapa } from "./pedido-travados-por-etapa.js";
 import { comercialCotacoes, comercialComissoes } from "./cotacao-comissao.js";
 import { comercialDetalharPedido } from "./detalhar-pedido.js";
+import { comercialDemandaEmAberta } from "./demanda-em-aberta.js";
 
 export const comercialTools: ToolEntry[] = [
   comercialPedidosPeriodo as ToolEntry,
@@ -47,4 +48,5 @@ export const comercialTools: ToolEntry[] = [
   comercialComissoes as ToolEntry,
   // F2 (Bloco D , detalhe por odooId)
   comercialDetalharPedido as ToolEntry,
+  comercialDemandaEmAberta as ToolEntry,
 ];
