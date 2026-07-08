@@ -8,19 +8,27 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { diasAtraso } from "../../../../mcp/lib/dias-atraso";
 import { VENDA_FUTURA } from "@/lib/fiscal/regras/venda-futura-policy";
 
+// Pedidos COMERCIAIS = só operação de VENDA (categoria_operacao='venda',
+// materializada). Exclui transferência intragrupo, remessa, bonificação e entrada
+// anômala, que não são pedidos de venda e inflavam as contagens (~2x: 654 vs 395
+// "abertos"). Mesma verdade da demanda/faturamento. Ver perícia 08.
+const SO_PEDIDO_VENDA = { categoriaOperacao: "venda" as const };
+
 export async function queryPedidosPeriodo(
   prisma: PrismaClient,
   filtros: { periodoDe?: string; periodoAte?: string },
 ): Promise<{ totalPedidos: number; valorTotal: number }> {
-  const where =
-    filtros.periodoDe && filtros.periodoAte
+  const where = {
+    ...SO_PEDIDO_VENDA,
+    ...(filtros.periodoDe && filtros.periodoAte
       ? {
           dataOrcamento: {
             gte: new Date(`${filtros.periodoDe}T00:00:00Z`),
             lte: new Date(`${filtros.periodoAte}T00:00:00Z`),
           },
         }
-      : {};
+      : {}),
+  };
   // Usa vrProdutos (valor do pedido independente de faturamento) , consistente
   // com queryPedidosPorEtapa e queryPedidosPorVendedor. vrNf ≈ 0 para pedidos
   // pré-faturamento, o que subnotificaria o valor total do período.
@@ -34,7 +42,7 @@ export async function queryPedidosPeriodo(
 export async function queryContarPedidos(
   prisma: PrismaClient,
 ): Promise<{ total: number }> {
-  const total = await prisma.fatoPedido.count();
+  const total = await prisma.fatoPedido.count({ where: SO_PEDIDO_VENDA });
   return { total };
 }
 
@@ -47,6 +55,7 @@ export async function queryPedidosPorEtapa(
   // "qual o volume por etapa". vrProdutos reflete o valor comprometido em
   // qualquer etapa. A mesma decisão se aplica a queryPedidosPorVendedor.
   const rows = await prisma.fatoPedido.findMany({
+    where: SO_PEDIDO_VENDA,
     select: { etapaNome: true, etapaFinaliza: true, vrProdutos: true },
   });
   // Agrupa em memória por etapaNome (não groupBy , precisa carregar etapaFinaliza)
@@ -465,15 +474,17 @@ export async function queryPedidosPorVendedor(
   prisma: PrismaClient,
   filtros: { periodoDe?: string; periodoAte?: string },
 ): Promise<{ linhas: { vendedorNome: string | null; quantidade: number; valorTotal: number }[] }> {
-  const where =
-    filtros.periodoDe && filtros.periodoAte
+  const where = {
+    ...SO_PEDIDO_VENDA,
+    ...(filtros.periodoDe && filtros.periodoAte
       ? {
           dataOrcamento: {
             gte: new Date(`${filtros.periodoDe}T00:00:00Z`),
             lte: new Date(`${filtros.periodoAte}T00:00:00Z`),
           },
         }
-      : {};
+      : {}),
+  };
   // Usa vrProdutos , mesma decisão de queryPedidosPorEtapa: vrNf=0 para
   // pedidos não faturados, o que subnotificaria vendedores com pedidos em aberto.
   const rows = await prisma.fatoPedido.findMany({

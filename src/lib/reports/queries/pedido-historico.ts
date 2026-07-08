@@ -76,6 +76,16 @@ export async function queryPedidoTravadosPorEtapa(
 }> {
   const diasMin = filtros.diasMin ?? 30;
   const agora = filtros.agora ?? new Date();
+  // Só pedidos de VENDA (exclui transferência/remessa/anomalia): "travado" faz
+  // sentido para pedido comercial, não para movimento intragrupo. Ver perícia 08.
+  const vendaIds = new Set(
+    (
+      await prisma.fatoPedido.findMany({
+        where: { categoriaOperacao: "venda" },
+        select: { odooId: true },
+      })
+    ).map((p) => p.odooId),
+  );
   const rows = await prisma.fatoPedidoHistorico.findMany({
     select: { pedidoId: true, etapaNome: true, dataEntrada: true },
   });
@@ -84,6 +94,7 @@ export async function queryPedidoTravadosPorEtapa(
   const ultimo = new Map<number, { etapaNome: string | null; dataEntrada: Date | null }>();
   for (const r of rows) {
     if (r.pedidoId == null || r.dataEntrada == null) continue;
+    if (!vendaIds.has(r.pedidoId)) continue;
     const ex = ultimo.get(r.pedidoId);
     if (!ex || (ex.dataEntrada && r.dataEntrada > ex.dataEntrada)) {
       ultimo.set(r.pedidoId, { etapaNome: r.etapaNome, dataEntrada: r.dataEntrada });

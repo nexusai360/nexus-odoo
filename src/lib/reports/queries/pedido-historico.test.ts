@@ -2,7 +2,15 @@ import { queryPedidoHistoricoEtapas, queryPedidoTravadosPorEtapa } from "./pedid
 import type { PrismaClient } from "@/generated/prisma/client";
 
 function mkPrisma(rows: unknown[]): PrismaClient {
-  return { fatoPedidoHistorico: { findMany: jest.fn().mockResolvedValue(rows) } } as unknown as PrismaClient;
+  // Por padrão, todos os pedidos das linhas contam como VENDA (queryPedidoTravadosPorEtapa
+  // filtra por categoria_operacao='venda' via fatoPedido.findMany).
+  const vendaIds = [
+    ...new Set((rows as { pedidoId?: number | null }[]).map((r) => r.pedidoId).filter((x): x is number => x != null)),
+  ].map((odooId) => ({ odooId }));
+  return {
+    fatoPedidoHistorico: { findMany: jest.fn().mockResolvedValue(rows) },
+    fatoPedido: { findMany: jest.fn().mockResolvedValue(vendaIds) },
+  } as unknown as PrismaClient;
 }
 
 describe("queryPedidoHistoricoEtapas", () => {
@@ -39,6 +47,21 @@ describe("queryPedidoTravadosPorEtapa", () => {
   it("ignora pedidos sem data", async () => {
     const p = mkPrisma([{ pedidoId: 3, etapaNome: "W", dataEntrada: null }]);
     const r = await queryPedidoTravadosPorEtapa(p, { diasMin: 1, agora: new Date("2026-02-01") });
+    expect(r.totalTravados).toBe(0);
+  });
+
+  it("exclui pedidos que não são de venda (categoria_operacao != 'venda')", async () => {
+    const agora = new Date("2026-02-01T00:00:00Z");
+    const p = {
+      fatoPedidoHistorico: {
+        findMany: jest.fn().mockResolvedValue([
+          { pedidoId: 2, etapaNome: "Z", dataEntrada: new Date("2025-12-01T00:00:00Z") }, // 62 dias
+        ]),
+      },
+      // pedido 2 NÃO está na lista de venda -> deve sumir do resultado.
+      fatoPedido: { findMany: jest.fn().mockResolvedValue([{ odooId: 99 }]) },
+    } as unknown as PrismaClient;
+    const r = await queryPedidoTravadosPorEtapa(p, { diasMin: 30, agora });
     expect(r.totalTravados).toBe(0);
   });
 });
