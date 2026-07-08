@@ -98,8 +98,26 @@ REFINAMENTOS OPCIONAIS (baixo impacto, ~1-2%): (a) filtro modelo=55 no core; (b)
 descontando devolucoes de venda (T0.5, entrada fin.4 CFOP 1202/2202 = R$1,78M = 1,8%).
 Fazer so se o usuario pedir; nao sao bloqueadores.
 
-## Próxima ação (para o proximo ciclo, contexto renovado)
-- Onda A REFINAMENTOS opcionais (acima) , so se pedido.
+## Onda C (seriais) , COMPLETA (2026-07-08)
+Tool comercial_seriais_produto: parados (em estoque, sem saida) vs saidos (serial em
+nota de saida autorizada), cruzando raw_sped_documento_item_rastreabilidade -> item ->
+nota. E2E: T600X 1570 seriais, 301 parados, 1269 sairam. Catalogo 128, integracao 53/53.
+
+## ESTADO GERAL: Ondas 0/A/B/C COMPLETAS. Falta so a Onda D (UI).
+Backend da inteligencia de demanda 100% pronto e testado no dado real. 6 tools novas
+(demanda_em_aberta, pedido_situacao, demanda_por_produto, estoque_disponivel,
+seriais_produto + fato_pedido_item). Faturamento de venda validado (Fase 2.5, intragrupo
+41,6% fora). Catalogo 128, integracao 53/53. Tudo LOCAL, nada em producao.
+
+## Próxima ação , ONDA D (UI, contexto fresco + ui-ux-pro-max OBRIGATORIO)
+1. Tabela no Nex: estender MarkdownLite (novo Block type:"table", parser separador
+   ---|---) TDD, aplicar nos 2 renderers (src/components/agent/agent-message.tsx +
+   src/components/agent/monitoramento/markdown-snapshot.tsx), tratar protectValues/NBSP,
+   estilo ui-ux-pro-max (header/zebra/numeros a direita/overflow-x). Fallback textual WhatsApp.
+2. Regra de prompt identity-base.ts: ensinar as 6 tools novas + responder em tabela +
+   resumo + lista etapa:qtd + follow-ups (sugerir cortes por empresa/cliente/vendedor).
+3. Diretoria: API/menu/RBAC/paineis de demanda e estoque (paridade de dado com as tools).
+Refinamentos Onda A (modelo=55, liquido devolucoes ~1,8%) opcionais.
   ANTES (snapshot dos numeros atuais de src/lib/metrics/fiscal/*), conferir quais ja
   usam o core (Fase 2.5, receita externa) e so tocar as divergentes; E2E de paridade
   MCP fiscal == dashboard (reports/queries/fiscal.ts). NAO regredir os canonicos.
