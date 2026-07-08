@@ -41,6 +41,7 @@ import { rebuildFatoCrmPipeline } from "./fato-crm-pipeline";
 import { rebuildFatoAuditoriaRegra } from "./fato-auditoria-regra";
 import { rebuildFatoSerial } from "./fato-serial";
 import { rebuildFatoCompra } from "./fato-compra";
+import { rebuildFatoPedidoClassificacao } from "./fato-pedido-classificacao";
 
 export interface FatoBuilderEntry {
   nome: string;
@@ -107,6 +108,9 @@ export const FATO_BUILDERS: FatoBuilderEntry[] = [
   // B7 (CRM + auditoria). crm.pipeline (0 reg); auditoria.regra (15 reg reais).
   { nome: "fato_crm_pipeline", cycle: "incremental", run: rebuildFatoCrmPipeline },
   { nome: "fato_auditoria_regra", cycle: "incremental", run: rebuildFatoAuditoriaRegra },
+  // POS-PASSO: materializa categoria_operacao/bucket_demanda/is_venda_externa.
+  // DEVE ser o ultimo (le fato_pedido/fato_nota_fiscal/itens/etapas ja reconstruidos).
+  { nome: "fato_pedido_classificacao", cycle: "incremental", run: rebuildFatoPedidoClassificacao },
 ];
 
 /**
