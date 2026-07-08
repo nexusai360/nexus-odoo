@@ -1545,6 +1545,38 @@
       "examples": []
     },
     {
+      "id": "comercial_estoque_disponivel",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Estoque disponivel por produto = saldo em estoque menos o comprometido em demanda aberta. Fica NEGATIVO quando ha mais demanda que saldo (precisa comprar). Use para 'estoque disponivel de X', 'o que precisa comprar', 'produtos com estoque negativo'. Aceita busca por produto e recorte de negativos.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "produto",
+        "apenasNegativos",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "produto",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "apenasNegativos",
+          "type": "boolean",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
       "id": "fiscal_faturamento_periodo",
       "operation": "read",
       "module": "fiscal",
@@ -4418,6 +4450,6 @@
       "examples": []
     }
   ],
-  "count": 126,
-  "generatedAt": "2026-07-08T03:22:38.712Z"
+  "count": 127,
+  "generatedAt": "2026-07-08T03:27:00.251Z"
 }

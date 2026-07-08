@@ -155,6 +155,7 @@ const COMERCIAL_IDS = [
   "comercial_demanda_em_aberta",
   "comercial_pedido_situacao",
   "comercial_demanda_por_produto",
+  "comercial_estoque_disponivel",
 ];
 
 const FISCAL_IDS = [
@@ -267,7 +268,7 @@ describe("Catálogo completo , rede de proteção N6", () => {
   it("super_admin recebe EXATAMENTE 114 tools", () => {
     const user = { userId: "u", role: "super_admin" as const, domains: ["estoque", "financeiro"] } as unknown as Parameters<typeof visibleTools>[1];
     const tools = visibleTools(catalogo, user);
-    expect(tools).toHaveLength(117);
+    expect(tools).toHaveLength(118);
   });
 
   it("super_admin recebe o conjunto exato de IDs", () => {
@@ -290,7 +291,7 @@ describe("Catálogo completo , rede de proteção N6", () => {
     //   9) cadastros.res_partner.update
     // Write tools nao aparecem em visibleTools (modo interno); sao liberadas
     // so no modo externo por capability da chave de API.
-    expect(catalogo).toHaveLength(126);
+    expect(catalogo).toHaveLength(127);
   });
 });
 
@@ -304,7 +305,7 @@ describe("Catálogo filtrado por perfil", () => {
 
   it("super_admin vê todas as 114 tools", () => {
     const ids = tools("super_admin", ["estoque", "financeiro"]);
-    expect(ids).toHaveLength(117);
+    expect(ids).toHaveLength(118);
     for (const id of TODOS_IDS) {
       expect(ids).toContain(id);
     }
@@ -312,7 +313,7 @@ describe("Catálogo filtrado por perfil", () => {
 
   it("admin vê todas as 114 tools", () => {
     const ids = tools("admin", ["estoque", "financeiro"]);
-    expect(ids).toHaveLength(117);
+    expect(ids).toHaveLength(118);
   });
 
   it("manager com estoque+financeiro vê estoque+financeiro+sempreVisivel (sem bi_consulta_avancada)", () => {
@@ -359,7 +360,7 @@ describe("Catálogo filtrado por perfil", () => {
   // ─── Onda B: comercial , assertivas de perfil (R2-I1) ────────────────────────
   // Usa apenas perfis existentes no fixture (não estende o mapa de mocks).
 
-  it("admin vê as 24 tools de comercial (RBAC camada 1 , vê tudo)", () => {
+  it("admin vê as 25 tools de comercial (RBAC camada 1 , vê tudo)", () => {
     const ids = tools("admin", ["estoque", "financeiro"]);
     for (const id of COMERCIAL_IDS) {
       expect(ids).toContain(id);
@@ -635,7 +636,7 @@ describe("Servidor HTTP real , protocolo Streamable HTTP end-to-end", () => {
     const result = extractRpcResult(body);
     const tools = result?.tools as Array<{ name: string }> | undefined;
     expect(tools).toBeDefined();
-    expect(tools!).toHaveLength(117);
+    expect(tools!).toHaveLength(118);
 
     const names = tools!.map((t) => t.name).sort();
     expect(names).toEqual([...TODOS_IDS].sort());

@@ -287,6 +287,73 @@ export async function queryDemandaPorProduto(
   };
 }
 
+/**
+ * Estoque disponivel = saldo total (fato_estoque_saldo) menos o comprometido em
+ * demanda aberta (soma dos itens em pedidos bucket_demanda='ABERTA'), por produto.
+ * Pode ficar NEGATIVO (vendido mais do que ha em estoque = precisa comprar). Aceita
+ * busca por nome/codigo do produto e um recorte "apenas negativos".
+ */
+export async function queryEstoqueDisponivel(
+  prisma: PrismaClient,
+  filtros: { produto?: string; apenasNegativos?: boolean; limite?: number } = {},
+): Promise<{
+  linhas: {
+    produtoId: number | null;
+    produtoNome: string | null;
+    saldo: number;
+    demanda: number;
+    disponivel: number;
+  }[];
+  total: number;
+  negativos: number;
+}> {
+  const limite = Math.min(Math.max(filtros.limite ?? 20, 1), 100);
+  const padrao = filtros.produto ? `%${filtros.produto}%` : "%";
+  const rows = await prisma.$queryRaw<
+    {
+      produto_id: number | null;
+      produto_nome: string | null;
+      saldo: number;
+      demanda: number;
+      disponivel: number;
+    }[]
+  >`
+    WITH saldo AS (
+      SELECT produto_id, max(produto_nome) AS nome, sum(quantidade)::float8 AS q
+      FROM fato_estoque_saldo GROUP BY produto_id
+    ),
+    dem AS (
+      SELECT it.produto_id, sum(it.quantidade)::float8 AS q
+      FROM fato_pedido_item it
+      JOIN fato_pedido f ON f.odoo_id = it.pedido_id
+      WHERE f.bucket_demanda = 'ABERTA'
+      GROUP BY it.produto_id
+    )
+    SELECT s.produto_id, s.nome AS produto_nome, s.q AS saldo,
+           COALESCE(d.q, 0) AS demanda,
+           (s.q - COALESCE(d.q, 0)) AS disponivel
+    FROM saldo s
+    LEFT JOIN dem d ON d.produto_id = s.produto_id
+    WHERE s.nome ILIKE ${padrao}
+    ORDER BY (s.q - COALESCE(d.q, 0)) ASC
+    LIMIT 500
+  `;
+  const filtradas = filtros.apenasNegativos
+    ? rows.filter((r) => r.disponivel < 0)
+    : rows;
+  return {
+    total: filtradas.length,
+    negativos: rows.filter((r) => r.disponivel < 0).length,
+    linhas: filtradas.slice(0, limite).map((r) => ({
+      produtoId: r.produto_id,
+      produtoNome: r.produto_nome,
+      saldo: r.saldo,
+      demanda: r.demanda,
+      disponivel: r.disponivel,
+    })),
+  };
+}
+
 export async function queryPedidosPorVendedor(
   prisma: PrismaClient,
   filtros: { periodoDe?: string; periodoAte?: string },
