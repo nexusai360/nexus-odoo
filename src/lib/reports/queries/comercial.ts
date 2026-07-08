@@ -354,6 +354,55 @@ export async function queryEstoqueDisponivel(
   };
 }
 
+/**
+ * Seriais por produto: parados (em estoque, sem saida registrada) vs saidos (numero
+ * de serie que ja apareceu em nota de saida autorizada). Cruza fato_serial com a
+ * rastreabilidade de item de nota (raw_sped_documento_item_rastreabilidade -> item ->
+ * nota). Aceita busca por produto.
+ */
+export async function querySeriaisProduto(
+  prisma: PrismaClient,
+  filtros: { produto?: string; limite?: number } = {},
+): Promise<{
+  linhas: { produtoNome: string | null; total: number; parados: number; sairam: number }[];
+  totalProdutos: number;
+}> {
+  const limite = Math.min(Math.max(filtros.limite ?? 20, 1), 100);
+  const padrao = filtros.produto ? `%${filtros.produto}%` : "%";
+  const rows = await prisma.$queryRaw<
+    { produto_nome: string | null; total: number; parados: number; sairam: number }[]
+  >`
+    WITH sairam AS (
+      SELECT DISTINCT r.data->'lote_serie_id'->>1 AS serial
+      FROM raw_sped_documento_item_rastreabilidade r
+      JOIN fato_nota_fiscal_item ii
+        ON ii.odoo_id = CASE WHEN (r.data->'item_id'->>0) ~ '^[0-9]+$'
+                             THEN (r.data->'item_id'->>0)::int END
+      JOIN fato_nota_fiscal n ON n.odoo_id = ii.documento_id
+      WHERE n.entrada_saida = '1' AND n.situacao_nfe = 'autorizada'
+    )
+    SELECT s.produto_nome,
+           count(*)::int AS total,
+           count(*) FILTER (WHERE sa.serial IS NULL)::int AS parados,
+           count(*) FILTER (WHERE sa.serial IS NOT NULL)::int AS sairam
+    FROM fato_serial s
+    LEFT JOIN sairam sa ON sa.serial = s.serial
+    WHERE s.produto_nome ILIKE ${padrao}
+    GROUP BY s.produto_nome
+    ORDER BY count(*) DESC
+    LIMIT 500
+  `;
+  return {
+    totalProdutos: rows.length,
+    linhas: rows.slice(0, limite).map((r) => ({
+      produtoNome: r.produto_nome,
+      total: r.total,
+      parados: r.parados,
+      sairam: r.sairam,
+    })),
+  };
+}
+
 export async function queryPedidosPorVendedor(
   prisma: PrismaClient,
   filtros: { periodoDe?: string; periodoAte?: string },

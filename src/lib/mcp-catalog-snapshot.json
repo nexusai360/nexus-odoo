@@ -1577,6 +1577,32 @@
       "examples": []
     },
     {
+      "id": "comercial_seriais_produto",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Numeros de serie por produto: quantos estao parados em estoque (sem saida) e quantos ja sairam (apareceram em nota de saida autorizada). Use para 'seriais parados do produto X', 'quantos numeros de serie em estoque vs vendidos'.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "produto",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "produto",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
       "id": "fiscal_faturamento_periodo",
       "operation": "read",
       "module": "fiscal",
@@ -4450,6 +4476,6 @@
       "examples": []
     }
   ],
-  "count": 127,
-  "generatedAt": "2026-07-08T03:27:00.251Z"
+  "count": 128,
+  "generatedAt": "2026-07-08T03:43:29.043Z"
 }
