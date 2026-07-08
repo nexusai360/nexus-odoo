@@ -9,6 +9,8 @@ function makePrisma() {
   return {
     fatoBuildState: { findMany: jest.fn() },
     syncState: { findMany: jest.fn() },
+    // "Faturados" = venda externa: a query busca ids de nota primeiro.
+    fatoNotaFiscal: { findMany: jest.fn().mockResolvedValue([{ odooId: 1 }]) },
     fatoNotaFiscalItem: { findMany: jest.fn() },
   };
 }

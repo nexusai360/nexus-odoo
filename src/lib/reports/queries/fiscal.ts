@@ -252,22 +252,25 @@ export async function queryProdutosFaturados(
   valorGeral: number;
   quantidadeGeral: number;
 }> {
-  // FatoNotaFiscalItem não tem relação Prisma com FatoNotaFiscal , campos
-  // entradaSaida, dataEmissao e empresaId são desnormalizados direto no item (N8 + F1).
-  // F1: corte por empresa agora e DIRETO no item (coluna empresa_id), nao via documentoId IN.
-  // Mantem vrProdutos (ranking de produto, sem impostos): excecao consciente (SPEC 9.7).
-  const rows = await prisma.fatoNotaFiscalItem.findMany({
+  // "Faturados" = VENDA EXTERNA REAL. Como o item não carrega is_venda_externa,
+  // busca primeiro os ids das notas de venda externa (mesma verdade do faturamento;
+  // exclui transferência/remessa/intragrupo/não-autorizada) e filtra os itens por
+  // documento_id. Mantem vrProdutos (ranking de produto, sem impostos): SPEC 9.7.
+  const notasVe = await prisma.fatoNotaFiscal.findMany({
     where: {
-      entradaSaida: "1",
+      isVendaExterna: true,
       ...buildPeriodoWhere(filtros.periodoDe, filtros.periodoAte),
       ...buildEmpresaWhere(filtros.empresaId),
     },
-    select: {
-      produtoNome: true,
-      quantidade: true,
-      vrProdutos: true,
-    },
+    select: { odooId: true },
   });
+  const notaIds = notasVe.map((n) => n.odooId);
+  const rows = notaIds.length
+    ? await prisma.fatoNotaFiscalItem.findMany({
+        where: { documentoId: { in: notaIds } },
+        select: { produtoNome: true, quantidade: true, vrProdutos: true },
+      })
+    : [];
 
   // Agregação em memória por produtoNome
   const map = new Map<string | null, { quantidadeTotal: number; valorTotal: number }>();
