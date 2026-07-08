@@ -74,8 +74,26 @@ reintroduzir duplicação.
 - **Onda D** (tabela no Nex nos 2 renderers + diretoria API/menu/RBAC/painéis).
 - **Fechamento** (goldens finais + regen snapshot , já feito parcialmente por tool).
 
-## Próxima ação
-TB.7 `comercial_pedido_situacao` (usa fato_pedido_historico, não depende de fato novo) OU
-TB.2 `fato_pedido_item` (destrava produto/estoque). Nota jest: NÃO importar `Prisma`
-value de @/generated/prisma/client em código lido pelo mcp (quebra com import.meta);
-filtrar/compor em TS ou usar $queryRaw sem interpolação condicional.
+## Estado dos containers (fechamento Onda B)
+- Imagem nexus-odoo:local rebuildada 03:30 (tem fato_pedido_item + classificacao).
+- Worker recriado; roda os 2 builders novos no ciclo. bucket ABERTA=395, item=19292 estaveis.
+
+## Onda C (seriais) , ACHADO da auditoria
+`fato_serial` (8699) vem com data_saida e local_nome VAZIOS em 100% (o raw
+raw_sped_produto_lote_serie TEM data_venda/data_baixa/local_id/documento_baixa_id/
+motivo_baixa, mas vem vazio; parece so seriais em estoque atual, sem historico de
+saida). "Seriais parados vs saidos" precisa cruzar raw_sped_documento_item_rastreabilidade
+(serial <-> item de nota) para o que ja saiu. Onda C = builder novo (nao so auditar).
+
+## Próxima ação (para o proximo ciclo, contexto renovado)
+- Onda A (faturamento venda-real): a mais delicada. Fazer com baseline anti-regressao
+  ANTES (snapshot dos numeros atuais de src/lib/metrics/fiscal/*), conferir quais ja
+  usam o core (Fase 2.5, receita externa) e so tocar as divergentes; E2E de paridade
+  MCP fiscal == dashboard (reports/queries/fiscal.ts). NAO regredir os canonicos.
+- Onda C (seriais): builder cruzando rastreabilidade + tool comercial_seriais_produto.
+- Onda D (tabela no Nex): UI na sessao principal + ui-ux-pro-max; estender MarkdownLite
+  (Block table) nos 2 renderers (agent-message.tsx + agent/monitoramento/markdown-snapshot.tsx);
+  fallback textual WhatsApp; + diretoria (API/menu/RBAC/paineis).
+Notas jest: NAO importar Prisma value no codigo do mcp (usar $queryRaw com valor
+parametrizado, ex. ILIKE ${padrao}); casts de int em jsonb via CASE regex; goldens
+integration.test +1 por tool (hoje 127; COMERCIAL_IDS=25) + gen:mcp-catalog.
