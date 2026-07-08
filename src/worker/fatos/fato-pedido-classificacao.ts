@@ -14,6 +14,7 @@ import {
   notaEhVendaExterna,
   classificarCfop,
 } from "../../lib/fiscal/regras";
+import { frasePendencia } from "../../lib/comercial/pendencia-etapa";
 
 interface PedidoRow {
   odoo_id: number;
@@ -28,6 +29,12 @@ interface EtapaRow {
   fin_fat: boolean;
   fin_conf: boolean;
   fin_canc: boolean;
+  apr_ped: boolean;
+  apr_fin: boolean;
+  apr_est: boolean;
+  apr_fat: boolean;
+  fin_fin: boolean;
+  fin_est: boolean;
 }
 interface NotaRow {
   odoo_id: number;
@@ -50,10 +57,32 @@ export async function rebuildFatoPedidoClassificacao(prisma: PrismaClient): Prom
            data->>'nome' as nome,
            coalesce((data->>'finaliza_faturamento')::boolean, false) as fin_fat,
            coalesce((data->>'finaliza_pedido_confirmando')::boolean, false) as fin_conf,
-           coalesce((data->>'finaliza_pedido_cancelando')::boolean, false) as fin_canc
+           coalesce((data->>'finaliza_pedido_cancelando')::boolean, false) as fin_canc,
+           coalesce((data->>'aprova_pedido')::boolean, false) as apr_ped,
+           coalesce((data->>'aprova_financeiro')::boolean, false) as apr_fin,
+           coalesce((data->>'aprova_estoque')::boolean, false) as apr_est,
+           coalesce((data->>'aprova_faturamento')::boolean, false) as apr_fat,
+           coalesce((data->>'finaliza_financeiro')::boolean, false) as fin_fin,
+           coalesce((data->>'finaliza_estoque')::boolean, false) as fin_est
     from raw_pedido_etapa
     where coalesce(raw_deleted, false) = false`;
   const gatilhoPorEtapa = new Map<number, EtapaRow>(etapas.map((e) => [e.odoo_id, e]));
+  // Pendencia ("o que falta para avancar") por etapa, derivada dos gatilhos.
+  const pendenciaPorEtapa = new Map<number, string | null>(
+    etapas.map((e) => [
+      e.odoo_id,
+      frasePendencia({
+        aprovaPedido: e.apr_ped,
+        aprovaFinanceiro: e.apr_fin,
+        aprovaEstoque: e.apr_est,
+        aprovaFaturamento: e.apr_fat,
+        finalizaFinanceiro: e.fin_fin,
+        finalizaEstoque: e.fin_est,
+        finalizaFaturamento: e.fin_fat,
+        finalizaPedidoConfirmando: e.fin_conf,
+      }),
+    ]),
+  );
 
   // Pedidos + CFOP representativo (item de maior quantidade). Uma passada nos itens
   // (distinct on pedido) + join, para evitar subquery correlacionada (Seq Scan por linha).
@@ -91,20 +120,23 @@ export async function rebuildFatoPedidoClassificacao(prisma: PrismaClient): Prom
           })
         : "ABERTA";
     }
-    const chave = `${op.categoria}|${bucket}`;
+    // Pendencia so faz sentido para demanda ABERTA (pedido comercial em andamento).
+    const pendencia =
+      bucket === "ABERTA" && p.etapa_id !== null
+        ? pendenciaPorEtapa.get(p.etapa_id) ?? null
+        : null;
+    const chave = JSON.stringify([op.categoria, bucket, pendencia]);
     const arr = gruposPedido.get(chave);
     if (arr) arr.push(p.odoo_id);
     else gruposPedido.set(chave, [p.odoo_id]);
   }
 
   for (const [chave, ids] of gruposPedido) {
-    const sep = chave.indexOf("|");
-    const categoria = chave.slice(0, sep);
-    const bucket = chave.slice(sep + 1);
+    const [categoria, bucket, pendencia] = JSON.parse(chave) as [string, string, string | null];
     for (let i = 0; i < ids.length; i += CHUNK) {
       await prisma.fatoPedido.updateMany({
         where: { odooId: { in: ids.slice(i, i + CHUNK) } },
-        data: { categoriaOperacao: categoria, bucketDemanda: bucket },
+        data: { categoriaOperacao: categoria, bucketDemanda: bucket, pendenciaEtapa: pendencia },
       });
     }
   }

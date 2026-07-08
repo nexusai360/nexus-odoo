@@ -2202,6 +2202,7 @@ model FatoPedido {
   // Colunas derivadas (materializadas pelo builder fato_pedido_classificacao):
   categoriaOperacao String?  @map("categoria_operacao")
   bucketDemanda     String?  @map("bucket_demanda")
+  pendenciaEtapa    String?  @map("pendencia_etapa")
   atualizadoEm     DateTime  @default(now()) @map("atualizado_em")
 
   @@index([dataOrcamento])

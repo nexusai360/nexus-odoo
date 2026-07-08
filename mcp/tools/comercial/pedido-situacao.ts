@@ -50,6 +50,8 @@ const dados = z.object({
   pedido: pedidoSchema,
   trilha: z.array(trilhaSchema),
   itens: z.array(itemSchema),
+  /** O que falta para avançar, derivado dos gatilhos da etapa atual. */
+  pendencia: z.string().nullable(),
   _RESPOSTA: z.string().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
 });
@@ -148,7 +150,8 @@ export const comercialPedidoSituacao: ToolEntry<Input, Output> = {
       `Esta ${parado} na etapa "${p.etapaNome ?? "?"}" (${situacao}).` +
       `${aprov ? ` Aprovado em ${aprov}.` : ""}` +
       `${passos ? ` Passou por: ${passos}.` : ""}` +
-      bloco;
+      bloco +
+      `${d.pendencia ? ` ${d.pendencia}` : ""}`;
 
     return {
       ...envelope,

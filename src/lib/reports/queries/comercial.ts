@@ -213,13 +213,15 @@ export async function queryPedidoSituacao(
     faltando: number;
     temEstoque: boolean;
   }[];
+  /** O que falta para o pedido avançar, derivado dos gatilhos da etapa atual. */
+  pendencia: string | null;
 }> {
   const alvo = filtros.numero.trim();
   const pedido = await prisma.fatoPedido.findFirst({
     where: { numero: { contains: alvo, mode: "insensitive" } },
     orderBy: { dataOrcamento: "desc" },
   });
-  if (!pedido) return { encontrado: false, pedido: null, trilha: [], itens: [] };
+  if (!pedido) return { encontrado: false, pedido: null, trilha: [], itens: [], pendencia: null };
 
   const historico = await prisma.fatoPedidoHistorico.findMany({
     where: { pedidoId: pedido.odooId },
@@ -236,6 +238,10 @@ export async function queryPedidoSituacao(
     : (pedido.dataAprovacao ?? pedido.dataOrcamento)?.getTime() ?? null;
   const diasParado =
     refMs != null ? Math.floor((Date.now() - refMs) / 86_400_000) : null;
+
+  // "O que falta para avancar": lido da coluna materializada fato_pedido.pendencia_etapa
+  // (o builder de classificacao deriva dos gatilhos da etapa; o MCP le so fato_*).
+  const pendencia = pedido.pendenciaEtapa ?? null;
 
   // Imersao: os PRODUTOS do pedido + o saldo fisico de cada um (fato_estoque_saldo).
   // faltando>0 = precisa comprar/repor para conseguir avancar. E o dado que o
@@ -298,6 +304,7 @@ export async function queryPedidoSituacao(
       tempoEtapaDias: h.tempoEtapaDias,
     })),
     itens,
+    pendencia,
   };
 }
 
