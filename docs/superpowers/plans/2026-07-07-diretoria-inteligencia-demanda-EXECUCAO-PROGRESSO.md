@@ -60,13 +60,15 @@ reintroduzir duplicação.
   - [x] TB.7 `comercial_pedido_situacao` (imersão: trilha + tempo parado). E2E PV-1471.
   - [x] TB.1+TB.2 `fato_pedido_item` (derivação; 19292 itens/2428 pedidos/familia 99,7%).
     Produto+demanda (qtd, ABERTA): PISO BLACK 2096, T600X 772. Casts int via CASE regex.
-  - [ ] TB.8 `comercial_demanda_por_produto` (quantidade; usa fato_pedido_item + bucket ABERTA).
-  - [ ] TB.10 `estoque_disponivel` (saldo fato_estoque_saldo - comprometido; ATENCAO: acertar
-    matching de produto_id item x saldo , T600X deu saldo 0 no teste, verificar id).
-  - [ ] TB.11 RBAC das tools novas.
-  - [ ] REBUILD FINAL da imagem app (inclui fato_pedido_item no worker) + recriar worker.
-    (Imagem 02:55 tem classificacao mas NAO item; tabela item populada por run inline, worker
-    atual nao a toca nem zera. Rebuild agrupado no fim da Onda B.)
+  - [x] TB.8 `comercial_demanda_por_produto` (qtd; PISO BLACK 2096, T600X 772). Catalogo 126.
+  - [x] TB.10 `comercial_estoque_disponivel` (dominio comercial p/ nao mexer goldens estoque).
+    E2E: T600X saldo 549 - demanda 772 = -223 (precisa comprar); 484 produtos negativos.
+    produto_id do T600X e 52 (o "[99]" e codigo no nome). Catalogo 127.
+  - [x] TB.11 RBAC: tools sao dominio comercial, catalogo filtrado ja cobre; integration.test valida.
+  - [~] REBUILD FINAL imagem app em andamento (background) p/ worker rodar fato_pedido_item.
+    Ao terminar: docker compose up -d --force-recreate worker + validar.
+  ONDA B COMPLETA (5 tools de valor: demanda_em_aberta, pedido_situacao, demanda_por_produto,
+  estoque_disponivel + fato_pedido_item). Catalogo 127, integracao 53/53.
 - **Onda A** (faturamento venda-real nas ~7 métricas + reports/queries, baseline anti-regressão).
 - **Onda C** (seriais: auditar fato_serial existente , JA tem localNome/dataSaida de lote_serie).
 - **Onda D** (tabela no Nex nos 2 renderers + diretoria API/menu/RBAC/painéis).
