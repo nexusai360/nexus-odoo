@@ -308,7 +308,7 @@ export async function queryPedidoSituacao(
  */
 export async function queryDemandaPorProduto(
   prisma: PrismaClient,
-  filtros: { limite?: number } = {},
+  filtros: { limite?: number; empresaId?: number } = {},
 ): Promise<{
   linhas: {
     produtoId: number | null;
@@ -320,6 +320,8 @@ export async function queryDemandaPorProduto(
   totalProdutos: number;
 }> {
   const limite = Math.min(Math.max(filtros.limite ?? 20, 1), 100);
+  // Recorte opcional por empresa (decisão #2: demanda por grupo E por empresa).
+  const empresaId = filtros.empresaId ?? null;
   const rows = await prisma.$queryRaw<
     {
       produto_id: number | null;
@@ -335,6 +337,7 @@ export async function queryDemandaPorProduto(
     FROM fato_pedido_item it
     JOIN fato_pedido f ON f.odoo_id = it.pedido_id
     WHERE f.bucket_demanda = 'ABERTA'
+      AND (${empresaId}::int IS NULL OR f.empresa_id = ${empresaId}::int)
     GROUP BY it.produto_id, it.produto_nome, it.familia_nome
     ORDER BY sum(it.quantidade) DESC
   `;

@@ -10,6 +10,11 @@ import { withFreshness } from "../../lib/freshness.js";
 
 const inputSchema = z.object({
   limite: z.number().int().min(1).max(100).optional(),
+  empresaId: z
+    .number()
+    .int()
+    .optional()
+    .describe("Recorte por empresa do grupo (odoo id). Omitido = demanda do grupo inteiro."),
 });
 
 const linhaSchema = z.object({

@@ -1539,11 +1539,17 @@
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [
-        "limite"
+        "limite",
+        "empresaId"
       ],
       "inputSchemaFields": [
         {
           "name": "limite",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "empresaId",
           "type": "integer",
           "optional": true
         }
@@ -4483,5 +4489,5 @@
     }
   ],
   "count": 128,
-  "generatedAt": "2026-07-08T05:30:40.283Z"
+  "generatedAt": "2026-07-08T17:44:48.094Z"
 }
