@@ -15,3 +15,5 @@ export type {
 } from "./classifica-operacao";
 export { notaEhVendaExterna } from "./nota-venda-externa";
 export type { NotaParaVendaExterna } from "./nota-venda-externa";
+export { notaEhDevolucaoDeVenda, faturamentoLiquido } from "./nota-devolucao-venda";
+export type { NotaParaDevolucaoVenda } from "./nota-devolucao-venda";
