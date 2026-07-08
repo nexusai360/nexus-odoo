@@ -97,14 +97,20 @@ Rodada 2 de correções (mesma sessão):
 - **✅ CI** , `fato_pedido_item` faltava no FATO_CATALOG (drift-guard vermelho desde a Onda B);
   registrado; CI voltou a verde (lint/typecheck/jest 3374/build).
 
-Pendências remanescentes (não bloqueiam; melhor numa janela dedicada):
-- **#6 [P1] `fato_serial` (local_nome/data_saida)** ainda 100% NULL , enriquecer o builder do
-  worker via `raw_sped_documento_item_rastreabilidade` + rebuild. (a tool de seriais já contorna)
-- **#9 [P2] `is_venda_externa` órfã** , metrics recomputa; consolidar (aceito por ora, dá o mesmo número).
-- **#10 [P2] reports legado `queryFaturamentoPeriodo/PorCliente`** órfãs (armadilha latente; remover no futuro).
-- **#13 [info] `is_venda_externa` usa `modelo='55'`** (spec pedia 55/65; sem impacto no dado atual).
-- **Infra: worker em crash-loop** (falta env Odoo) , a pendencia_etapa foi populada por SQL; o
-  worker precisa do env + rebuild (via app) para manter a materialização nos próximos ciclos.
+Rodada 3 (mesma sessão):
+- **✅ Infra: worker** , estava em crash-loop por falta das envs do Odoo (o compose usa
+  `${ODOO_URL}` do shell, não do `.env.local`). Recriado com `docker compose -p nexus-odoo
+  --env-file .env.local up -d --force-recreate --no-deps worker`. Rodando, sincronizando.
+- **✅ #6 `fato_serial` enriquecido** , builder ganhou passo cruzando
+  `raw_sped_documento_item_rastreabilidade` → item → nota de saída autorizada, preenchendo
+  `data_saida` e `local_nome` (4870/8699 com saída, 4614 com local; parados ficam sem saída).
+  Imagem `nexus-odoo:local` rebuildada (via `app`) + worker recriado com o código novo, então
+  a materialização (pendencia_etapa + fato_serial) é mantida nos próximos ciclos.
+
+Pendências menores restantes (aceitas/documentadas, sem impacto):
+- **#9 `is_venda_externa` órfã** , metrics recomputa e dá o mesmo número (consolidação futura).
+- **#10 reports legado `queryFaturamentoPeriodo/PorCliente`** órfãs (remover no futuro).
+- **#13 `is_venda_externa` usa `modelo='55'`** (spec pedia 55/65; sem impacto no dado atual).
 
 ## Resposta direta à pergunta do usuário
 - **A demanda (bucket_demanda) chegou aos dois lugares certos** (tools comerciais +
