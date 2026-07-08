@@ -1,5 +1,13 @@
 # 04 , Capacidades novas, modelo de dados, fatos e tools a criar
 
+> **CORREÇÃO (2026-07-07, pós-review):** onde este módulo diz que "produto com mais
+> demanda / estoque disponível / seriais em demanda são NÃO computáveis por falta de
+> itens de pedido no cache", está DESATUALIZADO. Comprovado: as linhas de item já
+> existem em `raw_sped_documento_item` (join `data->'pedido_id'->>0 = fato_pedido.
+> odoo_id`, 1 doc por pedido, ~99% de cobertura, 100% nas etapas abertas). Logo
+> `fato_pedido_item` é DERIVAÇÃO INTERNA do cache (sem sync novo no Odoo). Ver
+> `../2026-07-07-diretoria-inteligencia-demanda-SPEC-v2.md` §0/§4.1.
+
 As capacidades que o usuário pediu se apoiam em quatro pilares de dado. Onde o
 cache já sustenta, marco OK; onde falta, aponto o FATO novo.
 

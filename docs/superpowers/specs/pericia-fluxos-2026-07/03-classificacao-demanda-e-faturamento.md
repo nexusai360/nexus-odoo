@@ -1,5 +1,14 @@
 # 03 , Classificação de DEMANDA EM ABERTA e FATURAMENTO DE VENDA REAL
 
+> **CORREÇÃO (2026-07-07, pós-review):** o §5 abaixo manda "excluir SIMPLES
+> FATURAMENTO futuro" do faturamento. Decisão canônica revista (07 #4 + SPEC v2):
+> a nota de simples faturamento de venda futura (CFOP 5922/6922) ENTRA no
+> faturamento (na emissão); a REMESSA de entrega futura posterior é que sai (evita
+> duplicar). Além disso, `isVendaExterna` deve filtrar por `modelo IN ('55','65')`,
+> `finalidade_nfe NOT IN ('4')`, classificação por CFOP/`natureza_operacao_id` (não
+> substring), e intragrupo por join `fato_parceiro.documento_digits` (não regex no
+> nome). Ver SPEC v2 §3.
+
 ## 1. Definição de negócio (Mariane + usuário)
 - **Demanda em aberta** = pedido de **venda a cliente final** que foi **aprovado**
   e **ainda não teve a NF de venda ao consumidor final emitida**. Cobre todo o
