@@ -54,5 +54,21 @@ reintroduzir duplicação.
 - **Fechamento** goldens (H2: 114→119 x4, 123→128, COMERCIAL 21→24, ESTOQUE 11→13,
   L322/659 32→34, L333/678 17→19) + regen snapshot.
 
+- **Onda B** (itens + tools): EM ANDAMENTO.
+  - [x] TB.5 tool `comercial_demanda_em_aberta` (query queryDemandaEmAberta + wrapper +
+    catálogo 124 + goldens; integração 53/53). E2E SQL: 395 pedidos/R$77,6M.
+  - [ ] TB.2 `fato_pedido_item` (derivação de raw_sped_documento_item) , base de produto/estoque.
+  - [ ] TB.7 `comercial_pedido_situacao` (imersão: trilha + tempo parado + próxima etapa).
+  - [ ] TB.8 `comercial_demanda_por_produto` (quantidade; depende de TB.2).
+  - [ ] TB.10 `estoque_disponivel` (saldo - comprometido; depende de TB.2).
+  - [ ] TB.11 RBAC das tools novas.
+- **Onda A** (faturamento venda-real nas ~7 métricas + reports/queries, baseline anti-regressão).
+- **Onda C** (seriais: auditar fato_serial existente , JA tem localNome/dataSaida de lote_serie).
+- **Onda D** (tabela no Nex nos 2 renderers + diretoria API/menu/RBAC/painéis).
+- **Fechamento** (goldens finais + regen snapshot , já feito parcialmente por tool).
+
 ## Próxima ação
-T0.1 (fixtures) e T0.3 (classificaOperacao TDD).
+TB.7 `comercial_pedido_situacao` (usa fato_pedido_historico, não depende de fato novo) OU
+TB.2 `fato_pedido_item` (destrava produto/estoque). Nota jest: NÃO importar `Prisma`
+value de @/generated/prisma/client em código lido pelo mcp (quebra com import.meta);
+filtrar/compor em TS ou usar $queryRaw sem interpolação condicional.
