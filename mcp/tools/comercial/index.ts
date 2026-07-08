@@ -23,6 +23,7 @@ import { comercialCotacoes, comercialComissoes } from "./cotacao-comissao.js";
 import { comercialDetalharPedido } from "./detalhar-pedido.js";
 import { comercialDemandaEmAberta } from "./demanda-em-aberta.js";
 import { comercialPedidoSituacao } from "./pedido-situacao.js";
+import { comercialDemandaPorProduto } from "./demanda-por-produto.js";
 
 export const comercialTools: ToolEntry[] = [
   comercialPedidosPeriodo as ToolEntry,
@@ -51,4 +52,5 @@ export const comercialTools: ToolEntry[] = [
   comercialDetalharPedido as ToolEntry,
   comercialDemandaEmAberta as ToolEntry,
   comercialPedidoSituacao as ToolEntry,
+  comercialDemandaPorProduto as ToolEntry,
 ];

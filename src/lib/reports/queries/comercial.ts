@@ -238,6 +238,55 @@ export async function queryPedidoSituacao(
   };
 }
 
+/**
+ * Produto com mais demanda (por QUANTIDADE): soma a quantidade dos itens em pedidos
+ * de demanda aberta (bucket_demanda='ABERTA'), agrupada por produto. Ranking por
+ * quantidade (decisao do usuario). Usa fato_pedido_item + fato_pedido.
+ */
+export async function queryDemandaPorProduto(
+  prisma: PrismaClient,
+  filtros: { limite?: number } = {},
+): Promise<{
+  linhas: {
+    produtoId: number | null;
+    produtoNome: string | null;
+    familiaNome: string | null;
+    quantidade: number;
+    valorProdutos: number;
+  }[];
+  totalProdutos: number;
+}> {
+  const limite = Math.min(Math.max(filtros.limite ?? 20, 1), 100);
+  const rows = await prisma.$queryRaw<
+    {
+      produto_id: number | null;
+      produto_nome: string | null;
+      familia_nome: string | null;
+      quantidade: number;
+      valor: number;
+    }[]
+  >`
+    SELECT it.produto_id, it.produto_nome, it.familia_nome,
+           sum(it.quantidade)::float8 AS quantidade,
+           sum(it.vr_produtos)::float8 AS valor
+    FROM fato_pedido_item it
+    JOIN fato_pedido f ON f.odoo_id = it.pedido_id
+    WHERE f.bucket_demanda = 'ABERTA'
+    GROUP BY it.produto_id, it.produto_nome, it.familia_nome
+    ORDER BY sum(it.quantidade) DESC
+  `;
+  return {
+    totalProdutos: rows.length,
+    linhas: rows.slice(0, limite).map((r) => ({
+      produtoId: r.produto_id,
+      produtoNome: r.produto_nome,
+      familiaNome: r.familia_nome,
+      quantidade: r.quantidade,
+      valorProdutos: r.valor,
+    })),
+  };
+}
+
 export async function queryPedidosPorVendedor(
   prisma: PrismaClient,
   filtros: { periodoDe?: string; periodoAte?: string },

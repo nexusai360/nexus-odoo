@@ -1525,6 +1525,26 @@
       "examples": []
     },
     {
+      "id": "comercial_demanda_por_produto",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Produto com mais demanda, por QUANTIDADE, somando os itens dos pedidos em demanda aberta (aprovados, sem nota ao cliente). Use para 'qual produto tem mais demanda', 'produtos mais pedidos em aberto', 'ranking de demanda por item'.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
       "id": "fiscal_faturamento_periodo",
       "operation": "read",
       "module": "fiscal",
@@ -4398,6 +4418,6 @@
       "examples": []
     }
   ],
-  "count": 125,
-  "generatedAt": "2026-07-08T02:55:45.743Z"
+  "count": 126,
+  "generatedAt": "2026-07-08T03:22:38.712Z"
 }
