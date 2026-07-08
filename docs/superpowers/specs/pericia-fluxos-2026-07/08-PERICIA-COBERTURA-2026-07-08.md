@@ -107,6 +107,25 @@ Rodada 3 (mesma sessão):
   Imagem `nexus-odoo:local` rebuildada (via `app`) + worker recriado com o código novo, então
   a materialização (pendencia_etapa + fato_serial) é mantida nos próximos ciclos.
 
+Rodada 4 (retomada 2026-07-08, tarde , OOM que zerava a demanda):
+- **✅ CAUSA RAIZ do "demanda 0" no cache** , ao retomar, `categoria_operacao`/
+  `bucket_demanda` estavam 100% NULL (0 de 2332). Diagnóstico (systematic-debugging):
+  o worker morria de **OOM** no ciclo, em `fato_produto` (logo após `fato_nota_fiscal_item`),
+  ANTES de `fato_pedido_classificacao` rodar. Causa: **imagens base64 LEGADAS** (image_*,
+  170KB-1.7MB/linha) presas no jsonb `data` das raws sincronizadas ANTES de 2026-06-16
+  (raw_sped_produto ~774MB, raw_sped_produto_lote_serie ~3.3GB, raw_res_partner, etc).
+  O `field-selection` só barra dados NOVOS; o incremental não re-limpa quem não mudou,
+  e o banco de DEV nunca rodou o cleanup (`_prod-db-cleanup-images.py` é só prod). O
+  builder `fato_produto` faz `findMany` do jsonb inteiro → carregava ~668MB no heap → OOM.
+  A "estabilidade em 399" da sessão anterior vinha do script `.mts` manual, que mascarava.
+- **✅ Correção (na raiz):** `scripts/strip-raw-images-local.sh` (novo, idempotente)
+  removeu image% de todas as raws de dev + VACUUM FULL (recuperou ~4GB). Heap do worker
+  1024→2048 como margem pós-incidente (pico real pós-limpeza ~888MB). E2E: ciclo COMPLETO
+  do worker roda sem OOM; demanda ABERTA = 399 pedidos / R$79,1M materializada.
+- **Nota p/ merge/prod:** prod tem o MESMO legado. Antes/depois do deploy, rodar
+  `python3 scripts/_prod-db-cleanup-images.py --apply` uma vez (com o field-selection já
+  ativo em prod, o que já é o caso). Sem isso, o worker de prod pode reincidir no OOM.
+
 Pendências menores restantes (aceitas/documentadas, sem impacto):
 - **#9 `is_venda_externa` órfã** , metrics recomputa e dá o mesmo número (consolidação futura).
 - **#10 reports legado `queryFaturamentoPeriodo/PorCliente`** órfãs (remover no futuro).
