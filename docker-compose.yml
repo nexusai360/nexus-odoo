@@ -54,12 +54,22 @@ services:
       - ODOO_DB=${ODOO_DB}
       - ODOO_USERNAME=${ODOO_USERNAME}
       - ODOO_PASSWORD=${ODOO_PASSWORD}
-      # Heap V8: 1GB. Antes era 4GB porque as raws guardavam as imagens
-      # base64 dos produtos (image_*, 170-260 KB/linha) e 5 tabelas pesadas
-      # em paralelo estouravam o heap. Desde 2026-06-16 o field-selection
-      # exclui campos `binary` (sem imagem no cache), entao o worker ficou
-      # leve e 1GB cobre com folga. Em prod o swarm usa o mesmo valor.
-      - NODE_OPTIONS=--max-old-space-size=1024
+      # Heap V8: 2GB. Historico: 4GB (raws guardavam imagens base64) -> 1GB
+      # (2026-06-16, field-selection passou a excluir campos `binary`) -> 2GB
+      # (2026-07-08). CAUSA REAL do OOM de 2026-07-08: imagens base64 LEGADAS
+      # (image_*, 170KB-1.7MB/linha) presas no jsonb `data` das raws sincronizadas
+      # ANTES de 2026-06-16 (raw_sped_produto ~774MB, raw_sped_produto_lote_serie
+      # ~3.3GB, raw_res_partner, etc). O field-selection so vale para linhas NOVAS;
+      # o incremental nao re-limpa quem nao mudou. fato_produto (findMany do jsonb
+      # inteiro) carregava ~668MB de imagens -> heap estourava ANTES da classificacao
+      # (fato_pedido_classificacao) rodar -> bucket_demanda NULL (demanda aparecia 0).
+      # Resolvido na raiz removendo o legado: em prod, scripts/_prod-db-cleanup-images.py
+      # --apply (strip image% de todas as raws + VACUUM FULL, via Portainer); em dev,
+      # scripts/strip-raw-images-local.sh. Com as raws limpas, o ciclo COMPLETO roda
+      # com pico de heap ~888MB (cabe ate em 1GB). Mantemos 2GB como margem deliberada
+      # pos-incidente (dados crescem; host tem ~7.75GB, custo zero). Em prod o swarm
+      # usa o mesmo valor.
+      - NODE_OPTIONS=--max-old-space-size=2048
     depends_on:
       - db
       - redis
