@@ -5,6 +5,7 @@
 // `withFreshness` vive no handler MCP, não aqui.
 
 import type { PrismaClient } from "@/generated/prisma/client";
+import { Prisma } from "@/generated/prisma/client";
 import { diasAtraso } from "../../../../mcp/lib/dias-atraso";
 
 export async function queryPedidosPeriodo(
@@ -62,6 +63,101 @@ export async function queryPedidosPorEtapa(
   }
   const linhas = [...map.entries()].map(([etapaNome, v]) => ({ etapaNome, ...v }));
   return { linhas };
+}
+
+export type OrdenacaoDemanda = "tempo_parado" | "valor" | "data_criacao";
+
+/**
+ * Demanda em aberta: pedidos com bucket_demanda='ABERTA' (materializado pelo builder
+ * de classificacao = venda a cliente externo, aprovado, sem NF ao consumidor final).
+ * Retorna total (pedidos e R$), quebra por etapa, e a lista das mais paradas.
+ * "Tempo parado" = dias desde a entrada na etapa ATUAL (fato_pedido_historico), com
+ * fallback data_aprovacao/data_orcamento (153 pedidos sem historico). Volume pequeno
+ * (~395), entao busca todas e agrega/ordena em memoria.
+ */
+export async function queryDemandaEmAberta(
+  prisma: PrismaClient,
+  filtros: { empresaId?: number; limite?: number; ordenacao?: OrdenacaoDemanda } = {},
+): Promise<{
+  totalPedidos: number;
+  valorTotal: number;
+  porEtapa: { etapaNome: string | null; quantidade: number; valorTotal: number }[];
+  lista: {
+    numero: string | null;
+    etapaNome: string | null;
+    empresaNome: string | null;
+    participanteNome: string | null;
+    valorProdutos: number;
+    diasParado: number | null;
+  }[];
+  ordenadoPor: OrdenacaoDemanda;
+}> {
+  const limite = Math.min(Math.max(filtros.limite ?? 20, 1), 100);
+  const ordenacao = filtros.ordenacao ?? "tempo_parado";
+  const empresaCond =
+    filtros.empresaId != null
+      ? Prisma.sql`AND f.empresa_id = ${filtros.empresaId}`
+      : Prisma.empty;
+
+  const rows = await prisma.$queryRaw<
+    {
+      numero: string | null;
+      etapa_nome: string | null;
+      empresa_nome: string | null;
+      participante_nome: string | null;
+      valor: number;
+      dias_parado: number | null;
+      data_orcamento: Date | null;
+    }[]
+  >(Prisma.sql`
+    SELECT f.numero, f.etapa_nome, f.empresa_nome, f.participante_nome,
+           f.vr_produtos::float8 AS valor,
+           EXTRACT(DAY FROM now() - COALESCE(h.data_entrada, f.data_aprovacao, f.data_orcamento))::int AS dias_parado,
+           f.data_orcamento
+    FROM fato_pedido f
+    LEFT JOIN LATERAL (
+      SELECT max(data_entrada) AS data_entrada
+      FROM fato_pedido_historico h
+      WHERE h.pedido_id = f.odoo_id AND h.etapa_id = f.etapa_id
+    ) h ON true
+    WHERE f.bucket_demanda = 'ABERTA' ${empresaCond}
+  `);
+
+  const totalPedidos = rows.length;
+  const valorTotal = rows.reduce((s, r) => s + (r.valor ?? 0), 0);
+
+  const mapEtapa = new Map<string | null, { quantidade: number; valorTotal: number }>();
+  for (const r of rows) {
+    const e = mapEtapa.get(r.etapa_nome) ?? { quantidade: 0, valorTotal: 0 };
+    e.quantidade += 1;
+    e.valorTotal += r.valor ?? 0;
+    mapEtapa.set(r.etapa_nome, e);
+  }
+  const porEtapa = [...mapEtapa.entries()]
+    .map(([etapaNome, v]) => ({ etapaNome, ...v }))
+    .sort((a, b) => b.quantidade - a.quantidade);
+
+  const ordenar = {
+    tempo_parado: (a: (typeof rows)[number], b: (typeof rows)[number]) =>
+      (b.dias_parado ?? -1) - (a.dias_parado ?? -1),
+    valor: (a: (typeof rows)[number], b: (typeof rows)[number]) => b.valor - a.valor,
+    data_criacao: (a: (typeof rows)[number], b: (typeof rows)[number]) =>
+      (a.data_orcamento?.getTime() ?? Infinity) - (b.data_orcamento?.getTime() ?? Infinity),
+  }[ordenacao];
+
+  const lista = [...rows]
+    .sort(ordenar)
+    .slice(0, limite)
+    .map((r) => ({
+      numero: r.numero,
+      etapaNome: r.etapa_nome,
+      empresaNome: r.empresa_nome,
+      participanteNome: r.participante_nome,
+      valorProdutos: r.valor,
+      diasParado: r.dias_parado,
+    }));
+
+  return { totalPedidos, valorTotal, porEtapa, lista, ordenadoPor: ordenacao };
 }
 
 export async function queryPedidosPorVendedor(
