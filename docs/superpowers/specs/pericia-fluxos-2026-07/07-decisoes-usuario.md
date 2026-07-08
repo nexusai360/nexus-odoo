@@ -14,12 +14,19 @@ Respostas às pendências do dossiê. Passam a valer como decisão fechada.
 3. **Peças ENTRAM no faturamento de venda** (Venda de Peças é venda real). Incluir
    `Venda de Peças` e o subfluxo de peças (`Emite NF - Peças`) como venda.
 
-4. **Venda Futura (CFOP 5922/6922) , decisão do Claude (delegada pelo usuário):**
-   - **Faturamento:** conta **na emissão da nota de simples faturamento** (5922/6922).
-     A remessa de entrega futura posterior NÃO conta de novo (evita duplicar receita).
-   - **Estoque/demanda:** a mercadoria segue comprometida até a saída física, então
-     **sai do estoque disponível** (tratada como reservada) até a remessa de entrega
-     futura. Revisável se a Mariane enxergar diferente.
+4. **Venda Futura (CFOP 5922/6922) , REVISADO (2026-07-08, decisão do usuário):**
+   - **Faturamento:** a receita é reconhecida **na REMESSA (x117: 5117/6117)**, NÃO na
+     emissão da nota de simples faturamento (5922/6922) , escolha contábil que evita
+     contar a mesma venda duas vezes. As notas 5922/6922 ficam FORA do faturamento
+     (`is_venda_externa=false`). [Antes o dossiê propunha contar na emissão; o código
+     já reconhecia no x117 e o usuário confirmou manter assim em 2026-07-08.]
+   - **Estoque/demanda:** por padrão a venda futura já faturada **NÃO** é reservada no
+     estoque disponível (segue como disponível). Pendente de definição da Mariane (ver
+     `09-PERGUNTA-MARIANE-VENDA-FUTURA.md`).
+   - **ENGATILHADO:** ambos os pontos são um toggle em
+     `src/lib/fiscal/regras/venda-futura-policy.ts` (`RECONHECE_FATURAMENTO_NA_EMISSAO`
+     e `RESERVA_ESTOQUE_ATE_REMESSA`, padrão `false`). Basta trocar a flag para mudar,
+     que propaga para Nex + relatórios + diretoria.
 
 5. **Buckets de etapa "(confirmar)":** o Claude resolve por conta própria cruzando
    os gatilhos (`finaliza_faturamento`/`finaliza_pedido_confirmando`/

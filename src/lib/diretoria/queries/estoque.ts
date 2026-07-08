@@ -3,6 +3,7 @@
 
 import type { PrismaClient } from "@/generated/prisma/client";
 import { diasRestantes, statusPrazo, type StatusPrazo } from "@/lib/diretoria/cores";
+import { VENDA_FUTURA } from "@/lib/fiscal/regras/venda-futura-policy";
 
 export interface IndicadoresEstoque {
   valorTotal: number;
@@ -568,9 +569,13 @@ export async function queryEstoqueDisponivelDiretoria(
     }
   }
 
-  // Demanda em aberta agregada por produto (itens de pedidos ABERTA).
+  // Demanda em aberta agregada por produto (itens de pedidos ABERTA). Se a
+  // politica de venda futura estiver ligada, inclui tambem o simples faturamento
+  // (venda futura ja faturada, reservada ate a remessa) , ENGATILHADO.
   const abertos = await prisma.fatoPedido.findMany({
-    where: { bucketDemanda: "ABERTA" },
+    where: VENDA_FUTURA.RESERVA_ESTOQUE_ATE_REMESSA
+      ? { OR: [{ bucketDemanda: "ABERTA" }, { categoriaOperacao: "simples_faturamento" }] }
+      : { bucketDemanda: "ABERTA" },
     select: { odooId: true },
   });
   const ids = abertos.map((a) => a.odooId);

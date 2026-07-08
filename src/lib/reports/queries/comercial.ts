@@ -6,6 +6,7 @@
 
 import type { PrismaClient } from "@/generated/prisma/client";
 import { diasAtraso } from "../../../../mcp/lib/dias-atraso";
+import { VENDA_FUTURA } from "@/lib/fiscal/regras/venda-futura-policy";
 
 export async function queryPedidosPeriodo(
   prisma: PrismaClient,
@@ -379,7 +380,11 @@ export async function queryEstoqueDisponivel(
       SELECT it.produto_id, sum(it.quantidade)::float8 AS q
       FROM fato_pedido_item it
       JOIN fato_pedido f ON f.odoo_id = it.pedido_id
-      WHERE f.bucket_demanda = 'ABERTA'
+      -- Comprometido em demanda aberta; e, se a politica de venda futura estiver
+      -- ligada (VENDA_FUTURA.RESERVA_ESTOQUE_ATE_REMESSA), tambem o simples
+      -- faturamento (venda futura ja faturada, reservada ate a remessa).
+      WHERE (f.bucket_demanda = 'ABERTA'
+             OR (${VENDA_FUTURA.RESERVA_ESTOQUE_ATE_REMESSA} AND f.categoria_operacao = 'simples_faturamento'))
       GROUP BY it.produto_id
     )
     SELECT s.produto_id, s.nome AS produto_nome, s.q AS saldo,

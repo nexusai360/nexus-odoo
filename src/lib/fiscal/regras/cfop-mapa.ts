@@ -1,5 +1,6 @@
 // src/lib/fiscal/regras/cfop-mapa.ts
 import type { RegraOperacao } from "./tipos";
+import { VENDA_FUTURA } from "./venda-futura-policy";
 
 function mapear(lista: string[], regra: RegraOperacao): Record<string, RegraOperacao> {
   const out: Record<string, RegraOperacao> = {};
@@ -45,8 +46,13 @@ export const MAPA_CFOP: Record<string, RegraOperacao> = {
   ...mapear(["1201", "1202", "2202", "1410", "1411", "2410", "2411"], DEV_VENDA),
   // Venda de ativo imobilizado , fora do faturamento de mercadoria.
   ...mapear(["5551", "6551"], VENDA_ATIVO),
-  // Entrega futura: simples faturamento (a receita reconhece no x117 da venda).
-  ...mapear(["5922", "6922"], SIMPLES_FAT),
+  // Entrega futura (venda futura): ENGATILHADO por `VENDA_FUTURA` (venda-futura-policy).
+  // Padrão: a receita reconhece no x117 da remessa -> 5922/6922 = SIMPLES_FAT (não receita).
+  // Se RECONHECE_FATURAMENTO_NA_EMISSAO=true: 5922/6922 viram VENDA (receita na emissão).
+  ...mapear(
+    ["5922", "6922"],
+    VENDA_FUTURA.RECONHECE_FATURAMENTO_NA_EMISSAO ? VENDA : SIMPLES_FAT,
+  ),
   // Bonificacao/brinde/doacao , nao e receita por padrao.
   ...mapear(["5910", "6910"], BONIFICACAO),
   // Devolucao de consignacao (review fiscal: 6918 caia em remessa). Nao e receita.
