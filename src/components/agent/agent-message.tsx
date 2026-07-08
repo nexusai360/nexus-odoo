@@ -29,6 +29,7 @@ import {
 import * as React from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { tryParseTable, type TableBlock, type ColAlign } from "@/components/agent/gfm-table";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { AudioPlayer } from "@/components/agent/audio-player";
 import { FeedbackControl, type FeedbackRating } from "./feedback-control";
@@ -1034,11 +1035,65 @@ function CopyButton({ text }: { text: string }) {
 /* Markdown lite (sem dependências externas)                                  */
 /* -------------------------------------------------------------------------- */
 
+function alignClass(a: ColAlign): string {
+  return a === "right"
+    ? "text-right tabular-nums"
+    : a === "center"
+      ? "text-center"
+      : "text-left";
+}
+
+// Tabela de dados embutida na bolha (ui-ux-pro-max: number-tabular, divisores
+// visiveis em ambos os temas, overflow-x no mobile, densidade confortavel).
+function MarkdownTable({ block }: { block: TableBlock }) {
+  return (
+    <div className="my-1 overflow-x-auto rounded-lg border border-border">
+      <table className="w-full border-collapse text-[0.8rem]">
+        <thead>
+          <tr className="border-b border-border bg-muted/50">
+            {block.header.map((h, i) => (
+              <th
+                key={i}
+                className={cn(
+                  "whitespace-nowrap px-3 py-2 font-semibold text-foreground",
+                  alignClass(block.align[i] ?? null),
+                )}
+              >
+                {renderInline(h)}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border">
+          {block.rows.map((row, r) => (
+            <tr key={r} className="odd:bg-muted/20">
+              {row.map((cell, c) => (
+                <td
+                  key={c}
+                  className={cn(
+                    "px-3 py-1.5 align-top text-foreground/90",
+                    alignClass(block.align[c] ?? null),
+                  )}
+                >
+                  {renderInline(cell)}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function MarkdownLite({ content }: { content: string }) {
   const blocks = React.useMemo(() => splitBlocks(content), [content]);
   return (
     <div className="space-y-2 [overflow-wrap:anywhere]">
       {blocks.map((block, i) => {
+        if (block.type === "table") {
+          return <MarkdownTable key={i} block={block} />;
+        }
         if (block.type === "ul") {
           return (
             <ul key={i} className="ml-4 list-disc space-y-1">
@@ -1058,7 +1113,7 @@ function MarkdownLite({ content }: { content: string }) {
   );
 }
 
-type Block = { type: "p"; text: string } | { type: "ul"; items: string[] };
+type Block = { type: "p"; text: string } | { type: "ul"; items: string[] } | TableBlock;
 
 function splitBlocks(input: string): Block[] {
   const lines = input.split(/\r?\n/);
@@ -1079,7 +1134,17 @@ function splitBlocks(input: string): Block[] {
     listItems = null;
   };
 
-  for (const raw of lines) {
+  for (let idx = 0; idx < lines.length; idx++) {
+    const raw = lines[idx];
+    // Tabela GFM tem prioridade (consome varias linhas de uma vez).
+    const tbl = tryParseTable(lines, idx);
+    if (tbl) {
+      flushParagraph();
+      flushList();
+      blocks.push(tbl.block);
+      idx = tbl.next - 1;
+      continue;
+    }
     const listMatch = raw.match(/^\s*[-*]\s+(.*)$/);
     if (listMatch) {
       flushParagraph();
