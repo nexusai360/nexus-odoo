@@ -30,9 +30,11 @@ reintroduzir duplicação.
 ## Ondas (PLAN v3)
 - **Onda 0** (núcleo + materialização): EM ANDAMENTO.
   - [ ] T0.0 baseline anti-regressão (script) , antes da Onda A.
-  - [ ] T0.1 fixtures reais.
+  - [ ] T0.1 fixtures reais (dispensável: testes já usam CFOPs/gatilhos reais inline).
   - [x] T0.2 `classificaEtapaDemanda` (TDD) , estágio ABERTA/FECHADA/IGNORAR por gatilho.
-  - [ ] T0.3 `classificaOperacao` (TDD) , reusa regras+grupo.
+  - [x] T0.3 `classificaOperacao` (TDD) , reusa classificarCfop+ehNotaIntragrupo. CFOP
+    recebido JÁ EXTRAÍDO (do item, não do operacao_nome que tem CFOP no meio). Venda
+    futura 5922: entraDemanda=true, entraFaturamentoVenda=false. 6/6 verde.
   - [ ] T0.4 `isVendaExterna` no core (TDD).
   - [ ] T0.5 devolução de venda / líquido (TDD) , item cfop 1202/2202.
   - [ ] T0.6 migration colunas derivadas.
