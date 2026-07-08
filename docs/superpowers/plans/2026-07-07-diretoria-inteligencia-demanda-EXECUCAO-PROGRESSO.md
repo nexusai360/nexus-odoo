@@ -109,7 +109,21 @@ Backend da inteligencia de demanda 100% pronto e testado no dado real. 6 tools n
 seriais_produto + fato_pedido_item). Faturamento de venda validado (Fase 2.5, intragrupo
 41,6% fora). Catalogo 128, integracao 53/53. Tudo LOCAL, nada em producao.
 
-## Próxima ação , ONDA D (UI, contexto fresco + ui-ux-pro-max OBRIGATORIO)
+## Onda D , TABELA NO NEX COMPLETA (2026-07-08)
+- Parser puro tryParseTable (src/components/agent/gfm-table.ts) TDD 6/6.
+- Estendido MarkdownLite (agent-message.tsx) + MarkdownSnapshot (monitoramento) com
+  Block table + componente estilizado (ui-ux-pro-max: tabular-nums, numeros a direita,
+  divisores border em light/dark, zebra, overflow-x). Snapshot com protectValues.
+- Regra de prompt 8-tab em identity-base.ts: Nex emite tabela GFM p/ dados tabulares +
+  usa as 5 tools novas. Ativa end-to-end (prompt -> markdown -> render). tsc/eslint verdes.
+- FALTA validar visualmente (subir dev, perguntar demanda ao Nex, ver a tabela).
+
+## Onda D , FALTA (unica pendencia do sub-projeto): PAINEIS DA DIRETORIA
+Frente grande de UI (API src/app/api/diretoria/*, menu, RBAC, paineis de demanda/estoque
+em src/app/(protected)/diretoria/*). Fazer na sessao principal com ui-ux-pro-max, com
+paridade de dado (painel == tool). Comecar com contexto fresco.
+
+## (obsoleto) plano antigo Onda D
 1. Tabela no Nex: estender MarkdownLite (novo Block type:"table", parser separador
    ---|---) TDD, aplicar nos 2 renderers (src/components/agent/agent-message.tsx +
    src/components/agent/monitoramento/markdown-snapshot.tsx), tratar protectValues/NBSP,
