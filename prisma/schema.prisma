@@ -2199,11 +2199,16 @@ model FatoPedido {
   dataPrevista     DateTime? @map("data_prevista")
   vrProdutos       Decimal   @default(0) @map("vr_produtos") @db.Decimal(18, 2)
   vrNf             Decimal   @default(0) @map("vr_nf") @db.Decimal(18, 2)
+  // Colunas derivadas (materializadas pelo builder fato_pedido_classificacao):
+  categoriaOperacao String?  @map("categoria_operacao")
+  bucketDemanda     String?  @map("bucket_demanda")
   atualizadoEm     DateTime  @default(now()) @map("atualizado_em")
 
   @@index([dataOrcamento])
   @@index([etapaId])
   @@index([vendedorId])
+  @@index([bucketDemanda])
+  @@index([categoriaOperacao])
   @@map("fato_pedido")
 }
 
@@ -2278,12 +2283,15 @@ model FatoNotaFiscal {
   vrIbpt               Decimal   @default(0) @map("vr_ibpt") @db.Decimal(18, 2)
   vrIcmsProprio        Decimal   @default(0) @map("vr_icms_proprio") @db.Decimal(18, 2)
   vrDesconto           Decimal   @default(0) @map("vr_desconto") @db.Decimal(18, 2)
+  // Coluna derivada (materializada pelo builder de classificacao):
+  isVendaExterna       Boolean?  @map("is_venda_externa")
   atualizadoEm         DateTime  @default(now()) @map("atualizado_em")
 
   @@index([dataEmissao])
   @@index([entradaSaida])
   @@index([situacaoNfe])
   @@index([chave])
+  @@index([isVendaExterna])
   @@map("fato_nota_fiscal")
 }
 
