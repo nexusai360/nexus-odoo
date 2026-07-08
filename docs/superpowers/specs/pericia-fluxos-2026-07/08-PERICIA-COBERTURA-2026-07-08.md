@@ -74,6 +74,32 @@ exibem números inflados; e 2 decisões de venda futura não foram implementadas
 13. **is_venda_externa usa `modelo='55'`** só (spec pedia `IN ('55','65')`) , sem impacto
     no dado atual (100% modelo 55), mas desvio latente.
 
+## RESOLUÇÃO (2026-07-08, mesma sessão da perícia)
+Correções aplicadas (autorização "corrigir tudo agora"), local, com TDD + E2E:
+- **✅ P0.1 diretoria/Vendas + Visão-geral** , faturamento agora REAL via
+  `is_venda_externa` + `categoria_operacao='venda'`; E2E: R$96,2M (era R$167,6M).
+  UF-scoping aplicado. (commit fix diretoria vendas)
+- **✅ P0.2 tools comerciais de pedido** (7 de 8) , filtram `categoria_operacao='venda'`.
+  E2E: "abertos" 457 (era 654), total 1206 (era 2317). `pedidos_atrasados` (parcela-based)
+  não tocado (risco mínimo). (commit fix comercial)
+- **✅ P0.3 fiscal_produtos_faturados** , só venda externa (documento_id das notas
+  is_venda_externa). `notas_emitidas`/`notas_emitidas_por_produto` deixadas como LISTAGEM
+  de documento (não são métrica de receita), por design. (commit fix fiscal)
+- **✅ #4 Venda futura ENGATILHADA** , `src/lib/fiscal/regras/venda-futura-policy.ts`
+  (2 toggles, padrão = reconhece no x117). Pergunta objetiva para a Mariane em
+  `09-PERGUNTA-MARIANE-VENDA-FUTURA.md`. (commit venda futura)
+
+Pendências remanescentes (P1/P2, não bloqueiam, menor visibilidade):
+- **#6 [P1] `fato_serial` (local_nome/data_saida)** ainda 100% NULL , enriquecer o
+  builder via `raw_sped_documento_item_rastreabilidade`. (a tool de seriais já contorna)
+- **#7 [P2] `queryDemandaPorProduto` sem recorte empresa/cliente/vendedor**; prompt do
+  Nex sem cortes explícitos por cliente/vendedor (decisão #2).
+- **#8 [P2] `fiscal_vendas_produto_por_empresa`** não exclui intragrupo.
+- **#9 [P2] `is_venda_externa` órfã** , metrics recomputa; consolidar todos na coluna.
+- **#10 [P2] reports legado `queryFaturamentoPeriodo/PorCliente`** órfãs (armadilha latente).
+- **#12 [P2] imersão "o que falta"** heurística; `raw_pedido_etapa` (gatilhos) permite precisão.
+- **#13 [info] `is_venda_externa` usa `modelo='55'`** (spec pedia 55/65; sem impacto atual).
+
 ## Resposta direta à pergunta do usuário
 - **A demanda (bucket_demanda) chegou aos dois lugares certos** (tools comerciais +
   diretoria/pedidos), com números idênticos (395/R$77,6M). ✅
