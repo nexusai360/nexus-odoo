@@ -19,6 +19,9 @@ describe("notaEhVendaExterna , regra canonica de venda a cliente externo", () =>
   it("nao autorizada (em_digitacao) => false", () => {
     expect(notaEhVendaExterna({ ...vendaOk, situacaoNfe: "em_digitacao" })).toBe(false);
   });
+  it("modelo 65 (NFC-e, venda a consumidor) => true", () => {
+    expect(notaEhVendaExterna({ ...vendaOk, modelo: "65" })).toBe(true);
+  });
   it("modelo 57 (CT-e) => false", () => {
     expect(notaEhVendaExterna({ ...vendaOk, modelo: "57" })).toBe(false);
   });

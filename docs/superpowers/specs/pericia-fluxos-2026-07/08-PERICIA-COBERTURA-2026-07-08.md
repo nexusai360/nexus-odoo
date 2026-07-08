@@ -126,6 +126,27 @@ Rodada 4 (retomada 2026-07-08, tarde , OOM que zerava a demanda):
   `python3 scripts/_prod-db-cleanup-images.py --apply` uma vez (com o field-selection já
   ativo em prod, o que já é o caso). Sem isso, o worker de prod pode reincidir no OOM.
 
+Rodada 5 (retomada 2026-07-08, noite , venda futura + sync + pendências menores):
+- **✅ Venda futura (resposta da Mariane)** , a nota 5922/6922 (simples faturamento) NÃO
+  movimenta estoque, logo NÃO é demanda; a demanda é a remessa x117 (5117/6117, "venda de
+  fato"). Aplicado: `simples_faturamento` removido de `CATEGORIAS_DEMANDA` (classifica-operacao.ts).
+  Faturamento segue na remessa x117 (flag mantida). E2E: demanda 397 mantida; os 10 pedidos
+  simples_faturamento agora IGNORAR. Resposta registrada em 09-PERGUNTA-MARIANE. (commit ca5baae3)
+- **✅ #3 "lentidão do sync" , NÃO era o sync.** Medido: os 119 modelos incrementais
+  sincronizam em ~18s (search_read ~10s paralelo). A "lentidão de minutos" era ARTEFATO do OOM
+  , o worker morria nos builders e deixava o lock de ciclo preso; os "ciclo ainda rodando
+  (lock), pulado" eram o cron vendo o lock zumbi. Com o OOM corrigido, o ciclo completo
+  (sync+builders) roda em ~1min. Nenhum código a mudar.
+- **✅ #13 modelo 55/65** , `notaEhVendaExterna` agora aceita NF-e (55) E NFC-e (65), alinhado
+  à spec (era só 55). Propaga à materialização (que usa a função). Sem impacto no dado (100%
+  modelo 55 hoje). TDD.
+- **✅ #10 queries legadas órfãs removidas** , `queryFaturamentoPeriodo`/`queryFaturamentoPorCliente`
+  (reports/fiscal.ts) tinham 0 chamadores; removidas + testes/imports limpos (tsc/jest verdes).
+- **#9 `is_venda_externa` , NÃO está mais órfã** (a Rodada 1 reapontou diretoria/vendas.ts e
+  mcp/vendas-produto-por-empresa.ts para a coluna). O único resíduo é `metrics` recomputar em
+  memória com a MESMA regra (intragrupo+cfop) , mesmo número, não é divergência nem bug.
+  Consolidar metrics na coluna é refactor de baixo valor/risco; fica documentado, não feito.
+
 Pendências menores restantes (aceitas/documentadas, sem impacto):
 - **#9 `is_venda_externa` órfã** , metrics recomputa e dá o mesmo número (consolidação futura).
 - **#10 reports legado `queryFaturamentoPeriodo/PorCliente`** órfãs (remover no futuro).
