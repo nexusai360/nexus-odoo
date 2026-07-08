@@ -89,16 +89,22 @@ Correções aplicadas (autorização "corrigir tudo agora"), local, com TDD + E2
   (2 toggles, padrão = reconhece no x117). Pergunta objetiva para a Mariane em
   `09-PERGUNTA-MARIANE-VENDA-FUTURA.md`. (commit venda futura)
 
-Pendências remanescentes (P1/P2, não bloqueiam, menor visibilidade):
-- **#6 [P1] `fato_serial` (local_nome/data_saida)** ainda 100% NULL , enriquecer o
-  builder via `raw_sped_documento_item_rastreabilidade`. (a tool de seriais já contorna)
-- **#7 [P2] `queryDemandaPorProduto` sem recorte empresa/cliente/vendedor**; prompt do
-  Nex sem cortes explícitos por cliente/vendedor (decisão #2).
-- **#8 [P2] `fiscal_vendas_produto_por_empresa`** não exclui intragrupo.
-- **#9 [P2] `is_venda_externa` órfã** , metrics recomputa; consolidar todos na coluna.
-- **#10 [P2] reports legado `queryFaturamentoPeriodo/PorCliente`** órfãs (armadilha latente).
-- **#12 [P2] imersão "o que falta"** heurística; `raw_pedido_etapa` (gatilhos) permite precisão.
-- **#13 [info] `is_venda_externa` usa `modelo='55'`** (spec pedia 55/65; sem impacto atual).
+Rodada 2 de correções (mesma sessão):
+- **✅ #7 decisão #2** , `comercial_demanda_por_produto` aceita `empresaId` + prompt 8-cortes.
+- **✅ #12 imersão "o que falta"** , pendência PRECISA materializada (fato_pedido.pendencia_etapa,
+  derivada dos gatilhos da etapa). E2E: GERA BOLETO → "falta liberar o financeiro".
+- **✅ #8 `fiscal_vendas_produto_por_empresa`** , exclui intragrupo (is_venda_externa).
+- **✅ CI** , `fato_pedido_item` faltava no FATO_CATALOG (drift-guard vermelho desde a Onda B);
+  registrado; CI voltou a verde (lint/typecheck/jest 3374/build).
+
+Pendências remanescentes (não bloqueiam; melhor numa janela dedicada):
+- **#6 [P1] `fato_serial` (local_nome/data_saida)** ainda 100% NULL , enriquecer o builder do
+  worker via `raw_sped_documento_item_rastreabilidade` + rebuild. (a tool de seriais já contorna)
+- **#9 [P2] `is_venda_externa` órfã** , metrics recomputa; consolidar (aceito por ora, dá o mesmo número).
+- **#10 [P2] reports legado `queryFaturamentoPeriodo/PorCliente`** órfãs (armadilha latente; remover no futuro).
+- **#13 [info] `is_venda_externa` usa `modelo='55'`** (spec pedia 55/65; sem impacto no dado atual).
+- **Infra: worker em crash-loop** (falta env Odoo) , a pendencia_etapa foi populada por SQL; o
+  worker precisa do env + rebuild (via app) para manter a materialização nos próximos ciclos.
 
 ## Resposta direta à pergunta do usuário
 - **A demanda (bucket_demanda) chegou aos dois lugares certos** (tools comerciais +
