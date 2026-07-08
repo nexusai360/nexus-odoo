@@ -57,11 +57,16 @@ reintroduzir duplicação.
 - **Onda B** (itens + tools): EM ANDAMENTO.
   - [x] TB.5 tool `comercial_demanda_em_aberta` (query queryDemandaEmAberta + wrapper +
     catálogo 124 + goldens; integração 53/53). E2E SQL: 395 pedidos/R$77,6M.
-  - [ ] TB.2 `fato_pedido_item` (derivação de raw_sped_documento_item) , base de produto/estoque.
-  - [ ] TB.7 `comercial_pedido_situacao` (imersão: trilha + tempo parado + próxima etapa).
-  - [ ] TB.8 `comercial_demanda_por_produto` (quantidade; depende de TB.2).
-  - [ ] TB.10 `estoque_disponivel` (saldo - comprometido; depende de TB.2).
+  - [x] TB.7 `comercial_pedido_situacao` (imersão: trilha + tempo parado). E2E PV-1471.
+  - [x] TB.1+TB.2 `fato_pedido_item` (derivação; 19292 itens/2428 pedidos/familia 99,7%).
+    Produto+demanda (qtd, ABERTA): PISO BLACK 2096, T600X 772. Casts int via CASE regex.
+  - [ ] TB.8 `comercial_demanda_por_produto` (quantidade; usa fato_pedido_item + bucket ABERTA).
+  - [ ] TB.10 `estoque_disponivel` (saldo fato_estoque_saldo - comprometido; ATENCAO: acertar
+    matching de produto_id item x saldo , T600X deu saldo 0 no teste, verificar id).
   - [ ] TB.11 RBAC das tools novas.
+  - [ ] REBUILD FINAL da imagem app (inclui fato_pedido_item no worker) + recriar worker.
+    (Imagem 02:55 tem classificacao mas NAO item; tabela item populada por run inline, worker
+    atual nao a toca nem zera. Rebuild agrupado no fim da Onda B.)
 - **Onda A** (faturamento venda-real nas ~7 métricas + reports/queries, baseline anti-regressão).
 - **Onda C** (seriais: auditar fato_serial existente , JA tem localNome/dataSaida de lote_serie).
 - **Onda D** (tabela no Nex nos 2 renderers + diretoria API/menu/RBAC/painéis).
