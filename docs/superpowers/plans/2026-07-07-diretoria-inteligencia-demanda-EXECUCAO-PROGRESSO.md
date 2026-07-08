@@ -85,8 +85,21 @@ motivo_baixa, mas vem vazio; parece so seriais em estoque atual, sem historico d
 saida). "Seriais parados vs saidos" precisa cruzar raw_sped_documento_item_rastreabilidade
 (serial <-> item de nota) para o que ja saiu. Onda C = builder novo (nao so auditar).
 
+## Onda A (faturamento venda-real) , VALIDADA, JA CORRETA na Fase 2.5 (2026-07-08)
+Mapeamento: 7 metricas principais JA usam o core de venda-externa (receita-consolidada,
+por-cliente/cfop/empresa/regime/uf-canon, serie-mensal). E2E de paridade:
+- receitaConsolidada.receitaExterna = R$97,6M (venda a cliente externo).
+- intragrupo eliminado = R$69,5M (41,6% do total R$167M) , a triangulacao que o usuario
+  queria fora JA esta fora.
+- is_venda_externa materializado = R$96,7M (consistente; ~1% menor por exigir modelo=55).
+Conclusao: o faturamento de venda NAO precisa de reescrita (evita regressao). As metricas
+"bruto/autorizado/entrada/nao-autorizado" sao intencionalmente brutas (conciliacao).
+REFINAMENTOS OPCIONAIS (baixo impacto, ~1-2%): (a) filtro modelo=55 no core; (b) LIQUIDO
+descontando devolucoes de venda (T0.5, entrada fin.4 CFOP 1202/2202 = R$1,78M = 1,8%).
+Fazer so se o usuario pedir; nao sao bloqueadores.
+
 ## Próxima ação (para o proximo ciclo, contexto renovado)
-- Onda A (faturamento venda-real): a mais delicada. Fazer com baseline anti-regressao
+- Onda A REFINAMENTOS opcionais (acima) , so se pedido.
   ANTES (snapshot dos numeros atuais de src/lib/metrics/fiscal/*), conferir quais ja
   usam o core (Fase 2.5, receita externa) e so tocar as divergentes; E2E de paridade
   MCP fiscal == dashboard (reports/queries/fiscal.ts). NAO regredir os canonicos.
