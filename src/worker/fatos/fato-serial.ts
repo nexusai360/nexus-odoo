@@ -43,13 +43,19 @@ export function mapSerialRow(raw: Record<string, unknown>): FatoSerialRow {
 const CHUNK = 1000;
 
 export async function rebuildFatoSerial(prisma: PrismaClient): Promise<number> {
-  // select só `data` (o registro raw completo é pesado) e insere em chunks para
-  // não estourar memória , a tabela raw tem milhares de seriais.
-  const rawRows = await prisma.rawSpedProdutoLoteSerie.findMany({
-    where: { rawDeleted: false },
-    select: { data: true },
-  });
-  const mapped = rawRows.map((r) => mapSerialRow(r.data as Record<string, unknown>));
+  // Lê o jsonb `data` SEM os blobs de imagem (image_*). A fonte
+  // raw_sped_produto_lote_serie carregava imagens de produto legadas (~3.3GB no
+  // total); o `select: { data: true }` antigo ainda trazia o jsonb inteiro com as
+  // imagens, pesando o heap. A exclusao acontece no Postgres (operador `-` do jsonb)
+  // para o blob nunca chegar ao Node; `mapSerialRow` nao le image_*, resultado
+  // identico. Insere em chunks , a tabela tem milhares de seriais.
+  const rawRows = await prisma.$queryRaw<{ data: Record<string, unknown> }[]>`
+    SELECT data - 'image' - 'image_64' - 'image_128' - 'image_256' - 'image_512'
+                - 'image_1024' - 'image_1920' - 'image_small' - 'image_medium'
+                - 'image_big' - 'image_large' AS data
+    FROM raw_sped_produto_lote_serie
+    WHERE raw_deleted = false`;
+  const mapped = rawRows.map((r) => mapSerialRow(r.data));
   await prisma.$transaction(
     async (tx) => {
       await tx.fatoSerial.deleteMany({});
