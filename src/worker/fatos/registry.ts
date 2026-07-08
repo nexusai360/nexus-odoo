@@ -73,6 +73,16 @@ export const FATO_BUILDERS: FatoBuilderEntry[] = [
   // pegar produtos novos rapidamente; truncate+insert do builder garante
   // consistencia com raw_sped_produto.
   { nome: "fato_produto", cycle: "incremental", run: rebuildFatoProduto },
+  // Itens de pedido (derivacao de raw_sped_documento_item, join fato_produto).
+  // Roda LOGO APOS suas dependencias (fato_pedido/nota/nota_item/produto), nao no
+  // fim da lista: as bases fazem truncate+insert e ZERAM as colunas materializadas;
+  // se a classificacao rodasse por ultimo (depois de ~40 builders), havia uma janela
+  // de varios minutos com bucket_demanda NULL a cada ciclo (a demanda aparecia 0).
+  { nome: "fato_pedido_item", cycle: "incremental", run: rebuildFatoPedidoItem },
+  // POS-PASSO: materializa categoria_operacao/bucket_demanda/pendencia_etapa em
+  // fato_pedido e is_venda_externa em fato_nota_fiscal. Deve rodar logo apos as bases
+  // e os itens (todas ja reconstruidas acima).
+  { nome: "fato_pedido_classificacao", cycle: "incremental", run: rebuildFatoPedidoClassificacao },
   // O1 (onda DF-e): notas de fornecedores capturadas eletronicamente.
   { nome: "fato_dfe", cycle: "incremental", run: rebuildFatoDfe },
   // O3 (onda Pedido): historico de transicao de etapas do pedido.
@@ -109,11 +119,6 @@ export const FATO_BUILDERS: FatoBuilderEntry[] = [
   // B7 (CRM + auditoria). crm.pipeline (0 reg); auditoria.regra (15 reg reais).
   { nome: "fato_crm_pipeline", cycle: "incremental", run: rebuildFatoCrmPipeline },
   { nome: "fato_auditoria_regra", cycle: "incremental", run: rebuildFatoAuditoriaRegra },
-  // Itens de pedido (derivacao de raw_sped_documento_item, join fato_produto). Apos fato_produto.
-  { nome: "fato_pedido_item", cycle: "incremental", run: rebuildFatoPedidoItem },
-  // POS-PASSO: materializa categoria_operacao/bucket_demanda/is_venda_externa.
-  // DEVE ser o ultimo (le fato_pedido/fato_nota_fiscal/itens/etapas ja reconstruidos).
-  { nome: "fato_pedido_classificacao", cycle: "incremental", run: rebuildFatoPedidoClassificacao },
 ];
 
 /**
