@@ -1,5 +1,29 @@
 # STATUS — nexus-odoo
 
+> **2026-07-08 (INTELIGÊNCIA DE DEMANDA , branch feat/menu-diretoria, LOCAL, NÃO
+> mergeado) , Ondas 0/A/B/C + tabela do Nex COMPLETAS; falta só os painéis da
+> diretoria.** Ponto de retomada rico:
+> `docs/superpowers/plans/2026-07-08-HANDOFF-inteligencia-demanda.md` (LER PRIMEIRO).
+> Entregue e testado no dado real (catálogo 128 tools, integração 53/53):
+> - **Motor de demanda por ETAPA** (descarta o `vr_nf` furado): colunas materializadas
+>   `fato_pedido.bucket_demanda`/`categoria_operacao` + `fato_nota_fiscal.is_venda_externa`,
+>   builder `fato_pedido_classificacao` (pós-passo incremental). Demanda ABERTA=395
+>   pedidos/R$77,6M. Núcleo puro TDD em `src/lib/fiscal/regras/` (43 testes).
+> - **6 tools novas** (domínio comercial): `comercial_demanda_em_aberta`,
+>   `comercial_pedido_situacao` (imersão/trilha), `comercial_demanda_por_produto` (qtd),
+>   `comercial_estoque_disponivel` (T600X saldo 549 - demanda 772 = -223), 
+>   `comercial_seriais_produto` (T600X 301 parados/1269 saíram) + `fato_pedido_item` (19292).
+> - **Faturamento de venda** validado JÁ correto (Fase 2.5): intragrupo 41,6% (R$69,5M) fora.
+> - **Tabela no Nex end-to-end** (o "igual ChatGPT"): parser GFM TDD
+>   (`src/components/agent/gfm-table.ts`) + 2 renderers estendidos + regra de prompt `8-tab`.
+> - **FALTA**: painéis da diretoria (integrar `bucket_demanda` ao builder de layout
+>   existente `src/lib/diretoria/builder/`, trocar a lógica antiga `queryDemandasPendentes`
+>   pela nova com paridade, RBAC/menu). Ver §2 do HANDOFF.
+> Armadilhas documentadas no HANDOFF §3 (Prisma value quebra jest do mcp; cast int jsonb via
+> CASE regex; migration drift F6 = ALTER manual; rebuild worker via `app`; produto_id x código
+> no nome; goldens +1 por tool). NUNCA mergear `main` sem "sim". Cron de 10 min ligado.
+
+
 > **2026-06-21 (PIVOT da personalização) , removida a camada de "resumo por IA"; o feature é o
 > RASTREADOR CONTÍNUO POR PARÂMETROS (sempre ligado, sem dado pessoal), a EXPANDIR.**
 > Decisão do usuário: a abordagem certa NÃO é uma IA resumir as conversas (isso obrigava a tratar
