@@ -76,7 +76,7 @@ export type OrdenacaoDemanda = "tempo_parado" | "valor" | "data_criacao";
  */
 export async function queryDemandaEmAberta(
   prisma: PrismaClient,
-  filtros: { empresaId?: number; limite?: number; ordenacao?: OrdenacaoDemanda } = {},
+  filtros: { empresaId?: number; etapa?: string; limite?: number; ordenacao?: OrdenacaoDemanda } = {},
 ): Promise<{
   totalPedidos: number;
   valorTotal: number;
@@ -118,11 +118,15 @@ export async function queryDemandaEmAberta(
     ) h ON true
     WHERE f.bucket_demanda = 'ABERTA'
   `;
-  // Filtro de empresa em memoria (volume pequeno, ~395), evita SQL condicional.
-  const rows =
-    filtros.empresaId != null
-      ? todas.filter((r) => r.empresa_id === filtros.empresaId)
-      : todas;
+  // Filtros em memoria (volume pequeno, ~395), evita SQL condicional. Etapa e
+  // substring case-insensitive: e a ponte "demanda na etapa X" -> pedidos (com
+  // numero) daquela etapa, para o agente conseguir imergir num pedido especifico.
+  const etapaAlvo = filtros.etapa?.trim().toLowerCase();
+  const rows = todas.filter(
+    (r) =>
+      (filtros.empresaId == null || r.empresa_id === filtros.empresaId) &&
+      (!etapaAlvo || (r.etapa_nome ?? "").toLowerCase().includes(etapaAlvo)),
+  );
 
   const totalPedidos = rows.length;
   const valorTotal = rows.reduce((s, r) => s + (r.valor ?? 0), 0);
@@ -190,13 +194,22 @@ export async function queryPedidoSituacao(
     entrouEm: string | null;
     tempoEtapaDias: number | null;
   }[];
+  itens: {
+    produtoId: number | null;
+    produtoNome: string | null;
+    quantidade: number;
+    valorProdutos: number;
+    saldoEstoque: number;
+    faltando: number;
+    temEstoque: boolean;
+  }[];
 }> {
   const alvo = filtros.numero.trim();
   const pedido = await prisma.fatoPedido.findFirst({
     where: { numero: { contains: alvo, mode: "insensitive" } },
     orderBy: { dataOrcamento: "desc" },
   });
-  if (!pedido) return { encontrado: false, pedido: null, trilha: [] };
+  if (!pedido) return { encontrado: false, pedido: null, trilha: [], itens: [] };
 
   const historico = await prisma.fatoPedidoHistorico.findMany({
     where: { pedidoId: pedido.odooId },
@@ -213,6 +226,45 @@ export async function queryPedidoSituacao(
     : (pedido.dataAprovacao ?? pedido.dataOrcamento)?.getTime() ?? null;
   const diasParado =
     refMs != null ? Math.floor((Date.now() - refMs) / 86_400_000) : null;
+
+  // Imersao: os PRODUTOS do pedido + o saldo fisico de cada um (fato_estoque_saldo).
+  // faltando>0 = precisa comprar/repor para conseguir avancar. E o dado que o
+  // usuario pede ("o que tem no pedido, o que falta em estoque para avancar").
+  const itensRaw = await prisma.$queryRaw<
+    {
+      produto_id: number | null;
+      produto_nome: string | null;
+      quantidade: number;
+      valor: number;
+      saldo: number;
+    }[]
+  >`
+    WITH itens AS (
+      SELECT produto_id, max(produto_nome) AS produto_nome,
+             sum(quantidade)::float8 AS quantidade, sum(vr_produtos)::float8 AS valor
+      FROM fato_pedido_item WHERE pedido_id = ${pedido.odooId} GROUP BY produto_id
+    ),
+    saldo AS (
+      SELECT produto_id, sum(quantidade)::float8 AS q FROM fato_estoque_saldo GROUP BY produto_id
+    )
+    SELECT i.produto_id, i.produto_nome, i.quantidade, i.valor, COALESCE(s.q, 0) AS saldo
+    FROM itens i LEFT JOIN saldo s ON s.produto_id = i.produto_id
+    ORDER BY i.valor DESC
+  `;
+  const itens = itensRaw.map((r) => {
+    const quantidade = r.quantidade ?? 0;
+    const saldoEstoque = r.saldo ?? 0;
+    const faltando = Math.max(quantidade - saldoEstoque, 0);
+    return {
+      produtoId: r.produto_id,
+      produtoNome: r.produto_nome,
+      quantidade,
+      valorProdutos: r.valor ?? 0,
+      saldoEstoque,
+      faltando,
+      temEstoque: saldoEstoque >= quantidade,
+    };
+  });
 
   return {
     encontrado: true,
@@ -235,6 +287,7 @@ export async function queryPedidoSituacao(
       entrouEm: h.dataEntrada?.toISOString() ?? null,
       tempoEtapaDias: h.tempoEtapaDias,
     })),
+    itens,
   };
 }
 

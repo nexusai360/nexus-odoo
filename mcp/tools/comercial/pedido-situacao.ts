@@ -35,10 +35,21 @@ const trilhaSchema = z.object({
   tempoEtapaDias: z.number().int().nullable(),
 });
 
+const itemSchema = z.object({
+  produtoId: z.number().int().nullable(),
+  produtoNome: z.string().nullable(),
+  quantidade: z.number(),
+  valorProdutos: z.number(),
+  saldoEstoque: z.number(),
+  faltando: z.number(),
+  temEstoque: z.boolean(),
+});
+
 const dados = z.object({
   encontrado: z.boolean(),
   pedido: pedidoSchema,
   trilha: z.array(trilhaSchema),
+  itens: z.array(itemSchema),
   _RESPOSTA: z.string().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
 });
@@ -70,10 +81,12 @@ export const comercialPedidoSituacao: ToolEntry<Input, Output> = {
   id: "comercial_pedido_situacao",
   dominio: "comercial",
   descricao:
-    "Situacao detalhada de um pedido (imersao): por onde passou (trilha de etapas), " +
-    "em que etapa esta agora, ha quantos dias esta parado, e os dados-chave " +
-    "(operacao, empresa, cliente, valor, aprovacao). Use para 'situacao do pedido " +
-    "PV-xxxx', 'por que o pedido esta parado', 'o que falta no pedido'.",
+    "Situacao detalhada de um pedido (imersao COMPLETA): por onde passou (trilha de " +
+    "etapas), em que etapa esta agora, ha quantos dias esta parado, os dados-chave " +
+    "(operacao, empresa, cliente, valor, aprovacao) E os PRODUTOS do pedido com o " +
+    "saldo em estoque de cada um (faltando>0 = precisa comprar/repor para avancar). " +
+    "Use para 'detalhes do pedido X', 'o que tem no pedido', 'o que falta no pedido', " +
+    "'por que o pedido esta parado', 'quais produtos do pedido nao temos em estoque'.",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
@@ -107,12 +120,35 @@ export const comercialPedidoSituacao: ToolEntry<Input, Output> = {
           : "fora da demanda de venda";
     const parado = p.diasParado != null ? `ha ${p.diasParado} dias` : "sem historico de tempo";
     const aprov = ddmm(p.dataAprovacao);
+
+    // Produtos + estoque: o que o pedido tem e o que falta em estoque para avancar.
+    const semEstoque = d.itens.filter((it) => it.faltando > 0);
+    const nQtd = (v: number) =>
+      v.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
+    let bloco: string;
+    if (d.itens.length === 0) {
+      bloco = " Sem itens de produto detalhados no cache para este pedido.";
+    } else if (semEstoque.length === 0) {
+      bloco = ` ${d.itens.length} item(ns) de produto; todos com saldo suficiente em estoque.`;
+    } else {
+      const faltas = semEstoque
+        .slice(0, 8)
+        .map(
+          (it) =>
+            `${it.produtoNome ?? "produto ?"} (precisa ${nQtd(it.quantidade)}, ha ${nQtd(it.saldoEstoque)}, faltam ${nQtd(it.faltando)})`,
+        )
+        .join("; ");
+      bloco =
+        ` ${d.itens.length} item(ns); ${semEstoque.length} SEM estoque suficiente (precisa comprar/repor para avancar): ${faltas}.`;
+    }
+
     const resposta =
       `${p.numero} (${p.operacaoNome ?? "sem operacao"}, ${brl(p.valorProdutos)}` +
       `${p.participanteNome ? `, cliente ${p.participanteNome}` : ""}). ` +
       `Esta ${parado} na etapa "${p.etapaNome ?? "?"}" (${situacao}).` +
       `${aprov ? ` Aprovado em ${aprov}.` : ""}` +
-      `${passos ? ` Passou por: ${passos}.` : ""}`;
+      `${passos ? ` Passou por: ${passos}.` : ""}` +
+      bloco;
 
     return {
       ...envelope,
@@ -125,6 +161,8 @@ export const comercialPedidoSituacao: ToolEntry<Input, Output> = {
           etapaAtual: p.etapaNome ?? "?",
           diasParado: p.diasParado ?? 0,
           valor: p.valorProdutos,
+          itens: d.itens.length,
+          itensSemEstoque: semEstoque.length,
         },
       },
     };

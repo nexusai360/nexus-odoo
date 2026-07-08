@@ -11,6 +11,14 @@ import { withFreshness } from "../../lib/freshness.js";
 
 const inputSchema = z.object({
   empresaId: z.number().int().optional(),
+  etapa: z
+    .string()
+    .optional()
+    .describe(
+      "Filtra a demanda por etapa (substring, sem acento/maiusc.). Ex.: 'FAT JDS x GRUPO', " +
+        "'GERA BOLETO'. Use para pegar OS PEDIDOS (com numero) de uma etapa e depois imergir " +
+        "num pedido especifico via comercial_pedido_situacao.",
+    ),
   limite: z.number().int().min(1).max(100).optional(),
   ordenacao: z.enum(["tempo_parado", "valor", "data_criacao"]).optional(),
 });
@@ -69,9 +77,12 @@ export const comercialDemandaEmAberta: ToolEntry<Input, Output> = {
   descricao:
     "Demanda em aberta (pedidos de venda a cliente externo, aprovados, ainda sem " +
     "nota fiscal ao consumidor final). Devolve o total em pedidos e em R$, a quebra " +
-    "por etapa (etapa: quantidade) e a lista das demandas mais paradas. Use para " +
+    "por etapa (etapa: quantidade) e a lista de pedidos (com NUMERO). Use para " +
     "'quanto temos de demanda em aberto', 'pedidos parados', 'carteira a faturar'. " +
-    "Aceita filtro por empresa e ordenacao (tempo_parado padrao, valor, data_criacao).",
+    "Para DRILL numa etapa especifica ('os pedidos em FAT JDS x GRUPO'), passe " +
+    "'etapa' para receber os pedidos daquela etapa com numero, e em seguida chame " +
+    "comercial_pedido_situacao com o numero para a imersao completa. Aceita filtro " +
+    "por empresa, etapa e ordenacao (tempo_parado padrao, valor, data_criacao).",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
@@ -84,11 +95,39 @@ export const comercialDemandaEmAberta: ToolEntry<Input, Output> = {
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
 
-    const resposta =
-      d.totalPedidos === 0
-        ? "Nao ha demanda em aberto no momento (nenhum pedido de venda externa aprovado sem nota)."
-        : `${d.totalPedidos} pedidos em demanda aberta, somando ${brl(d.valorTotal)}. ` +
-          `Mostrando ${d.lista.length} (ordenado por ${d.ordenadoPor}).`;
+    const filtradoPorEtapa = input.etapa != null && input.etapa.trim() !== "";
+    const destaque: Record<string, string | number> = {
+      totalPedidos: d.totalPedidos,
+      valorTotal: d.valorTotal,
+    };
+    if (filtradoPorEtapa) {
+      destaque.etapa = input.etapa!;
+      destaque.pedidos = d.lista.map((l) => l.numero ?? "?").join(", ").slice(0, 200);
+    }
+    let resposta: string;
+    if (d.totalPedidos === 0) {
+      resposta = filtradoPorEtapa
+        ? `Nenhum pedido em demanda aberta na etapa "${input.etapa}".`
+        : "Nao ha demanda em aberto no momento (nenhum pedido de venda externa aprovado sem nota).";
+    } else if (filtradoPorEtapa) {
+      // Drill por etapa: enumera os pedidos (com numero) para o agente conseguir
+      // imergir num especifico via comercial_pedido_situacao.
+      const enumerados = d.lista
+        .map(
+          (l) =>
+            `${l.numero ?? "?"} (${brl(l.valorProdutos)}` +
+            `${l.participanteNome ? `, ${l.participanteNome}` : ""}` +
+            `${l.diasParado != null ? `, parado ha ${l.diasParado}d` : ""})`,
+        )
+        .join("; ");
+      resposta =
+        `Etapa "${input.etapa}": ${d.totalPedidos} pedido(s), ${brl(d.valorTotal)}. ` +
+        `Pedidos: ${enumerados}. Para imergir num deles, use comercial_pedido_situacao com o numero.`;
+    } else {
+      resposta =
+        `${d.totalPedidos} pedidos em demanda aberta, somando ${brl(d.valorTotal)}. ` +
+        `Mostrando ${d.lista.length} (ordenado por ${d.ordenadoPor}).`;
+    }
 
     return {
       ...envelope,
@@ -96,7 +135,7 @@ export const comercialDemandaEmAberta: ToolEntry<Input, Output> = {
         ...d,
         _RESPOSTA: resposta,
         _listaTruncada: d.lista.length < d.totalPedidos,
-        _DESTAQUE: { totalPedidos: d.totalPedidos, valorTotal: d.valorTotal },
+        _DESTAQUE: destaque,
         _agregado: { contagem: d.totalPedidos, valor: d.valorTotal },
       },
     };
