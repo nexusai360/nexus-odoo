@@ -2212,6 +2212,27 @@ model FatoPedido {
   @@map("fato_pedido")
 }
 
+// Linhas de produto do pedido, derivadas de raw_sped_documento_item (join por
+// pedido_id). Base para "produto com mais demanda", estoque disponivel e seriais.
+model FatoPedidoItem {
+  odooId         Int      @id @map("odoo_id")
+  pedidoId       Int      @map("pedido_id")
+  produtoId      Int?     @map("produto_id")
+  produtoNome    String?  @map("produto_nome")
+  familiaNome    String?  @map("familia_nome")
+  marcaNome      String?  @map("marca_nome")
+  quantidade     Decimal  @default(0) @db.Decimal(18, 4)
+  cfopId         Int?     @map("cfop_id")
+  localReservaId Int?     @map("local_reserva_id")
+  vrProdutos     Decimal  @default(0) @map("vr_produtos") @db.Decimal(18, 2)
+  vrCusto        Decimal  @default(0) @map("vr_custo") @db.Decimal(18, 2)
+  atualizadoEm   DateTime @default(now()) @map("atualizado_em")
+
+  @@index([pedidoId])
+  @@index([produtoId])
+  @@map("fato_pedido_item")
+}
+
 model FatoPedidoParcela {
   odooId             Int       @id @map("odoo_id")
   pedidoId           Int?      @map("pedido_id")
