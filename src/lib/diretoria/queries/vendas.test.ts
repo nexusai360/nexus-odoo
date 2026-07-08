@@ -46,8 +46,10 @@ describe("queryFormasPagamento (C10)", () => {
 function makePrismaMarca(
   itens: { produtoId: number | null; vrProdutos: number }[],
   produtos: { odooId: number; marcaNome: string | null }[],
+  notasVe: { odooId: number }[] = [{ odooId: 10 }, { odooId: 20 }],
 ) {
   return {
+    fatoNotaFiscal: { findMany: jest.fn().mockResolvedValue(notasVe) },
     fatoNotaFiscalItem: { findMany: jest.fn().mockResolvedValue(itens) },
     fatoProduto: { findMany: jest.fn().mockResolvedValue(produtos) },
   } as unknown as Parameters<typeof queryVendasPorMarca>[0];
@@ -81,11 +83,13 @@ describe("queryVendasPorMarca (C4)", () => {
     expect(r.linhas[0].marca).toBe("Sem marca");
   });
 
-  it("filtra itens de saída (entradaSaida=1) no where", async () => {
-    const prisma = makePrismaMarca([], []);
+  it("restringe a venda externa: busca ids de nota (is_venda_externa) e filtra itens por documentoId", async () => {
+    const prisma = makePrismaMarca([{ produtoId: 1, vrProdutos: 100 }], [{ odooId: 1, marcaNome: "Matrix" }], [{ odooId: 10 }, { odooId: 20 }]);
     await queryVendasPorMarca(prisma, {});
-    const call = (prisma.fatoNotaFiscalItem.findMany as jest.Mock).mock.calls[0][0];
-    expect(call.where.entradaSaida).toBe("1");
+    const notaCall = (prisma.fatoNotaFiscal.findMany as jest.Mock).mock.calls[0][0];
+    expect(notaCall.where.isVendaExterna).toBe(true);
+    const itemCall = (prisma.fatoNotaFiscalItem.findMany as jest.Mock).mock.calls[0][0];
+    expect(itemCall.where.documentoId).toEqual({ in: [10, 20] });
   });
 });
 
@@ -134,12 +138,11 @@ describe("queryVendasPorUf (C3)", () => {
     expect(r.linhas).toEqual([{ uf: "SP", quantidade: 1, valorTotal: 100 }]);
   });
 
-  it("filtra notas de saída autorizadas no where", async () => {
+  it("filtra só venda externa (is_venda_externa) no where", async () => {
     const prisma = makePrismaUf([], []);
     await queryVendasPorUf(prisma, {});
     const call = (prisma.fatoNotaFiscal.findMany as jest.Mock).mock.calls[0][0];
-    expect(call.where.entradaSaida).toBe("1");
-    expect(call.where.situacaoNfe).toBe("autorizada");
+    expect(call.where.isVendaExterna).toBe(true);
   });
 });
 
@@ -207,6 +210,7 @@ describe("queryIndicadoresVendas (C2)", () => {
 describe("queryMargemEstimada (margem aproximada)", () => {
   it("calcula margem = receita - custo (preco_custo x qtd)", async () => {
     const prisma = {
+      fatoNotaFiscal: { findMany: jest.fn().mockResolvedValue([{ odooId: 10 }]) },
       fatoNotaFiscalItem: {
         findMany: jest.fn().mockResolvedValue([
           { produtoId: 1, vrProdutos: 1000, quantidade: 2 },

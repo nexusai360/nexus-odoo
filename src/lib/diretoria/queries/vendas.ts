@@ -27,20 +27,14 @@ function periodoWhere(
   };
 }
 
-// Faturamento REAL = só operações de VENDA. Exclui transferências entre empresas
-// do grupo (natureza/CFOP "TRANSFERENCIA"), devoluções, remessas e retornos , que
-// são saídas, mas não faturamento de venda. Confirmado contra o cache real: das
-// saídas autorizadas (~365 mi), só ~161 mi são venda; ~83 mi eram transferência
-// intra-grupo. O filtro casa qualquer natureza/CFOP que contenha "venda".
-const SO_VENDA_NATUREZA = {
-  naturezaOperacaoNome: { contains: "venda", mode: "insensitive" as const },
-};
-const SO_VENDA_CFOP = {
-  cfopNome: { contains: "venda", mode: "insensitive" as const },
-};
-const SO_VENDA_OPERACAO = {
-  operacaoNome: { contains: "venda", mode: "insensitive" as const },
-};
+// Faturamento REAL = venda a cliente EXTERNO. Usa a coluna materializada
+// `fato_nota_fiscal.is_venda_externa` (saída + autorizada + modelo 55 + CFOP de
+// receita + NÃO intragrupo), a MESMA verdade do Agente Nex e das métricas
+// canônicas (mesma fonte, mesma verdade). O filtro antigo por natureza/CFOP
+// "%venda%" NÃO excluía venda entre empresas do grupo e inflava ~74% (R$167,6M vs
+// R$96,2M reais). Para pedidos, o equivalente é `categoria_operacao='venda'`.
+const SO_VENDA_NOTA = { isVendaExterna: true as const };
+const SO_VENDA_PEDIDO = { categoriaOperacao: "venda" as const };
 
 export interface LinhaFormaPagamento {
   formaPagamento: string;
@@ -87,6 +81,25 @@ export async function queryFormasPagamento(
   return { linhas, valorGeral };
 }
 
+/**
+ * IDs das notas de VENDA EXTERNA no período (fonte materializada). Usado pelas
+ * queries item-a-item (marca, margem), já que o item (`fato_nota_fiscal_item`)
+ * não carrega `is_venda_externa`; ele liga à nota por `documento_id`.
+ */
+async function idsNotasVendaExterna(
+  prisma: PrismaClient,
+  filtros: FiltrosVendas,
+): Promise<number[]> {
+  const notas = await prisma.fatoNotaFiscal.findMany({
+    where: {
+      ...SO_VENDA_NOTA,
+      ...periodoWhere(filtros.periodoDe, filtros.periodoAte, "dataEmissao"),
+    },
+    select: { odooId: true },
+  });
+  return notas.map((n) => n.odooId);
+}
+
 export interface LinhaMarca {
   marca: string;
   quantidade: number;
@@ -103,14 +116,13 @@ export async function queryVendasPorMarca(
   prisma: PrismaClient,
   filtros: FiltrosVendas,
 ): Promise<{ linhas: LinhaMarca[]; valorGeral: number }> {
-  const itens = await prisma.fatoNotaFiscalItem.findMany({
-    where: {
-      entradaSaida: "1",
-      ...SO_VENDA_CFOP,
-      ...periodoWhere(filtros.periodoDe, filtros.periodoAte, "dataEmissao"),
-    },
-    select: { produtoId: true, vrProdutos: true },
-  });
+  const notaIds = await idsNotasVendaExterna(prisma, filtros);
+  const itens = notaIds.length
+    ? await prisma.fatoNotaFiscalItem.findMany({
+        where: { documentoId: { in: notaIds } },
+        select: { produtoId: true, vrProdutos: true },
+      })
+    : [];
 
   const produtoIds = [
     ...new Set(
@@ -173,9 +185,7 @@ export async function queryVendasPorUf(
 ): Promise<{ linhas: LinhaUf[]; valorGeral: number }> {
   const notas = await prisma.fatoNotaFiscal.findMany({
     where: {
-      entradaSaida: "1",
-      situacaoNfe: "autorizada",
-      ...SO_VENDA_NATUREZA,
+      ...SO_VENDA_NOTA,
       ...periodoWhere(filtros.periodoDe, filtros.periodoAte, "dataEmissao"),
     },
     select: { participanteId: true, vrNf: true },
@@ -245,7 +255,10 @@ export async function queryModalidadesEMaiorPedido(
   filtros: FiltrosVendas,
 ): Promise<{ modalidades: LinhaModalidade[]; maiorPedido: MaiorPedido | null }> {
   const pedidos = await prisma.fatoPedido.findMany({
-    where: periodoWhere(filtros.periodoDe, filtros.periodoAte, "dataOrcamento"),
+    where: {
+      ...SO_VENDA_PEDIDO,
+      ...periodoWhere(filtros.periodoDe, filtros.periodoAte, "dataOrcamento"),
+    },
     select: {
       operacaoNome: true,
       vrProdutos: true,
@@ -297,20 +310,39 @@ export async function queryIndicadoresVendas(
   prisma: PrismaClient,
   filtros: FiltrosVendas,
 ): Promise<IndicadoresVendas> {
+  const escopo = filtros.ufs && filtros.ufs.length ? new Set(filtros.ufs) : null;
   const notas = await prisma.fatoNotaFiscal.findMany({
     where: {
-      entradaSaida: "1",
-      situacaoNfe: "autorizada",
-      ...SO_VENDA_NATUREZA,
+      ...SO_VENDA_NOTA,
       ...periodoWhere(filtros.periodoDe, filtros.periodoAte, "dataEmissao"),
     },
-    select: { vrNf: true },
+    select: { vrNf: true, participanteId: true },
   });
-  const faturamento = notas.reduce((s, n) => s + Number(n.vrNf), 0);
+
+  // UF-scoping: quando o usuário é restrito a UFs, o faturamento também respeita
+  // o recorte (via UF do cliente em fato_parceiro), igual ao mapa (queryVendasPorUf).
+  let notasEscopo = notas;
+  if (escopo) {
+    const partIds = [
+      ...new Set(notas.map((n) => n.participanteId).filter((x): x is number => x != null)),
+    ];
+    const parceiros = partIds.length
+      ? await prisma.fatoParceiro.findMany({
+          where: { odooId: { in: partIds } },
+          select: { odooId: true, uf: true },
+        })
+      : [];
+    const ufPorParceiro = new Map(parceiros.map((p) => [p.odooId, siglaDeUf(p.uf) ?? "??"]));
+    notasEscopo = notas.filter((n) => {
+      const uf = n.participanteId != null ? ufPorParceiro.get(n.participanteId) ?? "??" : "??";
+      return escopo.has(uf);
+    });
+  }
+  const faturamento = notasEscopo.reduce((s, n) => s + Number(n.vrNf), 0);
 
   const numPedidos = await prisma.fatoPedido.count({
     where: {
-      ...SO_VENDA_OPERACAO,
+      ...SO_VENDA_PEDIDO,
       ...periodoWhere(filtros.periodoDe, filtros.periodoAte, "dataOrcamento"),
     },
   });
@@ -336,14 +368,13 @@ export async function queryMargemEstimada(
   prisma: PrismaClient,
   filtros: FiltrosVendas,
 ): Promise<MargemEstimada> {
-  const itens = await prisma.fatoNotaFiscalItem.findMany({
-    where: {
-      entradaSaida: "1",
-      ...SO_VENDA_CFOP,
-      ...periodoWhere(filtros.periodoDe, filtros.periodoAte, "dataEmissao"),
-    },
-    select: { produtoId: true, vrProdutos: true, quantidade: true },
-  });
+  const notaIds = await idsNotasVendaExterna(prisma, filtros);
+  const itens = notaIds.length
+    ? await prisma.fatoNotaFiscalItem.findMany({
+        where: { documentoId: { in: notaIds } },
+        select: { produtoId: true, vrProdutos: true, quantidade: true },
+      })
+    : [];
 
   const produtoIds = [
     ...new Set(itens.map((i) => i.produtoId).filter((x): x is number => x != null)),

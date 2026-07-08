@@ -52,7 +52,7 @@ export default async function DiretoriaVisaoGeralPage({
       queryIndicadoresVendas(prisma, filtros),
       queryVendasPorUf(prisma, filtros),
       queryVendasPorMarca(prisma, filtros),
-      queryIndicadoresDemandas(prisma, hoje),
+      queryIndicadoresDemandas(prisma, hoje, { ufs }),
       queryIndicadoresEstoque(prisma),
       queryEstoquePorFamilia(prisma),
       queryContasAReceber(prisma, {}, hoje),
