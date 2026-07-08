@@ -60,5 +60,29 @@ export async function rebuildFatoSerial(prisma: PrismaClient): Promise<number> {
     },
     { timeout: 300_000, maxWait: 15_000 },
   );
+
+  // Enriquecimento: a fonte raw (sped.produto.lote.serie) vem com local_id/data_venda
+  // VAZIOS em todas as linhas. A saida real do serial esta na RASTREABILIDADE de item
+  // de nota (serial -> item -> nota de saida autorizada). Preenche data_saida (data da
+  // nota de saida mais recente) e local_nome (armazem de origem dessa saida) para os
+  // seriais que ja sairam; os parados ficam com data_saida NULL (correto).
+  await prisma.$executeRaw`
+    UPDATE fato_serial fs
+    SET data_saida = sub.data_saida,
+        local_nome = COALESCE(fs.local_nome, sub.local_nome)
+    FROM (
+      SELECT r.data->'lote_serie_id'->>1 AS serial,
+             max(n.data_emissao) AS data_saida,
+             (array_agg(r.data->'local_origem_id'->>1 ORDER BY n.data_emissao DESC NULLS LAST))[1] AS local_nome
+      FROM raw_sped_documento_item_rastreabilidade r
+      JOIN fato_nota_fiscal_item ii
+        ON ii.odoo_id = CASE WHEN (r.data->'item_id'->>0) ~ '^[0-9]+$'
+                             THEN (r.data->'item_id'->>0)::int END
+      JOIN fato_nota_fiscal n ON n.odoo_id = ii.documento_id
+      WHERE n.entrada_saida = '1' AND n.situacao_nfe = 'autorizada'
+      GROUP BY r.data->'lote_serie_id'->>1
+    ) sub
+    WHERE fs.serial = sub.serial
+  `;
   return mapped.length;
 }
