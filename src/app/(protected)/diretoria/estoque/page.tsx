@@ -17,6 +17,7 @@ import {
   querySeriais,
   queryComprasSerie,
   queryEstoqueGranular,
+  queryEstoqueDisponivelDiretoria,
 } from "@/lib/diretoria/queries/estoque";
 import { SyncNowButton } from "@/components/diretoria/sync-now-button";
 import { FreshnessBadge } from "@/components/diretoria/freshness-badge";
@@ -47,9 +48,10 @@ export default async function DiretoriaEstoquePage() {
     queryIndicadoresAvancadosEstoque(prisma, hoje),
     querySeriais(prisma, hoje, 200),
   ]);
-  const [comprasSerie, granular] = await Promise.all([
+  const [comprasSerie, granular, estoqueDisponivel] = await Promise.all([
     queryComprasSerie(prisma),
     queryEstoqueGranular(prisma),
+    queryEstoqueDisponivelDiretoria(prisma, { limite: 300 }),
   ]);
 
   const podeSync = await canDiretoria(user, "diretoria.sync.force");
@@ -68,6 +70,7 @@ export default async function DiretoriaEstoquePage() {
     resumoCompras,
     comprasSerie,
     granular,
+    estoqueDisponivel,
   };
 
   const podeEditarGlobal = user.platformRole === "super_admin" || user.platformRole === "admin";
@@ -81,6 +84,7 @@ export default async function DiretoriaEstoquePage() {
     estoque: [
       { componenteId: "A-02", ordem: 0, largura: 4, altura: 5, x: 0, y: 0 },
       { componenteId: "A-05", ordem: 1, largura: 4, altura: 5, x: 4, y: 0 },
+      { componenteId: "A-12", ordem: 2, largura: 8, altura: 6, x: 0, y: 5 },
     ],
     distribuicao: [
       { componenteId: "A-11", ordem: 0, largura: 8, altura: 5, x: 0, y: 0 },

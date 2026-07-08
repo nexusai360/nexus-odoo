@@ -9,6 +9,7 @@ import { PackageCheck, Wallet, AlertTriangle, HandCoins } from "lucide-react";
 
 import { KpiButton } from "@/components/diretoria/kit/kpi-button";
 import { RankingCards } from "@/components/diretoria/charts/ranking-cards";
+import { DonutChart } from "@/components/diretoria/charts/donut-chart";
 import { BrazilMap } from "@/components/diretoria/brazil-map/brazil-map";
 import { DataTable, type ColumnDef } from "@/components/charts/data-table";
 import { brl, brlCompacto, num, DASH, rotuloUf, ufValida, nomeLimpo } from "@/components/diretoria/kit/format";
@@ -65,6 +66,48 @@ function Pendentes({ d }: { d: PedidosData }) {
   return <DataTable columns={colunas} rows={linhas} searchable compactoInicial alturaFluida exportFilename="pedidos-pendentes" estado={linhas.length === 0 ? "vazio" : "ok"} />;
 }
 
+// B-06 , Demanda por etapa: rosca do valor em aberto por etapa do pedido.
+function DemandaPorEtapa({ d }: { d: PedidosData }) {
+  const data = d.porEtapa.map((e) => ({ label: e.etapaNome ?? "Sem etapa", valor: e.valorTotal }));
+  if (!data.length) {
+    return <p className="py-6 text-center text-sm text-muted-foreground">Sem demanda em aberto.</p>;
+  }
+  return <DonutChart data={data} maxFatias={8} />;
+}
+
+// B-07 , Demandas mais paradas: tabela com dias parado e selo de criticidade.
+// A cor é reforçada pelo texto do selo (não depende só de cor , WCAG).
+function selo(dias: number | null): "Crítico" | "Atenção" | "Recente" {
+  if (dias != null && dias >= 30) return "Crítico";
+  if (dias != null && dias >= 14) return "Atenção";
+  return "Recente";
+}
+function MaisParadas({ d }: { d: PedidosData }) {
+  const linhas = d.maisParadas.map((l) => ({
+    numero: l.numero ?? DASH,
+    cliente: nomeLimpo(l.cliente) || DASH,
+    uf: rotuloUf(l.uf),
+    etapa: l.etapa ?? DASH,
+    diasParado: l.diasParado ?? 0,
+    situacao: selo(l.diasParado),
+    valor: l.valor,
+  }));
+  const colunas: ColumnDef<(typeof linhas)[number]>[] = [
+    { key: "numero", header: "Número", tipo: "texto" },
+    { key: "cliente", header: "Cliente", tipo: "texto" },
+    { key: "uf", header: "UF", tipo: "texto" },
+    { key: "etapa", header: "Etapa", tipo: "texto" },
+    { key: "diasParado", header: "Dias parado", tipo: "numero" },
+    { key: "situacao", header: "Situação", tipo: "tag", tagCores: {
+      "Crítico": "bg-rose-500/10 text-rose-400 ring-1 ring-inset ring-rose-500/20",
+      "Atenção": "bg-amber-500/10 text-amber-500 ring-1 ring-inset ring-amber-500/20",
+      "Recente": "bg-emerald-500/10 text-emerald-400 ring-1 ring-inset ring-emerald-500/20",
+    } },
+    { key: "valor", header: "Valor", tipo: "moeda" },
+  ];
+  return <DataTable columns={colunas} rows={linhas} searchable compactoInicial alturaFluida exportFilename="demandas-mais-paradas" estado={linhas.length === 0 ? "vazio" : "ok"} />;
+}
+
 /** Mapeia o componenteId do catálogo para o render BI de Pedidos. */
 export function renderBlocoPedidos(id: string, d: PedidosData): ReactNode {
   switch (id) {
@@ -73,6 +116,8 @@ export function renderBlocoPedidos(id: string, d: PedidosData): ReactNode {
     case "B-03": return <MapaDemandas d={d} />;
     case "B-04": return <Pendentes d={d} />;
     case "B-05": return <RankingDemandasUf d={d} />;
+    case "B-06": return <DemandaPorEtapa d={d} />;
+    case "B-07": return <MaisParadas d={d} />;
     default:
       return <p className="py-6 text-center text-sm text-muted-foreground">Componente em breve.</p>;
   }

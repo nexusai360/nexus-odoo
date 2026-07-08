@@ -8,6 +8,8 @@ import {
   queryIndicadoresDemandas,
   queryDemandasPorUf,
   queryDemandasPendentes,
+  queryDemandaPorEtapa,
+  queryDemandasMaisParadas,
 } from "@/lib/diretoria/queries/pedidos";
 import { queryContasAReceber } from "@/lib/reports/queries/financeiro";
 import { SyncNowButton } from "@/components/diretoria/sync-now-button";
@@ -25,10 +27,12 @@ export default async function DiretoriaPedidosPage() {
   const ufs = await userUfs(user);
   const hoje = new Date();
 
-  const [indicadores, porUf, pendentes, aReceber] = await Promise.all([
-    queryIndicadoresDemandas(prisma, hoje),
+  const [indicadores, porUf, pendentes, porEtapa, maisParadas, aReceber] = await Promise.all([
+    queryIndicadoresDemandas(prisma, hoje, { ufs }),
     queryDemandasPorUf(prisma, { ufs }),
     queryDemandasPendentes(prisma, hoje, { ufs }),
+    queryDemandaPorEtapa(prisma, { ufs }),
+    queryDemandasMaisParadas(prisma, hoje, { ufs, limite: 50 }),
     queryContasAReceber(prisma, {}, hoje),
   ]);
 
@@ -40,6 +44,8 @@ export default async function DiretoriaPedidosPage() {
     aReceber: aReceber.totalAReceber,
     porUf,
     pendentes,
+    porEtapa: porEtapa.linhas,
+    maisParadas: maisParadas.linhas,
   };
 
   const podeEditarGlobal = user.platformRole === "super_admin" || user.platformRole === "admin";
@@ -48,9 +54,13 @@ export default async function DiretoriaPedidosPage() {
       { componenteId: "B-01", ordem: 0, largura: 8, altura: 2, x: 0, y: 0 },
       { componenteId: "B-02", ordem: 1, largura: 5, altura: 6, x: 0, y: 2 },
       { componenteId: "B-05", ordem: 2, largura: 3, altura: 6, x: 5, y: 2 },
+      { componenteId: "B-06", ordem: 3, largura: 8, altura: 4, x: 0, y: 8 },
     ],
     mapa: [{ componenteId: "B-02", ordem: 0, largura: 8, altura: 6, x: 0, y: 0 }],
-    pendentes: [{ componenteId: "B-04", ordem: 0, largura: 8, altura: 6, x: 0, y: 0 }],
+    pendentes: [
+      { componenteId: "B-04", ordem: 0, largura: 8, altura: 6, x: 0, y: 0 },
+      { componenteId: "B-07", ordem: 1, largura: 8, altura: 6, x: 0, y: 6 },
+    ],
   };
   const abasIds = Object.keys(PADROES_ABA);
   const salvosPorAba = await Promise.all(

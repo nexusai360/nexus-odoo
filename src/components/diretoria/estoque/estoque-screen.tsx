@@ -30,7 +30,7 @@ import type {
   IndicadoresEstoque, LinhaAgrupada, CatalogoModelo, CatalogoEstoque,
   SerialLinha, CompraFornecedor, CompraAtivaLinha, ComprasAtivas,
   ResumoCompras, FornecedorResumo, IndicadoresAvancados, ComprasSerie,
-  LinhaEstoqueGranular,
+  LinhaEstoqueGranular, EstoqueDisponivelLinha,
 } from "@/lib/diretoria/queries/estoque";
 import type { StatusPrazo } from "@/lib/diretoria/cores";
 
@@ -65,6 +65,13 @@ export interface EstoqueData {
   comprasSerie: ComprasSerie;
   /** Linhas granulares (produto×local) para os filtros globais do construtor. */
   granular: LinhaEstoqueGranular[];
+  /** A12 , estoque disponível (saldo menos demanda em aberta), negativos = comprar. */
+  estoqueDisponivel: {
+    linhas: EstoqueDisponivelLinha[];
+    produtos: number;
+    negativos: number;
+    unidadesAComprar: number;
+  };
 }
 
 // ---------------------------------------------------------------------------

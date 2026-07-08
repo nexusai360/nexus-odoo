@@ -334,6 +334,42 @@ function MatrizFornecedor({ d }: { d: EstoqueData }) {
   );
 }
 
+// A-12 , Estoque disponível (a comprar): saldo físico menos demanda em aberta.
+// Disponível negativo = precisa comprar; o selo "Comprar"/"OK" reforça a cor.
+function EstoqueDisponivel({ d }: { d: EstoqueData }) {
+  const ed = d.estoqueDisponivel;
+  const linhas = ed.linhas.map((l) => ({
+    produtoId: l.produtoId ?? undefined,
+    produto: nomeLimpo(l.produto) || DASH,
+    saldo: l.saldo,
+    demanda: l.demanda,
+    disponivel: l.disponivel,
+    situacao: l.disponivel < 0 ? "Comprar" : "OK",
+  }));
+  const colunas: ColumnDef<(typeof linhas)[number]>[] = [
+    { key: "produto", header: "Produto", tipo: "texto" },
+    { key: "saldo", header: "Saldo", tipo: "numero" },
+    { key: "demanda", header: "Demanda", tipo: "numero" },
+    { key: "disponivel", header: "Disponível", tipo: "numero" },
+    { key: "situacao", header: "Situação", tipo: "tag", tagCores: {
+      "Comprar": "bg-rose-500/10 text-rose-400 ring-1 ring-inset ring-rose-500/20",
+      "OK": "bg-emerald-500/10 text-emerald-400 ring-1 ring-inset ring-emerald-500/20",
+    } },
+  ];
+  return (
+    <div className="flex h-full flex-col gap-3">
+      <div className="grid grid-cols-3 gap-2.5">
+        <KpiButton rotulo="Produtos" valor={num.format(ed.produtos)} icone={Package} hint="Com saldo em estoque" />
+        <KpiButton rotulo="A comprar" valor={num.format(ed.negativos)} icone={AlertTriangle} tone={ed.negativos > 0 ? "danger" : "success"} hint="Disponível negativo" />
+        <KpiButton rotulo="Unidades faltando" valor={num.format(Math.round(ed.unidadesAComprar))} icone={ShoppingCart} tone="warning" hint="Total a repor" />
+      </div>
+      <div className="min-h-0 flex-1">
+        <DataTable columns={colunas} rows={linhas} searchable compactoInicial alturaFluida exportFilename="estoque-disponivel" estado={linhas.length === 0 ? "vazio" : "ok"} />
+      </div>
+    </div>
+  );
+}
+
 /** Mapeia o componenteId do catálogo para o render BI, usando o EstoqueData.
  * `periodo`/`customRange` (pílula global) comandam os blocos temporais (A-10). */
 export function renderBlocoEstoque(
@@ -351,6 +387,7 @@ export function renderBlocoEstoque(
     case "A-11": return <Distribuicao d={d} />;
     case "A-05": return <Catalogo d={d} />;
     case "A-06": return <Seriais d={d} />;
+    case "A-12": return <EstoqueDisponivel d={d} />;
     case "A-07": return <ComprasAtivas d={d} />;
     case "A-08": return <MatrizFornecedor d={d} />;
     case "A-10": return <SerieTemporalCompras serie={d.comprasSerie} periodo={periodo} customRange={customRange} />;

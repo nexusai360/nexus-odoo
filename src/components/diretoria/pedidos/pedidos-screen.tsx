@@ -21,13 +21,21 @@ import { DataTable, type ColumnDef } from "@/components/charts/data-table";
 import { DonutChart } from "@/components/diretoria/charts/donut-chart";
 import { BrazilMap } from "@/components/diretoria/brazil-map/brazil-map";
 import { brl, brlCompacto, num, pct1, DASH } from "@/components/diretoria/kit/format";
-import type { IndicadoresDemandas, DemandaUf, DemandaLinha } from "@/lib/diretoria/queries/pedidos";
+import type {
+  IndicadoresDemandas,
+  DemandaUf,
+  DemandaLinha,
+  DemandaEtapa,
+  DemandaParada,
+} from "@/lib/diretoria/queries/pedidos";
 
 export interface PedidosData {
   indicadores: IndicadoresDemandas;
   aReceber: number;
   porUf: { linhas: DemandaUf[]; valorGeral: number };
   pendentes: { linhas: DemandaLinha[] };
+  porEtapa: DemandaEtapa[];
+  maisParadas: DemandaParada[];
 }
 
 const ABAS = [

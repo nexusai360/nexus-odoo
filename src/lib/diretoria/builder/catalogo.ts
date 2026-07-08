@@ -97,6 +97,7 @@ export const CATALOGO: ComponenteCatalogo[] = [
   comp({ id: "A-11", nome: "Distribuição dinâmica (rosca/barras)", dominio: "A", tipo: "widget", fonteDado: "real" }),
   comp({ id: "A-05", nome: "Catálogo de modelos", dominio: "A", tipo: "tabela", fonteDado: "real", consome: ["familia", "marca"] }),
   comp({ id: "A-06", nome: "Seriais em estoque", dominio: "A", tipo: "tabela", fonteDado: "real" }),
+  comp({ id: "A-12", nome: "Estoque disponível (a comprar)", dominio: "A", tipo: "tabela", fonteDado: "real" }),
   comp({ id: "A-07", nome: "Compras ativas", dominio: "K", tipo: "widget", fonteDado: "real" }),
   comp({ id: "A-08", nome: "Matriz por fornecedor", dominio: "K", tipo: "tabela", fonteDado: "real" }),
   comp({ id: "A-10", nome: "Compras ao longo do tempo (NF entrada)", dominio: "K", tipo: "widget", fonteDado: "real" }),
@@ -115,6 +116,8 @@ export const CATALOGO: ComponenteCatalogo[] = [
   comp({ id: "B-03", nome: "Mapa de demandas por estado", dominio: "B", tipo: "mapa", fonteDado: "real", publica: ["uf"] }),
   comp({ id: "B-04", nome: "Pedidos pendentes", dominio: "B", tipo: "tabela", fonteDado: "real" }),
   comp({ id: "B-05", nome: "Ranking de estados (demandas)", dominio: "B", tipo: "widget", fonteDado: "real" }),
+  comp({ id: "B-06", nome: "Demanda por etapa", dominio: "B", tipo: "grafico", fonteDado: "real" }),
+  comp({ id: "B-07", nome: "Demandas mais paradas", dominio: "B", tipo: "tabela", fonteDado: "real" }),
 ];
 
 const PORID = new Map(CATALOGO.map((c) => [c.id, c]));
