@@ -28,13 +28,20 @@ até a saída. Ajustar SPEC v3 §2 e a decisão 07 #4 na Onda A. Registrado para
 reintroduzir duplicação.
 
 ## Ondas (PLAN v3)
-- **Onda 0** (núcleo + materialização): EM ANDAMENTO.
-  - [ ] T0.0 baseline anti-regressão (script) , antes da Onda A.
-  - [ ] T0.1 fixtures reais (dispensável: testes já usam CFOPs/gatilhos reais inline).
-  - [x] T0.2 `classificaEtapaDemanda` (TDD) , estágio ABERTA/FECHADA/IGNORAR por gatilho.
-  - [x] T0.3 `classificaOperacao` (TDD) , reusa classificarCfop+ehNotaIntragrupo. CFOP
-    recebido JÁ EXTRAÍDO (do item, não do operacao_nome que tem CFOP no meio). Venda
-    futura 5922: entraDemanda=true, entraFaturamentoVenda=false. 6/6 verde.
+- **Onda 0** (núcleo + materialização): **COMPLETA** (commitada). E2E real:
+  demanda ABERTA=395 pedidos/R$77,6M, FECHADA=810, IGNORAR=1112; venda externa=1376
+  notas/R$96,7M. Builder roda em uma passada (CTE distinct on) + updateMany.
+  - [x] T0.0/T0.1 dispensados (baseline será feito na Onda A; testes usam dado real inline).
+  - [x] T0.2 `classificaEtapaDemanda` (TDD 7/7).
+  - [x] T0.3 `classificaOperacao` (TDD 6/6) , CFOP já extraído do item.
+  - [x] T0.4 `notaEhVendaExterna` (TDD) , +filtro modelo='55'.
+  - [x] T0.5 `notaEhDevolucaoDeVenda`+`faturamentoLiquido` (TDD) , entrada fin.4 CFOP 1202/2202.
+  - [x] T0.6 colunas derivadas (ALTER idempotente em dev; migration formal fica p/ merge, drift F6).
+  - [x] T0.7 builder `fato_pedido_classificacao` (incremental, por último, updateMany).
+  - CASO DE BORDA (refino futuro, irrisório): "Transf. DF x Sergipe" (7 pedidos, R$103k)
+    tem itens com CFOP 5102 (venda) e participante não detectado como grupo → ABERTA.
+    Verdade fiscal (CFOP) prevalece; revisar intragrupo da filial Sergipe depois.
+  - OBS T0.3 antiga: Venda futura 5922 entraDemanda=true, entraFaturamentoVenda=false.
   - [ ] T0.4 `isVendaExterna` no core (TDD).
   - [ ] T0.5 devolução de venda / líquido (TDD) , item cfop 1202/2202.
   - [ ] T0.6 migration colunas derivadas.
