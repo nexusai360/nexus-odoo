@@ -524,3 +524,85 @@ export async function queryComprasAtivas(
   });
   return { linhas: linhas.slice(0, limit), total: rows.length, valorTotal, atrasadas };
 }
+
+export interface EstoqueDisponivelLinha {
+  produtoId: number | null;
+  produto: string | null;
+  saldo: number;
+  demanda: number;
+  disponivel: number;
+}
+
+/**
+ * A12 , Estoque disponível = saldo físico (fato_estoque_saldo) menos o já
+ * comprometido em demanda em aberta (itens de pedidos bucket_demanda='ABERTA').
+ * Disponível NEGATIVO = vendido mais do que há em estoque = precisa comprar.
+ * Espelha a tool comercial_estoque_disponivel (paridade: 484 negativos no cache
+ * atual). Ordena do mais negativo (maior urgência de compra) para o mais positivo.
+ */
+export async function queryEstoqueDisponivelDiretoria(
+  prisma: PrismaClient,
+  filtros: { limite?: number } = {},
+): Promise<{
+  linhas: EstoqueDisponivelLinha[];
+  produtos: number;
+  negativos: number;
+  unidadesAComprar: number;
+}> {
+  const limite = Math.min(Math.max(filtros.limite ?? 50, 1), 300);
+
+  // Saldo físico agregado por produto.
+  const saldos = await prisma.fatoEstoqueSaldo.findMany({
+    select: { produtoId: true, produtoNome: true, quantidade: true },
+  });
+  const saldoMap = new Map<number, { nome: string | null; q: number }>();
+  for (const s of saldos) {
+    if (s.produtoId == null) continue;
+    const q = Number(s.quantidade ?? 0);
+    const cur = saldoMap.get(s.produtoId);
+    if (cur) {
+      cur.q += q;
+      if (!cur.nome && s.produtoNome) cur.nome = s.produtoNome;
+    } else {
+      saldoMap.set(s.produtoId, { nome: s.produtoNome, q });
+    }
+  }
+
+  // Demanda em aberta agregada por produto (itens de pedidos ABERTA).
+  const abertos = await prisma.fatoPedido.findMany({
+    where: { bucketDemanda: "ABERTA" },
+    select: { odooId: true },
+  });
+  const ids = abertos.map((a) => a.odooId);
+  const itens = ids.length
+    ? await prisma.fatoPedidoItem.findMany({
+        where: { pedidoId: { in: ids } },
+        select: { produtoId: true, quantidade: true },
+      })
+    : [];
+  const demMap = new Map<number, number>();
+  for (const it of itens) {
+    if (it.produtoId == null) continue;
+    demMap.set(it.produtoId, (demMap.get(it.produtoId) ?? 0) + Number(it.quantidade ?? 0));
+  }
+
+  const linhas: EstoqueDisponivelLinha[] = [];
+  let negativos = 0;
+  let unidadesAComprar = 0;
+  for (const [produtoId, { nome, q }] of saldoMap) {
+    const demanda = demMap.get(produtoId) ?? 0;
+    const disponivel = q - demanda;
+    if (disponivel < 0) {
+      negativos += 1;
+      unidadesAComprar += demanda - q;
+    }
+    linhas.push({ produtoId, produto: nome, saldo: q, demanda, disponivel });
+  }
+  linhas.sort((a, b) => a.disponivel - b.disponivel || (b.demanda - a.demanda));
+  return {
+    linhas: linhas.slice(0, limite),
+    produtos: saldoMap.size,
+    negativos,
+    unidadesAComprar,
+  };
+}

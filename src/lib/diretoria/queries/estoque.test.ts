@@ -8,6 +8,7 @@ import {
   queryIndicadoresAvancadosEstoque,
   queryComprasSerie,
   queryEstoqueGranular,
+  queryEstoqueDisponivelDiretoria,
 } from "./estoque";
 
 describe("queryIndicadoresEstoque (A4)", () => {
@@ -281,5 +282,59 @@ describe("queryComprasAtivas (A7)", () => {
     expect(r.linhas[0].statusPrazo).toBeNull();
     expect(r.linhas[0].dataPrevista).toBeNull();
     expect(r.atrasadas).toBe(0);
+  });
+});
+
+describe("queryEstoqueDisponivelDiretoria (A12)", () => {
+  function makePrisma(
+    saldos: { produtoId: number | null; produtoNome: string | null; quantidade: number }[],
+    abertos: { odooId: number }[],
+    itens: { produtoId: number | null; quantidade: number }[],
+  ) {
+    return {
+      fatoEstoqueSaldo: { findMany: jest.fn().mockResolvedValue(saldos) },
+      fatoPedido: { findMany: jest.fn().mockResolvedValue(abertos) },
+      fatoPedidoItem: { findMany: jest.fn().mockResolvedValue(itens) },
+    } as unknown as Parameters<typeof queryEstoqueDisponivelDiretoria>[0];
+  }
+
+  it("calcula disponível = saldo - demanda aberta, conta negativos e ordena por urgência", async () => {
+    const prisma = makePrisma(
+      [
+        { produtoId: 1, produtoNome: "Esteira", quantidade: 10 },
+        { produtoId: 1, produtoNome: "Esteira", quantidade: 5 }, // agrega saldo do mesmo produto = 15
+        { produtoId: 2, produtoNome: "Bike", quantidade: 3 },
+        { produtoId: 3, produtoNome: "Anilha", quantidade: 8 },
+      ],
+      [{ odooId: 100 }, { odooId: 200 }],
+      [
+        { produtoId: 1, quantidade: 4 }, // Esteira: 15-4 = 11
+        { produtoId: 2, quantidade: 10 }, // Bike: 3-10 = -7 (negativo)
+      ],
+    );
+    const r = await queryEstoqueDisponivelDiretoria(prisma, {});
+    expect(r.produtos).toBe(3);
+    expect(r.negativos).toBe(1);
+    expect(r.unidadesAComprar).toBe(7);
+    // mais negativo primeiro
+    expect(r.linhas[0]).toEqual({ produtoId: 2, produto: "Bike", saldo: 3, demanda: 10, disponivel: -7 });
+    expect(r.linhas.find((l) => l.produtoId === 1)).toEqual({ produtoId: 1, produto: "Esteira", saldo: 15, demanda: 4, disponivel: 11 });
+    // produto sem demanda mantém disponível = saldo
+    expect(r.linhas.find((l) => l.produtoId === 3)).toEqual({ produtoId: 3, produto: "Anilha", saldo: 8, demanda: 0, disponivel: 8 });
+  });
+
+  it("respeita limite", async () => {
+    const prisma = makePrisma(
+      [
+        { produtoId: 1, produtoNome: "A", quantidade: 1 },
+        { produtoId: 2, produtoNome: "B", quantidade: 2 },
+        { produtoId: 3, produtoNome: "C", quantidade: 3 },
+      ],
+      [],
+      [],
+    );
+    const r = await queryEstoqueDisponivelDiretoria(prisma, { limite: 2 });
+    expect(r.linhas).toHaveLength(2);
+    expect(r.produtos).toBe(3);
   });
 });
