@@ -61,6 +61,16 @@ export const FATO_BUILDERS: FatoBuilderEntry[] = [
   { nome: "fato_pedido_parcela", cycle: "incremental", run: rebuildFatoPedidoParcela },
   { nome: "fato_nota_fiscal", cycle: "incremental", run: rebuildFatoNotaFiscal },
   { nome: "fato_nota_fiscal_item", cycle: "incremental", run: rebuildFatoNotaFiscalItem },
+  // === GRUPO PEDIDO/CLASSIFICACAO , juntos e LOGO APOS suas dependencias ===
+  // As bases (fato_pedido/fato_nota_fiscal[_item]) fazem truncate+insert e ZERAM as
+  // colunas materializadas; a classificacao repopula. Se ela rodasse por ultimo (apos
+  // ~40 builders), havia uma janela de varios minutos por ciclo com bucket_demanda
+  // NULL (a demanda aparecia 0). Manter este grupo colado as bases minimiza a janela
+  // ao estritamente necessario (produto -> itens -> classificacao). NAO afastar.
+  { nome: "fato_produto", cycle: "incremental", run: rebuildFatoProduto },
+  { nome: "fato_pedido_item", cycle: "incremental", run: rebuildFatoPedidoItem },
+  { nome: "fato_pedido_classificacao", cycle: "incremental", run: rebuildFatoPedidoClassificacao },
+  // === demais dimensoes/catalogos (independentes do grupo acima) ===
   { nome: "fato_parceiro", cycle: "incremental", run: rebuildFatoParceiro },
   { nome: "fato_conta_contabil", cycle: "incremental", run: rebuildFatoContaContabil },
   { nome: "fato_preco", cycle: "incremental", run: rebuildFatoPreco },
@@ -69,20 +79,6 @@ export const FATO_BUILDERS: FatoBuilderEntry[] = [
   { nome: "fato_carta_correcao", cycle: "incremental", run: rebuildFatoCartaCorrecao },
   { nome: "fato_certificado", cycle: "incremental", run: rebuildFatoCertificado },
   { nome: "fato_referencia", cycle: "incremental", run: rebuildFatoReferencia },
-  // Catalogo canonico de produtos (3787 linhas). Cycle incremental para
-  // pegar produtos novos rapidamente; truncate+insert do builder garante
-  // consistencia com raw_sped_produto.
-  { nome: "fato_produto", cycle: "incremental", run: rebuildFatoProduto },
-  // Itens de pedido (derivacao de raw_sped_documento_item, join fato_produto).
-  // Roda LOGO APOS suas dependencias (fato_pedido/nota/nota_item/produto), nao no
-  // fim da lista: as bases fazem truncate+insert e ZERAM as colunas materializadas;
-  // se a classificacao rodasse por ultimo (depois de ~40 builders), havia uma janela
-  // de varios minutos com bucket_demanda NULL a cada ciclo (a demanda aparecia 0).
-  { nome: "fato_pedido_item", cycle: "incremental", run: rebuildFatoPedidoItem },
-  // POS-PASSO: materializa categoria_operacao/bucket_demanda/pendencia_etapa em
-  // fato_pedido e is_venda_externa em fato_nota_fiscal. Deve rodar logo apos as bases
-  // e os itens (todas ja reconstruidas acima).
-  { nome: "fato_pedido_classificacao", cycle: "incremental", run: rebuildFatoPedidoClassificacao },
   // O1 (onda DF-e): notas de fornecedores capturadas eletronicamente.
   { nome: "fato_dfe", cycle: "incremental", run: rebuildFatoDfe },
   // O3 (onda Pedido): historico de transicao de etapas do pedido.
