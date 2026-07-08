@@ -224,6 +224,21 @@ TABLE fato_pedido_historico (
   atualizado_em    TIMESTAMPTZ
 );
 
+-- ─── COMERCIAL / ITENS DO PEDIDO ─────────────────────────────────────────────
+-- 1 linha = 1 produto de um pedido (derivado de raw_sped_documento_item). Para
+-- "produto com mais demanda" some quantidade agrupando por produto_id nos pedidos
+-- com bucket_demanda='ABERTA' (JOIN fato_pedido ON odoo_id = pedido_id). Cruze com
+-- fato_estoque_saldo (por produto_id) para "estoque disponivel" (saldo - demanda).
+TABLE fato_pedido_item (
+  odoo_id      INT PRIMARY KEY,
+  pedido_id    INT,      -- FK -> fato_pedido.odoo_id
+  produto_id   INT,
+  produto_nome TEXT,
+  familia_nome TEXT,
+  quantidade   NUMERIC,
+  vr_produtos  NUMERIC
+);
+
 -- ─── FISCAL / NOTAS FISCAIS ──────────────────────────────────────────────────
 
 -- Notas fiscais (cabeçalho)
