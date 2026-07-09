@@ -117,6 +117,12 @@ export interface WebhookWizardProps {
   onCancel?: () => void
   /** Notifica o tipo escolhido (para a navegação/cabeçalho da tela). */
   onKindChange?: (kind: WebhookKind | null) => void
+  /**
+   * Tipos que este usuário pode criar. Vem do servidor (`kindsVisiveis`), porque
+   * "Receber mensagens do WhatsApp" é exclusivo do super_admin. As ações também
+   * recusam no servidor: aqui só evitamos oferecer o que seria negado depois.
+   */
+  kindsPermitidos?: WebhookKind[]
 }
 
 type Step = 1 | 2 | 3
@@ -135,7 +141,14 @@ export function WebhookWizard({
   onCreated,
   onCancel,
   onKindChange,
+  kindsPermitidos,
 }: WebhookWizardProps) {
+  // Sem a prop, mostra todos (compatibilidade). A tela de criação sempre a envia,
+  // resolvida no servidor pelo perfil do usuário.
+  const kindsDisponiveis = React.useMemo(
+    () => (kindsPermitidos ? KINDS.filter((k) => kindsPermitidos.includes(k.id)) : KINDS),
+    [kindsPermitidos],
+  )
   const [step, setStep] = React.useState<Step>(1)
   const [kind, setKindState] = React.useState<WebhookKind | null>(null)
   const setKind = (k: WebhookKind | null) => {
@@ -309,7 +322,7 @@ export function WebhookWizard({
             </p>
           </div>
           <div className="grid gap-3" data-tour="webhook-wizard-tipo">
-            {KINDS.map((k) => (
+            {kindsDisponiveis.map((k) => (
               <KindCard
                 key={k.id}
                 meta={k}

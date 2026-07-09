@@ -28,6 +28,10 @@ jest.mock("@/lib/encryption", () => ({
 }));
 jest.mock("@/lib/audit", () => ({ logAudit: mockLogAudit }));
 jest.mock("next/cache", () => ({ revalidatePath: mockRevalidatePath }));
+// `menuAccess` é lido pela guarda das ações (o nível do menu Integrações decide
+// quem gerencia webhooks comuns). Sem linhas, valem os defaults do catálogo,
+// nos quais Integrações exige super_admin , o mesmo gate que estes testes assumem.
+const mockPrismaMenuAccessFindMany = jest.fn(async () => []);
 jest.mock("@/lib/prisma", () => ({
   prisma: {
     whatsappWebhook: {
@@ -37,6 +41,9 @@ jest.mock("@/lib/prisma", () => ({
       create: mockPrismaWebhookCreate,
       update: mockPrismaWebhookUpdate,
       delete: mockPrismaWebhookDelete,
+    },
+    menuAccess: {
+      findMany: mockPrismaMenuAccessFindMany,
     },
   },
 }));
@@ -423,5 +430,84 @@ describe("updateWebhook", () => {
     expect(mockPrismaWebhookUpdate.mock.calls[0][0].data.events).toEqual([
       "agent_reply",
     ]);
+  });
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Gate do receptor de WhatsApp (decisão do usuário, 2026-07-09)
+//
+// O tipo "Receber mensagens do WhatsApp" é exclusivo do super_admin. Os outros
+// dois tipos ficam para quem enxerga o menu Integrações. A tela esconde o card,
+// mas a proteção que vale é esta: a ação recusa no servidor.
+// ──────────────────────────────────────────────────────────────────────────────
+describe("gate do receptor de WhatsApp", () => {
+  /** Menu Integrações liberado para admin. */
+  function menuLiberadoParaAdmin() {
+    mockPrismaMenuAccessFindMany.mockResolvedValue([
+      { menuKey: "integracoes", accessLevel: "admin" },
+    ] as never);
+  }
+
+  const WHATSAPP_INPUT = {
+    direction: "inbound" as const,
+    name: "Receptor WhatsApp",
+    path: "whatsapp/loja",
+    methods: ["POST" as const],
+    isWhatsappReceiver: true,
+    businessId: "553499999999",
+  };
+
+  it("admin com o menu liberado CRIA webhook comum", async () => {
+    menuLiberadoParaAdmin();
+    mockGetCurrentUser.mockResolvedValue(REGULAR_USER);
+    const r = await createWebhook(INBOUND_INPUT);
+    expect(r.success).toBe(true);
+  });
+
+  it("admin com o menu liberado NAO cria o receptor de WhatsApp", async () => {
+    menuLiberadoParaAdmin();
+    mockGetCurrentUser.mockResolvedValue(REGULAR_USER);
+    const r = await createWebhook(WHATSAPP_INPUT);
+    expect(r).toEqual({ success: false, error: "Acesso negado" });
+    expect(mockPrismaWebhookCreate).not.toHaveBeenCalled();
+  });
+
+  it("super_admin cria o receptor de WhatsApp", async () => {
+    menuLiberadoParaAdmin();
+    mockGetCurrentUser.mockResolvedValue(SUPER_ADMIN);
+    const r = await createWebhook(WHATSAPP_INPUT);
+    expect(r.success).toBe(true);
+  });
+
+  it("admin NAO edita um webhook que ja e receptor de WhatsApp", async () => {
+    menuLiberadoParaAdmin();
+    mockGetCurrentUser.mockResolvedValue(REGULAR_USER);
+    mockPrismaWebhookFindUnique.mockResolvedValue({
+      id: "wh-1",
+      direction: "inbound",
+      isWhatsappReceiver: true,
+    });
+    const r = await updateWebhook("wh-1", {
+      name: "sequestrado",
+      path: "outro/caminho",
+      methods: ["POST"],
+    });
+    expect(r).toEqual({ success: false, error: "Acesso negado" });
+    expect(mockPrismaWebhookUpdate).not.toHaveBeenCalled();
+  });
+
+  it("admin nao ve o receptor de WhatsApp na listagem", async () => {
+    menuLiberadoParaAdmin();
+    mockGetCurrentUser.mockResolvedValue(REGULAR_USER);
+    await listWebhooks();
+    const where = mockPrismaWebhookFindMany.mock.calls[0][0]?.where;
+    expect(where).toEqual({ isWhatsappReceiver: false });
+  });
+
+  it("super_admin ve todos os webhooks na listagem", async () => {
+    mockGetCurrentUser.mockResolvedValue(SUPER_ADMIN);
+    await listWebhooks();
+    const where = mockPrismaWebhookFindMany.mock.calls[0][0]?.where;
+    expect(where).toBeUndefined();
   });
 });

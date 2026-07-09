@@ -24,6 +24,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAgentAccessOrJson } from "@/lib/auth/require";
+import { blockIfBubbleClosed } from "@/lib/agent/require-channel";
 
 const bodySchema = z.object({
   messageId: z.string().uuid(),
@@ -43,6 +44,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const access = await requireAgentAccessOrJson();
   if (access instanceof NextResponse) return access;
   const { user } = access;
+
+  // Gate do canal in-app: esta rota só serve a bolha.
+  const bloqueado = await blockIfBubbleClosed(user.platformRole);
+  if (bloqueado) return bloqueado;
 
   let body: z.infer<typeof bodySchema>;
   try {

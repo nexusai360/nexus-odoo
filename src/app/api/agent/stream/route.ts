@@ -13,6 +13,7 @@
  */
 
 import { requireAgentAccessOrJson } from "@/lib/auth/require";
+import { blockIfBubbleClosed } from "@/lib/agent/require-channel";
 import { runAgent } from "@/lib/agent/run-agent";
 import { createConversation, assertConversationOwned } from "@/lib/agent/conversation";
 import type { AgentEvent } from "@/lib/agent/run-agent";
@@ -68,6 +69,14 @@ export async function POST(req: Request): Promise<Response> {
       status: 403,
       headers: { "Content-Type": "application/json" },
     });
+  }
+
+  // Gate do CANAL in-app (a bolha). Sem isto, esconder a bolha no layout não
+  // impedia ninguém de chamar esta rota direto. O playground tem gate próprio
+  // acima e não responde ao nível da bolha.
+  if (!isPlayground) {
+    const bloqueado = await blockIfBubbleClosed(user.platformRole);
+    if (bloqueado) return bloqueado;
   }
 
   // Canal: playground usa canal "playground", demais usam "in_app"

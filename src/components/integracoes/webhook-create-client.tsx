@@ -21,10 +21,13 @@ export function WebhookCreateClient({
   inboundBaseUrl,
   existingPaths,
   existingBusinessIds,
+  kindsPermitidos,
 }: {
   inboundBaseUrl: string;
   existingPaths: string[];
   existingBusinessIds: string[];
+  /** Tipos que o perfil pode criar (resolvido no servidor). */
+  kindsPermitidos: WebhookKind[];
 }) {
   const router = useRouter();
   const [kind, setKind] = React.useState<WebhookKind | null>(null);
@@ -67,6 +70,7 @@ export function WebhookCreateClient({
       />
       <div className="mt-6">
         <WebhookWizard
+          kindsPermitidos={kindsPermitidos}
           key={resetKey}
           inboundBaseUrl={inboundBaseUrl}
           existingPaths={existingPaths}

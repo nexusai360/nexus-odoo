@@ -55,7 +55,11 @@ const CARDS: IntegrationCard[] = [
 
 export function IntegracoesGrid() {
   return (
-    <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    // `auto-rows-fr` dá a MESMA altura a todas as linhas do grid, então um card de
+    // uma linha de descrição (Canais) fica do tamanho do maior (Servidor MCP, que
+    // usa duas). A descrição é limitada a duas linhas (`line-clamp-2`), o que
+    // trava a altura máxima: nenhum card cresce além disso.
+    <div className="mt-6 grid auto-rows-fr grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {CARDS.map((card) => (
         <IntegrationCardItem key={card.href} card={card} />
       ))}
@@ -66,7 +70,7 @@ export function IntegracoesGrid() {
 function CardInner({ card }: { card: IntegrationCard }) {
   const Icon = card.icon;
   return (
-    <CardContent className="flex items-center gap-3 p-4">
+    <CardContent className="flex h-full items-center gap-3 p-4">
       <span
         className={cn(
           "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg",
@@ -90,7 +94,11 @@ function CardInner({ card }: { card: IntegrationCard }) {
             </Badge>
           )}
         </div>
-        <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+        {/* Duas linhas de descrição, sempre: `line-clamp-2` impede passar disso e
+            `min-h-8` reserva o espaço das duas mesmo quando o texto ocupa uma só.
+            Sem o `min-h`, numa tela larga todas as descrições caberiam em uma
+            linha e os cards encolheriam, mudando o tamanho padrão. */}
+        <p className="mt-0.5 line-clamp-2 min-h-8 text-xs text-muted-foreground">
           {card.description}
         </p>
       </div>
@@ -108,7 +116,7 @@ function IntegrationCardItem({ card }: { card: IntegrationCard }) {
     return (
       <Card
         aria-disabled="true"
-        className="pointer-events-none opacity-60"
+        className="pointer-events-none h-full opacity-60"
       >
         <CardInner card={card} />
       </Card>
@@ -116,10 +124,10 @@ function IntegrationCardItem({ card }: { card: IntegrationCard }) {
   }
 
   return (
-    <Link href={card.href} className="group block focus-visible:outline-none">
+    <Link href={card.href} className="group block h-full focus-visible:outline-none">
       <Card
         className={cn(
-          "cursor-pointer transition-shadow duration-200 hover:shadow-md",
+          "h-full cursor-pointer transition-shadow duration-200 hover:shadow-md",
           "focus-within:ring-2 focus-within:ring-violet-400/60",
         )}
       >
