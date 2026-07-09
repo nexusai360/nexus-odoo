@@ -115,15 +115,56 @@ endereço antigo. Colaterais a atualizar juntos: `route.test.ts` daquela rota,
 
 ### 3.4 Modo de resposta por conexão (resolve A8 e A13)
 
+> **DECISÃO DO USUÁRIO (2026-07-09), substitui a proposta anterior.** Em vez de
+> "bloquear `direct` da segunda conexão em diante", a trava é **por NÚMERO**, e
+> vale nos dois sentidos: um número já configurado não pode ser reconfigurado por
+> outro caminho. Ver §3.4.1.
+
+#### 3.4.1 Trava de número único (regra dura)
+
+**Esclarecimento:** `phoneNumberId` é um **identificador da Meta**
+(ex.: `593237780533272`), não o telefone. O telefone (`5561995630029`) é o
+`businessId` da conexão. São campos diferentes, e é por isso que hoje não há como
+saber qual conexão é a "dona" da credencial global (SPEC A17).
+
+**Chave de unicidade:** o telefone da empresa, **normalizado** (só dígitos, com
+DDI, tolerando a ausência do nono dígito, do mesmo jeito que `resolve.ts` já faz
+ao achar o usuário). Um número existe em **uma** configuração, e só uma.
+
+Regras, verificadas na ação (servidor), não só na tela:
+
+1. Criar/editar uma **conexão por webhook** com um número que já está em uso pelo
+   **canal direto** → recusa:
+   *"Este número já está configurado no envio direto pela Meta. Remova de lá antes
+   de criar a conexão, ou use outro número."*
+2. Configurar o **canal direto** com um número que já pertence a uma **conexão por
+   webhook** → recusa:
+   *"Já existe uma conexão de WhatsApp usando este número (`<nome da conexão>`).
+   Edite essa conexão ou use outro número."*
+3. Duas **conexões por webhook** com o mesmo número → já barrado pelo
+   `@@unique([businessId])`, mas a mensagem passa a nomear a conexão existente em
+   vez de estourar erro de banco.
+
+**Como saber o telefone do canal direto:** o `WhatsappChannel` guarda só o
+`phoneNumberId`. A Graph API expõe o `display_phone_number` a partir dele
+(`GET /<phoneNumberId>`). A tela de Canais passa a **resolver e gravar** esse
+número (coluna nova `phone_number`), para a trava ser comparável sem chamar a
+Meta a cada validação. Se a resolução falhar, o canal não é salvo (fail-closed):
+sem o número, não há como garantir a trava.
+
+**Consequência:** o "footgun" de duas conexões em `direct` deixa de existir, sem
+proibir o modo direto. Quem usa `direct` num número simplesmente não consegue
+criar uma conexão por webhook para o mesmo número, e vice-versa.
+
+
+
 `responseMode` passa a ser **da conexão** (coluna nova na linha inbound), com
 fallback para o singleton global quando `NULL`.
 
 - Ao concluir a etapa de Envio, o assistente grava `responseMode = n8n_webhook`.
   Sem isso, A13 faria a conexão nascer em `direct` e **ignorar** o destino.
-- **`direct` fica bloqueado para a segunda conexão em diante.** As credenciais
-  Meta são globais, com um único `phoneNumberId` (A17): duas conexões em `direct`
-  responderiam pelo mesmo número, ou seja, pelo número errado. A UI impede e
-  explica. É footgun, não limitação silenciosa.
+- **A trava é por número (§3.4.1)**, não "só a primeira conexão pode `direct`".
+  Decisão do usuário: o mesmo número não pode existir em dois caminhos.
 
 ### 3.5 Entrega das mensagens de bloqueio (resolve I1 da review #2)
 
@@ -306,7 +347,9 @@ Negrito, itálico, tachado e links seguem convertidos como hoje.
 6. Criar grava duas linhas com o mesmo `connection_id`; a listagem mostra **uma**
    conexão; apagar apaga as duas; com `WhatsappInstance` apontando, falha claro.
 7. Rotação: cada token independente, exibido uma única vez.
-8. `direct` é recusado para a segunda conexão, com explicação (§3.4).
+8. **Trava de número (§3.4.1), nos dois sentidos:** conexão por webhook num número
+   já usado pelo canal direto é recusada com mensagem clara, e o canal direto num
+   número já usado por uma conexão também. Testes automatizados dos dois casos.
 9. Guias começam fechados; o aviso da etapa 1 aparece sem abrir nada; o guia da
    etapa 2 orienta dedup por `inboundMessageId`.
 10. Nenhuma **string visível ao usuário** contém "n8n" (o teste inspeciona textos

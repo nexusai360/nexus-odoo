@@ -664,3 +664,81 @@ usuário limpar", mas **uma conversa mais nova (mesmo já arquivada) deve supera
 **Verificado (dado real):** usuário do bug 102 órfãs ativas → 0; mais recente vira
 a sessão de hoje (arquivada) → boot resolve para welcome. Outro usuário com sessão
 genuína manteve 1 ativa. tsc verde + jest (46 dos arquivos afetados).
+
+---
+
+## R-conexao-whatsapp , achados da sessao 2026-07-09 (WhatsApp / webhooks / agente)
+
+Perícia feita antes de implementar a "Conexão com WhatsApp". Tudo abaixo foi
+**medido no código ou no banco**, não suposto. O que já foi corrigido está
+marcado; o resto é dívida aberta.
+
+### CORRIGIDO e em producao
+
+1. **Menus: a UI escondia, o servidor liberava** (PR #158). `nav.ts` filtrava por
+   `visibleTo`/`superAdminOnly` e os layouts usavam `requireMinRole` fixo, então
+   a tela de Configuração conseguia RESTRINGIR um menu mas nunca LIBERAR.
+   `menu_access` virou a autoridade única. Trava: `menu-catalog-autoridade.test.ts`.
+2. **Bolha do Nex: gate só na interface** (PR #160). `bubbleAccessLevel` era lido
+   apenas no layout (escondia o botão). Nenhuma rota de API o checava: um admin
+   conversava com o agente chamando `POST /api/agent/stream` direto. Gate movido
+   para o servidor.
+3. **Webhook de entrada inalcançável de fora** (PR #161). A tela ensinava
+   `/api/webhooks/<slug>`, que não existia; a rota real (`/api/hooks/<slug>`) não
+   estava na lista pública e o middleware devolvia 302 para `/login`. Nenhuma
+   mensagem chegaria. Rota canônica passou a ser `/api/webhooks/<slug>`.
+4. **Banco de dev com sujeira silenciosa** (PR #159). 11 migrations com checksum
+   divergente, 4 tentativas falhas, 1 linha `manual-applied` e drift real. Nada
+   quebrava, mas `prisma migrate dev` exigiria RESET (perderia o cache do Odoo).
+   Saneado sem perder registro. Criado `scripts/db-health.py`.
+
+### ABERTO , entra na "Conexão com WhatsApp" (SPEC/PLAN v3)
+
+5. **VAZAMENTO ENTRE CLIENTES (segurança).** `loadOutboundTargets()` busca TODOS
+   os webhooks de saída habilitados com `agent_reply`, sem filtrar por conexão. E
+   `fireBlocked()` faz o mesmo ANTES de existir sessão: o "não encontrei seu
+   número" da conexão A é entregue no destino da conexão B, expondo o telefone de
+   quem escreveu. Teste que prova: `src/lib/whatsapp/isolamento.test.ts`.
+6. **O envio nem funcionaria hoje.** Produção não tem linha em `whatsapp_channel`,
+   então `responseMode` cai no default `direct` e o webhook de saída é ignorado,
+   mesmo configurado. Por isso o modo passou a ser por conexão.
+7. **`daily_limit_exceeded` não emite nada:** quem estoura o teto diário recebe
+   silêncio.
+8. **`model` não existe** em `RunAgentResult` nem em `AgentReplyData`; o **nome da
+   conexão** não trafega até o payload.
+9. **Envelope de saída** é `{event,deliveryId,kind,data,timestamp}` com `data`
+   plano. Vira aninhado (breaking, sem consumidor: prod tem 0 linhas outbound).
+10. **`deliveryId` não serve para deduplicar:** é `randomUUID()` por disparo, um
+    retry gera outro. A chave estável é `message.inboundMessageId`.
+
+### DIVIDA (fora do escopo atual)
+
+- `technical_error` cobre falha técnica **e** mídia não suportada. Criar
+  `media_unsupported`.
+- `WhatsappInstance` existe no schema sem uso vivo. Remover.
+- Jobs em voo / payloads no Redis gravados antes do deploy não terão
+  `connectionName` nem `model` (campos opcionais, sem consumidor em prod).
+- Formatação de tabela: a regra assume que a primeira coluna é texto. Se for um
+  código numérico, o título da linha sai como número nu.
+- `direct` usa credenciais Meta **globais** (um `phoneNumberId`). Duas conexões em
+  `direct` responderiam pelo número errado. Decisão pendente do usuário: bloquear
+  na tela a partir da segunda conexão.
+- Aviso de hidratação do React aparece em `/dashboard` e `/integracoes`
+  (preexistente, não introduzido pelos PRs desta sessão).
+
+### ARMADILHAS que custaram tempo (não repetir)
+
+- **Teste vermelho pelo motivo errado.** O `isolamento.test.ts` falhou primeiro
+  porque `queue.add` não devolvia `job.id` e `emitAgentReply` não devolvia
+  promessa. Vermelho por erro de setup **não prova bug nenhum**. Sempre conferir a
+  mensagem da falha, não só a cor.
+- **Mock que ignora o `where`.** Se `findMany` devolve `[A,B]` fixo, o teste de
+  isolamento continua vermelho depois da correção e não tem poder de detecção.
+- **Editar migration já aplicada.** `migrate deploy` ignora o checksum (produção
+  passa liso), mas `migrate dev` exige RESET do banco. Ver `docs/runbooks/db-migrations.md`.
+- **O `worker` não tem build próprio.** `docker compose build worker` é no-op.
+  Use `docker compose build app` + `up -d --force-recreate worker`, senão os E2E
+  rodam contra imagem velha e dão **falso verde**.
+- **Runbook mentindo.** O runbook do n8n dizia que a entrada usa HMAC; o código
+  exige `Authorization: Bearer`, e os campos são `snake_case`. Corrigido, mas a
+  lição fica: conferir o código antes de seguir a documentação.
