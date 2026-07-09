@@ -22,15 +22,28 @@ Não precisa rodar mais nada. Para acompanhar: ver a seção 6 (verificação).
 > Se quiser **forçar o deploy na hora** (sem esperar os ~5 min do Shepherd) ou o
 > Shepherd estiver fora do ar, use o deploy manual da seção 4.
 
+> **Saúde do banco (2026-07-09).** Antes e depois de um deploy que mexe em
+> schema, rode `python3 scripts/db-health.py --prod` (read-only, sai com código 1
+> se houver pendência). As regras de migration, e o porquê de **nunca editar uma
+> migration já aplicada**, estão em `docs/runbooks/db-migrations.md`.
+
 ### 1.1 PASSO OBRIGATÓRIO quando o deploy leva MUDANÇA DE SCHEMA (REGRA DE RAIZ, 2026-06-18)
 
+> **ATUALIZADO 2026-07-09: o padrão agora é MIGRATION FORMAL, sempre.** Toda
+> mudança de schema nasce como arquivo em `prisma/migrations/`; o entrypoint do
+> `app` roda `prisma migrate deploy` no boot e aplica sozinho em prod. Nada de
+> `prisma db execute` ou DDL solto , foi essa prática que sujou o banco de dev
+> (11 checksums divergentes, tentativas falhas, drift). Ver
+> `docs/runbooks/db-migrations.md`. O texto abaixo fica como registro do
+> incidente e vale para o legado que ainda não virou migration.
+>
 > **O `prisma migrate deploy` do entrypoint NÃO aplica mudanças que foram feitas
-> via `prisma db execute` (o padrão deste projeto, ver §5 do CLAUDE.md). Ele só
-> roda arquivos em `prisma/migrations/`.** Como as mudanças aditivas aqui vão por
-> `db execute` (não viram arquivo de migração), o banco de PROD NÃO as recebe no
-> deploy , o código sobe esperando coluna/enum que não existe em prod e quebra em
-> runtime (ex.: "Erro ao listar usuários" porque faltava `users.last_activity_at`).
-> Isso já derrubou a tela de Usuários em prod (incidente 2026-06-18, PR #129).
+> via `prisma db execute`. Ele só roda arquivos em `prisma/migrations/`.** Se uma
+> mudança aditiva foi só por `db execute` (não virou arquivo de migração), o banco
+> de PROD NÃO a recebe no deploy , o código sobe esperando coluna/enum que não
+> existe em prod e quebra em runtime (ex.: "Erro ao listar usuários" porque faltava
+> `users.last_activity_at`). Isso já derrubou a tela de Usuários em prod
+> (incidente 2026-06-18, PR #129).
 >
 > **Portanto: se a sua entrega mexeu em `prisma/schema.prisma` (coluna nova, enum
 > novo, etc.) e você aplicou no dev via `prisma db execute`, você TEM que aplicar
