@@ -1,11 +1,14 @@
 // src/lib/nav/require-menu-access.ts
 // Guarda de rota server-side da feature "Acesso aos menus". O sidebar SO esconde;
-// esta funcao BLOQUEIA acesso por URL direta , chamar no topo do layout/page de
-// cada menu configuravel. Redireciona p/ /dashboard quem nao pode ver o menu (ou
-// /login se nao autenticado). Padrao identico ao guard de Relatorios 2.0 / Diretoria.
+// esta funcao BLOQUEIA acesso por URL direta , chamar no topo do layout de cada
+// menu configuravel (o layout cobre as sub-rotas).
+//
+// Destino do redirect: /dashboard quando o usuario pode ve-lo; senao /perfil, que
+// nao tem guarda de menu. Isso evita jogar alguem numa tela que ele nao pode ver
+// e evita loop (Relatorios sem dominio ja redireciona pro Dashboard).
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
-import { MENU_CATALOG, podeVerMenu, type MenuKey } from "./menu-catalog";
+import { MENU_CATALOG, podeVerMenu, destinoQuandoBloqueado, type MenuKey } from "./menu-catalog";
 import { obterMenuAccess } from "./menu-access";
 
 export async function requireMenuAccess(menuKey: MenuKey): Promise<void> {
@@ -15,6 +18,6 @@ export async function requireMenuAccess(menuKey: MenuKey): Promise<void> {
   if (!entry) return;
   const acesso = await obterMenuAccess();
   if (!podeVerMenu(entry, acesso[menuKey], user.platformRole)) {
-    redirect("/dashboard");
+    redirect(destinoQuandoBloqueado(acesso, user.platformRole));
   }
 }

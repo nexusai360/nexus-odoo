@@ -97,3 +97,19 @@ export function podeVerMenu(
   if (level === "off") return role === "super_admin";
   return RANK[role] >= LEVEL_RANK[level];
 }
+
+/** Rota sem guarda de menu, usada como ultimo destino seguro. */
+export const ROTA_SEGURA = "/perfil";
+
+/**
+ * Para onde mandar quem tentou abrir um menu que nao pode ver. Funcao PURA.
+ *
+ * O destino natural e o Dashboard, mas ele tambem e um menu configuravel: se
+ * estiver restrito acima do perfil do usuario, mandar pra la exibiria uma tela
+ * que ele nao deveria ver e poderia gerar loop de redirect (Relatorios sem
+ * dominio manda pro Dashboard, que mandaria de volta). Nesse caso, `/perfil`.
+ */
+export function destinoQuandoBloqueado(acesso: MenuAccessMap, role: PlatformRole): string {
+  const dashboard = BY_KEY.get("dashboard")!;
+  return podeVerMenu(dashboard, acesso.dashboard, role) ? dashboard.href : ROTA_SEGURA;
+}
