@@ -151,6 +151,18 @@ enum ChannelAccessLevel {
   super_admin
 }
 
+/// Acesso a um MENU da plataforma por perfil (feature "Acesso aos menus", tela
+/// Configuracao). Uma linha por menuKey (ver src/lib/nav/menu-catalog.ts). O nivel
+/// segue ChannelAccessLevel (heranca por perfil; "off" = so super_admin). Menus
+/// ausentes usam o default do catalogo. Fonte de verdade p/ sidebar + guarda de rota.
+model MenuAccess {
+  menuKey     String             @id @map("menu_key")
+  accessLevel ChannelAccessLevel @map("access_level")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+
+  @@map("menu_access")
+}
+
 enum ReportDomain {
   cadastros
   comercial
