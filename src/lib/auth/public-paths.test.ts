@@ -11,7 +11,7 @@ describe("isPublicPath , rotas que dispensam sessao", () => {
     expect(isPublicPath("/api/hooks/whatsapp/loja-matriz")).toBe(true);
   });
 
-  it("libera a rota legada do WhatsApp e as de auth/health", () => {
+  it("libera a rota legada do WhatsApp (410 Gone precisa ser visível, não redirect) e as de auth/health", () => {
     expect(isPublicPath("/api/integrations/whatsapp/inbound")).toBe(true);
     expect(isPublicPath("/api/auth/session")).toBe(true);
     expect(isPublicPath("/api/health")).toBe(true);

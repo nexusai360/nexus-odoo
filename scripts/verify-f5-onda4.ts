@@ -1,65 +1,58 @@
 #!/usr/bin/env tsx
 /**
- * Verificação e2e da Onda 4 da F5 — Webhook receptor + WhatsApp.
+ * Verificação e2e do receptor de WhatsApp por SLUG (`/api/webhooks/<slug>`).
+ *
+ * Histórico: este script nasceu na Onda 4 da F5 apontando para a rota fixa
+ * `/api/integrations/whatsapp/inbound`, que foi DESCONTINUADA (responde 410
+ * Gone). Também usava assinatura HMAC e payload camelCase, contratos que não
+ * existem mais: a autenticação real é `Authorization: Bearer <token>` e o
+ * payload é snake_case (`wa_id`, `message_id`, ...).
  *
  * Pré-requisitos:
- * - .env.local com DATABASE_URL, ENCRYPTION_KEY, REDIS_URL, APP_URL
+ * - .env.local com APP_URL
+ * - TEST_WHATSAPP_SLUG: o endereço (slug) da Conexão de WhatsApp no banco
+ * - TEST_WHATSAPP_TOKEN: o token de recebimento da Conexão (em claro)
  * - Servidor Next.js dev rodando: npm run dev
- * - Worker rodando: npm run worker (para o job ser processado)
+ * - Worker rodando (para o job ser processado)
  * - Um usuário com número de WhatsApp cadastrado no banco (para o caso "ok")
  *
  * Uso:
  *   npx tsx --env-file=.env.local scripts/verify-f5-onda4.ts
  *
- * Três cenários testados:
- *   1. Mensagem válida de usuário cadastrado → deve retornar 202 + job enfileirado
- *   2. Número desconhecido → deve retornar 200 {rejected:true, reason:"unknown"}
- *   3. Replay do mesmo messageId → deve retornar 200 {noOp:true} (idempotência)
- *
- * Evidência obrigatória: script completa sem FAIL.
+ * Cenários:
+ *   0. Conectividade + rota legada responde 410 Gone
+ *   1. Número desconhecido → 200 {rejected:true}
+ *   2. Número cadastrado → 202 + job enfileirado
+ *   3. Replay do mesmo message_id → 200 {noOp:true} (idempotência)
+ *   4. Payload inválido → 400
  */
 
-import { createHmac } from "crypto";
-
 const APP_URL = process.env.APP_URL ?? "http://localhost:3000";
-const INBOUND_URL = `${APP_URL}/api/integrations/whatsapp/inbound`;
+const SLUG = process.env.TEST_WHATSAPP_SLUG ?? "";
+const TOKEN = process.env.TEST_WHATSAPP_TOKEN ?? "";
+const INBOUND_URL = `${APP_URL}/api/webhooks/${SLUG}`;
+const LEGACY_URL = `${APP_URL}/api/integrations/whatsapp/inbound`;
 
 // Número de WhatsApp para o teste "usuário cadastrado"
 // Substitua por um número real cadastrado no banco para testar o cenário completo.
 const KNOWN_PHONE = process.env.TEST_WHATSAPP_PHONE ?? "+5511999999999";
 const UNKNOWN_PHONE = "+5599000000000";
 
-// Secret HMAC para assinar os payloads.
-// Se o webhook inbound NÃO estiver configurado no banco, o endpoint aceita sem HMAC.
-// Se estiver configurado, use o mesmo secret aqui.
-const HMAC_SECRET = process.env.TEST_WHATSAPP_HMAC_SECRET ?? "";
-
 let passed = 0;
 let failed = 0;
 
 // ──────────────────────────────────────────────────────────────────────────────
 
-function signPayload(body: string, secret: string, timestamp: string): string {
-  if (!secret) return "no-secret";
-  const message = `${timestamp}.${body}`;
-  return createHmac("sha256", secret).update(message, "utf8").digest("hex");
-}
-
 async function postInbound(
   payload: Record<string, unknown>,
 ): Promise<{ status: number; body: Record<string, unknown> }> {
-  const bodyStr = JSON.stringify(payload);
-  const timestamp = String(Date.now());
-  const signature = signPayload(bodyStr, HMAC_SECRET, timestamp);
-
   const res = await fetch(INBOUND_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-Signature": signature,
-      "X-Timestamp": timestamp,
+      Authorization: `Bearer ${TOKEN}`,
     },
-    body: bodyStr,
+    body: JSON.stringify(payload),
   });
 
   let body: Record<string, unknown> = {};
@@ -95,39 +88,53 @@ function check(
 // ──────────────────────────────────────────────────────────────────────────────
 
 async function main() {
-  console.log("\n=== verify-f5-onda4 — Webhook receptor WhatsApp ===");
+  console.log("\n=== verify-f5-onda4 — Receptor de WhatsApp por slug ===");
   console.log(`APP_URL:     ${APP_URL}`);
   console.log(`INBOUND_URL: ${INBOUND_URL}`);
   console.log(`KNOWN_PHONE: ${KNOWN_PHONE}`);
-  console.log(`HMAC_SECRET: ${HMAC_SECRET ? "configurado" : "não configurado (endpoint aceita sem validação)"}`);
+  console.log(`TOKEN:       ${TOKEN ? "configurado" : "NÃO configurado (todos os POSTs vão falhar com 401)"}`);
   console.log("");
 
+  if (!SLUG || !TOKEN) {
+    console.error("⚠️  Configure TEST_WHATSAPP_SLUG e TEST_WHATSAPP_TOKEN no .env.local.");
+    console.error("   O slug e o token de recebimento são os da Conexão com WhatsApp");
+    console.error("   criada em /integracoes/webhooks.");
+    process.exit(1);
+  }
+
   // ── Pré-condição: servidor acessível ───────────────────────────────────────
-  console.log("--- Cenário 0: verificar conectividade ---");
+  console.log("--- Cenário 0: conectividade + rota legada descontinuada ---");
   try {
     const healthRes = await fetch(`${APP_URL}/api/health`);
     check("Servidor acessível", healthRes.ok || healthRes.status === 200, `status ${healthRes.status}`);
   } catch (err) {
     fail("Servidor acessível", `Não foi possível conectar: ${(err as Error).message}. Inicie o servidor com: npm run dev`);
     console.error("\n⚠️  Servidor não está rodando. Não é possível prosseguir com os testes e2e.");
-    console.log("\n--- Resumo de testes unitários (sem servidor) ---");
-    console.log("Os testes unitários (jest) cobrem toda a lógica do endpoint:");
-    console.log("  npx jest whatsapp/inbound --no-coverage");
-    console.log("  npx jest worker/agent --no-coverage");
-    console.log("  npx jest hmac --no-coverage");
-    console.log("  npx jest cloud-client --no-coverage");
-    console.log("  npx jest whatsapp-channel --no-coverage");
-    console.log("\nPara e2e completo, suba o servidor e re-execute este script.");
     printSummary();
     return;
   }
+
+  // A rota fixa legada precisa responder 410 Gone (não 302, não 404).
+  const legacyRes = await fetch(LEGACY_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{}",
+    redirect: "manual",
+  });
+  check(
+    "Rota legada responde 410 Gone",
+    legacyRes.status === 410,
+    undefined,
+    `esperado 410, recebido ${legacyRes.status}`,
+  );
 
   // ── Cenário 1: número desconhecido ─────────────────────────────────────────
   console.log("\n--- Cenário 1: número desconhecido → rejeição sem enfileiramento ---");
   const msg1Id = `wamid.e2e-unknown-${Date.now()}`;
   const r1 = await postInbound({
-    messageId: msg1Id,
-    from: UNKNOWN_PHONE,
+    wa_id: UNKNOWN_PHONE,
+    user_id: UNKNOWN_PHONE,
+    message_id: msg1Id,
     timestamp: Date.now(),
     type: "text",
     text: "teste onda 4",
@@ -149,8 +156,9 @@ async function main() {
   console.log("\n--- Cenário 2: número cadastrado → 202 + job enfileirado ---");
   const msg2Id = `wamid.e2e-known-${Date.now()}`;
   const r2 = await postInbound({
-    messageId: msg2Id,
-    from: KNOWN_PHONE,
+    wa_id: KNOWN_PHONE,
+    user_id: KNOWN_PHONE,
+    message_id: msg2Id,
     timestamp: Date.now(),
     type: "text",
     text: "Qual o estoque de bicicletas?",
@@ -178,30 +186,27 @@ async function main() {
     );
   }
 
-  // ── Cenário 3: replay do mesmo messageId (idempotência) ───────────────────
-  console.log("\n--- Cenário 3: replay do messageId do cenário 1 → no-op ---");
-  // Usa o msg1Id (número desconhecido, que foi processado e registrado no cenário 1)
-  // Mas ProcessedWhatsappMessage só é gravada para mensagens aceitas — no caso de
-  // número desconhecido, NÃO é gravada (correto por design).
-  // Para testar idempotência real, re-enviamos o msg2Id se foi aceito (status 202).
-  const idempotencyMsgId = r2.status === 202 ? msg2Id : `wamid.e2e-idem-${Date.now()}`;
-
+  // ── Cenário 3: replay do mesmo message_id (idempotência) ───────────────────
+  console.log("\n--- Cenário 3: replay do message_id do cenário 2 → no-op ---");
+  // ProcessedWhatsappMessage só é gravada para mensagens aceitas, então a
+  // idempotência é testada re-enviando o msg2Id se ele foi aceito (status 202).
   if (r2.status === 202) {
     const r3 = await postInbound({
-      messageId: idempotencyMsgId,
-      from: KNOWN_PHONE,
+      wa_id: KNOWN_PHONE,
+      user_id: KNOWN_PHONE,
+      message_id: msg2Id,
       timestamp: Date.now(),
       type: "text",
       text: "mensagem duplicada (replay)",
     });
     check(
-      "Replay do messageId retorna 200",
+      "Replay do message_id retorna 200",
       r3.status === 200,
       `status=${r3.status}`,
       `esperado 200, recebido ${r3.status}`,
     );
     check(
-      "Replay do messageId retorna noOp=true",
+      "Replay do message_id retorna noOp=true",
       r3.body.noOp === true,
       undefined,
       `body=${JSON.stringify(r3.body)}`,
@@ -215,8 +220,8 @@ async function main() {
   // ── Cenário 4: payload inválido → 400 ────────────────────────────────────
   console.log("\n--- Cenário 4: payload inválido → 400 ---");
   const r4 = await postInbound({
-    messageId: "x",
-    from: "+5511",
+    message_id: "x",
+    wa_id: "+5511",
     // type ausente → inválido
   });
   check(
@@ -237,7 +242,7 @@ function printSummary() {
     console.error("\nVerificação e2e falhou. Corrija os erros acima antes de prosseguir.");
     process.exit(1);
   } else {
-    console.log("\nVerificação e2e da onda 4 concluída com sucesso.");
+    console.log("\nVerificação e2e concluída com sucesso.");
   }
 }
 

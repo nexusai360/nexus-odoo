@@ -41,17 +41,6 @@ jest.mock("ioredis", () =>
 
 import { POST } from "./route";
 
-function makeRequest(): Request {
-  return new Request("http://localhost/api/integrations/whatsapp/inbound", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: "Bearer qualquer-token",
-    },
-    body: JSON.stringify({ wa_id: "+5511999999999", message_id: "wamid.x", type: "text" }),
-  });
-}
-
 beforeEach(() => {
   jest.clearAllMocks();
   mockWebhookFindFirst.mockResolvedValue({
@@ -64,18 +53,18 @@ beforeEach(() => {
 
 describe("POST /api/integrations/whatsapp/inbound (descontinuada)", () => {
   it("responde 410 Gone", async () => {
-    const res = await POST(makeRequest() as Parameters<typeof POST>[0]);
+    const res = await POST();
     expect(res.status).toBe(410);
   });
 
   it("o corpo explica o novo caminho por slug", async () => {
-    const res = await POST(makeRequest() as Parameters<typeof POST>[0]);
+    const res = await POST();
     const body = await res.json() as { error?: string };
     expect(body.error).toEqual(expect.stringContaining("/api/webhooks/"));
   });
 
   it("não consulta o banco nem enfileira nada", async () => {
-    await POST(makeRequest() as Parameters<typeof POST>[0]);
+    await POST();
     expect(mockWebhookFindFirst).not.toHaveBeenCalled();
     expect(mockQueueAdd).not.toHaveBeenCalled();
   });

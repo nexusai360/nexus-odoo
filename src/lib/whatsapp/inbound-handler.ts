@@ -1,15 +1,15 @@
 /**
- * Núcleo compartilhado do recebimento de mensagens WhatsApp (n8n → plataforma).
+ * Núcleo do recebimento de mensagens WhatsApp (fluxo externo → plataforma).
  *
- * Usado por:
- *  - a rota por SLUG `/api/hooks/[slug]` (F5.1, opção B), onde o usuário define a
- *    URL e marca o webhook como "recebe WhatsApp";
- *  - a rota fixa legada `/api/integrations/whatsapp/inbound`.
+ * Usado exclusivamente pelo caminho por SLUG (`/api/webhooks/<slug>` e o
+ * apelido `/api/hooks/<slug>`), via `slug-inbound.ts`. A antiga rota fixa
+ * `/api/integrations/whatsapp/inbound` foi descontinuada e responde 410 Gone.
  *
- * Recebe o webhook receptor já resolvido (secret + business_id) e executa:
- * validação do token (Authorization: Bearer), validação do payload, idempotência,
- * resolução do usuário, barreiras L1/L2, teto diário, enfileiramento do job
- * (anexando o business_id para rotear a resposta).
+ * Recebe o webhook receptor já resolvido (secret + business_id + conexão) e
+ * executa: validação do token (Authorization: Bearer), validação do payload,
+ * idempotência, resolução do usuário, barreiras L1/L2, teto diário e
+ * enfileiramento do job. Todo disparo de saída é escopado ao `connectionId`
+ * da conexão que recebeu a mensagem (SPEC §3.3, fail-closed).
  */
 
 import { type NextRequest, NextResponse } from "next/server";
