@@ -81,7 +81,9 @@ async function queryPedidosListarTopValor(prisma: PrismaClient, input: Input) {
   const { limit, offset } = resolverPaginacao(input);
   const status = input.status ?? "aberto";
   const ordenacao = input.ordenacao ?? "valor_desc";
-  const where: Record<string, unknown> = {};
+  // Base: só pedidos de VENDA (exclui transferência/remessa/anomalia), via a
+  // coluna materializada categoria_operacao. Ver perícia 08 (P0.2).
+  const where: Record<string, unknown> = { categoriaOperacao: "venda" };
   if (status === "aberto") where.etapaFinaliza = false;
   else if (status === "fechado") where.etapaFinaliza = true;
   if (input.periodoDe || input.periodoAte) {

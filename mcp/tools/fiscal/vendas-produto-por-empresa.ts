@@ -89,8 +89,7 @@ async function queryVendasProdutoPorEmpresa(
             i.documento_id, i.quantidade::text, i.vr_produtos::text
      FROM fato_nota_fiscal_item i
      JOIN fato_nota_fiscal nf ON i.documento_id = nf.odoo_id
-     WHERE i.situacao_nfe = 'autorizada'
-       AND i.entrada_saida = '1'
+     WHERE nf.is_venda_externa = true
        AND i.produto_nome ILIKE $1
        AND i.data_emissao >= $2::timestamp
        AND i.data_emissao <= $3::timestamp`,

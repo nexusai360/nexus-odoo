@@ -32,3 +32,38 @@ export {
   type DonutTooltipPosition,
   type PieChartData,
 } from "./donut-with-center";
+export {
+  InteractiveFunnelChart,
+  buildFunnelSegments,
+  type FunnelDatum,
+  type FunnelSegment,
+  type InteractiveFunnelChartProps,
+} from "./funnel-chart";
+export {
+  InteractiveWaterfallChart,
+  buildWaterfallBars,
+  type PassoCascata,
+  type PassoCascataTipo,
+  type BarraCascata,
+  type InteractiveWaterfallChartProps,
+} from "./waterfall-chart";
+export {
+  InteractiveComboChart,
+  splitComboSeries,
+  type ComboChartData,
+  type ComboChartSeries,
+  type InteractiveComboChartProps,
+} from "./combo-chart";
+export {
+  InteractiveTreemapChart,
+  prepararTreemap,
+  type TreemapDatum,
+  type InteractiveTreemapChartProps,
+} from "./treemap-chart";
+export {
+  InteractiveGaugeChart,
+  valorMedidor,
+  type InteractiveGaugeChartProps,
+} from "./gauge-chart";
+export { Sparkline, type SparklineProps } from "./sparkline";
+export { Heatmap, intensidadeHeatmap, type HeatmapCell, type HeatmapProps } from "./heatmap";

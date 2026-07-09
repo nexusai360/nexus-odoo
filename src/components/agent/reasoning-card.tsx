@@ -65,6 +65,10 @@ export interface ReasoningCardProps {
   onCheckpointChange: (cp: CheckpointState) => void;
   onEffortChange: (level: ReasoningLevel) => void;
   loading: boolean;
+  /** Restringe os estados do checkpoint (ex.: 2 estados no construtor). */
+  checkpointAllowed?: CheckpointState[];
+  /** Id do card (chave de colapso). Default "raciocinio". Use outro p/ reuso. */
+  id?: string;
 }
 
 export function resolveEffectiveLevel(
@@ -92,6 +96,8 @@ export function ReasoningCard({
   onCheckpointChange,
   onEffortChange,
   loading,
+  checkpointAllowed,
+  id = "raciocinio",
 }: ReasoningCardProps) {
   // Onda 7: 5 estados derivados do REASONING_CAPS canonico.
   const cap = reasoningCapsOf(activeModelId);
@@ -127,7 +133,7 @@ export function ReasoningCard({
 
   return (
     <ResourceCard
-      id="raciocinio"
+      id={id}
       collapsible
       defaultCollapsed={!supports || checkpoint === "OFF"}
       icon={
@@ -139,6 +145,7 @@ export function ReasoningCard({
       onCheckpointChange={onCheckpointChange}
       loading={loading}
       ariaLabel="Estado do modo raciocínio"
+      {...(checkpointAllowed ? { checkpointAllowed } : {})}
     >
       {state === "no_reasoning" ? (
         <p className="text-xs text-muted-foreground">

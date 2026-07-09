@@ -111,13 +111,26 @@ export function mapProdutoRow(raw: Record<string, unknown>): FatoProdutoRow {
   };
 }
 
-/** Reconstrói fato_produto a partir de raw_sped_produto. */
+/** Reconstrói fato_produto a partir de raw_sped_produto.
+ *
+ * Lê o jsonb `data` SEM os blobs de imagem (image_*). Os campos `fields.Image` do
+ * Odoo (image, image_64..image_1920) chegam a 1.7MB por linha; carregados inteiros
+ * no heap do worker (findMany do jsonb cru), estouravam o OOM ANTES de a
+ * classificacao rodar, deixando bucket_demanda NULL (incidente 2026-07-08). A
+ * exclusao acontece no Postgres (operador `-` do jsonb) para o blob NUNCA chegar ao
+ * Node. `mapProdutoRow` nao le nenhum image_*, entao o resultado e identico. O
+ * field-selection ja barra imagem no sync; isto e a defesa contra legado ja gravado
+ * (complementa scripts/_prod-db-cleanup-images.py / strip-raw-images-local.sh).
+ */
 export async function rebuildFatoProduto(prisma: PrismaClient): Promise<number> {
-  const rawRows = await prisma.rawSpedProduto.findMany({
-    where: { rawDeleted: false },
-  });
+  const rawRows = await prisma.$queryRaw<{ data: Record<string, unknown> }[]>`
+    SELECT data - 'image' - 'image_64' - 'image_128' - 'image_256' - 'image_512'
+                - 'image_1024' - 'image_1920' - 'image_small' - 'image_medium'
+                - 'image_big' - 'image_large' AS data
+    FROM raw_sped_produto
+    WHERE raw_deleted = false`;
   const mapped = rawRows
-    .map((r) => mapProdutoRow(r.data as Record<string, unknown>))
+    .map((r) => mapProdutoRow(r.data))
     .filter((r) => Number.isFinite(r.odooId) && r.nome.length > 0);
 
   await prisma.$transaction(

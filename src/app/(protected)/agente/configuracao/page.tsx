@@ -35,6 +35,10 @@ import { loadEffectiveModelsByProvider } from "@/lib/agent/llm/effective-catalog
 import type { ModelEntry } from "@/lib/agent/llm/catalog";
 import type { LlmProvider } from "@/lib/agent/llm/types";
 import { getUsdBrlRate } from "@/lib/agent/llm/exchange-rate";
+import { BuilderModelCard } from "@/components/agent/builder-model-card";
+import { BuilderRecursosCard } from "@/components/agent/builder-recursos-card";
+import { obterConfigModeloConstrutor } from "@/lib/reports/builder/agent/model-config";
+import { obterRecursosConstrutor } from "@/lib/reports/builder/agent/recursos-config";
 
 export const metadata = {
   title: "Configuração do Agente | Matrix Fitness Group",
@@ -139,7 +143,8 @@ export default async function Page() {
   const routerConfig = {
     routerReformCheckpoint: routerRow?.routerReformCheckpoint ?? "OFF",
     routerReformProvider: routerRow?.routerReformProvider ?? null,
-    routerReformModel: routerRow?.routerReformModel ?? null,
+    // Default da plataforma quando nao configurado: gpt-5.4-mini (barato).
+    routerReformModel: routerRow?.routerReformModel ?? "gpt-5.4-mini",
     routerReformCredentialId: routerRow?.routerReformCredentialId ?? null,
     routerReformNPairs: routerRow?.routerReformNPairs ?? 5,
     routerEmbeddingModel: routerRow?.routerEmbeddingModel ?? null,
@@ -157,6 +162,13 @@ export default async function Page() {
     gemini: modelEntries[2],
     openrouter: modelEntries[3],
   };
+
+  // F6 , config de modelo + recursos do construtor.
+  const [builderModelo, builderRecursos] = await Promise.all([
+    obterConfigModeloConstrutor(),
+    obterRecursosConstrutor(),
+  ]);
+  const builderProviders = reformProviders.length > 0 ? reformProviders : PROVIDERS;
 
   return (
     <PageShell variant="form">
@@ -205,6 +217,21 @@ export default async function Page() {
               embeddingActiveId={embeddingStatus.active?.id ?? null}
               embeddingOptions={embeddingOptions}
             />
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-2xl border border-border bg-muted/30 p-2">
+          <CardHeader className="pt-5 pb-5">
+            <CardTitle>Construtor de relatorios</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3 pb-5">
+            <BuilderModelCard
+              initial={builderModelo}
+              providers={builderProviders}
+              credentialsByProvider={credentialsByProvider}
+              modelsByProvider={modelsByProvider}
+            />
+            <BuilderRecursosCard initial={builderRecursos} modelId={builderModelo.model} />
           </CardContent>
         </Card>
       </div>

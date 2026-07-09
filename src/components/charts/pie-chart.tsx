@@ -3,7 +3,7 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { useState } from "react";
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
-import { colorAt } from "./colors";
+import { paletaApartirDe } from "./colors";
 import { ChartTooltip, type ChartTooltipPayloadItem } from "./chart-tooltip";
 import { ChartPreparing, ChartEmpty, ChartError } from "./chart-states";
 import { formatNumber, type NumberFormat, type ChartState } from "./kpi-card";
@@ -12,6 +12,8 @@ export interface PieChartConfig {
   nameKey: string;
   valueKey: string;
   formato: NumberFormat;
+  /** Cor que ancora a paleta (token ou hex). Ausente = paleta padrão. */
+  cor?: string;
 }
 
 interface PieChartCardProps {
@@ -78,6 +80,8 @@ export function PieChartCard({
 
   if (total <= 0) return <ChartEmpty />;
 
+  const paleta = paletaApartirDe(config.cor);
+
   const fmt = (v: number) => {
     const base = formatNumber(v, config.formato);
     const pct = total > 0 ? ((v / total) * 100).toFixed(1) : "0";
@@ -132,7 +136,7 @@ export function PieChartCard({
             {fatias.map((entry, i) => (
               <Cell
                 key={`${String(entry[config.nameKey])}-${i}`}
-                fill={colorAt(i)}
+                fill={paleta[i % paleta.length]}
                 opacity={activeIndex === null || activeIndex === i ? 1 : 0.45}
                 style={{ transition: "opacity 200ms ease" }}
               />

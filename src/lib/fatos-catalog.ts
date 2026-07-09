@@ -39,6 +39,7 @@ export const FATO_CATALOG: readonly FatoCatalogEntry[] = [
   { nome: "fato_pedido", dominio: "Comercial", modo: "incremental", fonte: "pedido.documento" },
   { nome: "fato_pedido_parcela", dominio: "Comercial", modo: "incremental", fonte: "pedido.parcela" },
   { nome: "fato_pedido_historico", dominio: "Comercial", modo: "incremental", fonte: "pedido.documento.historico" },
+  { nome: "fato_pedido_item", dominio: "Comercial", modo: "incremental", fonte: "sped.documento.item" },
   { nome: "fato_preco", dominio: "Comercial", modo: "incremental", fonte: "sped.tabela.preco.regra" },
   // Fiscal
   { nome: "fato_nota_fiscal", dominio: "Fiscal", modo: "incremental", fonte: "sped.documento" },
@@ -77,6 +78,9 @@ export const FATO_CATALOG: readonly FatoCatalogEntry[] = [
   // B7 , CRM + Auditoria
   { nome: "fato_crm_pipeline", dominio: "CRM", modo: "incremental", fonte: "crm.pipeline" },
   { nome: "fato_auditoria_regra", dominio: "Auditoria", modo: "incremental", fonte: "auditoria.regra" },
+  // Diretoria , Compras + Seriais
+  { nome: "fato_compra", dominio: "Comercial", modo: "incremental", fonte: "pedido.documento" },
+  { nome: "fato_serial", dominio: "Estoque", modo: "incremental", fonte: "sped.produto.lote.serie" },
 ];
 
 /**

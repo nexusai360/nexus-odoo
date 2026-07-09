@@ -224,6 +224,21 @@ TABLE fato_pedido_historico (
   atualizado_em    TIMESTAMPTZ
 );
 
+-- ─── COMERCIAL / ITENS DO PEDIDO ─────────────────────────────────────────────
+-- 1 linha = 1 produto de um pedido (derivado de raw_sped_documento_item). Para
+-- "produto com mais demanda" some quantidade agrupando por produto_id nos pedidos
+-- com bucket_demanda='ABERTA' (JOIN fato_pedido ON odoo_id = pedido_id). Cruze com
+-- fato_estoque_saldo (por produto_id) para "estoque disponivel" (saldo - demanda).
+TABLE fato_pedido_item (
+  odoo_id      INT PRIMARY KEY,
+  pedido_id    INT,      -- FK -> fato_pedido.odoo_id
+  produto_id   INT,
+  produto_nome TEXT,
+  familia_nome TEXT,
+  quantidade   NUMERIC,
+  vr_produtos  NUMERIC
+);
+
 -- ─── FISCAL / NOTAS FISCAIS ──────────────────────────────────────────────────
 
 -- Notas fiscais (cabeçalho)
@@ -661,5 +676,47 @@ TABLE fato_auditoria_regra (
   nome     TEXT,
   ativa    BOOLEAN,
   dias     NUMERIC
+);
+
+-- ─── COMPRAS , ORDENS DE COMPRA (Diretoria) ──────────────────────────────────
+-- Ordens de compra (pedido.documento tipo "compra"). recebida=false e
+-- cancelada=false ⇒ compra ativa (em aberto). vr_nf = valor da nota/ordem.
+TABLE fato_compra (
+  odoo_id         INT PRIMARY KEY,
+  numero          TEXT,
+  etapa_id        INT,
+  etapa_nome      TEXT,
+  operacao_id     INT,
+  operacao_nome   TEXT,
+  fornecedor_id   INT,
+  fornecedor_nome TEXT,
+  comprador_id    INT,
+  comprador_nome  TEXT,
+  empresa_id      INT,
+  empresa_nome    TEXT,
+  data_orcamento  TIMESTAMPTZ,
+  data_prevista   TIMESTAMPTZ,
+  data_aprovacao  TIMESTAMPTZ,
+  vr_produtos     NUMERIC(18,4),
+  vr_nf           NUMERIC(18,4),   -- valor da ordem/nota
+  vr_pago         NUMERIC(18,4),
+  vr_saldo        NUMERIC(18,4),
+  recebida        BOOLEAN,
+  cancelada       BOOLEAN
+);
+
+-- ─── ESTOQUE , SERIAIS (Diretoria) ───────────────────────────────────────────
+-- Números de série em estoque (sped.produto.lote.serie). data_saida nula ⇒ ainda em estoque.
+TABLE fato_serial (
+  odoo_id      INT PRIMARY KEY,
+  serial       TEXT,
+  produto_id   INT,
+  produto_nome TEXT,
+  local_id     INT,
+  local_nome   TEXT,
+  valor_custo  NUMERIC(18,4),
+  data_compra  TIMESTAMPTZ,
+  data_saida   TIMESTAMPTZ,
+  quantidade   NUMERIC(18,4)
 );
 `.trim();

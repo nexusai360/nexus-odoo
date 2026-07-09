@@ -71,6 +71,9 @@ async function queryPedidosPorUf(prisma: PrismaClient, input: Input) {
   const filtroStatus =
     status === "aberto" ? `AND pe.etapa_finaliza = false` :
     status === "fechado" ? `AND pe.etapa_finaliza = true` : ``;
+  // Base: só pedidos de VENDA (exclui transferência/remessa/anomalia intragrupo),
+  // via a coluna materializada categoria_operacao. Ver perícia 08 (P0.2).
+  const filtroVenda = `AND pe.categoria_operacao = 'venda'`;
   // B5: sufixo "(venda)" no fim do nome da operacao.
   const filtroOperacao =
     input.operacao === "venda" ? `AND pe.operacao_nome ~* '\\(venda\\)\\s*$'` : ``;
@@ -89,7 +92,7 @@ async function queryPedidosPorUf(prisma: PrismaClient, input: Input) {
             COALESCE(SUM(pe.vr_produtos), 0)::text AS valor
      FROM fato_pedido pe
      LEFT JOIN fato_parceiro p ON p.odoo_id = pe.participante_id
-     WHERE 1=1 ${filtroStatus} ${filtroOperacao} ${filtroPer}
+     WHERE 1=1 ${filtroVenda} ${filtroStatus} ${filtroOperacao} ${filtroPer}
      GROUP BY p.uf
      ORDER BY SUM(pe.vr_produtos) DESC NULLS LAST, p.uf ASC
      LIMIT ${limite}`,
@@ -113,7 +116,7 @@ async function queryPedidosPorUf(prisma: PrismaClient, input: Input) {
             COUNT(DISTINCT p.uf)::bigint AS ufs
      FROM fato_pedido pe
      LEFT JOIN fato_parceiro p ON p.odoo_id = pe.participante_id
-     WHERE 1=1 ${filtroStatus} ${filtroOperacao} ${filtroPer}`,
+     WHERE 1=1 ${filtroVenda} ${filtroStatus} ${filtroOperacao} ${filtroPer}`,
     ...params,
   );
   const totalGeral = Number(totalRows[0]?.geral ?? 0);

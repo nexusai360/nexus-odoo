@@ -26,6 +26,7 @@ import {
   SECTION_LABELS,
   type NavItem,
 } from "@/lib/constants/nav";
+import { RELATORIOS2_MENU, RELATORIOS2_SUBMENUS } from "@/lib/constants/relatorios2";
 import { PLATFORM_ROLE_LABELS } from "@/lib/constants/roles";
 import type { PlatformRole } from "@/generated/prisma/client";
 import {
@@ -42,8 +43,23 @@ interface SidebarUser {
   avatarUrl: string | null;
 }
 
+/** Visibilidade dinamica do menu Relatorios 2.0 (RBAC computado no servidor). */
+export interface Relatorios2Visible {
+  menu: boolean;
+  paineis: boolean;
+  meus: boolean;
+  construtor: boolean;
+}
+
 interface SidebarProps {
   user: SidebarUser;
+  /**
+   * Submenu da Diretoria resolvido por capability no layout server. Só dados
+   * serializáveis (label/href); o ícone é reanexado aqui no client a partir de
+   * NAV_ITEMS , componentes React não podem cruzar a fronteira server→client.
+   */
+  diretoriaNav: { label: string; href: string }[];
+  relatorios2Visible?: Relatorios2Visible;
 }
 
 const THEME_ICONS = { dark: Moon, light: Sun, system: Monitor } as const;
@@ -55,7 +71,7 @@ const THEME_LABELS = {
 
 const COLLAPSED_KEY = "nexus-sidebar-collapsed";
 
-export function Sidebar({ user }: SidebarProps) {
+export function Sidebar({ user, diretoriaNav, relatorios2Visible }: SidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const reduceMotion = useReducedMotion();
@@ -90,14 +106,56 @@ export function Sidebar({ user }: SidebarProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, [mobileOpen]);
 
-  const visibleNav = filterNav(NAV_ITEMS, user);
+  // Filtra por papel no client (ícones vêm de NAV_ITEMS, que vive aqui) e aplica
+  // DUAS transformações independentes: (1) injeta os children da Diretoria
+  // resolvidos por capability no server (só label/href), reanexando o ícone do
+  // item-pai e removendo "Diretoria" se não houver children; (2) filtra o menu
+  // Relatórios 2.0 e seus submenus por visibilidade (paineis/meus/construtor).
+  const visibleNav = useMemo(() => {
+    let nav = filterNav(NAV_ITEMS, user);
+    // (1) Diretoria , submenu por capability.
+    nav = nav
+      .map((item) =>
+        item.href === "/diretoria"
+          ? {
+              ...item,
+              children: diretoriaNav.map((c) => ({
+                label: c.label,
+                href: c.href,
+                icon: item.icon,
+              })),
+            }
+          : item,
+      )
+      .filter(
+        (item) => item.href !== "/diretoria" || (item.children?.length ?? 0) > 0,
+      );
+    // (2) Relatórios 2.0 , visibilidade de menu e submenus.
+    if (relatorios2Visible) {
+      nav = nav
+        .map((item) => {
+          if (item.href !== RELATORIOS2_MENU.href) return item;
+          if (!relatorios2Visible.menu) return null;
+          const subKeys = RELATORIOS2_SUBMENUS;
+          const children = (item.children ?? []).filter((c) => {
+            if (c.href === subKeys[0].href) return relatorios2Visible.paineis;
+            if (c.href === subKeys[1].href) return relatorios2Visible.meus;
+            if (c.href === subKeys[2].href) return relatorios2Visible.construtor;
+            return true;
+          });
+          return { ...item, children };
+        })
+        .filter((x): x is NonNullable<typeof x> => x != null);
+    }
+    return nav;
+  }, [user, diretoriaNav, relatorios2Visible]);
   const allLeafHrefs = useMemo(() => collectLeafHrefs(visibleNav), [visibleNav]);
 
   // Abre, na montagem, o grupo cujo prefixo de href bate com o pathname atual,
   // para que o submenu já apareça expandido ao navegar direto numa sub-rota.
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
-    for (const item of NAV_ITEMS) {
+    for (const item of visibleNav) {
       if ((item.children?.length ?? 0) > 0 && isGroupActive(item.href, pathname)) {
         initial[item.href] = true;
       }
@@ -109,9 +167,16 @@ export function Sidebar({ user }: SidebarProps) {
     setOpenGroups((prev) => ({ ...prev, [href]: !prev[href] }));
   }
 
+  // A view de um relatorio salvo vive em /relatorios-2/d/<id> (fora da arvore
+  // de submenus). Para o item "Meus relatorios" acender quando o usuario abre um
+  // relatorio, mapeamos esse prefixo para o href de "Meus".
+  const effectivePathname = pathname.startsWith("/relatorios-2/d/")
+    ? RELATORIOS2_SUBMENUS[1].href
+    : pathname;
+
   function isActive(item: NavItem): boolean {
-    if (item.children?.length) return isGroupActive(item.href, pathname);
-    return isLeafActive(item.href, pathname, allLeafHrefs);
+    if (item.children?.length) return isGroupActive(item.href, effectivePathname);
+    return isLeafActive(item.href, effectivePathname, allLeafHrefs);
   }
 
   function renderItem(item: NavItem, depth = 0, isCollapsed = false) {

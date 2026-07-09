@@ -2394,9 +2394,14 @@ export const TOOLS_QUE_PRECISAM_FORMATADOR: string[] = [
  * (102 read tools, 29 com formatador real, 73 genericas) em 2026-06-07.
  */
 export const TOOLS_SEM_FORMATADOR_REAL: string[] = [
-  // F4 Onda 4 COMPLETA: todas as read-tools tem formatador real (allowlist == []).
-  // O teste de contrato exige allowlist == read-tools genericas; nao ha mais
-  // nenhuma generica (so write-tools ficam fora do registry de formatadores).
+  // Tools da Inteligencia de Demanda (Ondas B/C, 2026-07) que se auto-formatam
+  // via `_RESPOSTA`/`_DESTAQUE` no proprio handler (padrao sancionado), sem um
+  // formatador registrado em FORMATADORES. O gate exige contabiliza-las aqui.
+  "comercial_demanda_em_aberta",
+  "comercial_demanda_por_produto",
+  "comercial_estoque_disponivel",
+  "comercial_pedido_situacao",
+  "comercial_seriais_produto",
 ];
 
 export function formatadorPorTool(toolName: string): FormatadorCanonico {

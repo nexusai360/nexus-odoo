@@ -12,6 +12,13 @@ function makePrisma() {
     fatoBuildState: { findMany: jest.fn() },
     syncState: { findMany: jest.fn() },
     fatoPedidoHistorico: { findMany: jest.fn() },
+    // Todos os pedidos das fixtures contam como VENDA (a query filtra por
+    // categoria_operacao='venda' via fatoPedido.findMany).
+    fatoPedido: {
+      findMany: jest.fn().mockResolvedValue(
+        Array.from({ length: 1000 }, (_, i) => ({ odooId: i + 1 })),
+      ),
+    },
   };
 }
 

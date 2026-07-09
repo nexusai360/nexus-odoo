@@ -35,6 +35,8 @@ export interface ResourceCardProps {
   defaultCollapsed?: boolean;
   /** Quando true, esconde o seletor de checkpoint (uso fixo: ex. ReasoningCard que travou em OFF). */
   hideCheckpoint?: boolean;
+  /** Restringe os estados do checkpoint (ex.: ["OFF","PRODUCTION"]). Default: todos. */
+  checkpointAllowed?: CheckpointState[];
   /** Subtitulo extra (opcional) embaixo do bloco de cabecalho. */
   children?: React.ReactNode;
 }
@@ -53,6 +55,7 @@ export function ResourceCard({
   collapsible = false,
   defaultCollapsed = false,
   hideCheckpoint = false,
+  checkpointAllowed,
   children,
 }: ResourceCardProps) {
   const panelId = useId();
@@ -132,6 +135,7 @@ export function ResourceCard({
               onChange={onCheckpointChange}
               disabled={loading}
               aria-label={ariaLabel}
+              {...(checkpointAllowed ? { allowed: checkpointAllowed } : {})}
             />
           )}
         </span>

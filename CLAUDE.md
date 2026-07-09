@@ -3,6 +3,32 @@
 > Carregado automaticamente em toda sessão. Define como conduzir o trabalho.
 > Sobrescreve regras globais quando houver conflito específico.
 
+> ## 🔒 REGRA DURÁVEL , F6 (Construtor de relatórios): SÓ LOCAL ATÉ APROVAÇÃO EXPLÍCITA
+>
+> **Decisão do usuário (2026-06-26), inegociável, vale para ESTA e TODAS as sessões
+> futuras.** TODO o trabalho do **Construtor de relatórios (F6)** fica **somente
+> local** e **NÃO sobe para produção** sem **aprovação explícita do usuário**.
+>
+> Concretamente, enquanto a F6 não for liberada por ele:
+> - **NUNCA mergear a branch do F6 para `main`** (merge na `main` dispara o
+>   auto-deploy via Shepherd e vai para produção). O `gh pr merge` da F6 só
+>   acontece com o "sim" explícito do usuário, como qualquer merge, e aqui com
+>   rigor redobrado.
+> - **NÃO rodar `scripts/ship.py`, `scripts/deploy-portainer.py` nem qualquer
+>   deploy** para a F6.
+> - **NÃO aplicar migrations da F6 no banco de produção.** Schema novo da F6 só
+>   em dev local. Como o Postgres é compartilhado entre worktrees, qualquer
+>   migration da F6 segue o protocolo de schema e fica restrita ao dev.
+> - O trabalho vive numa **worktree/branch local dedicada** do F6. Push da branch
+>   feature para o GitHub (backup/PR de revisão) é tolerável, MAS **o merge para
+>   `main` é o gatilho proibido** sem aprovação. Em dúvida, perguntar antes.
+> - Validação é toda **local** (dev local, `npm run dev:fresh`, containers locais),
+>   nunca em produção.
+>
+> Esta regra protege contra subir um construtor (que gera relatórios e consome a
+> API do Claude por cliente) para produção antes do usuário validar. Só sai daqui
+> quando ele disser, com todas as letras, que pode subir.
+
 > **Ao iniciar uma sessão, ler `STATUS.md`** — é o ponto de retomada: o que já
 > foi feito, em que fase/bloco estamos e qual a próxima ação. Trabalho conduzido
 > em **modo autônomo** (ver §5).
@@ -273,6 +299,9 @@ autônomo até o fim.
 **[2] Design UI/UX — `ui-ux-pro-max`, OBRIGATÓRIO.** A skill `ui-ux-pro-max` é a autoridade de design e é de uso **obrigatório em tudo que for frontend** — layout, telas, componentes, ícones, gráficos, cores, tipografia, espaçamento, animação e interação. Nenhuma UI é construída ou alterada sem consultá-la primeiro. Alimenta a spec e o plano, e é reaplicada durante a execução de qualquer task com UI.
 **[3–4] Double-check da SPEC — REGRA DE RAIZ, inegociável.**
 > A spec passa por **duas reviews genuinamente críticas** antes de virar plano.
+> **As duas reviews são SEQUENCIAIS, NUNCA em paralelo (regra de raiz):** a #2 só
+> começa depois que a #1 foi aplicada e virou a v2, porque a #2 revisa a **v2 já
+> corrigida**. É PROIBIDO disparar as duas ao mesmo tempo sobre a mesma versão.
 > - **[3] Review da spec #1 → SPEC v2** — auditoria adversarial: achar erro,
 >   inconsistência, premissa frágil, requisito ambíguo, o que está faltando ou
 >   esquecido. Aplicar os achados gera a **SPEC v2**.
@@ -285,6 +314,9 @@ autônomo até o fim.
 **[6–7] Double-check do plano — REGRA DE RAIZ, inegociável.**
 > Duas reviews **genuinamente críticas**, sem passar pano. A review não é
 > carimbo — é auditoria adversarial do próprio plano. Vale para TODA fase.
+> **SEQUENCIAIS, NUNCA em paralelo (regra de raiz):** PLAN v1 → review #1 → aplicar
+> → PLAN v2 → review #2 (mais profunda, sobre a v2) → aplicar → PLAN v3. A #2 só
+> começa depois da v2 existir. Proibido disparar as duas ao mesmo tempo.
 > Critérios de qualidade que o plano precisa cumprir para sair do loop:
 > - **Decomposição máxima.** Cada task é uma unidade pequena, de escopo único,
 >   verificável isoladamente. Se uma task descreve "portar a tela X" com

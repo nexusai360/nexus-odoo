@@ -9,4 +9,13 @@
 // Criterio de saida da Fase B: allowlist == [] (padrao TOOLS_SEM_FORMATADOR_REAL).
 // Origem: docs/superpowers/research/2026-06-11-auditoria-contrato-lista.md
 
-export const TOOLS_SEM_CONTRATO_DE_LISTA: readonly string[] = [];
+export const TOOLS_SEM_CONTRATO_DE_LISTA: readonly string[] = [
+  // Inteligencia de Demanda (Ondas B/C, 2026-07): tools cuja lista NAO e um
+  // ranking arbitrario que o agente enquadre como "maiores" , sao itens de um
+  // pedido, seriais de um produto, ou linhas ja com ordenacao intrinseca no
+  // handler/_RESPOSTA. Ficam fora do contrato de `ordenadoPor` explicito.
+  "comercial_demanda_por_produto",
+  "comercial_estoque_disponivel",
+  "comercial_pedido_situacao",
+  "comercial_seriais_produto",
+];

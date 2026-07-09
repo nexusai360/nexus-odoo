@@ -15,8 +15,10 @@
  */
 
 import { Fragment, useMemo, type ReactNode } from "react";
+import { cn } from "@/lib/utils";
+import { tryParseTable, type TableBlock, type ColAlign } from "@/components/agent/gfm-table";
 
-type Block = { type: "p"; text: string } | { type: "ul"; items: string[] };
+type Block = { type: "p"; text: string } | { type: "ul"; items: string[] } | TableBlock;
 
 // Mantem valores e unidades coladas (NBSP) para a quebra de linha cair sempre
 // nos espacos do NOME, nunca no meio de um valor. Ex.: "R$ 3.404,00" e
@@ -49,7 +51,16 @@ function splitBlocks(input: string): Block[] {
     listItems = null;
   };
 
-  for (const raw of lines) {
+  for (let idx = 0; idx < lines.length; idx++) {
+    const raw = lines[idx] ?? "";
+    const tbl = tryParseTable(lines, idx);
+    if (tbl) {
+      flushParagraph();
+      flushList();
+      blocks.push(tbl.block);
+      idx = tbl.next - 1;
+      continue;
+    }
     const listMatch = raw.match(/^\s*[-*]\s+(.*)$/);
     if (listMatch) {
       flushParagraph();
@@ -112,6 +123,55 @@ function renderInline(text: string): ReactNode {
   return nodes;
 }
 
+function snapAlign(a: ColAlign): string {
+  return a === "right"
+    ? "text-right tabular-nums"
+    : a === "center"
+      ? "text-center"
+      : "text-left";
+}
+
+function SnapshotTable({ block }: { block: TableBlock }) {
+  return (
+    <div className="my-1 overflow-x-auto rounded-lg border border-border">
+      <table className="w-full border-collapse text-[0.8rem]">
+        <thead>
+          <tr className="border-b border-border bg-muted/50">
+            {block.header.map((h, i) => (
+              <th
+                key={i}
+                className={cn(
+                  "whitespace-nowrap px-3 py-2 font-semibold text-foreground",
+                  snapAlign(block.align[i] ?? null),
+                )}
+              >
+                {renderInline(protectValues(h))}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border">
+          {block.rows.map((row, r) => (
+            <tr key={r} className="odd:bg-muted/20">
+              {row.map((cell, c) => (
+                <td
+                  key={c}
+                  className={cn(
+                    "px-3 py-1.5 align-top text-foreground/90",
+                    snapAlign(block.align[c] ?? null),
+                  )}
+                >
+                  {renderInline(protectValues(cell))}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export function MarkdownSnapshot({ content }: { content: string }) {
   const blocks = useMemo(() => splitBlocks(content), [content]);
   return (
@@ -119,6 +179,9 @@ export function MarkdownSnapshot({ content }: { content: string }) {
     // se ela sozinha estourar a linha; numeros/codigos curtos ficam inteiros.
     <div className="space-y-2 text-sm [overflow-wrap:break-word]">
       {blocks.map((block, i) => {
+        if (block.type === "table") {
+          return <SnapshotTable key={i} block={block} />;
+        }
         if (block.type === "ul") {
           return (
             <ul key={i} className="ml-4 list-disc space-y-1">

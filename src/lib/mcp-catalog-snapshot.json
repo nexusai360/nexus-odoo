@@ -1468,6 +1468,153 @@
       "examples": []
     },
     {
+      "id": "comercial_demanda_em_aberta",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Demanda em aberta (pedidos de venda a cliente externo, aprovados, ainda sem nota fiscal ao consumidor final). Devolve o total em pedidos e em R$, a quebra por etapa (etapa: quantidade) e a lista de pedidos (com NUMERO). Use para 'quanto temos de demanda em aberto', 'pedidos parados', 'carteira a faturar'. Para DRILL numa etapa especifica ('os pedidos em FAT JDS x GRUPO'), passe 'etapa' para receber os pedidos daquela etapa com numero, e em seguida chame comercial_pedido_situacao com o numero para a imersao completa. Aceita filtro por empresa, etapa e ordenacao (tempo_parado padrao, valor, data_criacao).",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "empresaId",
+        "etapa",
+        "limite",
+        "ordenacao"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "empresaId",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "etapa",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "ordenacao",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "tempo_parado",
+            "valor",
+            "data_criacao"
+          ]
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "comercial_pedido_situacao",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Situacao detalhada de um pedido (imersao COMPLETA): por onde passou (trilha de etapas), em que etapa esta agora, ha quantos dias esta parado, os dados-chave (operacao, empresa, cliente, valor, aprovacao) E os PRODUTOS do pedido com o saldo em estoque de cada um (faltando>0 = precisa comprar/repor para avancar). Use para 'detalhes do pedido X', 'o que tem no pedido', 'o que falta no pedido', 'por que o pedido esta parado', 'quais produtos do pedido nao temos em estoque'.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "numero"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "numero",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "comercial_demanda_por_produto",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Produto com mais demanda, por QUANTIDADE, somando os itens dos pedidos em demanda aberta (aprovados, sem nota ao cliente). Use para 'qual produto tem mais demanda', 'produtos mais pedidos em aberto', 'ranking de demanda por item'.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "limite",
+        "empresaId"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "empresaId",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "comercial_estoque_disponivel",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Estoque disponivel por produto = saldo em estoque menos o comprometido em demanda aberta. Fica NEGATIVO quando ha mais demanda que saldo (precisa comprar). Use para 'estoque disponivel de X', 'o que precisa comprar', 'produtos com estoque negativo'. Aceita busca por produto e recorte de negativos.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "produto",
+        "apenasNegativos",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "produto",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "apenasNegativos",
+          "type": "boolean",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "comercial_seriais_produto",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Numeros de serie por produto: quantos estao parados em estoque (sem saida) e quantos ja sairam (apareceram em nota de saida autorizada). Use para 'seriais parados do produto X', 'quantos numeros de serie em estoque vs vendidos'.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "produto",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "produto",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
       "id": "fiscal_faturamento_periodo",
       "operation": "read",
       "module": "fiscal",
@@ -4341,6 +4488,6 @@
       "examples": []
     }
   ],
-  "count": 123,
-  "generatedAt": "2026-06-19T14:04:12.047Z"
+  "count": 128,
+  "generatedAt": "2026-07-08T18:12:53.098Z"
 }

@@ -186,9 +186,15 @@ model User {
   passwordResetTokens    PasswordResetToken[]
   emailChangeTokens      EmailChangeToken[]
   domainAccess           UserDomainAccess[]      @relation("UserDomainAccess")
+  diretoriaAccess        UserDiretoriaAccess[]   @relation("UserDiretoriaAccess")
+  diretoriaUfs           UserDiretoriaUf[]       @relation("UserDiretoriaUf")
+  eventosCriados         DiretoriaEvento[]       @relation("DiretoriaEventoCriador")
+  eventosColaborador     DiretoriaEventoColaborador[] @relation("DiretoriaEventoColaborador")
   reportPresets          ReportPreset[]
   // F5
   conversations          Conversation[]
+  // F6 , conversas do Construtor de relatorios (isoladas das do Nex)
+  builderConversations   BuilderConversation[]
   whatsappNumbers        UserWhatsappNumber[]
   playgroundSessions     PlaygroundSession[]
   // F4.5 — Agente Nex Inteligencia
@@ -216,6 +222,77 @@ model ReportPreset {
 
   @@index([userId, reportId])
   @@map("report_presets")
+}
+
+/// F6 , ficha de relatorio dinamico criada pelo Construtor de Relatorios (config-driven).
+enum SavedReportTipo {
+  tela_cheia
+  widget
+}
+
+enum SavedReportStatus {
+  rascunho
+  publicado
+}
+
+model SavedReport {
+  id                  String            @id @default(cuid())
+  tipo                SavedReportTipo   @default(tela_cheia)
+  titulo              String
+  entry               Json
+  schemaVersion       Int               @default(1) @map("schema_version")
+  status              SavedReportStatus @default(rascunho)
+  criadoPor           String            @map("criado_por") @db.Uuid
+  visibilidadeConsumo String[]          @default([]) @map("visibilidade_consumo")
+  etag                String            @default(cuid())
+  criadoEm            DateTime          @default(now()) @map("criado_em")
+  atualizadoEm        DateTime          @updatedAt @map("atualizado_em")
+
+  @@index([criadoPor, status])
+  @@map("saved_reports")
+}
+
+/// F6 , conversa do Construtor de relatorios. Isolada da Conversation do Nex
+/// (que tem muitos consumidores: monitoramento, qualidade, router) para nao
+/// contaminar a producao. Uma conversa constroi UMA ficha (savedReportId).
+model BuilderConversation {
+  id            String           @id @default(uuid()) @db.Uuid
+  userId        String           @map("user_id") @db.Uuid
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title         String?
+  /// Ficha (SavedReport) que esta conversa esta construindo. Setado no 1o turno
+  /// que persiste rascunho; reusado nos turnos seguintes (atualiza, nao recria).
+  savedReportId String?          @map("saved_report_id")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+  /// "Limpar conversa": arquiva (nao deleta). null = ativa.
+  endedAt       DateTime?        @map("ended_at")
+  /// Estado da jornada guiada (fase, fichaRascunho, entendimento, resumo). null =
+  /// conversa legada (tratada como refino se houver savedReportId). F6 so dev.
+  journeyState  Json?            @map("journey_state")
+  messages      BuilderMessage[]
+
+  @@index([userId, endedAt, updatedAt])
+  @@map("builder_conversations")
+}
+
+/// F6 , mensagem da conversa do Construtor (user | assistant). `steps` guarda os
+/// rotulos das tools consultadas no turno (rebuild da trilha "Raciocinio") e
+/// `durationMs` a duracao (resumo "Raciocinio . N tools . Xs").
+model BuilderMessage {
+  id             String              @id @default(uuid()) @db.Uuid
+  conversationId String              @map("conversation_id") @db.Uuid
+  conversation   BuilderConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String
+  content        String
+  /// Array<{ label: string }> das tools consultadas neste turno.
+  steps          Json?
+  durationMs     Int?                @map("duration_ms")
+  kind           String              @default("text")
+  createdAt      DateTime            @default(now()) @map("created_at")
+
+  @@index([conversationId, createdAt])
+  @@map("builder_messages")
 }
 
 model AppSetting {
@@ -316,6 +393,175 @@ model UserDomainAccess {
   @@unique([userId, domain])
   @@index([userId])
   @@map("user_domain_access")
+}
+
+/// Concessão granular de capability do menu Diretoria a um usuário. super_admin
+/// não tem linhas (vê tudo, bypass). Demais papéis: default por papel + estes
+/// grants como override. Capability é string namespaced (ex "diretoria.vendas.view").
+model UserDiretoriaAccess {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  capability  String
+  grantedById String?  @map("granted_by_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  user        User     @relation("UserDiretoriaAccess", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, capability])
+  @@index([userId])
+  @@map("user_diretoria_access")
+}
+
+/// Recorte geográfico (UF-scoping) do acesso à Diretoria. Ausência de linhas =
+/// usuário enxerga todas as UFs. Aplicado como filtro nas queries das telas.
+model UserDiretoriaUf {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  uf     String @db.VarChar(2)
+  user   User   @relation("UserDiretoriaUf", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, uf])
+  @@index([userId])
+  @@map("user_diretoria_uf")
+}
+
+/// Tipo de evento da agenda da Diretoria (dado nativo da plataforma, não-Odoo).
+enum DiretoriaEventoTipo {
+  reuniao
+  entrega
+  inventario
+  prospeccao
+  carregamento
+  organizacao_estoque
+  assembleia
+  visita
+}
+
+/// Evento da agenda da Diretoria (reunião, inventário, prospecção, assembleia...).
+model DiretoriaEvento {
+  id          String             @id @default(uuid()) @db.Uuid
+  titulo      String
+  tipo        DiretoriaEventoTipo
+  inicio      DateTime           @map("inicio")
+  fim         DateTime?          @map("fim")
+  diaInteiro  Boolean            @default(false) @map("dia_inteiro")
+  descricao   String?
+  local       String?
+  criadoPorId String             @map("criado_por_id") @db.Uuid
+  criadoPor   User               @relation("DiretoriaEventoCriador", fields: [criadoPorId], references: [id])
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+  colaboradores DiretoriaEventoColaborador[]
+  anexos      DiretoriaEventoAnexo[]
+
+  @@index([inicio])
+  @@map("diretoria_evento")
+}
+
+/// Colaborador vinculado a um evento da agenda.
+model DiretoriaEventoColaborador {
+  id       String          @id @default(uuid()) @db.Uuid
+  eventoId String          @map("evento_id") @db.Uuid
+  userId   String          @map("user_id") @db.Uuid
+  evento   DiretoriaEvento @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  user     User            @relation("DiretoriaEventoColaborador", fields: [userId], references: [id])
+
+  @@unique([eventoId, userId])
+  @@index([userId])
+  @@map("diretoria_evento_colaborador")
+}
+
+/// Anexo de um evento da agenda (referência por URL; upload real fica para depois).
+model DiretoriaEventoAnexo {
+  id       String          @id @default(uuid()) @db.Uuid
+  eventoId String          @map("evento_id") @db.Uuid
+  nome     String
+  url      String
+  mime     String?
+  tamanho  Int?
+  evento   DiretoriaEvento @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+
+  @@index([eventoId])
+  @@map("diretoria_evento_anexo")
+}
+
+/// Construtor de relatórios (Diretoria v2). Um relatório por tela: o PADRÃO
+/// (dono nulo + isPadrao) ou o personalizado de um usuário. Blocos referenciam
+/// componentes do catálogo (catalogo.ts). Posição é derivada de ordem+largura+
+/// altura via CSS grid (sem x/y). Schema aplicado por SQL cirúrgico.
+model DiretoriaRelatorio {
+  id         String                    @id @default(uuid()) @db.Uuid
+  tela       String
+  donoUserId String?                   @map("dono_user_id") @db.Uuid
+  isPadrao   Boolean                   @default(false) @map("is_padrao")
+  createdAt  DateTime                  @default(now()) @map("created_at")
+  updatedAt  DateTime                  @updatedAt @map("updated_at")
+  blocos     DiretoriaRelatorioBloco[]
+
+  @@index([tela])
+  @@index([donoUserId])
+  @@map("diretoria_relatorio")
+}
+
+model DiretoriaRelatorioBloco {
+  id             String             @id @default(uuid()) @db.Uuid
+  relatorioId    String             @map("relatorio_id") @db.Uuid
+  componenteId   String             @map("componente_id")
+  ordem          Int
+  larguraQuartos Int                @map("largura_quartos")
+  alturaU        Int                @map("altura_u")
+  configJson     Json?              @map("config_json")
+  relatorio      DiretoriaRelatorio @relation(fields: [relatorioId], references: [id], onDelete: Cascade)
+
+  @@index([relatorioId])
+  @@map("diretoria_relatorio_bloco")
+}
+
+/// Fato de seriais (A6 da Diretoria). Cada equipamento por número de série.
+/// Fonte: raw_sped_produto_lote_serie. Construído pelo builder rebuildFatoSerial.
+model FatoSerial {
+  odooId      Int       @id @map("odoo_id")
+  serial      String?
+  produtoId   Int?      @map("produto_id")
+  produtoNome String?   @map("produto_nome")
+  localId     Int?      @map("local_id")
+  localNome   String?   @map("local_nome")
+  valorCusto  Decimal?  @map("valor_custo") @db.Decimal(18, 4)
+  dataCompra  DateTime? @map("data_compra")
+  dataSaida   DateTime? @map("data_saida")
+  quantidade  Decimal?  @db.Decimal(18, 4)
+
+  @@index([produtoId])
+  @@map("fato_serial")
+}
+
+// A7 (Diretoria): compras (ordens de compra) extraídas de raw_pedido_documento
+// onde tipo = "compra". Guarda todas; a query filtra as ATIVAS (não recebidas e
+// não canceladas). `recebida` = estoque_finalizado do Odoo.
+model FatoCompra {
+  odooId         Int       @id @map("odoo_id")
+  numero         String?
+  etapaId        Int?      @map("etapa_id")
+  etapaNome      String?   @map("etapa_nome")
+  operacaoId     Int?      @map("operacao_id")
+  operacaoNome   String?   @map("operacao_nome")
+  fornecedorId   Int?      @map("fornecedor_id")
+  fornecedorNome String?   @map("fornecedor_nome")
+  compradorId    Int?      @map("comprador_id")
+  compradorNome  String?   @map("comprador_nome")
+  empresaId      Int?      @map("empresa_id")
+  empresaNome    String?   @map("empresa_nome")
+  dataOrcamento  DateTime? @map("data_orcamento")
+  dataPrevista   DateTime? @map("data_prevista")
+  dataAprovacao  DateTime? @map("data_aprovacao")
+  vrProdutos     Decimal?  @map("vr_produtos") @db.Decimal(18, 4)
+  vrNf           Decimal?  @map("vr_nf") @db.Decimal(18, 4)
+  vrPago         Decimal?  @map("vr_pago") @db.Decimal(18, 4)
+  vrSaldo        Decimal?  @map("vr_saldo") @db.Decimal(18, 4)
+  recebida       Boolean   @default(false)
+  cancelada      Boolean   @default(false)
+
+  @@index([recebida, cancelada])
+  @@map("fato_compra")
 }
 
 model PasswordResetToken {
@@ -2026,12 +2272,39 @@ model FatoPedido {
   dataPrevista     DateTime? @map("data_prevista")
   vrProdutos       Decimal   @default(0) @map("vr_produtos") @db.Decimal(18, 2)
   vrNf             Decimal   @default(0) @map("vr_nf") @db.Decimal(18, 2)
+  // Colunas derivadas (materializadas pelo builder fato_pedido_classificacao):
+  categoriaOperacao String?  @map("categoria_operacao")
+  bucketDemanda     String?  @map("bucket_demanda")
+  pendenciaEtapa    String?  @map("pendencia_etapa")
   atualizadoEm     DateTime  @default(now()) @map("atualizado_em")
 
   @@index([dataOrcamento])
   @@index([etapaId])
   @@index([vendedorId])
+  @@index([bucketDemanda])
+  @@index([categoriaOperacao])
   @@map("fato_pedido")
+}
+
+// Linhas de produto do pedido, derivadas de raw_sped_documento_item (join por
+// pedido_id). Base para "produto com mais demanda", estoque disponivel e seriais.
+model FatoPedidoItem {
+  odooId         Int      @id @map("odoo_id")
+  pedidoId       Int      @map("pedido_id")
+  produtoId      Int?     @map("produto_id")
+  produtoNome    String?  @map("produto_nome")
+  familiaNome    String?  @map("familia_nome")
+  marcaNome      String?  @map("marca_nome")
+  quantidade     Decimal  @default(0) @db.Decimal(18, 4)
+  cfopId         Int?     @map("cfop_id")
+  localReservaId Int?     @map("local_reserva_id")
+  vrProdutos     Decimal  @default(0) @map("vr_produtos") @db.Decimal(18, 2)
+  vrCusto        Decimal  @default(0) @map("vr_custo") @db.Decimal(18, 2)
+  atualizadoEm   DateTime @default(now()) @map("atualizado_em")
+
+  @@index([pedidoId])
+  @@index([produtoId])
+  @@map("fato_pedido_item")
 }
 
 model FatoPedidoParcela {
@@ -2105,12 +2378,15 @@ model FatoNotaFiscal {
   vrIbpt               Decimal   @default(0) @map("vr_ibpt") @db.Decimal(18, 2)
   vrIcmsProprio        Decimal   @default(0) @map("vr_icms_proprio") @db.Decimal(18, 2)
   vrDesconto           Decimal   @default(0) @map("vr_desconto") @db.Decimal(18, 2)
+  // Coluna derivada (materializada pelo builder de classificacao):
+  isVendaExterna       Boolean?  @map("is_venda_externa")
   atualizadoEm         DateTime  @default(now()) @map("atualizado_em")
 
   @@index([dataEmissao])
   @@index([entradaSaida])
   @@index([situacaoNfe])
   @@index([chave])
+  @@index([isVendaExterna])
   @@map("fato_nota_fiscal")
 }
 
@@ -2927,6 +3203,24 @@ model AgentSettings {
   imageModel        String? @map("image_model")
   /// Credencial (chave de API) usada pelo modelo dedicado de imagem.
   imageCredentialId String? @map("image_credential_id") @db.Uuid
+
+  /// Modelo do agente construtor de relatorios (F6). Independente do modelo de
+  /// producao do Nex. Default no codigo (openai/gpt-5-mini) quando vazio.
+  builderModelProvider     String? @map("builder_model_provider")
+  builderModelId           String? @map("builder_model_id")
+  /// Credencial (chave de API) usada pelo modelo do construtor.
+  builderModelCredentialId String? @map("builder_model_credential_id") @db.Uuid
+  /// Recursos do construtor (2 estados na UI: OFF/PRODUCTION).
+  builderReasoningCheckpoint FeatureCheckpoint @default(OFF) @map("builder_reasoning_checkpoint")
+  builderReasoningEffort     String?           @map("builder_reasoning_effort")
+  builderAudioCheckpoint     FeatureCheckpoint @default(OFF) @map("builder_audio_checkpoint")
+  builderAnexoCheckpoint     FeatureCheckpoint @default(OFF) @map("builder_anexo_checkpoint")
+  /// Acesso ao menu Relatorios 2.0 e a cada submenu (nivel minimo de perfil;
+  /// "off" = oculto para todos exceto o super_admin dono). Heranca por nivel.
+  relatorios2MenuAccess       ChannelAccessLevel @default(admin) @map("relatorios2_menu_access")
+  relatorios2PaineisAccess    ChannelAccessLevel @default(admin) @map("relatorios2_paineis_access")
+  relatorios2MeusAccess       ChannelAccessLevel @default(admin) @map("relatorios2_meus_access")
+  relatorios2ConstrutorAccess ChannelAccessLevel @default(admin) @map("relatorios2_construtor_access")
 
   /// R1 router de catalogo (sub-projeto do roadmap de cobertura completa).
   /// Ver docs/superpowers/specs/2026-05-28-router-catalogo-design.md.

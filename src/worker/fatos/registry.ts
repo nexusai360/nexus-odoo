@@ -39,6 +39,10 @@ import { rebuildFatoProducaoProcesso } from "./fato-producao-processo";
 import { rebuildFatoEstoqueMinMax } from "./fato-estoque-minimo-maximo";
 import { rebuildFatoCrmPipeline } from "./fato-crm-pipeline";
 import { rebuildFatoAuditoriaRegra } from "./fato-auditoria-regra";
+import { rebuildFatoSerial } from "./fato-serial";
+import { rebuildFatoCompra } from "./fato-compra";
+import { rebuildFatoPedidoItem } from "./fato-pedido-item";
+import { rebuildFatoPedidoClassificacao } from "./fato-pedido-classificacao";
 
 export interface FatoBuilderEntry {
   nome: string;
@@ -57,6 +61,16 @@ export const FATO_BUILDERS: FatoBuilderEntry[] = [
   { nome: "fato_pedido_parcela", cycle: "incremental", run: rebuildFatoPedidoParcela },
   { nome: "fato_nota_fiscal", cycle: "incremental", run: rebuildFatoNotaFiscal },
   { nome: "fato_nota_fiscal_item", cycle: "incremental", run: rebuildFatoNotaFiscalItem },
+  // === GRUPO PEDIDO/CLASSIFICACAO , juntos e LOGO APOS suas dependencias ===
+  // As bases (fato_pedido/fato_nota_fiscal[_item]) fazem truncate+insert e ZERAM as
+  // colunas materializadas; a classificacao repopula. Se ela rodasse por ultimo (apos
+  // ~40 builders), havia uma janela de varios minutos por ciclo com bucket_demanda
+  // NULL (a demanda aparecia 0). Manter este grupo colado as bases minimiza a janela
+  // ao estritamente necessario (produto -> itens -> classificacao). NAO afastar.
+  { nome: "fato_produto", cycle: "incremental", run: rebuildFatoProduto },
+  { nome: "fato_pedido_item", cycle: "incremental", run: rebuildFatoPedidoItem },
+  { nome: "fato_pedido_classificacao", cycle: "incremental", run: rebuildFatoPedidoClassificacao },
+  // === demais dimensoes/catalogos (independentes do grupo acima) ===
   { nome: "fato_parceiro", cycle: "incremental", run: rebuildFatoParceiro },
   { nome: "fato_conta_contabil", cycle: "incremental", run: rebuildFatoContaContabil },
   { nome: "fato_preco", cycle: "incremental", run: rebuildFatoPreco },
@@ -65,10 +79,6 @@ export const FATO_BUILDERS: FatoBuilderEntry[] = [
   { nome: "fato_carta_correcao", cycle: "incremental", run: rebuildFatoCartaCorrecao },
   { nome: "fato_certificado", cycle: "incremental", run: rebuildFatoCertificado },
   { nome: "fato_referencia", cycle: "incremental", run: rebuildFatoReferencia },
-  // Catalogo canonico de produtos (3787 linhas). Cycle incremental para
-  // pegar produtos novos rapidamente; truncate+insert do builder garante
-  // consistencia com raw_sped_produto.
-  { nome: "fato_produto", cycle: "incremental", run: rebuildFatoProduto },
   // O1 (onda DF-e): notas de fornecedores capturadas eletronicamente.
   { nome: "fato_dfe", cycle: "incremental", run: rebuildFatoDfe },
   // O3 (onda Pedido): historico de transicao de etapas do pedido.
@@ -98,6 +108,10 @@ export const FATO_BUILDERS: FatoBuilderEntry[] = [
   { nome: "fato_producao_processo", cycle: "incremental", run: rebuildFatoProducaoProcesso },
   // B6 (estoque avançado). estoque.minimo.maximo (0 reg hoje; auto-ativa).
   { nome: "fato_estoque_min_max", cycle: "incremental", run: rebuildFatoEstoqueMinMax },
+  // A6 (Diretoria): seriais por número de série. sped.produto.lote.serie.
+  { nome: "fato_serial", cycle: "incremental", run: rebuildFatoSerial },
+  // A7 (Diretoria): compras (ordens de compra). pedido.documento tipo="compra".
+  { nome: "fato_compra", cycle: "incremental", run: rebuildFatoCompra },
   // B7 (CRM + auditoria). crm.pipeline (0 reg); auditoria.regra (15 reg reais).
   { nome: "fato_crm_pipeline", cycle: "incremental", run: rebuildFatoCrmPipeline },
   { nome: "fato_auditoria_regra", cycle: "incremental", run: rebuildFatoAuditoriaRegra },
