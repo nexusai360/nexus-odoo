@@ -1,24 +1,17 @@
 import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 import { authConfig } from "./auth.config";
+import { isPublicPath } from "./lib/auth/public-paths";
 
 const { auth } = NextAuth(authConfig);
 
 export default auth(async (req) => {
   const { nextUrl, auth: session } = req;
 
-  const isPublic =
-    nextUrl.pathname === "/login" ||
-    nextUrl.pathname === "/forgot-password" ||
-    nextUrl.pathname === "/reset-password" ||
-    nextUrl.pathname === "/verify-email" ||
-    nextUrl.pathname.startsWith("/api/auth/") ||
-    nextUrl.pathname.startsWith("/api/health") ||
-    // Webhook receptor do WhatsApp (n8n→plataforma): endpoint público
-    // server-to-server , autentica por HMAC no próprio handler, não por sessão.
-    nextUrl.pathname === "/api/integrations/whatsapp/inbound";
-
-  if (isPublic) return NextResponse.next();
+  // Lista em src/lib/auth/public-paths.ts (pura e testada). Inclui os endpoints
+  // de recebimento de webhook, que são chamados por sistemas externos sem sessão
+  // e se autenticam pelo token do próprio webhook.
+  if (isPublicPath(nextUrl.pathname)) return NextResponse.next();
 
   if (!session) {
     const url = new URL(
