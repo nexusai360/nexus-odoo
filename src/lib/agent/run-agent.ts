@@ -462,7 +462,9 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     const tierT3Active =
       agentSettings.tierT3Checkpoint === "PRODUCTION" ||
       (agentSettings.tierT3Checkpoint === "PLAYGROUND" && Boolean(args.isPlayground));
-    const modeloForteT3 = agentSettings.tierT3Model ?? "gpt-5.4";
+    // Default da plataforma = gpt-5.4-mini (barato). O admin pode setar um
+    // modelo mais forte para o T3 explicitamente em AgentSettings.
+    const modeloForteT3 = agentSettings.tierT3Model ?? "gpt-5.4-mini";
     if (tier === "T3" && tierT3Active && !args.llmOverride) {
       console.log(`[tiers] T3: ${resolvedLlm.model} -> ${modeloForteT3} (explicativa/contestacao)`);
       resolvedLlm = { ...resolvedLlm, model: modeloForteT3 };

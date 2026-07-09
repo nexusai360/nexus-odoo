@@ -1,0 +1,125 @@
+jest.mock("@/lib/prisma", () => ({ prisma: {} }));
+
+import { buildFichaDoPlano } from "./build-plano";
+import { listarMetricas } from "./metric-catalog";
+import type { Plano } from "./plano-types";
+
+const metricas = listarMetricas({ dominiosPermitidos: ["estoque"] });
+
+const plano: Plano = {
+  titulo: "Panorama do estoque",
+  objetivo: "saude e composicao",
+  dominio: "estoque",
+  blocos: [
+    { tipo: "KpiStrip", metricas: ["estoque.valor_total", "estoque.produtos", "estoque.negativos"] },
+    { tipo: "Ranking", metrica: "estoque.valor_armazem", recorte: "armazem" },
+    { tipo: "TendenciaDistribuicao", metricaSerie: "estoque.movimento", metricaComposicao: "estoque.valor_marca" },
+    { tipo: "Tabela", metrica: "estoque.saldo_produto" },
+  ],
+  filtrosIniciais: {},
+};
+
+describe("buildFichaDoPlano", () => {
+  it("constroi a ficha sem omitidos e com os templates certos", () => {
+    const { ficha, omitidos } = buildFichaDoPlano(plano, metricas);
+    expect(omitidos).toEqual([]);
+    const tpls = ficha.secoes.map((s) => s.template);
+    // KPIRow + BarChart(ranking) + LineChart + PieChart(grupo) + DataTable
+    expect(tpls).toEqual(["KPIRow", "BarChart", "LineChart", "PieChart", "DataTable"]);
+  });
+
+  it("expande TendenciaDistribuicao em 2 secoes irmas com o mesmo grupoId", () => {
+    const { ficha } = buildFichaDoPlano(plano, metricas);
+    const line = ficha.secoes.find((s) => s.template === "LineChart");
+    const pie = ficha.secoes.find((s) => s.template === "PieChart");
+    expect(line?.config.grupoId).toBeDefined();
+    expect(line?.config.grupoId).toBe(pie?.config.grupoId);
+  });
+
+  it("KPIRow carrega subtitulos por campoKpi e titulos derivam da metrica", () => {
+    const { ficha } = buildFichaDoPlano(plano, metricas);
+    const kpi = ficha.secoes.find((s) => s.template === "KPIRow");
+    expect((kpi?.config.subtitulos as Record<string, string>)?.valorTotal).toBeTruthy();
+    const ranking = ficha.secoes.find((s) => s.template === "BarChart");
+    expect(ranking?.config.titulo).toBe("Valor por armazem");
+  });
+
+  it("o dispatcher ACEITA todas as secoes (compat ok)", () => {
+    const { ficha } = buildFichaDoPlano(plano, metricas);
+    expect(ficha.secoes).toHaveLength(5);
+  });
+
+  it("TendenciaDistribuicao honra chartPreferido Combo na metade temporal", () => {
+    const fin = listarMetricas({ dominiosPermitidos: ["financeiro"] });
+    const planoFluxo: Plano = {
+      titulo: "Fluxo de caixa",
+      objetivo: "realizado vs previsto e onde esta o dinheiro",
+      dominio: "financeiro",
+      blocos: [
+        { tipo: "TendenciaDistribuicao", metricaSerie: "financeiro.fluxo_caixa", metricaComposicao: "financeiro.saldo_por_banco" },
+      ],
+      filtrosIniciais: {},
+    };
+    const { ficha } = buildFichaDoPlano(planoFluxo, fin);
+    const temporal = ficha.secoes.find((s) => s.shapeDerivado === "serieTemporal");
+    expect(temporal?.template).toBe("Combo");
+  });
+
+  it("bloco Medidor vira secao Gauge com shape medidor", () => {
+    const planoGauge: Plano = {
+      titulo: "Saude do estoque",
+      objetivo: "indicador de negativos",
+      dominio: "estoque",
+      blocos: [{ tipo: "Medidor", metrica: "estoque.saude_negativos" }],
+      filtrosIniciais: {},
+    };
+    const { ficha, omitidos } = buildFichaDoPlano(planoGauge, metricas);
+    expect(omitidos).toEqual([]);
+    expect(ficha.secoes.map((s) => s.template)).toEqual(["Gauge"]);
+    expect(ficha.secoes[0].shapeDerivado).toBe("medidor");
+  });
+
+  it("bloco Cascata vira secao Waterfall com shape cascata", () => {
+    const fin = listarMetricas({ dominiosPermitidos: ["financeiro"] });
+    const planoDre: Plano = {
+      titulo: "DRE gerencial",
+      objetivo: "da receita ao resultado",
+      dominio: "financeiro",
+      blocos: [{ tipo: "Cascata", metrica: "financeiro.dre" }],
+      filtrosIniciais: {},
+    };
+    const { ficha, omitidos } = buildFichaDoPlano(planoDre, fin);
+    expect(omitidos).toEqual([]);
+    expect(ficha.secoes.map((s) => s.template)).toEqual(["Waterfall"]);
+    expect(ficha.secoes[0].shapeDerivado).toBe("cascata");
+  });
+
+  it("Ranking numa metrica com chartPreferido Treemap vira secao Treemap", () => {
+    const fiscal = listarMetricas({ dominiosPermitidos: ["fiscal"] });
+    const planoFiscal: Plano = {
+      titulo: "Faturamento por cliente",
+      objetivo: "concentracao de faturamento",
+      dominio: "fiscal",
+      blocos: [{ tipo: "Ranking", metrica: "fiscal.por_cliente", recorte: "cliente" }],
+      filtrosIniciais: {},
+    };
+    const { ficha, omitidos } = buildFichaDoPlano(planoFiscal, fiscal);
+    expect(omitidos).toEqual([]);
+    expect(ficha.secoes.map((s) => s.template)).toEqual(["Treemap"]);
+  });
+
+  it("Ranking numa metrica com chartPreferido Funnel vira secao Funnel", () => {
+    const comercial = listarMetricas({ dominiosPermitidos: ["comercial"] });
+    const planoComercial: Plano = {
+      titulo: "Pipeline comercial",
+      objetivo: "onde os pedidos param no funil",
+      dominio: "comercial",
+      blocos: [{ tipo: "Ranking", metrica: "comercial.por_etapa", recorte: "etapa" }],
+      filtrosIniciais: {},
+    };
+    const { ficha, omitidos } = buildFichaDoPlano(planoComercial, comercial);
+    expect(omitidos).toEqual([]);
+    expect(ficha.secoes.map((s) => s.template)).toEqual(["Funnel"]);
+    expect(ficha.secoes[0].shapeDerivado).toBe("agregacaoCategorica");
+  });
+});

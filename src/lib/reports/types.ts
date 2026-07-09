@@ -6,6 +6,7 @@ import type { PeriodoPresetPadrao } from "@/lib/reports/periodo";
 export type ReportFilterTipo =
   | "armazem"
   | "familia"
+  | "marca"
   | "sentido"
   | "faixaDias";
 
@@ -23,7 +24,12 @@ export type ReportTemplate =
   | "DataTable"
   | "BarChart"
   | "LineChart"
-  | "PieChart";
+  | "PieChart"
+  | "Funnel"
+  | "Waterfall"
+  | "Combo"
+  | "Treemap"
+  | "Gauge";
 
 /** Uma seção de relatório , um template alimentado por um fato. */
 export interface ReportSection {

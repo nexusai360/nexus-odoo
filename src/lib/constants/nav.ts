@@ -4,19 +4,24 @@ import {
   BookOpen,
   Building2,
   Cable,
+  FileText,
   FlaskConical,
   Home,
   KeyRound,
+  LayoutDashboard,
+  LayoutGrid,
   Plug,
   Settings,
   SlidersHorizontal,
   Sparkles,
   TrendingUp,
   Users,
+  Wrench,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { PlatformRole } from "@/generated/prisma/client";
 import { USUARIOS_SUPER_ADMIN_ONLY } from "@/lib/constants/temp-rules";
+import { RELATORIOS2_MENU, RELATORIOS2_SUBMENUS } from "@/lib/constants/relatorios2";
 
 type NavSection = "admin";
 
@@ -46,6 +51,22 @@ export const NAV_ITEMS: NavItem[] = [
     children: [],
   },
   { label: "Relatórios", href: "/relatorios", icon: BarChart3 },
+  {
+    // Relatórios 2.0 , área nova (F6): painéis + meus relatórios + construtor.
+    // Label e rotas vêm de RELATORIOS2_* (fonte única). Grupo expansível (padrão
+    // Agente Nex). A visibilidade fina por nível entra na Onda 4 (RBAC dinâmico);
+    // por ora admin e super_admin.
+    // Sem visibleTo estatico: a visibilidade (menu + submenus) vem do RBAC
+    // dinamico (relatorios2Visible computado no layout). Ver Sidebar.
+    label: RELATORIOS2_MENU.label,
+    href: RELATORIOS2_MENU.href,
+    icon: LayoutDashboard,
+    children: [
+      { label: RELATORIOS2_SUBMENUS[0].label, href: RELATORIOS2_SUBMENUS[0].href, icon: LayoutGrid },
+      { label: RELATORIOS2_SUBMENUS[1].label, href: RELATORIOS2_SUBMENUS[1].href, icon: FileText },
+      { label: RELATORIOS2_SUBMENUS[2].label, href: RELATORIOS2_SUBMENUS[2].href, icon: Wrench },
+    ],
+  },
   {
     // href é o prefixo do grupo , usado como chave de openGroups e por
     // isGroupActive (o item de grupo é um <button>, não navega).

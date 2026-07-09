@@ -98,6 +98,17 @@ function rowKey(row: Record<string, unknown>, index: number): string | number {
   return index;
 }
 
+/**
+ * Texto seguro de uma celula: escalares viram string; objetos/arrays NUNCA
+ * viram "[object Object]" (mostra vazio). Defesa contra colunas que receberam
+ * um valor estruturado por engano.
+ */
+function textoCelula(v: unknown): string {
+  if (v === null || v === undefined) return "";
+  if (typeof v === "object") return "";
+  return String(v);
+}
+
 // ---------------------------------------------------------------------------
 // Indicador de multi-sort no cabeçalho
 // ---------------------------------------------------------------------------
@@ -611,7 +622,7 @@ export function DataTable<T extends Record<string, unknown>>({
                           )}
                           title={
                             compacto && c.tipo === "texto"
-                              ? String(row[c.key] ?? "")
+                              ? textoCelula(row[c.key])
                               : undefined
                           }
                         >
@@ -645,7 +656,7 @@ export function DataTable<T extends Record<string, unknown>>({
                                           ))}
                                         </div>
                                       )
-                                    : String(row[c.key] ?? "")}
+                                    : textoCelula(row[c.key])}
                         </TableCell>
                       ))}
                     </TableRow>

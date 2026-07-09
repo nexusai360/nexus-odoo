@@ -1,0 +1,1109 @@
+"use client";
+
+/**
+ * BuilderChatPanel , painel de conversa do Construtor de relatorios (F6), com a
+ * MESMA experiencia do Agente Nex. Reusa AgentMessage (trilha "Raciocinio" com
+ * nº de tools + duracao, copiar, timestamp) e porta a maquinaria provada do
+ * ChatPanel: stick-to-bottom, tag de data flutuante, FAB "ir pro fim", menu de
+ * 3 pontos (Limpar conversa + Baixar .txt), composer (MessageInput + AttachMenu
+ * + AudioRecorder). Diferencas em relacao ao Nex: vive num painel lateral fixo
+ * (nao bubble flutuante), fala com /api/builder/stream e persiste a conversa do
+ * construtor (mensagens reaparecem ao recarregar).
+ */
+
+import { motion, useReducedMotion } from "framer-motion";
+import { Boxes, ChevronDown, Coins, Download, Loader2, MessagesSquare, Mic, MoreVertical, Receipt, Send, ShoppingCart, Sparkles, Trash2, Wand2, type LucideIcon } from "lucide-react";
+import * as React from "react";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { formatDayLabel } from "@/lib/format-datetime-relative";
+import { AgentMessage } from "@/components/agent/agent-message";
+import type { ProgressStep } from "@/components/agent/progress-trail";
+import { MessageInput } from "@/components/agent/message-input";
+import { AttachMenu } from "@/components/agent/attach-menu";
+import { AudioRecorder, type AudioRecorderHandle } from "@/components/agent/audio-recorder";
+import { getBuilderConversationMessages } from "@/lib/actions/builder-conversation";
+import { arquivarBuilderConversaAction } from "@/lib/actions/builder-conversation";
+import { exportarBuilderConversaTxt } from "@/lib/actions/builder-conversation";
+import type { BuilderReportEntry } from "@/lib/reports/builder/types";
+import type { JourneyState, FaseJornada, OpcaoCard } from "@/lib/reports/builder/journey/state";
+import { colapsarProgressSteps } from "@/lib/reports/builder/agent/builder-progress-labels";
+import { OptionCards } from "./journey/option-cards";
+
+/** Payload entregue ao workspace quando um turno conclui (atualiza o preview). */
+export interface BuilderDonePayload {
+  ficha?: BuilderReportEntry | null;
+  savedId?: string;
+  etag?: string;
+  recusa?: boolean;
+  bloqueado?: boolean;
+  /** Estado da jornada apos o turno (fase, rascunho, resumo). */
+  journeyState?: JourneyState;
+  /** Fase atual (atalho de journeyState.fase). */
+  fase?: FaseJornada;
+  /** O que a geracao deixou de fora (fora do catalogo) , visivel no reveal. */
+  omitidos?: string[];
+}
+
+interface BuilderChatPanelProps {
+  /** conversationId atual (null = nova). Apos o 1o turno, recebe o id criado. */
+  conversationId: string | null;
+  onConversationCreated: (id: string) => void;
+  /** Limpou a conversa ("Limpar conversa"): o pai zera conversationId + ficha. */
+  onCleared: () => void;
+  /** Turno concluiu: atualiza ficha/savedId/etag no workspace. */
+  onDone: (payload: BuilderDonePayload) => void;
+  audioEnabled?: boolean;
+  anexoEnabled?: boolean;
+  /** Mostra "Baixar conversa (.txt)" no menu (admin/super_admin do construtor). */
+  podeExportar?: boolean;
+  /** Handle imperativo: o pai recebe a funcao de enviar (para o botao Gerar e o
+   *  "ajustar e regenerar" dispararem um turno). */
+  enviarRef?: React.MutableRefObject<((text: string, opts?: { acao?: "gerar" | "regenerar" }) => void) | null>;
+  /** Progresso da geracao (alimenta a tela de espera no workspace). */
+  onProgress?: (p: ProgressoGeracaoUi) => void;
+  /** Roteiro de perguntas atualizado (indicador X de N + libera o Gerar). */
+  onRoteiro?: (r: RoteiroUi) => void;
+  /** Falha durante a geracao: o pai fecha a overlay e volta para a entrevista. */
+  onGenError?: (mensagem: string) => void;
+  /** Modo imersivo (entrevista): sem header "Conversa", fundo transparente,
+   *  conteudo centralizado e composer limpo (uma superficie so, estilo ChatGPT). */
+  imersivo?: boolean;
+}
+
+interface UiMsg {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  steps?: ProgressStep[];
+  stepsCollapsed?: boolean;
+  startedAt?: number;
+  doneAt?: number;
+  /** Duracao persistida (historico) , tem precedencia sobre started/doneAt. */
+  durationMs?: number;
+  streaming?: boolean;
+  reveal?: boolean;
+  revealDone?: boolean;
+  createdAt?: string;
+  isAudio?: boolean;
+  transcribing?: boolean;
+  kind?: "text" | "audio";
+  /** Cards de opcao oferecidos pela IA neste turno (jornada). */
+  opcoes?: { titulo: string; opcoes: OpcaoCard[] };
+}
+
+type SseEvent =
+  | { type: "status"; status: string }
+  | { type: "tool_call"; label: string; toolName?: string; toolCallId?: string }
+  | { type: "tool_result"; label: string; toolName?: string; toolCallId?: string }
+  | {
+      type: "done";
+      conversationId: string;
+      message: string;
+      messageId: string;
+      steps?: { label: string }[];
+      durationMs?: number;
+      savedId?: string;
+      etag?: string;
+      ficha?: BuilderReportEntry;
+      recusa?: boolean;
+      bloqueado?: boolean;
+      erro?: boolean;
+      fase?: FaseJornada;
+      journeyState?: JourneyState;
+      omitidos?: string[];
+    }
+  | { type: "choices"; titulo: string; opcoes: OpcaoCard[] }
+  | { type: "progress"; fase: string; pct: number; frase: string }
+  | { type: "roteiro"; total: number; respondidas: number; etapas: string[] }
+  | { type: "error"; error: string };
+
+/** Progresso da geracao (tela de espera). */
+export interface ProgressoGeracaoUi {
+  fase: string;
+  pct: number;
+  frase: string;
+}
+/** Estado do roteiro de perguntas (indicador X de N). */
+export interface RoteiroUi {
+  total: number;
+  respondidas: number;
+  etapas: string[];
+}
+
+export function BuilderChatPanel({
+  conversationId,
+  onConversationCreated,
+  onCleared,
+  onDone,
+  audioEnabled = false,
+  anexoEnabled = false,
+  podeExportar = false,
+  enviarRef,
+  onProgress,
+  onRoteiro,
+  onGenError,
+  imersivo = false,
+}: BuilderChatPanelProps) {
+  const reduceMotion = useReducedMotion();
+
+  const [messages, setMessages] = React.useState<UiMsg[]>([]);
+  const [input, setInput] = React.useState("");
+  const [pending, setPending] = React.useState(false);
+  const [menuOpen, setMenuOpen] = React.useState(false);
+  const menuRef = React.useRef<HTMLDivElement | null>(null);
+  const [isRecording, setIsRecording] = React.useState(false);
+  const [audioFlight, setAudioFlight] = React.useState(false);
+  const [restoring, setRestoring] = React.useState<boolean>(!!conversationId);
+
+  const conversationIdRef = React.useRef<string | null>(conversationId);
+  const justCreatedRef = React.useRef<Set<string>>(new Set());
+  const scrollRef = React.useRef<HTMLDivElement | null>(null);
+  const contentRef = React.useRef<HTMLDivElement | null>(null);
+  const recorderRef = React.useRef<AudioRecorderHandle | null>(null);
+  const abortRef = React.useRef<AbortController | null>(null);
+
+  // === Stick-to-bottom (padrao ChatGPT/Claude.ai), portado do ChatPanel ===
+  const isStickyRef = React.useRef(true);
+  const [, setIsStickyState] = React.useState(true);
+  const setIsSticky = React.useCallback((v: boolean) => {
+    isStickyRef.current = v;
+    setIsStickyState(v);
+  }, []);
+  const lastProgrammaticAtRef = React.useRef(0);
+  const messageRefsMap = React.useRef<Map<string, HTMLDivElement>>(new Map());
+  const [dateLabel, setDateLabel] = React.useState("");
+  const [showScrollFab, setShowScrollFab] = React.useState(false);
+  const messagesRef = React.useRef<UiMsg[]>([]);
+  React.useEffect(() => {
+    messagesRef.current = messages;
+  });
+
+  const recomputeDateLabel = React.useCallback(() => {
+    const scrollEl = scrollRef.current;
+    if (!scrollEl) return;
+    const list = messagesRef.current;
+    if (list.length === 0) {
+      setDateLabel("");
+      return;
+    }
+    const topEdge = scrollEl.getBoundingClientRect().top;
+    let label = "";
+    for (const m of list) {
+      if (!m.createdAt) continue;
+      const el = messageRefsMap.current.get(m.id);
+      if (!el) continue;
+      const r = el.getBoundingClientRect();
+      if (r.top - topEdge <= 16) label = formatDayLabel(m.createdAt);
+      else break;
+    }
+    if (!label) {
+      const first = list.find((m) => m.createdAt);
+      if (first) label = formatDayLabel(first.createdAt);
+    }
+    setDateLabel((prev) => (prev === label ? prev : label));
+  }, []);
+
+  React.useEffect(() => {
+    const id1 = requestAnimationFrame(() =>
+      requestAnimationFrame(recomputeDateLabel),
+    );
+    return () => cancelAnimationFrame(id1);
+  }, [messages, recomputeDateLabel]);
+
+  // Sync external conversationId + carrega historico persistido.
+  React.useEffect(() => {
+    conversationIdRef.current = conversationId;
+    if (!conversationId) {
+      // Conversa nova: tela limpa (a saudacao da entrevista e um "hero" centralizado,
+      // estilo ChatGPT, renderizado no JSX , nao uma bubble).
+      setMessages([]);
+      setRestoring(false);
+      return;
+    }
+    if (justCreatedRef.current.has(conversationId)) {
+      setRestoring(false);
+      return;
+    }
+    let cancelled = false;
+    setRestoring(true);
+    void (async () => {
+      const result = await getBuilderConversationMessages(conversationId);
+      if (cancelled) return;
+      if (!result.ok) {
+        toast.error("Nao foi possivel carregar a conversa.");
+        setRestoring(false);
+        return;
+      }
+      const ui: UiMsg[] = result.messages.map((m) => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        createdAt: m.createdAt,
+        kind: m.kind as "text" | "audio" | undefined,
+        ...(m.role === "user" && m.kind === "audio" ? { isAudio: true } : {}),
+        ...(m.steps && m.steps.length > 0
+          ? {
+              steps: m.steps.map((s, i) => ({
+                id: `h_${m.id}_${i}`,
+                label: s.label,
+                state: "done" as const,
+                raw: true,
+              })),
+              stepsCollapsed: true,
+              ...(typeof m.durationMs === "number" ? { durationMs: m.durationMs } : {}),
+            }
+          : {}),
+      }));
+      setMessages(ui);
+      setRestoring(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [conversationId, imersivo]);
+
+  // Cleanup on unmount
+  React.useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
+
+  // Menu 3-pontos: permanece aberto e SO fecha ao clicar fora (nao no mouse-leave).
+  React.useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: PointerEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", onDown);
+    return () => document.removeEventListener("pointerdown", onDown);
+  }, [menuOpen]);
+
+  // ResizeObserver + listeners de scroll/wheel/touch (stick-to-bottom + FAB +
+  // tag de data). Re-roda quando a area de mensagens monta (hasMessages).
+  const hasMessages = messages.length > 0;
+  React.useEffect(() => {
+    const scrollEl = scrollRef.current;
+    if (!scrollEl) return;
+    const contentEl = contentRef.current;
+
+    const ro = contentEl
+      ? new ResizeObserver(() => {
+          if (!isStickyRef.current) return;
+          lastProgrammaticAtRef.current = performance.now();
+          scrollEl.scrollTop = scrollEl.scrollHeight;
+        })
+      : null;
+    if (ro && contentEl) ro.observe(contentEl);
+
+    const onWheel = (e: WheelEvent) => {
+      if (e.deltaY < 0) {
+        const dt = performance.now() - lastProgrammaticAtRef.current;
+        if (dt < 120) return;
+        if (isStickyRef.current) setIsSticky(false);
+      }
+    };
+    scrollEl.addEventListener("wheel", onWheel, { passive: true });
+
+    let touchStartY = 0;
+    const onTouchStart = (e: TouchEvent) => {
+      touchStartY = e.touches[0]?.clientY ?? 0;
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      const y = e.touches[0]?.clientY ?? 0;
+      if (y - touchStartY > 8) {
+        const dt = performance.now() - lastProgrammaticAtRef.current;
+        if (dt < 120) return;
+        if (isStickyRef.current) setIsSticky(false);
+      }
+    };
+    scrollEl.addEventListener("touchstart", onTouchStart, { passive: true });
+    scrollEl.addEventListener("touchmove", onTouchMove, { passive: true });
+
+    let pillRaf = false;
+    const updatePill = () => {
+      if (pillRaf) return;
+      pillRaf = true;
+      requestAnimationFrame(() => {
+        pillRaf = false;
+        recomputeDateLabel();
+      });
+    };
+    const onScroll = () => {
+      const dist = scrollEl.scrollHeight - scrollEl.scrollTop - scrollEl.clientHeight;
+      if (dist < 24) {
+        if (!isStickyRef.current) setIsSticky(true);
+      } else {
+        const dt = performance.now() - lastProgrammaticAtRef.current;
+        if (dt > 120 && isStickyRef.current) setIsSticky(false);
+      }
+      setShowScrollFab(dist > 120);
+      updatePill();
+    };
+    scrollEl.addEventListener("scroll", onScroll, { passive: true });
+
+    return () => {
+      ro?.disconnect();
+      scrollEl.removeEventListener("wheel", onWheel);
+      scrollEl.removeEventListener("touchstart", onTouchStart);
+      scrollEl.removeEventListener("touchmove", onTouchMove);
+      scrollEl.removeEventListener("scroll", onScroll);
+    };
+  }, [recomputeDateLabel, hasMessages, setIsSticky]);
+
+  // Auto-scroll durante a geracao: rAF loop cola no fim enquanto gera/digita.
+  const lastMsg = messages[messages.length - 1];
+  const generating =
+    pending ||
+    (!!lastMsg && lastMsg.role === "assistant" && !!lastMsg.reveal && !lastMsg.revealDone);
+  React.useEffect(() => {
+    if (!generating) return;
+    let rafId = 0;
+    const tick = () => {
+      if (isStickyRef.current) {
+        const el = scrollRef.current;
+        if (el) {
+          lastProgrammaticAtRef.current = performance.now();
+          el.scrollTop = el.scrollHeight;
+        }
+      }
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [generating]);
+
+  const scrollToBottomNow = React.useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    lastProgrammaticAtRef.current = performance.now();
+    el.scrollTo({ top: el.scrollHeight, behavior: reduceMotion ? "auto" : "smooth" });
+    setIsSticky(true);
+    setShowScrollFab(false);
+  }, [reduceMotion, setIsSticky]);
+
+  const handleSend = React.useCallback(
+    async (text: string, opts?: { isAudio?: boolean; acao?: "gerar" | "regenerar" | "exemplo"; dominio?: string }) => {
+      const trimmed = text.trim();
+      if (!trimmed || pending) return;
+
+      // No Gerar/Regenerar/Exemplo a experiencia e a OVERLAY (bastidores): nada de bolha
+      // de "Pensando" nem da mensagem sintetica do usuario. So a barra de progresso.
+      const silencioso = opts?.acao === "gerar" || opts?.acao === "regenerar" || opts?.acao === "exemplo";
+
+      setIsSticky(true);
+      requestAnimationFrame(() => {
+        const el = scrollRef.current;
+        if (el) el.scrollTop = el.scrollHeight;
+      });
+
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      const userId = `u_${crypto.randomUUID()}`;
+      const assistantId = `a_${crypto.randomUUID()}`;
+
+      if (!silencioso) {
+        setMessages((prev) => [
+          ...prev,
+          { id: userId, role: "user", content: trimmed, isAudio: opts?.isAudio, createdAt: new Date().toISOString() },
+        ]);
+      }
+      setInput("");
+      setPending(true);
+      if (!silencioso) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: assistantId,
+            role: "assistant",
+            content: "",
+            steps: [],
+            stepsCollapsed: false,
+            startedAt: Date.now(),
+            streaming: true,
+            reveal: true,
+          },
+        ]);
+      }
+
+      try {
+        const res = await fetch("/api/builder/stream", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: trimmed,
+            conversationId: conversationIdRef.current ?? undefined,
+            isAudio: opts?.isAudio,
+            ...(opts?.acao ? { acao: opts.acao } : {}),
+            ...(opts?.dominio ? { dominio: opts.dominio } : {}),
+          }),
+          signal: controller.signal,
+        });
+
+        if (!res.ok || !res.body) {
+          const detalhe = (await res.json().catch(() => null)) as { error?: string } | null;
+          toast.error(detalhe?.error ?? `Erro ao contatar o construtor (${res.status})`);
+          setMessages((prev) => prev.filter((m) => m.id !== assistantId));
+          setPending(false);
+          return;
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const lines = buf.split("\n");
+          buf = lines.pop() ?? "";
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            const raw = line.slice(6).trim();
+            if (!raw) continue;
+            let evt: SseEvent;
+            try {
+              evt = JSON.parse(raw) as SseEvent;
+            } catch {
+              continue;
+            }
+
+            if (evt.type === "tool_call") {
+              const step: ProgressStep = {
+                id: evt.toolCallId ?? `s_${crypto.randomUUID()}`,
+                label: evt.label,
+                state: "running",
+                raw: true,
+                ...(evt.toolName ? { toolName: evt.toolName } : {}),
+              };
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantId ? { ...m, steps: [...(m.steps ?? []), step] } : m,
+                ),
+              );
+            } else if (evt.type === "tool_result") {
+              setMessages((prev) =>
+                prev.map((m) => {
+                  if (m.id !== assistantId) return m;
+                  let marked = false;
+                  const steps = (m.steps ?? []).map((s) => {
+                    if (marked || s.state !== "running") return s;
+                    const byId = evt.toolCallId && s.id === evt.toolCallId;
+                    const byLabel = !evt.toolCallId && s.label === evt.label;
+                    if (byId || byLabel) {
+                      marked = true;
+                      return { ...s, state: "done" as const };
+                    }
+                    return s;
+                  });
+                  return { ...m, steps };
+                }),
+              );
+            } else if (evt.type === "choices") {
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantId
+                    ? { ...m, opcoes: { titulo: evt.titulo, opcoes: evt.opcoes } }
+                    : m,
+                ),
+              );
+            } else if (evt.type === "progress") {
+              onProgress?.({ fase: evt.fase, pct: evt.pct, frase: evt.frase });
+            } else if (evt.type === "roteiro") {
+              onRoteiro?.({ total: evt.total, respondidas: evt.respondidas, etapas: evt.etapas });
+            } else if (evt.type === "done") {
+              if (evt.conversationId && !conversationIdRef.current) {
+                conversationIdRef.current = evt.conversationId;
+                justCreatedRef.current.add(evt.conversationId);
+                onConversationCreated(evt.conversationId);
+              }
+              const doneAt = Date.now();
+              if (silencioso) {
+                // Geracao: nao havia bolha de streaming. Adiciona a mensagem final
+                // ja pronta (sem trilha), para aparecer no chat do refino.
+                if (evt.message) {
+                  setMessages((prev) => [
+                    ...prev,
+                    {
+                      id: assistantId,
+                      role: "assistant",
+                      content: evt.message,
+                      streaming: false,
+                      reveal: false,
+                      stepsCollapsed: true,
+                      startedAt: doneAt,
+                      doneAt,
+                      createdAt: new Date(doneAt).toISOString(),
+                    },
+                  ]);
+                }
+              } else {
+                setMessages((prev) =>
+                  prev.map((m) => {
+                    if (m.id !== assistantId) return m;
+                    const steps = (m.steps ?? []).map((s) => ({ ...s, state: "done" as const }));
+                    return {
+                      ...m,
+                      content: evt.message,
+                      streaming: false,
+                      steps: steps.length > 0 ? steps : undefined,
+                      stepsCollapsed: true,
+                      startedAt: m.startedAt ?? doneAt,
+                      doneAt,
+                      durationMs: typeof evt.durationMs === "number" ? evt.durationMs : undefined,
+                      createdAt: m.createdAt ?? new Date(doneAt).toISOString(),
+                    };
+                  }),
+                );
+              }
+              onDone({
+                ficha: evt.ficha ?? undefined,
+                savedId: evt.savedId,
+                etag: evt.etag,
+                recusa: evt.recusa,
+                bloqueado: evt.bloqueado,
+                fase: evt.fase,
+                journeyState: evt.journeyState,
+                omitidos: evt.omitidos,
+              });
+            } else if (evt.type === "error") {
+              if (silencioso) {
+                // Geracao falhou: sem bolha para atualizar; avisa o pai para fechar
+                // a overlay e voltar para a entrevista.
+                onGenError?.(evt.error);
+              } else {
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantId
+                      ? { ...m, content: `**Erro:** ${evt.error}`, streaming: false, steps: undefined }
+                      : m,
+                  ),
+                );
+              }
+            }
+          }
+        }
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        const msg = err instanceof Error ? err.message : String(err);
+        if (silencioso) {
+          onGenError?.(msg);
+        } else {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantId
+                ? { ...m, content: `**Erro inesperado:** ${msg}`, streaming: false }
+                : m,
+            ),
+          );
+        }
+      } finally {
+        setPending(false);
+        setMessages((prev) =>
+          prev.map((m) => (m.id === assistantId && m.streaming ? { ...m, streaming: false } : m)),
+        );
+      }
+    },
+    [pending, onConversationCreated, onDone, onProgress, onRoteiro, onGenError, setIsSticky],
+  );
+
+  // Expoe o envio ao pai (botao Gerar e "ajustar" da tela de resumo).
+  React.useEffect(() => {
+    if (!enviarRef) return;
+    enviarRef.current = (text: string, opts?: { acao?: "gerar" | "regenerar" }) => {
+      void handleSend(text, opts);
+    };
+    return () => {
+      if (enviarRef) enviarRef.current = null;
+    };
+  }, [enviarRef, handleSend]);
+
+  const handleClear = React.useCallback(async () => {
+    setMenuOpen(false);
+    const cid = conversationIdRef.current;
+    if (cid) {
+      const r = await arquivarBuilderConversaAction(cid);
+      if (!r.ok) {
+        toast.error(r.error ?? "Nao foi possivel limpar a conversa.");
+        return;
+      }
+    }
+    abortRef.current?.abort();
+    setMessages([]);
+    conversationIdRef.current = null;
+    onCleared();
+  }, [onCleared]);
+
+  const handleExport = React.useCallback(async () => {
+    setMenuOpen(false);
+    const cid = conversationIdRef.current;
+    if (!cid) {
+      toast.info("Nada para baixar ainda. Faca pelo menos uma pergunta.");
+      return;
+    }
+    const r = await exportarBuilderConversaTxt(cid);
+    if (!r.ok) {
+      toast.error(r.error);
+      return;
+    }
+    const blob = new Blob([r.content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = r.filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    toast.success("Conversa baixada.");
+  }, []);
+
+  // Transcreve o audio e envia o texto como pergunta (igual ao Nex).
+  const handleSendAudio = React.useCallback(
+    async (blob: Blob) => {
+      if (audioFlight) return;
+      setAudioFlight(true);
+      const transcribingId = "transcribing";
+      setIsSticky(true);
+      setMessages((prev) => [
+        ...prev.filter((m) => m.id !== transcribingId),
+        { id: transcribingId, role: "user", content: "", transcribing: true, createdAt: new Date().toISOString() },
+      ]);
+      try {
+        const fd = new FormData();
+        fd.append("audio", blob, "recording.webm");
+        fd.append("language", "pt");
+        const res = await fetch("/api/agent/transcribe", { method: "POST", body: fd });
+        if (!res.ok) {
+          const d = (await res.json().catch(() => ({}))) as { error?: string };
+          throw new Error(d?.error ?? `HTTP ${res.status}`);
+        }
+        const d = (await res.json()) as { text?: string };
+        const text = (d?.text ?? "").trim();
+        setMessages((prev) => prev.filter((m) => m.id !== transcribingId));
+        if (!text) {
+          toast.error("Nao consegui entender o audio.");
+          return;
+        }
+        void handleSend(text, { isAudio: true });
+      } catch (err) {
+        setMessages((prev) => prev.filter((m) => m.id !== transcribingId));
+        toast.error(`Falha ao transcrever: ${err instanceof Error ? err.message : String(err)}`);
+      } finally {
+        setAudioFlight(false);
+      }
+    },
+    [audioFlight, handleSend, setIsSticky],
+  );
+
+  // Dispara um relatorio de EXEMPLO pronto por dominio (gerar_ja, 0 LLM / 0 custo).
+  // Mostra todos os componentes do gerador sem gastar a API do cliente.
+  const dispararExemplo = React.useCallback(
+    (dominio: string, label: string) => {
+      void handleSend(`Quero ver um exemplo de ${label.toLowerCase()}.`, { acao: "exemplo", dominio });
+    },
+    [handleSend],
+  );
+
+  const sendDisabled = pending || input.trim().length === 0;
+  const showWelcome = !restoring && messages.length === 0;
+  const showRestoring = restoring && messages.length === 0;
+  // Estado inicial imersivo (entrevista, sem mensagem ainda) = hero estilo ChatGPT.
+  const heroInicial = imersivo && showWelcome;
+
+  const composerNode = (
+    <>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (isRecording) {
+            recorderRef.current?.sendNow();
+            return;
+          }
+          void handleSend(input);
+        }}
+        className="flex items-center gap-2"
+      >
+        <div className="min-w-0 flex-1">
+          {!isRecording ? (
+            <MessageInput
+              value={input}
+              onChange={setInput}
+              onSend={() => void handleSend(input)}
+              disabled={pending}
+              placeholder="Construa com o Agente Nex…"
+              aria-label="Mensagem para o construtor"
+              maxRows={6}
+              leftSlot={
+                anexoEnabled ? (
+                  <AttachMenu disabled={pending} onPick={() => toast.info("Anexos no construtor chegam em breve.")} />
+                ) : undefined
+              }
+              rightSlot={
+                audioEnabled && !audioFlight ? (
+                  <button
+                    type="button"
+                    onClick={() => void recorderRef.current?.start()}
+                    disabled={pending}
+                    aria-label="Gravar audio"
+                    className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <Mic className="h-4 w-4" aria-hidden />
+                  </button>
+                ) : undefined
+              }
+            />
+          ) : null}
+          {audioEnabled ? (
+            <div
+              className={isRecording ? "flex min-h-9 items-center rounded-2xl border border-violet-500/40 bg-violet-500/5 px-3 py-1" : "sr-only"}
+              aria-hidden={!isRecording}
+            >
+              <AudioRecorder ref={recorderRef} mode="embedded" onSend={(blob) => void handleSendAudio(blob)} onRecordingStateChange={setIsRecording} />
+            </div>
+          ) : null}
+        </div>
+        <button
+          type="submit"
+          disabled={isRecording ? false : sendDisabled || audioFlight}
+          aria-label={isRecording ? "Enviar audio" : "Enviar"}
+          className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center self-center rounded-2xl bg-gradient-to-br from-violet-600 to-violet-500 text-white shadow-md shadow-violet-600/30 transition-all duration-200 hover:from-violet-500 hover:to-violet-400 hover:shadow-lg focus-visible:ring-2 focus-visible:ring-violet-400/50 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
+        >
+          {audioFlight ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Send className="h-4 w-4" strokeWidth={2.25} aria-hidden />}
+        </button>
+      </form>
+      <p className={cn("mt-1.5 px-1 text-[11px] text-muted-foreground", isRecording ? "invisible" : "visible")}>
+        Enter envia · Shift+Enter quebra linha
+      </p>
+    </>
+  );
+
+  return (
+    <div className={cn("relative flex h-full flex-col", imersivo ? "bg-transparent" : "bg-card")}>
+      {/* Linha unica "Conversa" com o menu de 3 pontos a direita (sem tarja).
+          Altura fixa (h-11) casada com o header da pre-visualizacao ao lado.
+          No modo imersivo (entrevista) o header some , so o 3-pontos flutua. */}
+      {imersivo ? (
+        // Hero inicial = tela limpa, SEM 3-pontos. So aparece quando ha conversa,
+        // alinhado ao limite direito da COLUNA da conversa (nao ao canto da tela).
+        !heroInicial ? (
+        <div className="pointer-events-none absolute inset-x-0 top-3 z-40">
+        <div className="mx-auto flex max-w-2xl justify-end px-2 sm:px-3">
+        <div ref={menuRef} className="pointer-events-auto relative">
+          <button
+            type="button"
+            aria-label="Mais opcoes"
+            onClick={() => setMenuOpen((v) => !v)}
+            className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border border-border/60 bg-card/80 text-muted-foreground backdrop-blur transition-colors duration-200 hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-violet-400/60 focus-visible:outline-none"
+          >
+            <MoreVertical className="h-4 w-4" />
+          </button>
+          {menuOpen && (
+            <div role="menu" className="absolute top-full right-0 z-10 mt-1.5 w-52 overflow-hidden rounded-lg border border-border bg-card shadow-lg">
+              {podeExportar ? (
+                <button type="button" role="menuitem" onClick={handleExport} className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none">
+                  <Download className="h-3.5 w-3.5 text-muted-foreground" />
+                  Baixar conversa (.txt)
+                </button>
+              ) : null}
+              <button type="button" role="menuitem" onClick={handleClear} className={cn("flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:bg-destructive/10 focus-visible:text-destructive focus-visible:outline-none", podeExportar ? "border-t border-border/50" : "")}>
+                <Trash2 className="h-3.5 w-3.5" />
+                Limpar conversa
+              </button>
+            </div>
+          )}
+        </div>
+        </div>
+        </div>
+        ) : null
+      ) : (
+      <header className="relative z-40 flex h-11 items-center justify-between gap-2 border-b border-border px-5">
+        <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+          <MessagesSquare className="h-3.5 w-3.5" aria-hidden />
+          Conversa
+        </div>
+        <div ref={menuRef} className="relative flex items-center">
+          <button
+            type="button"
+            aria-label="Mais opcoes"
+            onClick={() => setMenuOpen((v) => !v)}
+            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-violet-400/60 focus-visible:outline-none"
+          >
+            <MoreVertical className="h-4 w-4" />
+          </button>
+          {menuOpen && (
+            <div
+              role="menu"
+              className="absolute top-full right-0 z-10 mt-1.5 w-52 overflow-hidden rounded-lg border border-border bg-card shadow-lg"
+            >
+              {podeExportar ? (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={handleExport}
+                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
+                >
+                  <Download className="h-3.5 w-3.5 text-muted-foreground" />
+                  Baixar conversa (.txt)
+                </button>
+              ) : null}
+              <button
+                type="button"
+                role="menuitem"
+                onClick={handleClear}
+                className={cn(
+                  "flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:bg-destructive/10 focus-visible:text-destructive focus-visible:outline-none",
+                  podeExportar ? "border-t border-border/50" : "",
+                )}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Limpar conversa
+              </button>
+            </div>
+          )}
+        </div>
+      </header>
+      )}
+
+      {/* Tag de data flutuante */}
+      {!showWelcome && dateLabel ? (
+        <div className={cn("pointer-events-none absolute left-1/2 z-30 -translate-x-1/2", imersivo ? "top-3" : "top-[52px]")}>
+          <span className="block rounded-full bg-violet-500/15 px-3 py-1 text-[11px] font-bold text-violet-700 ring-1 ring-violet-400/25 backdrop-blur-md dark:text-violet-200">
+            <motion.span
+              key={dateLabel}
+              initial={reduceMotion ? false : { opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={reduceMotion ? { duration: 0 } : { duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              className="block whitespace-nowrap"
+            >
+              {dateLabel}
+            </motion.span>
+          </span>
+        </div>
+      ) : null}
+
+      {heroInicial ? (
+        /* HERO estilo ChatGPT: saudacao em destaque + input logo abaixo, centralizados. */
+        <div className="flex flex-1 flex-col items-center justify-center px-4 pb-10">
+          <div className="w-full max-w-2xl">
+            <h2 className="mb-3 text-center text-[1.7rem] font-semibold leading-snug tracking-tight text-foreground">
+              O que você quer construir hoje?
+            </h2>
+            <p className="mb-6 text-center text-sm text-muted-foreground">
+              Me descreva que eu te ajudo a montar do seu jeito.
+            </p>
+            {composerNode}
+            <ExemplosRapidos onPick={dispararExemplo} disabled={pending} />
+          </div>
+        </div>
+      ) : (
+      <>
+      {/* Area de mensagens */}
+      <div ref={scrollRef} className={cn("flex-1 overflow-y-auto overscroll-contain pb-3", imersivo ? "px-4 pt-12 sm:px-6" : "px-4 pt-[17px]")}>
+        {showWelcome ? (
+          <WelcomeBlock onExemplo={dispararExemplo} disabled={pending} />
+        ) : showRestoring ? (
+          <RestoringBlock />
+        ) : (
+          <div ref={contentRef} className={cn("space-y-4", imersivo && "mx-auto w-full max-w-2xl")}>
+            {messages.map((m, idx) => {
+              const durationMs =
+                typeof m.durationMs === "number"
+                  ? m.durationMs
+                  : m.startedAt && m.doneAt
+                    ? m.doneAt - m.startedAt
+                    : undefined;
+              // Dedupe AO VIVO: colapsa passos consecutivos da mesma tool numa
+              // linha no plural (ex.: "Adicionando uma seção" x4 -> "Adicionando
+              // seções"). Steps do historico ja vem deduplicados do backend.
+              const displaySteps = m.steps ? colapsarProgressSteps(m.steps) : m.steps;
+              return (
+                <div
+                  key={m.id}
+                  ref={(el) => {
+                    if (el) messageRefsMap.current.set(m.id, el);
+                    else messageRefsMap.current.delete(m.id);
+                  }}
+                  className={idx === 0 ? "mt-[5px]" : undefined}
+                >
+                  <AgentMessage
+                    role={m.role}
+                    content={m.content}
+                    kind={m.kind}
+                    isAudio={m.isAudio}
+                    transcribing={m.transcribing}
+                    streaming={m.streaming}
+                    reveal={m.reveal}
+                    steps={displaySteps}
+                    stepsCollapsed={m.stepsCollapsed ?? true}
+                    createdAt={m.createdAt}
+                    durationMs={durationMs}
+                    onRevealComplete={() =>
+                      setMessages((prev) =>
+                        prev.map((x) => (x.id === m.id ? { ...x, revealDone: true } : x)),
+                      )
+                    }
+                    onToggleSteps={() => {
+                      setIsSticky(false);
+                      setMessages((prev) =>
+                        prev.map((x) =>
+                          x.id === m.id ? { ...x, stepsCollapsed: !(x.stepsCollapsed ?? true) } : x,
+                        ),
+                      );
+                      requestAnimationFrame(() => {
+                        const el = scrollRef.current;
+                        if (el)
+                          setShowScrollFab(el.scrollHeight - el.scrollTop - el.clientHeight > 120);
+                      });
+                    }}
+                  />
+                  {m.role === "assistant" && m.opcoes && !pending ? (
+                    <OptionCards
+                      titulo={m.opcoes.titulo}
+                      opcoes={m.opcoes.opcoes}
+                      onSelecionar={(_id, rotulo) => {
+                        setMessages((prev) =>
+                          prev.map((x) => (x.id === m.id ? { ...x, opcoes: undefined } : x)),
+                        );
+                        void handleSend(`Prefiro: ${rotulo}`);
+                      }}
+                    />
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* FAB voltar-pro-fim , alinhado ao limite direito da coluna da conversa. */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-[88px] z-30">
+        <div className="mx-auto flex max-w-2xl justify-end px-2 sm:px-3">
+          <button
+            type="button"
+            onClick={scrollToBottomNow}
+            aria-label="Ir para o fim da conversa"
+            aria-hidden={!(showScrollFab && !showWelcome)}
+            tabIndex={showScrollFab && !showWelcome ? 0 : -1}
+            className={cn(
+              "pointer-events-auto flex h-9 w-9 cursor-pointer items-center justify-center rounded-full",
+              "bg-violet-500/20 text-violet-700 shadow-sm ring-1 ring-violet-400/25 backdrop-blur-md dark:text-violet-200",
+              "transition-all duration-200 hover:bg-violet-500/45 hover:text-white hover:ring-violet-400/50",
+              "focus-visible:ring-2 focus-visible:ring-violet-400/50 focus-visible:outline-none",
+              showScrollFab && !showWelcome
+                ? "translate-y-0 opacity-100"
+                : "pointer-events-none translate-y-2 opacity-0",
+            )}
+          >
+            <ChevronDown className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Composer fixo embaixo (quando ja ha conversa). */}
+      <footer className={cn("px-3 pt-2 pb-3", imersivo ? "bg-transparent" : "border-t border-border bg-card")}>
+        <div className={cn(imersivo && "mx-auto w-full max-w-2xl")}>{composerNode}</div>
+      </footer>
+      </>
+      )}
+
+      <style jsx global>{`
+        @keyframes agentDotBounce {
+          0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+          40% { transform: translateY(-3px); opacity: 1; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function WelcomeBlock({
+  onExemplo,
+  disabled,
+}: {
+  onExemplo: (dominio: string, label: string) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-3 px-2 text-center">
+      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-violet-500 text-white shadow-md shadow-violet-600/40">
+        <Sparkles className="h-6 w-6" aria-hidden />
+      </div>
+      <div className="max-w-xs space-y-1">
+        <p className="text-sm font-semibold text-foreground">Construa com o Agente Nex</p>
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          Descreva o relatorio que voce quer ver. Ex.: saldo de estoque por armazem, ou valor
+          parado por familia.
+        </p>
+      </div>
+      <ExemplosRapidos onPick={onExemplo} disabled={disabled} />
+    </div>
+  );
+}
+
+/** Dominios com exemplo pronto (gerar_ja deterministico). */
+const EXEMPLOS_DOMINIO: { dominio: string; label: string; Icon: LucideIcon }[] = [
+  { dominio: "estoque", label: "Estoque", Icon: Boxes },
+  { dominio: "financeiro", label: "Financeiro", Icon: Coins },
+  { dominio: "comercial", label: "Comercial", Icon: ShoppingCart },
+  { dominio: "fiscal", label: "Fiscal", Icon: Receipt },
+];
+
+/**
+ * Chips de "Gerar exemplo": montam um relatorio pronto por dominio pelo caminho
+ * deterministico (0 LLM / 0 custo de API), para ver os componentes na hora.
+ */
+function ExemplosRapidos({
+  onPick,
+  disabled,
+}: {
+  onPick: (dominio: string, label: string) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="mt-5 flex flex-col items-center gap-2">
+      <span className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+        <Wand2 className="h-3.5 w-3.5 text-violet-500" aria-hidden />
+        Ou gere um exemplo pronto (sem gastar nada)
+      </span>
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        {EXEMPLOS_DOMINIO.map(({ dominio, label, Icon }) => (
+          <button
+            key={dominio}
+            type="button"
+            disabled={disabled}
+            onClick={() => onPick(dominio, label)}
+            aria-label={`Gerar exemplo de ${label}`}
+            className="flex cursor-pointer items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground transition-colors duration-200 hover:border-violet-400/60 hover:bg-violet-500/10 hover:text-violet-700 focus-visible:ring-2 focus-visible:ring-violet-400/50 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40 dark:hover:text-violet-200"
+          >
+            <Icon className="h-3.5 w-3.5 text-violet-500" aria-hidden />
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RestoringBlock() {
+  return (
+    <div className="space-y-4 pt-1" role="status" aria-label="Carregando conversa">
+      <div className="flex justify-end">
+        <div className="h-9 w-3/5 animate-pulse rounded-xl bg-violet-600/15" />
+      </div>
+      <div className="flex justify-start">
+        <div className="h-16 w-4/5 animate-pulse rounded-xl bg-muted" />
+      </div>
+      <div className="flex justify-end">
+        <div className="h-9 w-2/5 animate-pulse rounded-xl bg-violet-600/15" />
+      </div>
+      <span className="sr-only">Carregando conversa…</span>
+    </div>
+  );
+}

@@ -1,16 +1,74 @@
 // src/lib/reports/queries/fiscal.test.ts
 
 import {
+  queryFaturamentoPeriodo,
   queryNotasEmitidas,
   queryNotasRecebidas,
   queryImpostosPeriodo,
+  queryFaturamentoPorCliente,
   queryProdutosFaturados,
   queryNotasRecebidasPorFornecedor,
   queryContarNotas,
 } from "./fiscal";
 
 // Stub de prisma , substituído por mock real em cada describe
-const fakePrisma = {} as Parameters<typeof queryNotasEmitidas>[0];
+const fakePrisma = {} as Parameters<typeof queryFaturamentoPeriodo>[0];
+
+describe("queryFaturamentoPeriodo", () => {
+  it("retorna totalNotas e valorFaturado de saídas autorizadas sem filtro", async () => {
+    const mockPrisma = {
+      fatoNotaFiscal: {
+        findMany: jest.fn().mockResolvedValue([
+          { vrNf: "1000.00" },
+          { vrNf: "500.00" },
+        ]),
+      },
+    } as unknown as Parameters<typeof queryFaturamentoPeriodo>[0];
+
+    const result = await queryFaturamentoPeriodo(mockPrisma, {});
+    expect(result.totalNotas).toBe(2);
+    expect(result.valorFaturado).toBeCloseTo(1500);
+
+    // F1: queryFaturamentoPeriodo chama idsNaoVenda (1o findMany) antes da query
+    // principal; a query de faturamento e a ULTIMA chamada.
+    const calls = (mockPrisma.fatoNotaFiscal.findMany as jest.Mock).mock.calls;
+    const call = calls[calls.length - 1][0];
+    expect(call.where?.entradaSaida).toBe("1");
+    expect(call.where?.situacaoNfe).toBe("autorizada");
+  });
+
+  it("aplica filtro de período quando informado", async () => {
+    const mockPrisma = {
+      fatoNotaFiscal: {
+        findMany: jest.fn().mockResolvedValue([{ vrNf: "200.00" }]),
+      },
+    } as unknown as Parameters<typeof queryFaturamentoPeriodo>[0];
+
+    const result = await queryFaturamentoPeriodo(mockPrisma, {
+      periodoDe: "2024-01-01",
+      periodoAte: "2024-01-31",
+    });
+    expect(result.totalNotas).toBe(1);
+    expect(result.valorFaturado).toBeCloseTo(200);
+
+    // F1: idsNaoVenda roda primeiro; a query de faturamento e a ULTIMA chamada.
+    // Borda de periodo canonica: gte inclusivo, lt exclusivo (ate + 1 dia UTC).
+    const calls = (mockPrisma.fatoNotaFiscal.findMany as jest.Mock).mock.calls;
+    const call = calls[calls.length - 1][0];
+    expect(call.where?.dataEmissao?.gte).toEqual(new Date("2024-01-01T00:00:00Z"));
+    expect(call.where?.dataEmissao?.lt).toEqual(new Date("2024-02-01T00:00:00Z"));
+  });
+
+  it("retorna zeros quando sem notas", async () => {
+    const mockPrisma = {
+      fatoNotaFiscal: { findMany: jest.fn().mockResolvedValue([]) },
+    } as unknown as Parameters<typeof queryFaturamentoPeriodo>[0];
+
+    const result = await queryFaturamentoPeriodo(mockPrisma, {});
+    expect(result.totalNotas).toBe(0);
+    expect(result.valorFaturado).toBe(0);
+  });
+});
 
 describe("queryNotasEmitidas", () => {
   it("retorna notas de saída (entradaSaida='1') sem filtro", async () => {
@@ -146,13 +204,52 @@ describe("queryImpostosPeriodo", () => {
   });
 });
 
-describe("queryProdutosFaturados", () => {
-  // "Faturados" = venda externa: busca ids de nota (is_venda_externa) e filtra itens.
-  const notasVe = { findMany: jest.fn().mockResolvedValue([{ odooId: 10 }, { odooId: 20 }]) };
-
-  it("agrupa itens de venda externa por produtoNome com limite", async () => {
+describe("queryFaturamentoPorCliente", () => {
+  it("agrupa saídas autorizadas por participanteNome ordenado por valorTotal desc", async () => {
     const mockPrisma = {
-      fatoNotaFiscal: { findMany: jest.fn().mockResolvedValue([{ odooId: 10 }]) },
+      fatoNotaFiscal: {
+        findMany: jest.fn().mockResolvedValue([
+          { participanteNome: "Cliente A", vrNf: "1000.00" },
+          { participanteNome: "Cliente B", vrNf: "3000.00" },
+          { participanteNome: "Cliente A", vrNf: "500.00" },
+        ]),
+      },
+    } as unknown as Parameters<typeof queryFaturamentoPorCliente>[0];
+
+    const result = await queryFaturamentoPorCliente(mockPrisma, {});
+    expect(result.linhas).toHaveLength(2);
+    // ordenado por valorTotal desc: B primeiro
+    expect(result.linhas[0]?.participanteNome).toBe("Cliente B");
+    expect(result.linhas[0]?.quantidade).toBe(1);
+    expect(result.linhas[0]?.valorTotal).toBeCloseTo(3000);
+    expect(result.linhas[1]?.participanteNome).toBe("Cliente A");
+    expect(result.linhas[1]?.quantidade).toBe(2);
+    expect(result.linhas[1]?.valorTotal).toBeCloseTo(1500);
+
+    // F1: idsNaoVenda roda primeiro; a query de faturamento e a ULTIMA chamada.
+    const calls = (mockPrisma.fatoNotaFiscal.findMany as jest.Mock).mock.calls;
+    const call = calls[calls.length - 1][0];
+    expect(call.where?.entradaSaida).toBe("1");
+    expect(call.where?.situacaoNfe).toBe("autorizada");
+  });
+
+  it("aplica filtro de período quando informado", async () => {
+    const mockPrisma = {
+      fatoNotaFiscal: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    } as unknown as Parameters<typeof queryFaturamentoPorCliente>[0];
+
+    await queryFaturamentoPorCliente(mockPrisma, { periodoDe: "2024-01-01", periodoAte: "2024-01-31" });
+    const calls = (mockPrisma.fatoNotaFiscal.findMany as jest.Mock).mock.calls;
+    const call = calls[calls.length - 1][0];
+    expect(call.where?.dataEmissao?.gte).toEqual(new Date("2024-01-01T00:00:00Z"));
+  });
+});
+
+describe("queryProdutosFaturados", () => {
+  it("agrupa itens de saída por produtoNome com limite", async () => {
+    const mockPrisma = {
       fatoNotaFiscalItem: {
         findMany: jest.fn().mockResolvedValue([
           { produtoNome: "Esteira Profissional", quantidade: "2", vrProdutos: "4000.00" },
@@ -164,21 +261,20 @@ describe("queryProdutosFaturados", () => {
 
     const result = await queryProdutosFaturados(mockPrisma, { limit: 5 });
     expect(result.linhas).toHaveLength(2);
+    // ordenado por valorTotal desc: Esteira (10000) antes de Bike (1500)
     expect(result.linhas[0]?.produtoNome).toBe("Esteira Profissional");
     expect(result.linhas[0]?.quantidadeTotal).toBeCloseTo(5);
     expect(result.linhas[0]?.valorTotal).toBeCloseTo(10000);
     expect(result.linhas[1]?.produtoNome).toBe("Bike Ergométrica");
+    expect(result.linhas[1]?.quantidadeTotal).toBeCloseTo(1);
+    expect(result.linhas[1]?.valorTotal).toBeCloseTo(1500);
 
-    // filtra por venda externa na nota e por documento_id no item.
-    const notaCall = (mockPrisma.fatoNotaFiscal.findMany as jest.Mock).mock.calls[0][0];
-    expect(notaCall.where?.isVendaExterna).toBe(true);
-    const itemCall = (mockPrisma.fatoNotaFiscalItem.findMany as jest.Mock).mock.calls[0][0];
-    expect(itemCall.where?.documentoId).toEqual({ in: [10] });
+    const call = (mockPrisma.fatoNotaFiscalItem.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where?.entradaSaida).toBe("1");
   });
 
   it("respeita o limite informado", async () => {
     const mockPrisma = {
-      fatoNotaFiscal: notasVe,
       fatoNotaFiscalItem: {
         findMany: jest.fn().mockResolvedValue([
           { produtoNome: "Produto A", quantidade: "1", vrProdutos: "1000.00" },
@@ -191,26 +287,29 @@ describe("queryProdutosFaturados", () => {
     const result = await queryProdutosFaturados(mockPrisma, { limit: 2 });
     expect(result.linhas).toHaveLength(2);
     expect(result.linhas[0]?.produtoNome).toBe("Produto A");
+    // Alavanca 2b: total = produtos distintos (independente da pagina).
     expect(result.total).toBe(3);
   });
 
-  it("aplica filtro de período na busca das notas de venda externa", async () => {
-    const notaMock = jest.fn().mockResolvedValue([]);
+  it("aplica filtro de período na relação com fatoNotaFiscal", async () => {
     const mockPrisma = {
-      fatoNotaFiscal: { findMany: notaMock },
-      fatoNotaFiscalItem: { findMany: jest.fn().mockResolvedValue([]) },
+      fatoNotaFiscalItem: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
     } as unknown as Parameters<typeof queryProdutosFaturados>[0];
 
     await queryProdutosFaturados(mockPrisma, { periodoDe: "2024-01-01", periodoAte: "2024-01-31" });
-    const call = notaMock.mock.calls[0][0];
+    const call = (mockPrisma.fatoNotaFiscalItem.findMany as jest.Mock).mock.calls[0][0];
     expect(call.where?.dataEmissao?.gte).toEqual(new Date("2024-01-01T00:00:00Z"));
+    // Borda canonica exclusiva: lt = ate + 1 dia UTC.
     expect(call.where?.dataEmissao?.lt).toEqual(new Date("2024-02-01T00:00:00Z"));
   });
 
-  it("retorna lista vazia quando não há nota de venda externa", async () => {
+  it("retorna lista vazia quando sem itens", async () => {
     const mockPrisma = {
-      fatoNotaFiscal: { findMany: jest.fn().mockResolvedValue([]) },
-      fatoNotaFiscalItem: { findMany: jest.fn().mockResolvedValue([]) },
+      fatoNotaFiscalItem: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
     } as unknown as Parameters<typeof queryProdutosFaturados>[0];
 
     const result = await queryProdutosFaturados(mockPrisma, {});

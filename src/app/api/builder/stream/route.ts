@@ -1,0 +1,406 @@
+/**
+ * POST /api/builder/stream
+ *
+ * F6 (chat = Nex) , endpoint SSE do Construtor de relatorios. Espelha
+ * /api/agent/stream: roda o runBuilder emitindo tool_call/tool_result ao vivo
+ * (para a trilha "Raciocinio" da bolha) e persiste a conversa + a ficha.
+ *
+ * Contrato de eventos:
+ *   data: {"type":"status","status":"thinking"}
+ *   data: {"type":"tool_call","toolName":"...","label":"...","toolCallId":"..."}
+ *   data: {"type":"tool_result","toolName":"...","label":"...","toolCallId":"..."}
+ *   data: {"type":"done","conversationId","message","messageId","savedId?","etag?",
+ *          "ficha?","steps":[{label}],"durationMs","recusa?","bloqueado?","erro?"}
+ *   data: {"type":"error","error":"..."}
+ *
+ * Gate: admin/super_admin (mesmo do construirRelatorio). F6 so local.
+ */
+
+import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { runBuilder, type BuilderRunEvent } from "@/lib/reports/builder/agent/run-builder";
+import { rotulosDeduplicados } from "@/lib/reports/builder/agent/builder-progress-labels";
+import {
+  criarRascunho,
+  atualizarRascunho,
+  EtagConflitoError,
+} from "@/lib/reports/builder/saved-report-repo";
+import {
+  criarBuilderConversa,
+  assertBuilderConversaOwned,
+  persistBuilderMensagem,
+  setBuilderSavedReport,
+  carregarBuilderMensagens,
+} from "@/lib/reports/builder/builder-conversation-repo";
+import {
+  defaultParaConversa,
+  podeOferecerGeracao,
+  irParaRefino,
+  type JourneyState,
+} from "@/lib/reports/builder/journey/state";
+import { roteiroDerivado } from "@/lib/reports/builder/journey/roteiro";
+import { pipelineGeracao } from "@/lib/reports/builder/agent/geracao/pipeline";
+import type { EntradaGeracao } from "@/lib/reports/builder/agent/geracao/types";
+import { verificarQuota } from "@/lib/reports/builder/agent/quota";
+import type { BuilderReportEntry } from "@/lib/reports/builder/types";
+
+// O pipeline do Gerar faz ate 2 chamadas LLM (blueprint medio + revisao alta) +
+// build/validacao. maxDuration generoso para nao cortar a funcao no meio.
+export const maxDuration = 120;
+
+const encoder = new TextEncoder();
+
+function sseEvent(data: Record<string, unknown>): Uint8Array {
+  return encoder.encode(`data: ${JSON.stringify(data)}\n\n`);
+}
+
+function jsonError(error: string, status: number): Response {
+  return new Response(JSON.stringify({ error }), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+export async function POST(req: Request): Promise<Response> {
+  // Gate admin/super_admin (construtor e restrito).
+  const user = await getCurrentUser();
+  if (!user) return jsonError("Nao autenticado", 401);
+  if (user.platformRole !== "admin" && user.platformRole !== "super_admin") {
+    return jsonError("Acesso negado", 403);
+  }
+
+  let body: {
+    conversationId?: string;
+    message?: string;
+    isAudio?: boolean;
+    acao?: "gerar" | "regenerar" | "exemplo";
+    /** Dominio do exemplo deterministico (gerar_ja). */
+    dominio?: string;
+  };
+  try {
+    body = (await req.json()) as typeof body;
+  } catch {
+    return jsonError("Body invalido", 400);
+  }
+  const message = typeof body.message === "string" ? body.message.trim() : "";
+  if (!message) return jsonError("message e obrigatorio", 400);
+  const querGerar = body.acao === "gerar";
+
+  // Resolve a conversa: existente (com checagem de dono) ou cria nova.
+  let conversationId: string;
+  let savedReportId: string | null = null;
+  let journeyStatePersistido: JourneyState | null = null;
+  if (body.conversationId) {
+    try {
+      await assertBuilderConversaOwned(body.conversationId, user.id);
+    } catch {
+      return jsonError("Conversa nao encontrada ou acesso negado", 403);
+    }
+    conversationId = body.conversationId;
+    const conv = await prisma.builderConversation.findUnique({
+      where: { id: conversationId },
+      select: { savedReportId: true, journeyState: true },
+    });
+    savedReportId = conv?.savedReportId ?? null;
+    journeyStatePersistido = (conv?.journeyState as JourneyState | null) ?? null;
+  } else {
+    const conv = await criarBuilderConversa(user.id);
+    conversationId = conv.id;
+  }
+
+  // Estado da jornada: persistido ou default condicional (legado com SavedReport
+  // entra como refino; conversa nova entra como entrevista).
+  let journeyState: JourneyState = defaultParaConversa({
+    temSavedReport: !!savedReportId,
+    journeyState: journeyStatePersistido,
+  });
+  const modo: "jornada" | "refino" = journeyState.fase === "refino" ? "refino" : "jornada";
+
+  // Ficha atual: no refino vem do SavedReport (autoritativo); na jornada vem do
+  // rascunho do journeyState (a ficha so vira SavedReport no Gerar).
+  let fichaAtual: BuilderReportEntry | null = null;
+  let etagAtual: string | null = null;
+  if (modo === "refino" && savedReportId) {
+    const sr = await prisma.savedReport.findUnique({
+      where: { id: savedReportId },
+      select: { entry: true, etag: true, criadoPor: true },
+    });
+    if (sr && sr.criadoPor === user.id) {
+      fichaAtual = sr.entry as unknown as BuilderReportEntry;
+      etagAtual = sr.etag;
+    } else {
+      savedReportId = null;
+    }
+  } else {
+    fichaAtual = journeyState.fichaRascunho ?? null;
+  }
+
+  // Historico ANTES de persistir o turno atual (evita duplicar a mensagem corrente).
+  const historicoRows = await carregarBuilderMensagens(conversationId);
+  const historico = historicoRows
+    .filter((m) => m.role === "user" || m.role === "assistant")
+    .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+
+  // Conta o turno do usuario (piso do gate de entendimento).
+  journeyState = { ...journeyState, turnosUsuario: (journeyState.turnosUsuario ?? 0) + 1 };
+
+  // Persiste a mensagem do usuario (kind=audio quando veio de voz).
+  await persistBuilderMensagem(conversationId, "user", message, {
+    kind: body.isAudio ? "audio" : "text",
+  });
+
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      function emit(data: Record<string, unknown>) {
+        try {
+          controller.enqueue(sseEvent(data));
+        } catch {
+          // stream fechado pelo cliente
+        }
+      }
+
+      emit({ type: "status", status: "thinking" });
+
+      // Ordem das tools chamadas no turno , base do dedupe da trilha persistida.
+      const toolNamesNaOrdem: string[] = [];
+
+      function onEvent(evt: BuilderRunEvent) {
+        if (evt.type === "tool_call") {
+          toolNamesNaOrdem.push(evt.toolName);
+          emit({
+            type: "tool_call",
+            toolName: evt.toolName,
+            label: evt.label,
+            toolCallId: evt.toolCallId,
+          });
+        } else if (evt.type === "tool_result") {
+          emit({
+            type: "tool_result",
+            toolName: evt.toolName,
+            label: evt.label,
+            toolCallId: evt.toolCallId,
+          });
+        } else if (evt.type === "choices") {
+          emit({ type: "choices", titulo: evt.titulo, opcoes: evt.opcoes });
+        }
+      }
+
+      // === Clique do Gerar (ou Regenerar): roda o PIPELINE de geracao em vez do
+      // runBuilder one-shot. So quando elegivel por evidencia (gerar) ou quando ja
+      // ha refino (regenerar). Caso contrario, cai no turno normal abaixo. ===
+      const querRegenerar = body.acao === "regenerar";
+      // "exemplo": gera um relatorio pronto por dominio pelo caminho DETERMINISTICO
+      // (gerar_ja, 0 LLM / 0 custo de API). Nao precisa de elegibilidade nem quota.
+      const querExemplo = body.acao === "exemplo";
+      const deveGerar = querExemplo || (querGerar && podeOferecerGeracao(journeyState)) || querRegenerar;
+      if (deveGerar) {
+        try {
+          if (!querExemplo) {
+            const quota = await verificarQuota(user.id);
+            if (!quota.ok) {
+              const mid = await persistBuilderMensagem(conversationId, "assistant", "Voce atingiu o limite de uso por agora. Tente de novo mais tarde.", {});
+              emit({ type: "done", conversationId, message: "Voce atingiu o limite de uso por agora.", messageId: mid, bloqueado: true, fase: journeyState.fase, journeyState });
+              controller.close();
+              return;
+            }
+          }
+
+          const entrada: EntradaGeracao = {
+            entendimento: journeyState.entendimento ?? "",
+            intencao: journeyState.intencao,
+            historico,
+            user: { id: user.id },
+            ...(querRegenerar ? { ajuste: message } : {}),
+            ...(querRegenerar && journeyState.ultimoPlano ? { ultimoPlano: journeyState.ultimoPlano } : {}),
+            ...(querExemplo ? { modo: "gerar_ja" as const, dominioTemplate: body.dominio } : {}),
+          };
+
+          const saida = await pipelineGeracao(entrada, (p) =>
+            emit({ type: "progress", fase: p.fase, pct: p.pct, frase: p.frase }),
+          );
+
+          // Promove a ficha a SavedReport (abrivel) e entra no refino.
+          journeyState = irParaRefino({ ...journeyState, ultimoPlano: saida.plano });
+          let savedId: string | undefined = savedReportId ?? undefined;
+          let etag: string | undefined;
+          try {
+            if (savedReportId && etagAtual) {
+              const upd = await atualizarRascunho(savedReportId, user.id, saida.ficha, etagAtual);
+              if (upd) { savedId = upd.id; etag = upd.etag; }
+            }
+            if (!etag) {
+              const criado = await criarRascunho(user.id, saida.ficha);
+              savedId = criado.id; etag = criado.etag;
+              await setBuilderSavedReport(conversationId, criado.id);
+            }
+          } catch (err) {
+            if (!(err instanceof EtagConflitoError)) throw err;
+            const criado = await criarRascunho(user.id, saida.ficha);
+            savedId = criado.id; etag = criado.etag;
+            await setBuilderSavedReport(conversationId, criado.id);
+          }
+
+          await prisma.builderConversation
+            .update({ where: { id: conversationId }, data: { title: saida.ficha.titulo, savedReportId: savedId, journeyState: journeyState as unknown as object } })
+            .catch(() => {});
+
+          const mensagemFinal =
+            saida.omitidos.length > 0
+              ? `Pronto, montei seu relatorio. So nao incluí ${saida.omitidos.join("; ")}, porque esse dado ainda nao tem fonte por aqui.`
+              : "Pronto, montei seu relatorio do seu jeito.";
+          const messageId = await persistBuilderMensagem(conversationId, "assistant", mensagemFinal, {});
+
+          emit({
+            type: "done",
+            conversationId,
+            message: mensagemFinal,
+            messageId,
+            fase: journeyState.fase,
+            journeyState,
+            omitidos: saida.omitidos,
+            ficha: saida.ficha,
+            ...(savedId ? { savedId } : {}),
+            ...(etag ? { etag } : {}),
+          });
+          controller.close();
+          return;
+        } catch (e) {
+          const mid = await persistBuilderMensagem(conversationId, "assistant", "Nao consegui montar agora. Me da mais um detalhe e tento de novo?", {});
+          emit({ type: "error", error: e instanceof Error ? e.message : "falha_geracao", messageId: mid });
+          controller.close();
+          return;
+        }
+      }
+
+      try {
+        const result = await runBuilder({
+          prompt: message,
+          fichaAtual,
+          user: { id: user.id },
+          onEvent,
+          modo,
+          journeyState,
+          historico,
+        });
+        // Estado da jornada apos o turno (rascunho mais recente espelhado).
+        journeyState = result.journeyState ?? journeyState;
+        if (modo === "jornada") {
+          journeyState = { ...journeyState, fichaRascunho: result.ficha ?? journeyState.fichaRascunho };
+        }
+
+        // Dedupe da trilha persistida: colapsa tools repetidas em sequencia
+        // numa unica linha no plural (ex.: "Adicionando uma seção" x4 ->
+        // "Adicionando seções"). Cai no toolsCalled cru se nao houver toolNames.
+        const steps =
+          toolNamesNaOrdem.length > 0
+            ? rotulosDeduplicados(toolNamesNaOrdem)
+            : result.toolsCalled;
+        const durationMs = result.reasoningMs;
+
+        // Promove a ficha a SavedReport (abrivel/listavel) SOMENTE no refino. O
+        // clique em Gerar elegivel ja foi tratado acima (pipeline). Na entrevista a
+        // ficha nem existe (so a intencao); nada a promover aqui.
+        const promover = modo === "refino";
+
+        let savedId: string | undefined = savedReportId ?? undefined;
+        let etag: string | undefined;
+        if (promover && !result.recusa && !result.bloqueado && !result.erro && result.ficha) {
+          try {
+            if (savedReportId && etagAtual) {
+              const upd = await atualizarRascunho(
+                savedReportId,
+                user.id,
+                result.ficha,
+                etagAtual,
+              );
+              if (upd) {
+                savedId = upd.id;
+                etag = upd.etag;
+              }
+            }
+            if (!etag) {
+              const criado = await criarRascunho(user.id, result.ficha);
+              savedId = criado.id;
+              etag = criado.etag;
+              await setBuilderSavedReport(conversationId, criado.id);
+            }
+            // Mantem o titulo da conversa em dia com o da ficha.
+            await prisma.builderConversation
+              .update({
+                where: { id: conversationId },
+                data: { title: result.ficha.titulo, savedReportId: savedId },
+              })
+              .catch(() => {});
+          } catch (err) {
+            if (!(err instanceof EtagConflitoError)) throw err;
+            // Conflito de etag (raro, edicao concorrente): cria nova ficha.
+            const criado = await criarRascunho(user.id, result.ficha);
+            savedId = criado.id;
+            etag = criado.etag;
+            await setBuilderSavedReport(conversationId, criado.id);
+          }
+        }
+
+        // Persiste o estado da jornada atualizado (fase, rascunho, entendimento).
+        await prisma.builderConversation
+          .update({
+            where: { id: conversationId },
+            data: { journeyState: journeyState as unknown as object },
+          })
+          .catch(() => {});
+
+        // Persiste a resposta do assistant (com a trilha + duracao do turno).
+        const messageId = await persistBuilderMensagem(
+          conversationId,
+          "assistant",
+          result.mensagem,
+          { steps, durationMs },
+        );
+
+        // Roteiro de perguntas (X de N) , atualiza o indicador da entrevista.
+        if (modo === "jornada") {
+          const roteiro = roteiroDerivado(journeyState);
+          emit({
+            type: "roteiro",
+            total: roteiro.total,
+            respondidas: roteiro.respondidas,
+            etapas: roteiro.etapas,
+          });
+        }
+
+        emit({
+          type: "done",
+          conversationId,
+          message: result.mensagem,
+          messageId,
+          steps,
+          durationMs,
+          fase: journeyState.fase,
+          journeyState,
+          ...(savedId ? { savedId } : {}),
+          ...(etag ? { etag } : {}),
+          ...(result.ficha ? { ficha: result.ficha } : {}),
+          ...(result.recusa ? { recusa: true } : {}),
+          ...(result.bloqueado ? { bloqueado: true } : {}),
+          ...(result.erro ? { erro: true } : {}),
+        });
+      } catch (err) {
+        emit({
+          type: "error",
+          error: err instanceof Error ? err.message : "Erro interno do construtor",
+        });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    },
+  });
+}

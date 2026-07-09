@@ -42,6 +42,9 @@ interface FeatureCheckpointProps {
   /** Rótulo acessível do grupo. */
   "aria-label"?: string;
   className?: string;
+  /** Restringe os estados exibidos (ex.: ["OFF","PRODUCTION"] para 2 estados).
+   *  Default: todos os 3. Mantém a ordem canônica OFF -> PLAYGROUND -> PRODUCTION. */
+  allowed?: CheckpointState[];
 }
 
 export function FeatureCheckpoint({
@@ -50,16 +53,19 @@ export function FeatureCheckpoint({
   disabled = false,
   "aria-label": ariaLabel,
   className,
+  allowed,
 }: FeatureCheckpointProps) {
+  const steps = allowed ? STEPS.filter((s) => allowed.includes(s.value)) : STEPS;
+
   function handleKey(e: React.KeyboardEvent) {
     if (disabled) return;
-    const idx = STEPS.findIndex((s) => s.value === value);
+    const idx = steps.findIndex((s) => s.value === value);
     if (e.key === "ArrowRight" || e.key === "ArrowUp") {
       e.preventDefault();
-      onChange(STEPS[Math.min(idx + 1, STEPS.length - 1)].value);
+      onChange(steps[Math.min(idx + 1, steps.length - 1)].value);
     } else if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
       e.preventDefault();
-      onChange(STEPS[Math.max(idx - 1, 0)].value);
+      onChange(steps[Math.max(idx - 1, 0)].value);
     }
   }
 
@@ -74,7 +80,7 @@ export function FeatureCheckpoint({
         className,
       )}
     >
-      {STEPS.map((step) => {
+      {steps.map((step) => {
         const selected = step.value === value;
         return (
           <button

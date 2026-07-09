@@ -8,9 +8,30 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { buildPeriodoWhere } from "@/lib/metrics/_shared/periodo";
 import { buildEmpresaWhere } from "@/lib/metrics/_shared/empresa";
-// queryFaturamentoPeriodo/PorCliente removidas (2026-07-08): eram orfas (0 chamadores) e
-// o faturamento canonico vive nas metricas (src/lib/metrics/fiscal/*, via is_venda_externa,
-// exclui intragrupo). Ver docs .../08-PERICIA-COBERTURA #10.
+import { idsNaoVenda, buildNaturezaVendaWhere } from "@/lib/metrics/_shared/naturezas";
+
+export async function queryFaturamentoPeriodo(
+  prisma: PrismaClient,
+  filtros: { periodoDe?: string; periodoAte?: string; empresaId?: number },
+): Promise<{ totalNotas: number; valorFaturado: number }> {
+  // F1: passa a usar a definicao canonica de faturamento de venda (borda de periodo
+  // exclusiva, exclui operacoes nao-venda como devolucao/transferencia, corte por empresa).
+  // A chave publica valorFaturado e mantida. O numero muda onde houver nao-venda (correto).
+  const naoVenda = await idsNaoVenda(prisma);
+  const rows = await prisma.fatoNotaFiscal.findMany({
+    where: {
+      entradaSaida: "1",
+      situacaoNfe: "autorizada",
+      ...buildPeriodoWhere(filtros.periodoDe, filtros.periodoAte),
+      ...buildEmpresaWhere(filtros.empresaId),
+      ...buildNaturezaVendaWhere(naoVenda),
+    },
+    select: { vrNf: true },
+  });
+
+  const valorFaturado = rows.reduce((acc, r) => acc + Number(r.vrNf), 0);
+  return { totalNotas: rows.length, valorFaturado };
+}
 
 export async function queryNotasEmitidas(
   prisma: PrismaClient,
@@ -170,6 +191,53 @@ export async function queryImpostosPeriodo(
  * forma estável (valor desc, depois o nome como desempate) e fatiamos
  * [offset, offset+limit). `total` é o número de clientes distintos (todos os
  * grupos), independente da página. */
+export async function queryFaturamentoPorCliente(
+  prisma: PrismaClient,
+  filtros: { periodoDe?: string; periodoAte?: string; empresaId?: number; limit?: number; offset?: number },
+): Promise<{
+  linhas: { participanteNome: string | null; quantidade: number; valorTotal: number }[];
+  total: number;
+  valorGeral: number;
+}> {
+  // F1: faturamento por cliente = venda autorizada (borda exclusiva, exclui
+  // operacoes nao-venda, corte por empresa).
+  const naoVenda = await idsNaoVenda(prisma);
+  const rows = await prisma.fatoNotaFiscal.findMany({
+    where: {
+      entradaSaida: "1",
+      situacaoNfe: "autorizada",
+      ...buildPeriodoWhere(filtros.periodoDe, filtros.periodoAte),
+      ...buildEmpresaWhere(filtros.empresaId),
+      ...buildNaturezaVendaWhere(naoVenda),
+    },
+    select: { participanteNome: true, vrNf: true },
+  });
+
+  // Agregação em memória por participanteNome
+  const map = new Map<string | null, { quantidade: number; valorTotal: number }>();
+  let valorGeral = 0;
+  for (const r of rows) {
+    const key = r.participanteNome;
+    const existing = map.get(key);
+    if (existing) {
+      existing.quantidade += 1;
+      existing.valorTotal += Number(r.vrNf);
+    } else {
+      map.set(key, { quantidade: 1, valorTotal: Number(r.vrNf) });
+    }
+    valorGeral += Number(r.vrNf);
+  }
+
+  const ordenados = [...map.entries()]
+    .map(([participanteNome, v]) => ({ participanteNome, ...v }))
+    // Desempate estável pelo nome do participante (após valor desc).
+    .sort((a, b) => b.valorTotal - a.valorTotal || (a.participanteNome ?? "").localeCompare(b.participanteNome ?? ""));
+
+  const offset = filtros.offset ?? 0;
+  const limit = filtros.limit ?? 30;
+  return { linhas: ordenados.slice(offset, offset + limit), total: map.size, valorGeral };
+}
+
 /** Produtos mais faturados.
  * Alavanca 2b , EXCEÇÃO de paginação em memória: agrega itens por produtoNome
  * em memória; ordena estável (valor desc, depois nome) e fatia
@@ -184,25 +252,22 @@ export async function queryProdutosFaturados(
   valorGeral: number;
   quantidadeGeral: number;
 }> {
-  // "Faturados" = VENDA EXTERNA REAL. Como o item não carrega is_venda_externa,
-  // busca primeiro os ids das notas de venda externa (mesma verdade do faturamento;
-  // exclui transferência/remessa/intragrupo/não-autorizada) e filtra os itens por
-  // documento_id. Mantem vrProdutos (ranking de produto, sem impostos): SPEC 9.7.
-  const notasVe = await prisma.fatoNotaFiscal.findMany({
+  // FatoNotaFiscalItem não tem relação Prisma com FatoNotaFiscal , campos
+  // entradaSaida, dataEmissao e empresaId são desnormalizados direto no item (N8 + F1).
+  // F1: corte por empresa agora e DIRETO no item (coluna empresa_id), nao via documentoId IN.
+  // Mantem vrProdutos (ranking de produto, sem impostos): excecao consciente (SPEC 9.7).
+  const rows = await prisma.fatoNotaFiscalItem.findMany({
     where: {
-      isVendaExterna: true,
+      entradaSaida: "1",
       ...buildPeriodoWhere(filtros.periodoDe, filtros.periodoAte),
       ...buildEmpresaWhere(filtros.empresaId),
     },
-    select: { odooId: true },
+    select: {
+      produtoNome: true,
+      quantidade: true,
+      vrProdutos: true,
+    },
   });
-  const notaIds = notasVe.map((n) => n.odooId);
-  const rows = notaIds.length
-    ? await prisma.fatoNotaFiscalItem.findMany({
-        where: { documentoId: { in: notaIds } },
-        select: { produtoNome: true, quantidade: true, vrProdutos: true },
-      })
-    : [];
 
   // Agregação em memória por produtoNome
   const map = new Map<string | null, { quantidadeTotal: number; valorTotal: number }>();

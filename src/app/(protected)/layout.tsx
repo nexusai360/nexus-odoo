@@ -12,6 +12,11 @@ import { getUserDomains } from "@/lib/actions/domain-access";
 import { getActiveConversationId } from "@/lib/actions/active-conversation";
 import { roleMeetsChannelLevel } from "@/lib/agent/channel-access";
 import { diretoriaNavFor } from "@/lib/diretoria/access";
+import {
+  obterAcessoRelatorios2,
+  podeAcessar,
+  podeAcessarSubmenu,
+} from "@/lib/reports/acesso-relatorios2";
 
 export default async function ProtectedLayout({
   children,
@@ -32,6 +37,16 @@ export default async function ProtectedLayout({
   // serializáveis (label/href) à Sidebar; o ícone é reanexado lá (componentes
   // React não cruzam a fronteira server→client). Usa `user` (com id).
   const dirChildren = await diretoriaNavFor(user);
+
+  // RBAC dinamico do menu Relatorios 2.0 (menu + submenus) para o sidebar.
+  const acessoRel2 = await obterAcessoRelatorios2();
+  const u2 = { platformRole: user.platformRole, isOwner: user.isOwner };
+  const relatorios2Visible = {
+    menu: podeAcessar(acessoRel2.menu, u2),
+    paineis: podeAcessarSubmenu(acessoRel2, "paineis", u2),
+    meus: podeAcessarSubmenu(acessoRel2, "meus", u2),
+    construtor: podeAcessarSubmenu(acessoRel2, "construtor", u2),
+  };
 
   // RBAC v2 (SPEC §6.5): a bubble do agente aparece para quem CONSEGUE usar o
   // Nex. super_admin/admin veem tudo (short-circuit seesAll, sem query).
@@ -109,9 +124,15 @@ export default async function ProtectedLayout({
   return (
     <TourProvider>
       <div className="flex h-screen overflow-hidden bg-background">
-        <Sidebar user={sidebarUser} diretoriaNav={dirChildren} />
+        <Sidebar
+          user={sidebarUser}
+          diretoriaNav={dirChildren}
+          relatorios2Visible={relatorios2Visible}
+        />
         <main className="flex-1 overflow-y-auto overscroll-contain">
-          <div className="pt-16 pb-8 sm:pt-8">{children}</div>
+          {/* pb extra (respiro de rolagem): garante espaco no rodape para a bubble
+              do agente nao cobrir o conteudo (ex.: dropdowns no fim da pagina). */}
+          <div className="pt-16 pb-24 sm:pt-8 sm:pb-24">{children}</div>
         </main>
         {bubbleVisible ? (
           <AgentBubble

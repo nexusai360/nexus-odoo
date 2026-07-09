@@ -193,6 +193,8 @@ model User {
   reportPresets          ReportPreset[]
   // F5
   conversations          Conversation[]
+  // F6 , conversas do Construtor de relatorios (isoladas das do Nex)
+  builderConversations   BuilderConversation[]
   whatsappNumbers        UserWhatsappNumber[]
   playgroundSessions     PlaygroundSession[]
   // F4.5 — Agente Nex Inteligencia
@@ -220,6 +222,77 @@ model ReportPreset {
 
   @@index([userId, reportId])
   @@map("report_presets")
+}
+
+/// F6 , ficha de relatorio dinamico criada pelo Construtor de Relatorios (config-driven).
+enum SavedReportTipo {
+  tela_cheia
+  widget
+}
+
+enum SavedReportStatus {
+  rascunho
+  publicado
+}
+
+model SavedReport {
+  id                  String            @id @default(cuid())
+  tipo                SavedReportTipo   @default(tela_cheia)
+  titulo              String
+  entry               Json
+  schemaVersion       Int               @default(1) @map("schema_version")
+  status              SavedReportStatus @default(rascunho)
+  criadoPor           String            @map("criado_por") @db.Uuid
+  visibilidadeConsumo String[]          @default([]) @map("visibilidade_consumo")
+  etag                String            @default(cuid())
+  criadoEm            DateTime          @default(now()) @map("criado_em")
+  atualizadoEm        DateTime          @updatedAt @map("atualizado_em")
+
+  @@index([criadoPor, status])
+  @@map("saved_reports")
+}
+
+/// F6 , conversa do Construtor de relatorios. Isolada da Conversation do Nex
+/// (que tem muitos consumidores: monitoramento, qualidade, router) para nao
+/// contaminar a producao. Uma conversa constroi UMA ficha (savedReportId).
+model BuilderConversation {
+  id            String           @id @default(uuid()) @db.Uuid
+  userId        String           @map("user_id") @db.Uuid
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title         String?
+  /// Ficha (SavedReport) que esta conversa esta construindo. Setado no 1o turno
+  /// que persiste rascunho; reusado nos turnos seguintes (atualiza, nao recria).
+  savedReportId String?          @map("saved_report_id")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+  /// "Limpar conversa": arquiva (nao deleta). null = ativa.
+  endedAt       DateTime?        @map("ended_at")
+  /// Estado da jornada guiada (fase, fichaRascunho, entendimento, resumo). null =
+  /// conversa legada (tratada como refino se houver savedReportId). F6 so dev.
+  journeyState  Json?            @map("journey_state")
+  messages      BuilderMessage[]
+
+  @@index([userId, endedAt, updatedAt])
+  @@map("builder_conversations")
+}
+
+/// F6 , mensagem da conversa do Construtor (user | assistant). `steps` guarda os
+/// rotulos das tools consultadas no turno (rebuild da trilha "Raciocinio") e
+/// `durationMs` a duracao (resumo "Raciocinio . N tools . Xs").
+model BuilderMessage {
+  id             String              @id @default(uuid()) @db.Uuid
+  conversationId String              @map("conversation_id") @db.Uuid
+  conversation   BuilderConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String
+  content        String
+  /// Array<{ label: string }> das tools consultadas neste turno.
+  steps          Json?
+  durationMs     Int?                @map("duration_ms")
+  kind           String              @default("text")
+  createdAt      DateTime            @default(now()) @map("created_at")
+
+  @@index([conversationId, createdAt])
+  @@map("builder_messages")
 }
 
 model AppSetting {
@@ -3130,6 +3203,24 @@ model AgentSettings {
   imageModel        String? @map("image_model")
   /// Credencial (chave de API) usada pelo modelo dedicado de imagem.
   imageCredentialId String? @map("image_credential_id") @db.Uuid
+
+  /// Modelo do agente construtor de relatorios (F6). Independente do modelo de
+  /// producao do Nex. Default no codigo (openai/gpt-5-mini) quando vazio.
+  builderModelProvider     String? @map("builder_model_provider")
+  builderModelId           String? @map("builder_model_id")
+  /// Credencial (chave de API) usada pelo modelo do construtor.
+  builderModelCredentialId String? @map("builder_model_credential_id") @db.Uuid
+  /// Recursos do construtor (2 estados na UI: OFF/PRODUCTION).
+  builderReasoningCheckpoint FeatureCheckpoint @default(OFF) @map("builder_reasoning_checkpoint")
+  builderReasoningEffort     String?           @map("builder_reasoning_effort")
+  builderAudioCheckpoint     FeatureCheckpoint @default(OFF) @map("builder_audio_checkpoint")
+  builderAnexoCheckpoint     FeatureCheckpoint @default(OFF) @map("builder_anexo_checkpoint")
+  /// Acesso ao menu Relatorios 2.0 e a cada submenu (nivel minimo de perfil;
+  /// "off" = oculto para todos exceto o super_admin dono). Heranca por nivel.
+  relatorios2MenuAccess       ChannelAccessLevel @default(admin) @map("relatorios2_menu_access")
+  relatorios2PaineisAccess    ChannelAccessLevel @default(admin) @map("relatorios2_paineis_access")
+  relatorios2MeusAccess       ChannelAccessLevel @default(admin) @map("relatorios2_meus_access")
+  relatorios2ConstrutorAccess ChannelAccessLevel @default(admin) @map("relatorios2_construtor_access")
 
   /// R1 router de catalogo (sub-projeto do roadmap de cobertura completa).
   /// Ver docs/superpowers/specs/2026-05-28-router-catalogo-design.md.
