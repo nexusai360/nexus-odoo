@@ -1080,3 +1080,18 @@ registrada em 2026-05-18); F4 ≠ F5 (WhatsApp/conversas/personalização são F
 > **Retomada (2026-06-03):** pendência única = drill-down do Router (banner não quebra texto). Ver docs/agents/HANDOFF-2026-06-03-router-drilldown.md.
 
 ## 2026-06-15 , auto-deploy (Shepherd) + start-first em prod; healthcheck do app pendente p/ zerar os ~18s de downtime. Fix clareza faturamento + ondas M/O/P em prod. Ver docs/runbooks/deploy-procedure.md e PROGRESSO.
+
+## 2026-07-09 , Acesso aos menus por perfil EM PRODUCAO (PR #158, commit 8140334e)
+
+Na tela Configuracao, o super_admin define quem ve cada um dos 8 menus do sidebar
+(nivel por heranca). `menu_access` e a autoridade unica dos menus de topo: os gates
+estaticos de `nav.ts` sairam e cada menu tem guarda de rota no layout
+(`requireMenuAccess`), o que cobre as sub-rotas. Configuracao fica fixa em super_admin
+(trava anti-lockout, e a tela so tem acoes de super_admin). O menu "Relatorios 2.0"
+tinha dois seletores gravando em lugares diferentes; sobrou um (o card de Rel 2.0 ficou
+com os submenus). `temp-rules.ts` foi removido: virou configuracao de tela.
+
+Deploy validado: migrations 104/105 aplicadas em prod (menu_access + seed do nivel antigo
+de Relatorios 2.0), app/mcp/worker atualizados em rolling, `/api/health` OK, bundle em prod
+contendo o codigo novo, logs dos 3 servicos sem erro. Comportamento padrao identico ao de
+antes: ninguem ganha ou perde menu ate alguem mexer na tela.
