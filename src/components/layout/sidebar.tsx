@@ -27,6 +27,12 @@ import {
   type NavItem,
 } from "@/lib/constants/nav";
 import { RELATORIOS2_MENU, RELATORIOS2_SUBMENUS } from "@/lib/constants/relatorios2";
+import {
+  menuEntry,
+  menuKeyForPath,
+  podeVerMenu,
+  type MenuAccessMap,
+} from "@/lib/nav/menu-catalog";
 import { PLATFORM_ROLE_LABELS } from "@/lib/constants/roles";
 import type { PlatformRole } from "@/generated/prisma/client";
 import {
@@ -60,6 +66,8 @@ interface SidebarProps {
    */
   diretoriaNav: { label: string; href: string }[];
   relatorios2Visible?: Relatorios2Visible;
+  /** Níveis de acesso por menu (feature "Acesso aos menus"). Filtra os itens de topo. */
+  menuAccess?: MenuAccessMap;
 }
 
 const THEME_ICONS = { dark: Moon, light: Sun, system: Monitor } as const;
@@ -71,7 +79,7 @@ const THEME_LABELS = {
 
 const COLLAPSED_KEY = "nexus-sidebar-collapsed";
 
-export function Sidebar({ user, diretoriaNav, relatorios2Visible }: SidebarProps) {
+export function Sidebar({ user, diretoriaNav, relatorios2Visible, menuAccess }: SidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const reduceMotion = useReducedMotion();
@@ -113,6 +121,16 @@ export function Sidebar({ user, diretoriaNav, relatorios2Visible }: SidebarProps
   // Relatórios 2.0 e seus submenus por visibilidade (paineis/meus/construtor).
   const visibleNav = useMemo(() => {
     let nav = filterNav(NAV_ITEMS, user);
+    // (0) Acesso aos menus por perfil (config dinâmica): remove os itens de topo
+    // cujo menu foi restringido para acima do perfil do usuário.
+    if (menuAccess) {
+      nav = nav.filter((item) => {
+        const key = menuKeyForPath(item.href);
+        const entry = key ? menuEntry(key) : undefined;
+        if (!entry || !key) return true;
+        return podeVerMenu(entry, menuAccess[key], user.platformRole);
+      });
+    }
     // (1) Diretoria , submenu por capability.
     nav = nav
       .map((item) =>
@@ -148,7 +166,7 @@ export function Sidebar({ user, diretoriaNav, relatorios2Visible }: SidebarProps
         .filter((x): x is NonNullable<typeof x> => x != null);
     }
     return nav;
-  }, [user, diretoriaNav, relatorios2Visible]);
+  }, [user, diretoriaNav, relatorios2Visible, menuAccess]);
   const allLeafHrefs = useMemo(() => collectLeafHrefs(visibleNav), [visibleNav]);
 
   // Abre, na montagem, o grupo cujo prefixo de href bate com o pathname atual,

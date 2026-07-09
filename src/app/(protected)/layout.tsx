@@ -17,6 +17,7 @@ import {
   podeAcessar,
   podeAcessarSubmenu,
 } from "@/lib/reports/acesso-relatorios2";
+import { obterMenuAccess } from "@/lib/nav/menu-access";
 
 export default async function ProtectedLayout({
   children,
@@ -47,6 +48,9 @@ export default async function ProtectedLayout({
     meus: podeAcessarSubmenu(acessoRel2, "meus", u2),
     construtor: podeAcessarSubmenu(acessoRel2, "construtor", u2),
   };
+
+  // Acesso aos menus por perfil (feature "Acesso aos menus") , filtra o sidebar.
+  const menuAccess = await obterMenuAccess();
 
   // RBAC v2 (SPEC §6.5): a bubble do agente aparece para quem CONSEGUE usar o
   // Nex. super_admin/admin veem tudo (short-circuit seesAll, sem query).
@@ -128,6 +132,7 @@ export default async function ProtectedLayout({
           user={sidebarUser}
           diretoriaNav={dirChildren}
           relatorios2Visible={relatorios2Visible}
+          menuAccess={menuAccess}
         />
         <main className="flex-1 overflow-y-auto overscroll-contain">
           {/* pb extra (respiro de rolagem): garante espaco no rodape para a bubble
