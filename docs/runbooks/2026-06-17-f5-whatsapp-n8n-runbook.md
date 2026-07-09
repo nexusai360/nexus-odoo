@@ -9,52 +9,81 @@
 ## 1. Topologia , os 2 webhooks
 
 ```
-Usuário(WhatsApp) → Meta → n8n (extrai campos, transcreve áudio, assina HMAC)
-   → [ENTRADA]  POST  https://<plataforma>/api/integrations/whatsapp/inbound
-        (a plataforma valida HMAC, resolve usuário, aplica barreiras, enfileira)
+Usuário(WhatsApp) → Meta → n8n (extrai campos, transcreve áudio)
+   → [ENTRADA]  POST  https://<plataforma>/api/hooks/<slug>     ← canônica (F5.1)
+        Authorization: Bearer <secret do webhook>
+        (a plataforma valida o token, resolve usuário, aplica barreiras, enfileira)
    → worker processa (lock por usuário, sessão 24h, RBAC, runAgent, Judge)
    → [SAÍDA]   POST  <URL do receptor n8n>   (envelope `agent.reply`, HMAC)
    → n8n (receptor) deduplica por deliveryId → entrega ao usuário no WhatsApp
 ```
 
 - **ENTRADA:** webhook de ENTRADA da plataforma (cadastrado em Integrações →
-  Webhooks, direção "Receber eventos", caminho `whatsapp/inbound`). O n8n é o
-  cliente que chama esse endpoint.
+  Webhooks, direção "Receber eventos"). Você define o **caminho (slug)**, marca
+  **"Recebe dados do WhatsApp"** e informa o **número da empresa** (`businessId`),
+  que é o que roteia a resposta pelo número certo. A URL final é
+  `https://<plataforma>/api/hooks/<slug>`. O n8n é o cliente que a chama.
+  A rota antiga `/api/integrations/whatsapp/inbound` segue viva só por
+  compatibilidade: ela resolve o **primeiro** webhook de entrada habilitado, o
+  que é ambíguo quando há mais de um número. Prefira sempre o slug.
 - **SAÍDA:** webhook de SAÍDA da plataforma (direção "Enviar eventos"), com a
   URL do nó Webhook do n8n que vai receber a resposta. Marque o evento
   **`agent.reply`** (default já vem marcado). Sem o evento marcado, o webhook
   não recebe nada.
 
-## 2. Assinatura HMAC (nas duas pontas)
+## 2. Autenticação (as duas pontas usam esquemas DIFERENTES)
 
-A plataforma usa HMAC-SHA256 sobre `${timestamp}.${body}`:
+> **Corrigido em 2026-07-09 após perícia no código.** Este runbook dizia que a
+> ENTRADA era assinada com HMAC (`X-Signature`/`X-Timestamp`). **Não é.** O
+> código (`src/lib/whatsapp/inbound-handler.ts`, "Token fixo (fail-closed)")
+> exige um Bearer token. Seguir a instrução antiga faz o n8n tomar 401.
 
-- **ENTRADA (n8n → plataforma):** a cada (re)envio, o n8n monta:
-  - `X-Timestamp`: timestamp ATUAL em ms (gerar na hora do envio, não reaproveitar).
-  - `X-Signature`: `HMAC_SHA256(secret, "${X-Timestamp}.${corpoJSON}")`, em hex.
-  - `secret`: o token revelado uma única vez ao criar o webhook de ENTRADA.
+- **ENTRADA (n8n → plataforma): Bearer token.** O n8n manda o header
+  `Authorization: Bearer <secret do webhook de ENTRADA>`. A comparação é
+  timing-safe (`verifyToken`). Não há assinatura, não há timestamp.
+  - O `secret` é gerado pela plataforma e **mostrado uma única vez**, na criação
+    do webhook (fica criptografado no banco). Se perder, rotacione.
   - A assinatura própria da Meta (`x-hub-signature-256`) é validada **no n8n**,
-    não na plataforma. A plataforma só confia na HMAC do n8n.
-- **SAÍDA (plataforma → n8n):** a plataforma assina o envelope com o secret do
-  webhook de SAÍDA e o timestamp do disparo. **Valide essa HMAC no n8n** antes
-  de confiar no payload (mesmo esquema `${timestamp}.${body}`).
-
-> Reenvio: como o timestamp entra na assinatura, todo reenvio precisa de
-> `X-Timestamp` novo e `X-Signature` recalculado. Não reusar headers antigos.
+    não na plataforma.
+- **SAÍDA (plataforma → n8n): HMAC-SHA256.** Aí sim a plataforma assina o
+  envelope (`src/lib/whatsapp/emit-reply.ts`):
+  - `X-Timestamp`: epoch ms do disparo.
+  - `X-Signature`: `HMAC_SHA256(secret_do_webhook_de_saida, "${X-Timestamp}.${corpoJSON}")`, em hex.
+  - **Valide essa HMAC no n8n** antes de confiar no payload.
 
 ## 3. Mapeamento do payload da Meta para o contrato de ENTRADA
+
+> **Corrigido em 2026-07-09.** Os nomes de campo abaixo são os do schema Zod real
+> (`src/lib/whatsapp/inbound-payload.ts`), em `snake_case`. O runbook antigo
+> listava `from`, `messageId`, `contactName`, `phoneNumberId`, que o schema
+> **rejeita**. O número da empresa não vai no corpo: ele vem do próprio webhook
+> (campo `businessId`, resolvido pelo slug da URL).
 
 O n8n extrai de `body.entry[0].changes[0].value` e envia à plataforma:
 
 | Campo enviado | Origem na Meta | Obrig. | Observação |
 |---|---|---|---|
-| `from` | `messages[0].from` (= `contacts[0].wa_id`) | sim | número do usuário |
-| `text` | `messages[0].text.body` **ou a transcrição do áudio** | sim* | conteúdo |
-| `type` | `messages[0].type` | sim | `text` ou `audio` |
-| `messageId` | `messages[0].id` (`wamid...`) | sim | idempotência/correlação |
-| `timestamp` | `messages[0].timestamp` (segundos) | sim | normalizar para **ms** no n8n |
-| `contactName` | `contacts[0].profile.name` | não | exibição no monitoramento |
-| `phoneNumberId` | `metadata.phone_number_id` | não | roteia a resposta pelo nº certo |
+| `wa_id` | `messages[0].from` (= `contacts[0].wa_id`) | sim | número do usuário |
+| `user_id` | `contacts[0].wa_id` ou o id estável do contato | sim | chave estável do contato |
+| `type` | `messages[0].type` | sim | `text`, `audio`, `image`, `document`, `video`, `sticker` |
+| `text` | `messages[0].text.body` **ou a transcrição do áudio** | sim* | obrigatório em `text` e `audio`; legenda opcional em mídia |
+| `message_id` | `messages[0].id` (`wamid...`) | sim | idempotência/dedup |
+| `timestamp` | `messages[0].timestamp` (segundos) | sim | normalizar para **ms** no n8n (epoch ms, inteiro positivo) |
+| `contact_name` | `contacts[0].profile.name` | não | exibição no monitoramento |
+| `media` | `{ url, mime_type, filename?, id?, sha256? }` | condicional | **obrigatório** quando `type` é `image`/`document`/`video`/`sticker` |
+
+Exemplo mínimo de corpo (mensagem de texto):
+
+```json
+{
+  "wa_id": "5534991908624",
+  "user_id": "5534991908624",
+  "type": "text",
+  "text": "qual o faturamento deste mes?",
+  "message_id": "wamid.HBgNNTUzNDk5MTkwODYyNBUCABIYIDc...",
+  "timestamp": 1752080000000
+}
+```
 
 - **Áudio (caminho n8n):** o n8n transcreve o áudio e envia `type:"audio"` +
   `text` com a transcrição. A plataforma usa o `text` direto, marca a mensagem
