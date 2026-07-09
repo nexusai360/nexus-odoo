@@ -26,9 +26,16 @@ jest.mock("@/lib/agent/conversation", () => ({
   assertConversationOwned: jest.fn(),
 }));
 
+// Gate do canal in-app (bolha). Por padrão liberado; os testes do gate
+// sobrescrevem para simular o canal fechado.
+jest.mock("@/lib/agent/require-channel", () => ({
+  blockIfBubbleClosed: jest.fn(async () => null),
+}));
+
 const { requireAgentAccessOrJson } = jest.requireMock("@/lib/auth/require");
 const { runAgent } = jest.requireMock("@/lib/agent/run-agent");
 const { createConversation } = jest.requireMock("@/lib/agent/conversation");
+const { blockIfBubbleClosed } = jest.requireMock("@/lib/agent/require-channel");
 
 import { POST } from "./route";
 
@@ -216,5 +223,55 @@ describe("POST /api/agent/stream", () => {
 
     const res = await POST(req);
     expect(res.status).toBe(400);
+  });
+
+  // Regressão: o nível da bolha só era aplicado no layout (escondia o botão).
+  // Quem chamasse esta rota direto conversava com o agente mesmo abaixo do nível.
+  describe("gate do canal in-app (bolha)", () => {
+    it("recusa com 403 quando o canal está fechado para o perfil", async () => {
+      requireAgentAccessOrJson.mockResolvedValue({
+        user: MOCK_USER_ADMIN,
+        allowedDomains: "all",
+      });
+      blockIfBubbleClosed.mockResolvedValue(
+        NextResponse.json({ error: "ChannelDisabled" }, { status: 403 }),
+      );
+
+      const req = new Request("http://localhost/api/agent/stream", {
+        method: "POST",
+        body: JSON.stringify({ message: "Olá" }),
+        headers: { "Content-Type": "application/json" },
+      });
+
+      const res = await POST(req);
+      expect(res.status).toBe(403);
+      await expect(res.json()).resolves.toEqual({ error: "ChannelDisabled" });
+      expect(runAgent).not.toHaveBeenCalled();
+      expect(createConversation).not.toHaveBeenCalled();
+    });
+
+    it("o playground NÃO responde ao nível da bolha (tem gate próprio de papel)", async () => {
+      requireAgentAccessOrJson.mockResolvedValue({
+        user: MOCK_USER_ADMIN,
+        allowedDomains: "all",
+      });
+      // Mesmo com a bolha fechada, o playground de um admin segue funcionando.
+      blockIfBubbleClosed.mockResolvedValue(
+        NextResponse.json({ error: "ChannelDisabled" }, { status: 403 }),
+      );
+      createConversation.mockResolvedValue({ id: MOCK_CONV_ID });
+      runAgent.mockResolvedValue({ message: "ok", suggestions: [] });
+
+      const req = new Request("http://localhost/api/agent/stream", {
+        method: "POST",
+        body: JSON.stringify({ message: "Olá", isPlayground: true }),
+        headers: { "Content-Type": "application/json" },
+      });
+
+      const res = await POST(req);
+      expect(res.status).toBe(200);
+      expect(blockIfBubbleClosed).not.toHaveBeenCalled();
+      expect(createConversation).toHaveBeenCalledWith(MOCK_USER_ADMIN.id, "playground");
+    });
   });
 });

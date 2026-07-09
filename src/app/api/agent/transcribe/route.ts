@@ -10,6 +10,7 @@
  */
 
 import { requireAgentAccessOrJson } from "@/lib/auth/require";
+import { blockIfAudioClosed } from "@/lib/agent/require-channel";
 import { transcribeAudio } from "@/lib/agent/transcribe";
 import { logUsage } from "@/lib/agent/llm/usage-logger";
 
@@ -21,6 +22,10 @@ export async function POST(req: Request): Promise<Response> {
   const access = await requireAgentAccessOrJson();
   if (access instanceof Response) return access;
   const { user } = access;
+
+  // Gate do canal: a transcrição serve bolha, Playground e construtor.
+  const bloqueado = await blockIfAudioClosed(user.platformRole);
+  if (bloqueado) return bloqueado;
 
   let audio: Blob | null = null;
   let language = "pt";
