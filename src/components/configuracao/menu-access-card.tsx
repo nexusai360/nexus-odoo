@@ -4,8 +4,8 @@
 // Feature "Acesso aos menus": card na tela Configuracao (super_admin) que define,
 // POR PERFIL, quem ve cada menu do sidebar. Padrao visual = SegmentedControl do
 // Agente Nex / Relatorios 2.0. Menus agrupados por secao (Comum / Administracao).
-// Otimista + toast; a Configuracao e TRAVADA (super_admin sempre ve , o backend
-// forca super_admin se escolher Desativado, e o toast avisa).
+// Otimista + toast; a Configuracao e TRAVADA em Super Admin (seletor desabilitado,
+// com selo e explicacao , a tela so tem acoes de super_admin).
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -70,11 +70,11 @@ export function MenuAccessCard({ initial }: { initial: MenuAccessMap }) {
         router.refresh();
         return;
       }
-      // backend pode ter forcado o nivel (menu travado: off -> super_admin)
+      // o backend é a autoridade do nível efetivo (menu travado fica em super_admin)
       const efetivo = r.level ?? level;
       setAcesso((a) => ({ ...a, [menuKey]: efetivo }));
       if (efetivo !== level) {
-        toast.info("Configuração é protegida: você (Super Admin) sempre a vê.");
+        toast.info("Configuração é protegida: só o Super Admin acessa.");
       } else {
         toast.success("Acesso atualizado.");
       }
@@ -161,10 +161,16 @@ function MenuRow({
           {label}
           {travado ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-              <Lock className="h-3 w-3" aria-hidden /> Você sempre vê
+              <Lock className="h-3 w-3" aria-hidden /> Fixo em Super Admin
             </span>
           ) : null}
         </div>
+        {travado ? (
+          <p className="mt-1 text-xs text-muted-foreground">
+            Esta tela só tem ações de Super Admin, então o acesso a ela não muda. É o que
+            garante que você nunca se tranque para fora da configuração.
+          </p>
+        ) : null}
       </div>
       <div className="flex shrink-0 flex-col gap-1.5 sm:items-end">
         <div className="overflow-x-auto">
@@ -172,18 +178,21 @@ function MenuRow({
             value={value}
             onChange={onChange}
             options={LEVEL_OPTIONS}
+            disabled={travado}
             mutedValue="off"
             aria-label={`Nível de acesso , ${label}`}
           />
         </div>
-        <p
-          className={cn(
-            "text-xs sm:text-right",
-            value === "off" ? "text-muted-foreground/70" : "text-muted-foreground",
-          )}
-        >
-          {channelLevelDescription(value)}
-        </p>
+        {travado ? null : (
+          <p
+            className={cn(
+              "text-xs sm:text-right",
+              value === "off" ? "text-muted-foreground/70" : "text-muted-foreground",
+            )}
+          >
+            {channelLevelDescription(value)}
+          </p>
+        )}
       </div>
     </div>
   );

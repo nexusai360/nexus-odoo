@@ -27,11 +27,13 @@ export interface MenuCatalogEntry {
   /** Nivel default = o comportamento estatico atual (nav.ts) antes desta feature. */
   padrao: ChannelAccessLevel;
   /**
-   * TRAVADO para super_admin: o super_admin SEMPRE ve, independentemente do nivel
-   * configurado (evita lockout). Decisao do usuario (2026-07-09): vale para
-   * `configuracao` , ninguem pode trancar o super_admin fora da propria tela de
-   * configuracao. `podeVerMenu` forca true para super_admin nesses menus e a UI
-   * bloqueia baixar o nivel abaixo de super_admin.
+   * TRAVADO: o nivel deste menu e FIXO em super_admin e o super_admin SEMPRE ve,
+   * independentemente do que esteja gravado (evita lockout). Decisao do usuario
+   * (2026-07-09): vale para `configuracao`, ninguem pode trancar o super_admin
+   * fora da propria tela de configuracao. E a tela so tem acoes de super_admin,
+   * entao liberar para admin entregaria uma tela onde nada salva.
+   * `podeVerMenu` forca true para super_admin; `definirMenuAccess` forca o nivel
+   * gravado em super_admin; a UI mostra o seletor desabilitado.
    */
   travadoSuperAdmin: boolean;
 }

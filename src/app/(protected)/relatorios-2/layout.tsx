@@ -1,21 +1,17 @@
 /**
- * Layout do menu "Relatórios 2.0" (F6). Gate dinâmico: respeita o nível de
- * acesso do MENU configurado em Configuração (off = só o super_admin dono).
+ * Layout do menu "Relatórios 2.0" (F6).
+ *
+ * Gate do menu de topo: nível salvo em `menu_access` (tela Configuração, card
+ * de acesso aos menus). O acesso fino de cada submenu (painéis, meus, construtor)
+ * continua no card de Relatórios 2.0 e é checado em cada page.
  */
-import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth";
-import { obterAcessoRelatorios2, podeAcessar } from "@/lib/reports/acesso-relatorios2";
+import { requireMenuAccess } from "@/lib/nav/require-menu-access";
 
 export default async function Relatorios2Layout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const user = await getCurrentUser();
-  if (!user) redirect("/login");
-  const acesso = await obterAcessoRelatorios2();
-  if (!podeAcessar(acesso.menu, { platformRole: user.platformRole, isOwner: user.isOwner })) {
-    redirect("/dashboard");
-  }
+  await requireMenuAccess("relatorios2");
   return <>{children}</>;
 }

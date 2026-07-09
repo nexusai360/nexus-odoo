@@ -38,20 +38,23 @@ describe("podeAcessar , heranca por nivel", () => {
   });
 });
 
-describe("podeAcessarSubmenu , precisa do menu E do submenu", () => {
+describe("podeAcessarSubmenu , decide pelo nivel do submenu", () => {
   const acesso: AcessoRelatorios2 = {
     menu: "admin",
     paineis: "viewer",
     meus: "admin",
     construtor: "super_admin",
   };
-  it("gerente nao entra (menu admin barra gerente) mesmo com paineis=viewer", () => {
-    expect(podeAcessarSubmenu(acesso, "paineis", gerente)).toBe(false);
-  });
   it("admin entra em paineis e meus, mas nao no construtor (super_admin)", () => {
     expect(podeAcessarSubmenu(acesso, "paineis", admin)).toBe(true);
     expect(podeAcessarSubmenu(acesso, "meus", admin)).toBe(true);
     expect(podeAcessarSubmenu(acesso, "construtor", admin)).toBe(false);
+  });
+  it("gerente entra em paineis=viewer: o gate do menu de topo e do menu_access", () => {
+    // Antes, `acesso.menu` barrava aqui e a Configuracao nunca conseguia liberar
+    // o menu para gerente. Hoje o menu de topo e gated no layout de /relatorios-2.
+    expect(podeAcessarSubmenu(acesso, "paineis", gerente)).toBe(true);
+    expect(podeAcessarSubmenu(acesso, "meus", gerente)).toBe(false);
   });
 });
 

@@ -12,12 +12,9 @@ import { getUserDomains } from "@/lib/actions/domain-access";
 import { getActiveConversationId } from "@/lib/actions/active-conversation";
 import { roleMeetsChannelLevel } from "@/lib/agent/channel-access";
 import { diretoriaNavFor } from "@/lib/diretoria/access";
-import {
-  obterAcessoRelatorios2,
-  podeAcessar,
-  podeAcessarSubmenu,
-} from "@/lib/reports/acesso-relatorios2";
+import { obterAcessoRelatorios2, podeAcessarSubmenu } from "@/lib/reports/acesso-relatorios2";
 import { obterMenuAccess } from "@/lib/nav/menu-access";
+import { menuEntry, podeVerMenu } from "@/lib/nav/menu-catalog";
 
 export default async function ProtectedLayout({
   children,
@@ -39,18 +36,19 @@ export default async function ProtectedLayout({
   // React não cruzam a fronteira server→client). Usa `user` (com id).
   const dirChildren = await diretoriaNavFor(user);
 
-  // RBAC dinamico do menu Relatorios 2.0 (menu + submenus) para o sidebar.
+  // Acesso aos menus por perfil (feature "Acesso aos menus") , filtra o sidebar.
+  const menuAccess = await obterMenuAccess();
+
+  // Relatorios 2.0: o menu de topo vem do menu_access (fonte unica, igual aos
+  // outros 7 menus); os submenus continuam com o acesso fino proprio.
   const acessoRel2 = await obterAcessoRelatorios2();
   const u2 = { platformRole: user.platformRole, isOwner: user.isOwner };
   const relatorios2Visible = {
-    menu: podeAcessar(acessoRel2.menu, u2),
+    menu: podeVerMenu(menuEntry("relatorios2")!, menuAccess.relatorios2, user.platformRole),
     paineis: podeAcessarSubmenu(acessoRel2, "paineis", u2),
     meus: podeAcessarSubmenu(acessoRel2, "meus", u2),
     construtor: podeAcessarSubmenu(acessoRel2, "construtor", u2),
   };
-
-  // Acesso aos menus por perfil (feature "Acesso aos menus") , filtra o sidebar.
-  const menuAccess = await obterMenuAccess();
 
   // RBAC v2 (SPEC §6.5): a bubble do agente aparece para quem CONSEGUE usar o
   // Nex. super_admin/admin veem tudo (short-circuit seesAll, sem query).

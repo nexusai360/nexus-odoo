@@ -20,16 +20,20 @@ export async function obterMenuAccess(): Promise<MenuAccessMap> {
   return out;
 }
 
-/** Grava o nivel de um menu (upsert). Menu travado nao pode ir abaixo de super_admin. */
+/**
+ * Grava o nivel de um menu (upsert) e devolve o nivel efetivo.
+ *
+ * Menu travado (Configuracao) fica FIXO em super_admin: a tela so tem acoes de
+ * super_admin, entao liberar o menu para admin entregaria uma tela onde nada
+ * salva. E a mesma trava anti-lockout, agora nos dois sentidos.
+ */
 export async function definirMenuAccess(
   menuKey: MenuKey,
   level: ChannelAccessLevel,
 ): Promise<ChannelAccessLevel> {
   const entry = MENU_CATALOG.find((e) => e.key === menuKey);
   if (!entry) throw new Error(`menuKey desconhecido: ${menuKey}`);
-  // Trava anti-lockout: Configuracao nao pode ficar abaixo de super_admin.
-  const efetivo: ChannelAccessLevel =
-    entry.travadoSuperAdmin && level === "off" ? "super_admin" : level;
+  const efetivo: ChannelAccessLevel = entry.travadoSuperAdmin ? "super_admin" : level;
   await prisma.menuAccess.upsert({
     where: { menuKey },
     update: { accessLevel: efetivo },

@@ -2,10 +2,11 @@
 
 // src/components/configuracao/relatorios2-access-card.tsx
 // Onda 4 (v3) , Bloco "Relatorios 2.0" na tela de Configuracao, no padrao do
-// bloco "Intervalos de sincronizacao". Nivel do MENU no cabecalho (seletor a
-// direita + descricao mutavel); submenus no corpo, separados e com respiro.
-// Sem spinner (otimista + toast). Icone acende (violeta) quando != off, cinza
-// quando off. Trava: Construtor puxa SOMENTE Meus (servidor); toast avisa.
+// bloco "Intervalos de sincronizacao". So os SUBMENUS (paineis/meus/construtor):
+// o nivel do MENU de topo saiu daqui em 2026-07-09 e passou a viver no card
+// "Acesso aos menus" (menu_access), junto com os outros 7 menus, para nao haver
+// dois seletores para a mesma coisa. Sem spinner (otimista + toast). Icone acende
+// (violeta) quando != off. Trava: Construtor puxa SOMENTE Meus (servidor).
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { LayoutDashboard, LayoutGrid, FileText, Wrench } from "lucide-react";
@@ -39,8 +40,6 @@ export function Relatorios2AccessCard({ initial }: { initial: AcessoRelatorios2 
   const [acesso, setAcesso] = useState<AcessoRelatorios2>(initial);
   const [, startTransition] = useTransition();
 
-  const menuOff = acesso.menu === "off";
-
   function salvar(next: AcessoRelatorios2, campo: keyof AcessoRelatorios2) {
     setAcesso(next);
     startTransition(async () => {
@@ -65,33 +64,24 @@ export function Relatorios2AccessCard({ initial }: { initial: AcessoRelatorios2 
 
   return (
     <Card>
-      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
-        <div className="flex min-w-0 flex-col gap-1">
-          <CardTitle className="flex items-center gap-2">
-            <LayoutDashboard className={cn("h-4 w-4", iconeClasse(acesso.menu))} aria-hidden />
-            {RELATORIOS2_MENU.label}
-          </CardTitle>
-          <CardDescription>
-            Quem vê o menu no sidebar. Desativado: some para todos, menos você (dono).
-          </CardDescription>
-        </div>
-        <Seletor value={acesso.menu} onChange={(v) => salvar({ ...acesso, menu: v }, "menu")} />
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <LayoutDashboard className="h-4 w-4 text-violet-500" aria-hidden />
+          {RELATORIOS2_MENU.label}
+        </CardTitle>
+        <CardDescription>
+          Acesso a cada tela dentro do menu. Quem vê o menu no sidebar é definido em
+          &ldquo;Acesso aos menus&rdquo;, logo acima.
+        </CardDescription>
       </CardHeader>
 
-      <CardContent
-        className={cn(
-          "divide-y divide-border border-t border-border pt-2 transition-opacity",
-          menuOff && "pointer-events-none opacity-45",
-        )}
-        aria-disabled={menuOff}
-      >
+      <CardContent className="divide-y divide-border border-t border-border pt-2">
         <SubmenuRow
           icon={<LayoutGrid className={cn("h-4 w-4", iconeClasse(acesso.paineis))} aria-hidden />}
           title={RELATORIOS2_SUBMENUS[0].label}
           helper="Tela de painéis (dashboards e widgets)."
           value={acesso.paineis}
           onChange={(v) => salvar({ ...acesso, paineis: v }, "paineis")}
-          disabled={menuOff}
         />
         <SubmenuRow
           icon={<FileText className={cn("h-4 w-4", iconeClasse(acesso.meus))} aria-hidden />}
@@ -99,7 +89,6 @@ export function Relatorios2AccessCard({ initial }: { initial: AcessoRelatorios2 
           helper="Relatórios que o usuário montou no construtor. Acompanha o Construtor."
           value={acesso.meus}
           onChange={(v) => salvar({ ...acesso, meus: v }, "meus")}
-          disabled={menuOff}
         />
         <SubmenuRow
           icon={<Wrench className={cn("h-4 w-4", iconeClasse(acesso.construtor))} aria-hidden />}
@@ -107,7 +96,6 @@ export function Relatorios2AccessCard({ initial }: { initial: AcessoRelatorios2 
           helper="Construtor de relatórios. Quem constrói sempre enxerga Meus relatórios."
           value={acesso.construtor}
           onChange={(v) => salvar({ ...acesso, construtor: v }, "construtor")}
-          disabled={menuOff}
         />
       </CardContent>
     </Card>
