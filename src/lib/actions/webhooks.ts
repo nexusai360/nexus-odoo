@@ -3,7 +3,9 @@
 /**
  * Server Actions para gerenciamento de webhooks (inbound/outbound).
  *
- * Gate: apenas `super_admin` pode criar, listar, rotacionar, habilitar/desabilitar e deletar.
+ * Gate: quem enxerga o menu Integrações gerencia os webhooks comuns. O webhook
+ * "Receber mensagens do WhatsApp" (o que alimenta o Agente Nex) é EXCLUSIVO do
+ * super_admin, em todas as operações. Ver src/lib/integrations/webhook-permissions.ts.
  * O secret é cifrado com AES-256-GCM antes de gravar no banco.
  * Ao criar ou rotacionar, o secret em claro é retornado 1× para exibição
  * (`SecretRevealStep`).
@@ -16,6 +18,12 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import type { AuthUser } from "@/lib/auth-helpers";
+import { obterMenuAccess } from "@/lib/nav/menu-access";
+import {
+  podeGerenciarWebhooks,
+  podeGerenciarWhatsappWebhook,
+} from "@/lib/integrations/webhook-permissions";
 import { encrypt, decrypt } from "@/lib/encryption";
 import { logAudit } from "@/lib/audit";
 
@@ -119,8 +127,35 @@ export interface RotatedWebhookSecret {
 // Helpers
 // ──────────────────────────────────────────────────────────────────────────────
 
-function isSuperAdmin(role: string): boolean {
-  return role === "super_admin";
+/**
+ * Guarda das ações de webhook.
+ *
+ * Webhook comum: pode quem enxerga o menu Integrações (nível em `menu_access`).
+ * Webhook do WhatsApp (o que alimenta o Agente Nex): SEMPRE só o super_admin,
+ * independentemente do nível do menu. Decisão do usuário em 2026-07-09.
+ *
+ * A tela já esconde o que o perfil não pode; isto aqui recusa de novo, porque
+ * esconder sem recusar não é proteção.
+ */
+async function guardaWebhook(
+  ehWhatsapp: boolean,
+): Promise<{ ok: true; user: AuthUser } | { ok: false; error: string }> {
+  const me = await getCurrentUser();
+  if (!me) return { ok: false, error: "Não autenticado" };
+  const acesso = await obterMenuAccess();
+  if (!podeGerenciarWebhooks(me.platformRole, acesso.integracoes, ehWhatsapp)) {
+    return { ok: false, error: "Acesso negado" };
+  }
+  return { ok: true, user: me };
+}
+
+/** O webhook alvo é um receptor de WhatsApp? (usado nas ações por id) */
+async function alvoEhWhatsapp(id: string): Promise<boolean> {
+  const row = await prisma.whatsappWebhook.findUnique({
+    where: { id },
+    select: { isWhatsappReceiver: true },
+  });
+  return row?.isWhatsappReceiver === true;
 }
 
 function generateSecret(): string {
@@ -188,14 +223,15 @@ const createSchema = z
 /**
  * Cria um novo webhook (inbound ou outbound).
  * Retorna o secret em claro uma única vez (para o `SecretRevealStep`).
- * Gate: super_admin.
+ * Gate: menu Integrações; o tipo WhatsApp exige super_admin.
  */
 export async function createWebhook(
   input: CreateWebhookInput,
 ): Promise<DataResult<CreatedWebhook>> {
-  const me = await getCurrentUser();
-  if (!me) return { success: false, error: "Não autenticado" };
-  if (!isSuperAdmin(me.platformRole)) return { success: false, error: "Acesso negado" };
+  const querWhatsapp = input.direction === "inbound" && input.isWhatsappReceiver === true;
+  const guarda = await guardaWebhook(querWhatsapp);
+  if (!guarda.ok) return { success: false, error: guarda.error };
+  const me = guarda.user;
 
   const parsed = createSchema.safeParse(input);
   if (!parsed.success) {
@@ -293,15 +329,20 @@ export async function createWebhook(
 
 /**
  * Atualiza um webhook (nome, métodos e caminho/URL). A direção não muda.
- * Mantém a checagem de caminho único. Gate: super_admin.
+ * Mantém a checagem de caminho único.
+ *
+ * Gate: menu Integrações. Exige super_admin se o webhook ALVO já é do WhatsApp
+ * (para não deixarem editá-lo, nem rebaixá-lo a genérico) ou se a edição quer
+ * transformá-lo num receptor de WhatsApp.
  */
 export async function updateWebhook(
   id: string,
   input: UpdateWebhookInput,
 ): Promise<DataResult<void>> {
-  const me = await getCurrentUser();
-  if (!me) return { success: false, error: "Não autenticado" };
-  if (!isSuperAdmin(me.platformRole)) return { success: false, error: "Acesso negado" };
+  const ehWhatsapp = (await alvoEhWhatsapp(id)) || input.isWhatsappReceiver === true;
+  const guarda = await guardaWebhook(ehWhatsapp);
+  if (!guarda.ok) return { success: false, error: guarda.error };
+  const me = guarda.user;
 
   const existing = await prisma.whatsappWebhook.findUnique({
     where: { id },
@@ -423,12 +464,16 @@ export async function updateWebhook(
  * Gate: super_admin.
  */
 export async function listWebhooks(): Promise<DataResult<WebhookListItem[]>> {
-  const me = await getCurrentUser();
-  if (!me) return { success: false, error: "Não autenticado" };
-  if (!isSuperAdmin(me.platformRole)) return { success: false, error: "Acesso negado" };
+  const guarda = await guardaWebhook(false);
+  if (!guarda.ok) return { success: false, error: guarda.error };
+
+  // Quem não pode gerenciar o receptor de WhatsApp também não o vê na lista.
+  // Mostrá-lo só para depois negar o clique seria a UI mentindo de novo.
+  const escondeWhatsapp = !podeGerenciarWhatsappWebhook(guarda.user.platformRole);
 
   try {
     const rows = await prisma.whatsappWebhook.findMany({
+      where: escondeWhatsapp ? { isWhatsappReceiver: false } : undefined,
       orderBy: { createdAt: "desc" },
     });
 
@@ -457,9 +502,8 @@ export async function listWebhooks(): Promise<DataResult<WebhookListItem[]>> {
 
 /** Retorna um webhook por id (sem o secret). Gate: super_admin. */
 export async function getWebhook(id: string): Promise<DataResult<WebhookListItem>> {
-  const me = await getCurrentUser();
-  if (!me) return { success: false, error: "Não autenticado" };
-  if (!isSuperAdmin(me.platformRole)) return { success: false, error: "Acesso negado" };
+  const guarda = await guardaWebhook(await alvoEhWhatsapp(id));
+  if (!guarda.ok) return { success: false, error: guarda.error };
 
   try {
     const r = await prisma.whatsappWebhook.findUnique({ where: { id } });
@@ -494,14 +538,14 @@ export async function getWebhook(id: string): Promise<DataResult<WebhookListItem
 
 /**
  * Gera um novo secret para o webhook e o retorna em claro uma única vez.
- * Gate: super_admin.
+ * Gate: menu Integrações; se o webhook é do WhatsApp, exige super_admin.
  */
 export async function rotateWebhookSecret(
   id: string,
 ): Promise<DataResult<RotatedWebhookSecret>> {
-  const me = await getCurrentUser();
-  if (!me) return { success: false, error: "Não autenticado" };
-  if (!isSuperAdmin(me.platformRole)) return { success: false, error: "Acesso negado" };
+  const guarda = await guardaWebhook(await alvoEhWhatsapp(id));
+  if (!guarda.ok) return { success: false, error: guarda.error };
+  const me = guarda.user;
 
   const secretPlain = generateSecret();
   const secretEncrypted = encrypt(secretPlain);
@@ -540,9 +584,9 @@ export async function toggleWebhook(
   id: string,
   enabled: boolean,
 ): Promise<DataResult<void>> {
-  const me = await getCurrentUser();
-  if (!me) return { success: false, error: "Não autenticado" };
-  if (!isSuperAdmin(me.platformRole)) return { success: false, error: "Acesso negado" };
+  const guarda = await guardaWebhook(await alvoEhWhatsapp(id));
+  if (!guarda.ok) return { success: false, error: guarda.error };
+  const me = guarda.user;
 
   try {
     await prisma.whatsappWebhook.update({
@@ -576,9 +620,9 @@ export async function toggleWebhook(
  * Gate: super_admin.
  */
 export async function deleteWebhook(id: string): Promise<DataResult<void>> {
-  const me = await getCurrentUser();
-  if (!me) return { success: false, error: "Não autenticado" };
-  if (!isSuperAdmin(me.platformRole)) return { success: false, error: "Acesso negado" };
+  const guarda = await guardaWebhook(await alvoEhWhatsapp(id));
+  if (!guarda.ok) return { success: false, error: guarda.error };
+  const me = guarda.user;
 
   try {
     const existing = await prisma.whatsappWebhook.findUnique({
