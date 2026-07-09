@@ -27,7 +27,7 @@ import type { AgentJobData } from "@/worker/agent/processor";
 import { emitAgentReply, type OutboundTarget } from "@/lib/whatsapp/emit-reply";
 import { blockedMessageFor, type BlockReason } from "@/lib/whatsapp/blocked-messages";
 import { roleMeetsChannelLevel } from "@/lib/agent/channel-access";
-import type { ChannelAccessLevel } from "@/generated/prisma/client";
+import type { ChannelAccessLevel, WhatsappResponseMode } from "@/generated/prisma/client";
 
 const RL_IP_MAX = 30;
 const RL_FROM_MAX = 10;
@@ -38,6 +38,14 @@ const DEFAULT_DAILY_LIMIT = 100;
 export interface InboundWebhookContext {
   secret: string;
   businessId: string | null;
+  /**
+   * Conexão dona do webhook (isolamento por conexão, SPEC §3.3). Opcionais
+   * porque linhas antigas podem não ter `connection_id`; nesses casos o
+   * disparo de saída é fail-closed (nenhum destino).
+   */
+  connectionId?: string | null;
+  connectionName?: string | null;
+  responseMode?: WhatsappResponseMode | null;
 }
 
 let agentQueueInstance: Queue<AgentJobData> | null = null;
@@ -50,11 +58,19 @@ function getAgentQueue(): Queue<AgentJobData> {
   return agentQueueInstance;
 }
 
-/** Targets de saída habilitados que emitem agent_reply (URL + secret descifrado). */
-async function loadOutboundTargets(): Promise<OutboundTarget[]> {
+/**
+ * Targets de saída habilitados que emitem agent_reply (URL + secret descifrado),
+ * SEMPRE escopados à conexão dona da mensagem (SPEC §3.3, fecha A1/A1b).
+ *
+ * Fail-closed: sem `connectionId` não há como saber de quem é o destino, então
+ * ninguém recebe. Não existe fallback para webhooks legados sem conexão, porque
+ * ele reintroduziria o vazamento entre clientes.
+ */
+async function loadOutboundTargets(connectionId?: string | null): Promise<OutboundTarget[]> {
+  if (!connectionId) return [];
   const rows = await prisma.whatsappWebhook
     .findMany({
-      where: { direction: "outbound", enabled: true, events: { has: "agent_reply" } },
+      where: { direction: "outbound", enabled: true, events: { has: "agent_reply" }, connectionId },
     })
     .catch(() => [] as Array<{ targetUrl: string | null; url: string | null; secret: string }>);
   return rows.flatMap((w) => {
@@ -72,10 +88,14 @@ async function loadOutboundTargets(): Promise<OutboundTarget[]> {
 async function fireBlocked(
   reason: BlockReason,
   to: string,
-  businessId: string | null,
+  webhook: InboundWebhookContext,
   inboundMessageId: string,
 ): Promise<void> {
-  const targets = await loadOutboundTargets();
+  // Escopado à conexão que recebeu a mensagem: o "não encontrei seu número"
+  // expõe o telefone de quem escreveu e não pode ir para o destino de outro
+  // cliente (SPEC A1b).
+  const targets = await loadOutboundTargets(webhook.connectionId);
+  const businessId = webhook.businessId;
   await emitAgentReply(targets, {
     kind: "blocked",
     data: {
@@ -173,7 +193,7 @@ export async function handleWhatsappInbound(
       action: "whatsapp_inbound_rejected",
       details: { reason: resolved.status, from: payload.wa_id, messageId: payload.message_id },
     });
-    await fireBlocked(l1Reason, payload.wa_id, webhook.businessId, payload.message_id);
+    await fireBlocked(l1Reason, payload.wa_id, webhook, payload.message_id);
     return NextResponse.json({ rejected: true, reason: resolved.status }, { status: 200 });
   }
   const { user } = resolved;
@@ -186,7 +206,7 @@ export async function handleWhatsappInbound(
   if (!roleMeetsChannelLevel(user.platformRole, whatsappLevel)) {
     const l2Reason: BlockReason =
       whatsappLevel === "off" ? "channel_disabled" : "role_not_allowed";
-    await fireBlocked(l2Reason, payload.wa_id, webhook.businessId, payload.message_id);
+    await fireBlocked(l2Reason, payload.wa_id, webhook, payload.message_id);
     return NextResponse.json({ rejected: true, reason: l2Reason }, { status: 200 });
   }
 
@@ -214,7 +234,14 @@ export async function handleWhatsappInbound(
   const responseMode = channel?.responseMode ?? "direct";
   let channelConfig: AgentJobData["channelConfig"];
   if (responseMode === "n8n_webhook") {
-    channelConfig = { responseMode: "n8n_webhook", outboundTargets: await loadOutboundTargets() };
+    // Escopado à conexão (SPEC §3.3). Trade-off declarado: os targets são
+    // resolvidos AQUI, no enqueue, e viajam congelados no job; um retry usa o
+    // destino do momento do enqueue, não o atual. A janela é de segundos e é
+    // aceitável; mudar isso exigiria resolver os targets dentro do worker.
+    channelConfig = {
+      responseMode: "n8n_webhook",
+      outboundTargets: await loadOutboundTargets(webhook.connectionId),
+    };
   } else {
     channelConfig = { responseMode: "direct" };
   }
