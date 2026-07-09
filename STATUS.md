@@ -1095,3 +1095,22 @@ Deploy validado: migrations 104/105 aplicadas em prod (menu_access + seed do niv
 de Relatorios 2.0), app/mcp/worker atualizados em rolling, `/api/health` OK, bundle em prod
 contendo o codigo novo, logs dos 3 servicos sem erro. Comportamento padrao identico ao de
 antes: ninguem ganha ou perde menu ate alguem mexer na tela.
+
+## 2026-07-09 (noite) , Conexao com WhatsApp (branch feat/conexao-whatsapp, NAO mergeada)
+
+**Em producao hoje:** PRs #158 (menu_access como autoridade real dos menus), #159
+(saude do banco + `scripts/db-health.py`), #160 (gate do canal in-app no servidor
++ receptor de WhatsApp so para super_admin + cards padronizados) e #161 (o
+endpoint de recebimento de webhook estava inalcancavel de fora). Todos validados
+em producao, migrations 105 -> 106 (a 106 e so no dev).
+
+**Em andamento:** feature "Conexao com WhatsApp" (webhook 2-em-1: recebimento +
+envio numa unica conexao). SPEC v3 e PLAN v3 fechados, cada um com duas reviews
+adversariais. Execucao na Onda A.
+
+**Achado mais grave (aberto):** `loadOutboundTargets()` dispara para TODOS os
+destinos habilitados, sem filtrar por conexao , inclusive no `fireBlocked()`, que
+roda antes da sessao. Com dois clientes, o "nao encontrei seu numero" de um vaza o
+telefone no destino do outro. Teste que prova: `src/lib/whatsapp/isolamento.test.ts`.
+
+**Retomada:** ler `branches/feat-conexao-whatsapp/.agente-handoff.md`.
