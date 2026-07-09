@@ -1,7 +1,14 @@
 // src/lib/reports/acesso-relatorios2.ts
-// Acesso ao menu Relatorios 2.0 (menu + submenus). Niveis salvos no AgentSettings
-// (ChannelAccessLevel). Regra: nivel = minimo de perfil (heranca); "off" = oculto
-// para todos EXCETO o super_admin dono. Fonte de verdade para nav + rotas + UI.
+// Acesso aos SUBMENUS de Relatorios 2.0 (paineis, meus, construtor). Niveis
+// salvos no AgentSettings (ChannelAccessLevel). Regra: nivel = minimo de perfil
+// (heranca); "off" = oculto para todos EXCETO o super_admin dono.
+//
+// O acesso ao MENU de topo "Relatorios 2.0" NAO mora mais aqui: desde a feature
+// "Acesso aos menus" (2026-07-09) ele e governado pela tabela `menu_access`
+// (chave `relatorios2`), junto com os outros 7 menus, e aplicado pelo layout
+// da rota via `requireMenuAccess`. O campo `menu` deste modulo continua no
+// banco por compatibilidade (a migration de seed copiou o valor dele para
+// `menu_access`), mas nao e mais consultado por nenhum gate.
 import { prisma } from "@/lib/prisma";
 import type { ChannelAccessLevel, PlatformRole } from "@/generated/prisma/client";
 import type { Relatorios2SubmenuKey } from "@/lib/constants/relatorios2";
@@ -65,13 +72,19 @@ export function podeAcessar(level: ChannelAccessLevel, user: UsuarioAcesso): boo
   return RANK[user.platformRole] >= LEVEL_RANK[level];
 }
 
-/** Acesso efetivo a um submenu: precisa do menu E do submenu liberados. */
+/**
+ * Acesso a um submenu, pelo nivel do proprio submenu.
+ *
+ * O gate do menu de topo ficou com `menu_access` (layout de /relatorios-2), por
+ * isso esta funcao nao olha mais `acesso.menu`: quem chega aqui ja passou pelo
+ * menu. Checar de novo faria a Configuracao nunca conseguir LIBERAR o menu para
+ * um perfil abaixo do antigo `relatorios2MenuAccess`.
+ */
 export function podeAcessarSubmenu(
   acesso: AcessoRelatorios2,
   submenu: Relatorios2SubmenuKey,
   user: UsuarioAcesso,
 ): boolean {
-  if (!podeAcessar(acesso.menu, user)) return false;
   const level =
     submenu === "paineis"
       ? acesso.paineis

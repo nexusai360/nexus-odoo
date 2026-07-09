@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { BarChart3 } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
+import { requireMenuAccess } from "@/lib/nav/require-menu-access";
 import { getMyDomains } from "@/lib/actions/domain-access";
 import { reportsForUser } from "@/lib/reports/catalog";
 import { PageShell } from "@/components/layout/page-shell";
@@ -13,6 +14,7 @@ export const dynamic = "force-dynamic";
 export default async function RelatoriosPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  await requireMenuAccess("relatorios");
   const domains = await getMyDomains();
   const reports = reportsForUser(user.platformRole, domains);
   return (

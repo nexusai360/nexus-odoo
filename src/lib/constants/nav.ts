@@ -20,7 +20,6 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { PlatformRole } from "@/generated/prisma/client";
-import { USUARIOS_SUPER_ADMIN_ONLY } from "@/lib/constants/temp-rules";
 import { RELATORIOS2_MENU, RELATORIOS2_SUBMENUS } from "@/lib/constants/relatorios2";
 
 type NavSection = "admin";
@@ -39,6 +38,19 @@ export const SECTION_LABELS: Record<NavSection, string> = {
   admin: "Administração",
 };
 
+/**
+ * Itens de topo do sidebar.
+ *
+ * Quem decide se um perfil vê cada item de topo é o nível salvo em `menu_access`
+ * (tela Configuração, catálogo em `src/lib/nav/menu-catalog.ts`), não um gate
+ * estático aqui. Por isso os itens governados pelo catálogo não têm
+ * `superAdminOnly` nem `visibleTo`: se tivessem, a Configuração conseguiria
+ * restringir um menu mas nunca liberá-lo. A trava está em
+ * `src/lib/nav/menu-catalog-autoridade.test.ts`.
+ *
+ * `superAdminOnly` e `visibleTo` continuam válidos para itens que não são menus
+ * de topo do catálogo (nenhum hoje).
+ */
 export const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: Home },
   {
@@ -70,80 +82,25 @@ export const NAV_ITEMS: NavItem[] = [
   {
     // href é o prefixo do grupo , usado como chave de openGroups e por
     // isGroupActive (o item de grupo é um <button>, não navega).
+    // Quem vê o grupo (e portanto os submenus) é o nível do menu "agente" em
+    // menu_access, resolvido no server e aplicado na Sidebar. Padrão: super_admin.
     label: "Agente Nex",
     href: "/agente",
     icon: Sparkles,
     section: "admin",
-    superAdminOnly: true,
     children: [
-      {
-        label: "Monitoramento",
-        href: "/agente/monitoramento",
-        icon: Activity,
-        superAdminOnly: true,
-      },
-      {
-        label: "Configuração",
-        href: "/agente/configuracao",
-        icon: SlidersHorizontal,
-        superAdminOnly: true,
-      },
-      {
-        label: "Chaves de API",
-        href: "/agente/chaves",
-        icon: KeyRound,
-        superAdminOnly: true,
-      },
-      {
-        label: "Prompt",
-        href: "/agente/prompt",
-        icon: BookOpen,
-        superAdminOnly: true,
-      },
-      {
-        label: "Consumo",
-        href: "/agente/consumo",
-        icon: TrendingUp,
-        superAdminOnly: true,
-      },
-      {
-        label: "Playground",
-        href: "/agente/playground",
-        icon: FlaskConical,
-        superAdminOnly: true,
-      },
-      {
-        label: "Plugar MCPs",
-        href: "/agente/plugar-mcps",
-        icon: Cable,
-        superAdminOnly: true,
-      },
+      { label: "Monitoramento", href: "/agente/monitoramento", icon: Activity },
+      { label: "Configuração", href: "/agente/configuracao", icon: SlidersHorizontal },
+      { label: "Chaves de API", href: "/agente/chaves", icon: KeyRound },
+      { label: "Prompt", href: "/agente/prompt", icon: BookOpen },
+      { label: "Consumo", href: "/agente/consumo", icon: TrendingUp },
+      { label: "Playground", href: "/agente/playground", icon: FlaskConical },
+      { label: "Plugar MCPs", href: "/agente/plugar-mcps", icon: Cable },
     ],
   },
-  {
-    label: "Usuários",
-    href: "/usuarios",
-    icon: Users,
-    section: "admin",
-    // Regra temporária (ver temp-rules.ts): quando ligada, só super_admin vê.
-    visibleTo: USUARIOS_SUPER_ADMIN_ONLY
-      ? ["super_admin"]
-      : ["super_admin", "admin"],
-  },
-  {
-    label: "Integrações",
-    href: "/integracoes",
-    icon: Plug,
-    section: "admin",
-    visibleTo: ["super_admin"],
-  },
-  {
-    label: "Configuração",
-    href: "/configuracao",
-    icon: Settings,
-    section: "admin",
-    visibleTo: ["super_admin"],
-  },
+  { label: "Usuários", href: "/usuarios", icon: Users, section: "admin" },
+  { label: "Integrações", href: "/integracoes", icon: Plug, section: "admin" },
+  { label: "Configuração", href: "/configuracao", icon: Settings, section: "admin" },
 ];
 
 export function filterNav(

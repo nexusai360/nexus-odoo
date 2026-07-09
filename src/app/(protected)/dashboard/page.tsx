@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
+import { requireMenuAccess } from "@/lib/nav/require-menu-access";
 import { PageShell } from "@/components/layout/page-shell";
 import {
   AccessDeniedBanner,
@@ -16,6 +17,10 @@ interface DashboardPageProps {
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  // O Dashboard também é um menu configurável: quem não pode vê-lo cai em /perfil
+  // (destinoQuandoBloqueado), e não aqui. Sem isso, o item some do sidebar mas a
+  // URL direta continua abrindo, e todo redirect de guard desemboca nesta tela.
+  await requireMenuAccess("dashboard");
 
   const sp = await searchParams;
   const denied = sp.denied;

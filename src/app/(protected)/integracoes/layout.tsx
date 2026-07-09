@@ -1,14 +1,15 @@
 import type { ReactNode } from "react";
-import { requireMinRole } from "@/lib/auth/require";
+import { requireMenuAccess } from "@/lib/nav/require-menu-access";
 
 /**
  * Layout do menu Integrações.
- * Gate: apenas super_admin. Outros papéis recebem `?denied=super_admin` em
- * `/dashboard`, onde o banner explica.
+ * Gate: o nível do menu "Integrações" configurado em Configuração (padrão
+ * super_admin). Quem não pode ver volta para `/dashboard`.
  *
- * RBAC v2: padronizado via `requireMinRole`.
+ * RBAC v2: defesa em profundidade, cobre as sub-rotas (Canais, Servidor MCP,
+ * Webhooks, API, BI).
  */
 export default async function IntegracoesLayout({ children }: { children: ReactNode }) {
-  await requireMinRole("super_admin");
+  await requireMenuAccess("integracoes");
   return <>{children}</>;
 }

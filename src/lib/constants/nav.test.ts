@@ -1,4 +1,5 @@
 import { filterNav, NAV_ITEMS } from "./nav";
+import { defaultMenuAccess, menuEntry, podeVerMenu } from "@/lib/nav/menu-catalog";
 
 describe("filterNav (não-regressão)", () => {
   it("mantém itens públicos (Dashboard, Relatórios, Diretoria) para super_admin", () => {
@@ -9,11 +10,18 @@ describe("filterNav (não-regressão)", () => {
     expect(hrefs).toContain("/diretoria");
   });
 
-  it("esconde itens superAdminOnly de um viewer", () => {
+  it("os menus administrativos continuam escondidos de um viewer, agora via menu_access", () => {
+    // filterNav não decide mais visibilidade de menu de topo (a Configuração
+    // precisa poder liberar, não só restringir). Quem esconde é o nível padrão
+    // do catálogo, aplicado na Sidebar e nos guards de rota.
     const out = filterNav(NAV_ITEMS, { platformRole: "viewer" });
-    const hrefs = out.map((i) => i.href);
-    expect(hrefs).toContain("/dashboard");
-    expect(hrefs).not.toContain("/agente");
+    expect(out.map((i) => i.href)).toContain("/agente");
+
+    const padrao = defaultMenuAccess();
+    for (const key of ["agente", "usuarios", "integracoes", "configuracao"] as const) {
+      expect(podeVerMenu(menuEntry(key)!, padrao[key], "viewer")).toBe(false);
+      expect(podeVerMenu(menuEntry(key)!, padrao[key], "super_admin")).toBe(true);
+    }
   });
 
   it("o item Diretoria mantém o slot (children resolvidos depois no layout)", () => {
