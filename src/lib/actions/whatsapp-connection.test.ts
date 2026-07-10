@@ -36,6 +36,7 @@ jest.mock("@/lib/whatsapp/numero-unico", () => ({
 const txMock = {
   whatsappWebhook: {
     create: mockCreate,
+    update: mockUpdate,
     updateMany: mockUpdateMany,
     deleteMany: mockDeleteMany,
   },
@@ -58,6 +59,7 @@ jest.mock("@/lib/prisma", () => ({
 import {
   prepararTokensConexao,
   criarConexaoWhatsapp,
+  atualizarConexaoWhatsapp,
   apagarConexaoWhatsapp,
   rotacionarTokenConexao,
   listConnections,
@@ -192,6 +194,144 @@ describe("criarConexaoWhatsapp", () => {
     await criarConexaoWhatsapp(INPUT_VALIDO);
     expect(mockLogAudit).toHaveBeenCalledWith(
       expect.objectContaining({ action: "whatsapp_connection_created" }),
+    );
+    expect(mockRevalidatePath).toHaveBeenCalledWith("/integracoes/webhooks");
+  });
+});
+
+// ── TG.7a/TG.7b , atualizarConexaoWhatsapp ───────────────────────────────────
+
+describe("atualizarConexaoWhatsapp", () => {
+  const CONN_ID = "44444444-4444-4444-4444-444444444444";
+  const LINHA_IN = {
+    id: "wh-in",
+    direction: "inbound",
+    name: "Matrix Group",
+    description: null,
+    path: "matrixgroup",
+    businessId: "5561995630029",
+    connectionId: CONN_ID,
+    responseMode: null,
+  };
+  const LINHA_OUT = {
+    id: "wh-out",
+    direction: "outbound",
+    name: "Matrix Group",
+    description: null,
+    targetUrl: "https://antigo.example.com/hook",
+    url: "https://antigo.example.com/hook",
+    connectionId: CONN_ID,
+  };
+
+  const EDICAO = {
+    name: "Matrix Group",
+    description: "Conexão principal",
+    path: "matrixgroup",
+    businessId: "5561995630029",
+    targetUrl: "https://novo.example.com/hook",
+  };
+
+  beforeEach(() => {
+    // Sem conflito de slug; a conexão tem as duas linhas por padrão.
+    mockFindFirst.mockResolvedValue(null);
+    mockFindMany.mockResolvedValue([LINHA_IN, LINHA_OUT]);
+    mockUpdate.mockResolvedValue({});
+  });
+
+  it("nome e descrição são gravados nas DUAS linhas", async () => {
+    const r = await atualizarConexaoWhatsapp(CONN_ID, EDICAO);
+    expect(r.success).toBe(true);
+
+    expect(mockUpdateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { connectionId: CONN_ID },
+        data: expect.objectContaining({
+          name: EDICAO.name,
+          description: EDICAO.description,
+        }),
+      }),
+    );
+  });
+
+  it("TG.7b: destino configurado grava responseMode=n8n_webhook na linha de recebimento (era NULL do backfill)", async () => {
+    const r = await atualizarConexaoWhatsapp(CONN_ID, EDICAO);
+    expect(r.success).toBe(true);
+
+    const updateInbound = mockUpdate.mock.calls.find(
+      (c) => (c[0] as { where: { id: string } }).where.id === "wh-in",
+    );
+    expect(updateInbound).toBeDefined();
+    expect((updateInbound![0] as { data: Record<string, unknown> }).data).toEqual(
+      expect.objectContaining({ responseMode: "n8n_webhook" }),
+    );
+  });
+
+  it("TG.7b: conexão SEM linha de envio + destino novo cria a linha outbound e devolve o token de assinatura 1x", async () => {
+    mockFindMany.mockResolvedValue([LINHA_IN]);
+
+    const r = await atualizarConexaoWhatsapp(CONN_ID, EDICAO);
+    expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data.novoTokenAssinatura).toBeDefined();
+      expect(r.data.novoTokenAssinatura!.length).toBeGreaterThanOrEqual(32);
+    }
+
+    expect(mockCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          direction: "outbound",
+          connectionId: CONN_ID,
+          targetUrl: EDICAO.targetUrl,
+          url: EDICAO.targetUrl,
+          events: ["agent_reply"],
+          businessId: null,
+        }),
+      }),
+    );
+  });
+
+  it("sem mexer no destino, o token de assinatura não muda e nada novo é criado", async () => {
+    const r = await atualizarConexaoWhatsapp(CONN_ID, EDICAO);
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.novoTokenAssinatura).toBeNull();
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it("a trava de número ignora a própria conexão na edição", async () => {
+    await atualizarConexaoWhatsapp(CONN_ID, EDICAO);
+    expect(mockVerificarNumeroParaConexao).toHaveBeenCalledWith(
+      EDICAO.businessId,
+      expect.objectContaining({ ignorarConnectionId: CONN_ID }),
+    );
+  });
+
+  it("número travado é recusado com a mensagem da trava", async () => {
+    mockVerificarNumeroParaConexao.mockResolvedValue({
+      ok: false,
+      error: "Este número já está configurado no envio direto pela Meta. Remova de lá antes de criar a conexão, ou use outro número.",
+    });
+    const r = await atualizarConexaoWhatsapp(CONN_ID, EDICAO);
+    expect(r.success).toBe(false);
+    if (!r.success) expect(r.error).toContain("envio direto");
+  });
+
+  it("conexão inexistente falha claro", async () => {
+    mockFindMany.mockResolvedValue([]);
+    const r = await atualizarConexaoWhatsapp(CONN_ID, EDICAO);
+    expect(r.success).toBe(false);
+  });
+
+  it("só super_admin", async () => {
+    mockGetCurrentUser.mockResolvedValue(ADMIN);
+    const r = await atualizarConexaoWhatsapp(CONN_ID, EDICAO);
+    expect(r.success).toBe(false);
+    expect(mockUpdateMany).not.toHaveBeenCalled();
+  });
+
+  it("audita e revalida", async () => {
+    await atualizarConexaoWhatsapp(CONN_ID, EDICAO);
+    expect(mockLogAudit).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "whatsapp_connection_updated" }),
     );
     expect(mockRevalidatePath).toHaveBeenCalledWith("/integracoes/webhooks");
   });

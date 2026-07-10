@@ -70,7 +70,7 @@ const KINDS: KindMeta[] = [
     id: "whatsapp",
     icon: MessageCircle,
     description:
-      "Recebe as mensagens do WhatsApp e alimenta o Agente Nex. A plataforma cuida da validação e da resposta.",
+      "Recebe as mensagens do WhatsApp, o Agente Nex processa e a plataforma devolve a resposta pronta para o seu fluxo.",
     accent: {
       icon: "text-green-500",
       ring: "ring-green-500/50 border-green-500/40",

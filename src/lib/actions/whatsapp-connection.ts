@@ -270,6 +270,153 @@ export async function criarConexaoWhatsapp(
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// atualizarConexaoWhatsapp (TG.7a/TG.7b)
+// ──────────────────────────────────────────────────────────────────────────────
+
+export interface AtualizarConexaoInput {
+  name: string;
+  description?: string | null;
+  path: string;
+  businessId: string;
+  /** Destino do envio. Vazio/ausente = não mexe na ponta de envio. */
+  targetUrl?: string | null;
+}
+
+const atualizarSchema = z.object({
+  name: z.string().trim().min(1, "Nome obrigatório"),
+  description: z.string().trim().max(500, "Descrição muito longa").nullable().optional(),
+  path: pathSchema,
+  businessId: z.string().trim().min(8, "Informe o número da empresa com DDI e DDD"),
+  targetUrl: z
+    .string()
+    .trim()
+    .url("URL de destino inválida")
+    .nullable()
+    .optional()
+    .or(z.literal("").transform(() => null)),
+});
+
+/**
+ * Edita a Conexão como UMA coisa: nome e descrição vão para as DUAS linhas;
+ * recebimento (slug + número) edita a linha inbound; envio (destino) edita a
+ * linha outbound.
+ *
+ * **A13 no cliente real (TG.7b):** o backfill deixou `response_mode` NULL.
+ * Sempre que um destino é configurado por aqui, a linha de recebimento grava
+ * `responseMode = "n8n_webhook"` , sem isso o modo efetivo continuaria
+ * `direct` e o destino seria ignorado em silêncio. Se a conexão ainda não tem
+ * a ponta de envio, ela é criada com um token de assinatura novo, retornado
+ * uma única vez em `novoTokenAssinatura`.
+ */
+export async function atualizarConexaoWhatsapp(
+  connectionId: string,
+  input: AtualizarConexaoInput,
+): Promise<DataResult<{ novoTokenAssinatura: string | null }>> {
+  const guarda = await guardaSuperAdmin();
+  if (!guarda.ok) return { success: false, error: guarda.error };
+  const me = guarda.user;
+
+  const parsed = atualizarSchema.safeParse(input);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
+  }
+  const data = parsed.data;
+
+  const linhas = await prisma.whatsappWebhook.findMany({
+    where: { connectionId },
+    select: { id: true, direction: true, responseMode: true },
+  });
+  const inbound = linhas.find((l) => l.direction === "inbound");
+  if (!inbound) {
+    return { success: false, error: "Conexão não encontrada" };
+  }
+  const outbound = linhas.find((l) => l.direction === "outbound") ?? null;
+
+  // Slug único entre os webhooks de entrada (excluindo a própria linha).
+  const slugOcupado = await prisma.whatsappWebhook.findFirst({
+    where: { direction: "inbound", path: data.path, id: { not: inbound.id } },
+    select: { id: true },
+  });
+  if (slugOcupado) {
+    return { success: false, error: "Já existe um webhook de entrada com esse caminho." };
+  }
+
+  // Trava de número único, ignorando a própria conexão (SPEC §3.4.1).
+  const trava = await verificarNumeroParaConexao(data.businessId, {
+    ignorarConnectionId: connectionId,
+  });
+  if (!trava.ok) return { success: false, error: trava.error };
+
+  const configurandoDestino = typeof data.targetUrl === "string" && data.targetUrl.length > 0;
+  let novoTokenAssinatura: string | null = null;
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      // Nome e descrição são DA conexão: vão para as duas linhas.
+      await tx.whatsappWebhook.updateMany({
+        where: { connectionId },
+        data: { name: data.name, description: data.description?.trim() || null },
+      });
+
+      // Recebimento: slug + número (+ modo, quando o destino está configurado).
+      await tx.whatsappWebhook.update({
+        where: { id: inbound.id },
+        data: {
+          path: data.path,
+          businessId: data.businessId,
+          ...(configurandoDestino ? { responseMode: "n8n_webhook" as const } : {}),
+        },
+      });
+
+      if (configurandoDestino) {
+        if (outbound) {
+          await tx.whatsappWebhook.update({
+            where: { id: outbound.id },
+            data: { targetUrl: data.targetUrl, url: data.targetUrl },
+          });
+        } else {
+          // Conexão do backfill (sem ponta de envio): cria a linha outbound
+          // com um token de assinatura novo, exibido uma única vez.
+          novoTokenAssinatura = gerarToken();
+          await tx.whatsappWebhook.create({
+            data: {
+              direction: "outbound",
+              name: data.name,
+              description: data.description?.trim() || null,
+              path: null,
+              targetUrl: data.targetUrl,
+              url: data.targetUrl,
+              methods: ["POST"],
+              events: ["agent_reply"],
+              isWhatsappReceiver: false,
+              businessId: null,
+              connectionId,
+              responseMode: null,
+              secret: encrypt(novoTokenAssinatura),
+              enabled: true,
+            },
+          });
+        }
+      }
+    });
+
+    await logAudit({
+      userId: me.id,
+      action: "whatsapp_connection_updated",
+      targetType: "whatsapp_connection",
+      targetId: connectionId,
+      details: { name: data.name, destinoConfigurado: configurandoDestino },
+    });
+
+    revalidatePath("/integracoes/webhooks");
+    return { success: true, data: { novoTokenAssinatura } };
+  } catch (err) {
+    console.error("[whatsapp-connection] atualizarConexaoWhatsapp:", err);
+    return { success: false, error: "Erro ao atualizar a conexão" };
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // apagarConexaoWhatsapp (TF.2)
 // ──────────────────────────────────────────────────────────────────────────────
 
