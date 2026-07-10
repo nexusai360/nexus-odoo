@@ -228,6 +228,15 @@ passa a ser `Recebimento · Envio · Revisão · Conclusão`.
   **só reaparece por rotação**.
 - A etapa 4 (Conclusão) **não exibe token nenhum**: confirma a criação e lista os
   próximos passos (endereço de entrada, destino de saída, como rotacionar).
+
+**Sem texto repetido (decisão do usuário 2026-07-10).** O `SecretField` e os
+guias já trazem o próprio título; envolvê-los num cabeçalho de seção duplicava
+título, descrição e aviso. Por isso:
+- o bloco de token entra **direto**, com **uma** linha de explicação;
+- o guia entra depois de um **respiro grande**, anunciado por uma **dica
+  discreta** (uma linha, ícone de livro) e com **contorno sutil** (`destaque`)
+  , atenção suficiente para ser notado, sem competir com o token, que é o
+  único elemento da etapa que pede cuidado de verdade.
 - Depois de criada, o token só reaparece por **rotação** (por ponta, na tela de
   edição), aí sim em `SecretRevealStep`.
 
@@ -238,8 +247,8 @@ lista corrida de campos:
 
 | Etapa | Seções, nesta ordem |
 |---|---|
-| 1. Recebimento | **Identificação** (nome, descrição) → **Endereço de entrada** (endereço com URL final, número da empresa, `POST` travado) → **Token de recebimento** (`SecretField`) → **Como montar o payload** (guia colapsado) |
-| 2. Envio | **Endereço de saída** (URL de destino, `POST` travado) → **Token de assinatura** (`SecretField`) → **O que enviamos** (guia colapsado) |
+| 1. Recebimento | **Identificação** (nome, descrição) → **Endereço de entrada** (endereço com URL final, número da empresa, `POST` travado) → token de recebimento (`SecretField`, sem título de seção) → respiro → guia "Como montar o payload" |
+| 2. Envio | **Endereço de saída** (URL de destino, `POST` travado) → token de assinatura (`SecretField`, sem título de seção) → respiro → guia "O que enviamos" |
 | 3. Revisão | as duas pontas lado a lado, somente leitura |
 | 4. Conclusão | confirmação + próximos passos, **sem tokens** |
 

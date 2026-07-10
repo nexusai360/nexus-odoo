@@ -285,6 +285,7 @@ export function WhatsappInboundHelp({
   inboundBaseUrl = "https://app.nexus-odoo.com/api/hooks/",
   path = "",
   defaultOpen = true,
+  destaque = false,
 }: {
   /** Base read-only do endpoint de entrada (termina em "/"). */
   inboundBaseUrl?: string;
@@ -292,6 +293,8 @@ export function WhatsappInboundHelp({
   path?: string;
   /** Estado inicial do dropdown (criar = aberto; editar = fechado). */
   defaultOpen?: boolean;
+  /** Contorno sutil para o guia se destacar sem competir com o token. */
+  destaque?: boolean;
 }) {
   const [open, setOpen] = React.useState(defaultOpen);
 
@@ -301,7 +304,14 @@ export function WhatsappInboundHelp({
   const urlForExamples = hasPath ? url : `${inboundBaseUrl}<seu-endereco>`;
 
   return (
-    <div className="rounded-xl border border-border bg-muted/20">
+    <div
+      className={cn(
+        "rounded-xl border bg-muted/20 transition-colors",
+        destaque
+          ? "border-primary/30 bg-primary/[0.03] hover:border-primary/50"
+          : "border-border",
+      )}
+    >
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

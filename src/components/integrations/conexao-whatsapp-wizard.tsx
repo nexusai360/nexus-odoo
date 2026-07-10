@@ -20,7 +20,14 @@
  */
 
 import * as React from "react";
-import { ArrowDownToLine, ArrowUpFromLine, CheckCircle2, Loader2, Lock } from "lucide-react";
+import {
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  BookOpen,
+  CheckCircle2,
+  Loader2,
+  Lock,
+} from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -383,28 +390,20 @@ export function ConexaoWhatsappWizard({
             <MetodoPostTravado />
           </Secao>
 
-          <Secao
-            titulo="Token de recebimento"
-            descricao="É o segredo que autentica as chamadas ao endereço acima."
-          >
-            <SecretField
-              secret={tokens?.tokenRecebimento ?? ""}
-              label="Token de recebimento"
-              descricao="Envie no header Authorization, como Bearer <token>, em toda chamada de entrada."
-              aviso="Copie agora: ele só passa a valer quando você concluir a criação da conexão, e sair desta tela sem concluir gera um token novo. Depois de criada, só reaparece por rotação."
-            />
-          </Secao>
+          <SecretField
+            secret={tokens?.tokenRecebimento ?? ""}
+            label="Token de recebimento"
+            descricao="Copie agora e envie no header Authorization das chamadas de entrada. Ele passa a valer quando você criar a conexão; depois disso, só reaparece por rotação."
+          />
 
-          <Secao
-            titulo="Como montar o payload"
-            descricao="Enquanto o payload não for montado no seu ambiente, nenhuma mensagem chega ao Agente Nex."
-          >
+          <GuiaDaEtapa dica="Não sabe o formato das mensagens? Veja como montar o payload.">
             <WhatsappInboundHelp
               inboundBaseUrl={inboundBaseUrl}
               path={pathConfirmed}
               defaultOpen={false}
+              destaque
             />
-          </Secao>
+          </GuiaDaEtapa>
 
           <Rodape
             voltar={{ label: "Voltar", onClick: onBack }}
@@ -465,24 +464,15 @@ export function ConexaoWhatsappWizard({
             <MetodoPostTravado />
           </Secao>
 
-          <Secao
-            titulo="Token de assinatura"
-            descricao="É o segredo com que assinamos cada resposta enviada ao seu destino."
-          >
-            <SecretField
-              secret={tokens?.tokenAssinatura ?? ""}
-              label="Token de assinatura"
-              descricao="Use para recalcular o HMAC do header X-Signature e confirmar que a entrega veio da plataforma."
-              aviso="Copie agora: ele só passa a valer quando você concluir a criação da conexão, e sair desta tela sem concluir gera um token novo. Depois de criada, só reaparece por rotação."
-            />
-          </Secao>
+          <SecretField
+            secret={tokens?.tokenAssinatura ?? ""}
+            label="Token de assinatura"
+            descricao="Copie agora e use para conferir a assinatura (X-Signature) de cada entrega. Ele passa a valer quando você criar a conexão; depois disso, só reaparece por rotação."
+          />
 
-          <Secao
-            titulo="O que enviamos"
-            descricao="Headers assinados, corpo do POST e como deduplicar as entregas."
-          >
-            <ConexaoEnvioHelp defaultOpen={false} />
-          </Secao>
+          <GuiaDaEtapa dica="Quer ver o que a plataforma envia e como tratar as entregas?">
+            <ConexaoEnvioHelp defaultOpen={false} destaque />
+          </GuiaDaEtapa>
 
           <Rodape
             voltar={{ label: "Voltar", onClick: () => setEtapa(1) }}
@@ -583,6 +573,23 @@ export function ConexaoWhatsappWizard({
 // ──────────────────────────────────────────────────────────────────────────────
 // Blocos de apoio
 // ──────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Guia da etapa: fica bem depois do token (respiro grande) e é anunciado por
+ * uma dica discreta , atenção suficiente para ser notado, sem competir com o
+ * bloco de segredo, que é o que realmente exige cuidado.
+ */
+function GuiaDaEtapa({ dica, children }: { dica: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-2 pt-6">
+      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <BookOpen className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        {dica}
+      </p>
+      {children}
+    </div>
+  );
+}
 
 /** Seção do formulário: título, descrição e campos, com respiro entre elas. */
 function Secao({

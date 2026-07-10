@@ -60,11 +60,25 @@ const PAYLOAD_EXEMPLO: CodeLine[] = [
   { text: "}" },
 ];
 
-export function ConexaoEnvioHelp({ defaultOpen = false }: { defaultOpen?: boolean }) {
+export function ConexaoEnvioHelp({
+  defaultOpen = false,
+  destaque = false,
+}: {
+  defaultOpen?: boolean;
+  /** Contorno sutil para o guia se destacar sem competir com o token. */
+  destaque?: boolean;
+}) {
   const [open, setOpen] = React.useState(defaultOpen);
 
   return (
-    <div className="rounded-xl border border-border bg-muted/20">
+    <div
+      className={cn(
+        "rounded-xl border bg-muted/20 transition-colors",
+        destaque
+          ? "border-primary/30 bg-primary/[0.03] hover:border-primary/50"
+          : "border-border",
+      )}
+    >
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

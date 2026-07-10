@@ -18,14 +18,12 @@ export interface SecretFieldProps {
   secret: string;
   /** Rótulo do campo (ex.: "Token de recebimento"). */
   label: string;
-  /** Explica para que serve o token. */
+  /** Uma linha: para que serve e até quando vale. */
   descricao: string;
-  /** Aviso destacado (validade, exibição única, etc.). */
-  aviso: string;
   className?: string;
 }
 
-export function SecretField({ secret, label, descricao, aviso, className }: SecretFieldProps) {
+export function SecretField({ secret, label, descricao, className }: SecretFieldProps) {
   const [show, setShow] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
 
@@ -88,8 +86,6 @@ export function SecretField({ secret, label, descricao, aviso, className }: Secr
         </div>
         {copied && <p className="text-xs text-emerald-600 dark:text-emerald-500">Copiado!</p>}
       </div>
-
-      <p className="text-xs text-amber-700 dark:text-amber-400">{aviso}</p>
     </div>
   );
 }
