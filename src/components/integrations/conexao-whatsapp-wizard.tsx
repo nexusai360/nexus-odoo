@@ -6,18 +6,21 @@
  * quando o tipo escolhido é "whatsapp".
  *
  * Segue o MESMO padrão dos outros tipos de webhook:
- *  - a configuração NÃO exibe segredo nenhum;
  *  - os campos que definem identidade (endereço, número, destino) têm botão de
  *    confirmar (`FieldValidateButton`), com reversão ao sair sem confirmar;
- *  - os tokens são gerados no servidor no momento da criação e revelados UMA
- *    ÚNICA VEZ no passo final, em `SecretRevealStep` (mascarado, com aviso).
+ *  - o segredo é RESERVADO: nasce mascarado, com mostrar/copiar e aviso
+ *    (`SecretField`), nunca solto no meio do formulário.
+ *
+ * Uma coisa de cada vez: a etapa 1 configura o RECEBIMENTO por inteiro (e
+ * termina com o token de recebimento); a etapa 2 configura o ENVIO por inteiro
+ * (e termina com o token de assinatura). A Conclusão não repete os tokens.
  *
  * Cada etapa é dividida em SEÇÕES com respiro (identificação → configuração →
- * guia), para o preenchimento ter uma ordem óbvia.
+ * token → guia), para o preenchimento ter uma ordem óbvia.
  */
 
 import * as React from "react";
-import { ArrowDownToLine, ArrowUpFromLine, KeyRound, Loader2, Lock } from "lucide-react";
+import { ArrowDownToLine, ArrowUpFromLine, CheckCircle2, Loader2, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -25,7 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { StepIndicator } from "@/components/ui/step-indicator";
-import { SecretRevealStep } from "@/components/ui/secret-reveal-step";
+import { SecretField } from "@/components/ui/secret-field";
 import { PhoneInput } from "@/components/ui/phone-input";
 import {
   FieldValidateButton,
@@ -40,7 +43,11 @@ import {
 } from "@/lib/whatsapp/countries";
 import { WhatsappInboundHelp } from "@/components/integrations/whatsapp-inbound-help";
 import { ConexaoEnvioHelp } from "@/components/integrations/conexao-envio-help";
-import { criarConexaoWhatsapp, type ConexaoCriada } from "@/lib/actions/whatsapp-connection";
+import {
+  prepararTokensConexao,
+  criarConexaoWhatsapp,
+  type TokensDaConexao,
+} from "@/lib/actions/whatsapp-connection";
 
 /** Slug seguro: mesma regra do schema da Server Action. */
 const PATH_RE = /^[a-z0-9][a-z0-9-/]*$/;
@@ -89,8 +96,20 @@ export function ConexaoWhatsappWizard({
 
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [criada, setCriada] = React.useState<ConexaoCriada | null>(null);
-  const [tokenRecebimentoOk, setTokenRecebimentoOk] = React.useState(false);
+
+  // Tokens gerados no servidor quando o assistente abre (nada persistido).
+  const [tokens, setTokens] = React.useState<TokensDaConexao | null>(null);
+  const [tokensError, setTokensError] = React.useState<string | null>(null);
+  const carregarTokens = React.useCallback(() => {
+    setTokensError(null);
+    prepararTokensConexao().then(
+      (r) => (r.success ? setTokens(r.data) : setTokensError(r.error)),
+      () => setTokensError("Não foi possível preparar os tokens da conexão."),
+    );
+  }, []);
+  React.useEffect(() => {
+    carregarTokens();
+  }, [carregarTokens]);
 
   // ── Endereço ────────────────────────────────────────────────────────────────
   const pathTrim = path.trim();
@@ -197,12 +216,14 @@ export function ConexaoWhatsappWizard({
     pathValid &&
     pathTrim === pathConfirmed &&
     bizValid &&
-    businessIdDigits === bizConfirmed;
-  const etapa2Valida = urlValid && urlTrim === urlConfirmed;
+    businessIdDigits === bizConfirmed &&
+    tokens !== null;
+  const etapa2Valida = urlValid && urlTrim === urlConfirmed && tokens !== null;
 
   const enderecoCompleto = `${inboundBaseUrl}${pathTrim}`;
 
   async function handleCriar() {
+    if (!tokens) return;
     setSubmitting(true);
     setError(null);
     const res = await criarConexaoWhatsapp({
@@ -211,10 +232,11 @@ export function ConexaoWhatsappWizard({
       path: pathTrim,
       businessId: businessIdDigits,
       targetUrl: urlTrim,
+      tokenRecebimento: tokens.tokenRecebimento,
+      tokenAssinatura: tokens.tokenAssinatura,
     });
     setSubmitting(false);
     if (res.success) {
-      setCriada(res.data);
       setEtapa(4);
     } else {
       setError(res.error);
@@ -224,6 +246,17 @@ export function ConexaoWhatsappWizard({
   return (
     <div className="space-y-8">
       <StepIndicator steps={ETAPAS} current={etapa} />
+
+      {tokensError && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-destructive/40 bg-destructive/5 p-3">
+          <p className="text-xs text-destructive" role="alert">
+            {tokensError}
+          </p>
+          <Button type="button" variant="outline" size="sm" onClick={carregarTokens} className="cursor-pointer">
+            Tentar de novo
+          </Button>
+        </div>
+      )}
 
       {/* ── Etapa 1 · Recebimento ─────────────────────────────────────────── */}
       {etapa === 1 && (
@@ -351,6 +384,18 @@ export function ConexaoWhatsappWizard({
           </Secao>
 
           <Secao
+            titulo="Token de recebimento"
+            descricao="É o segredo que autentica as chamadas ao endereço acima."
+          >
+            <SecretField
+              secret={tokens?.tokenRecebimento ?? ""}
+              label="Token de recebimento"
+              descricao="Envie no header Authorization, como Bearer <token>, em toda chamada de entrada."
+              aviso="Copie agora: ele só passa a valer quando você concluir a criação da conexão, e sair desta tela sem concluir gera um token novo. Depois de criada, só reaparece por rotação."
+            />
+          </Secao>
+
+          <Secao
             titulo="Como montar o payload"
             descricao="Enquanto o payload não for montado no seu ambiente, nenhuma mensagem chega ao Agente Nex."
           >
@@ -421,6 +466,18 @@ export function ConexaoWhatsappWizard({
           </Secao>
 
           <Secao
+            titulo="Token de assinatura"
+            descricao="É o segredo com que assinamos cada resposta enviada ao seu destino."
+          >
+            <SecretField
+              secret={tokens?.tokenAssinatura ?? ""}
+              label="Token de assinatura"
+              descricao="Use para recalcular o HMAC do header X-Signature e confirmar que a entrega veio da plataforma."
+              aviso="Copie agora: ele só passa a valer quando você concluir a criação da conexão, e sair desta tela sem concluir gera um token novo. Depois de criada, só reaparece por rotação."
+            />
+          </Secao>
+
+          <Secao
             titulo="O que enviamos"
             descricao="Headers assinados, corpo do POST e como deduplicar as entregas."
           >
@@ -463,14 +520,6 @@ export function ConexaoWhatsappWizard({
             </RevisaoCard>
           </div>
 
-          <div className="flex gap-2.5 rounded-lg border border-border bg-muted/30 p-3">
-            <KeyRound className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-            <p className="text-xs text-muted-foreground">
-              Ao criar a conexão, os dois tokens são gerados e exibidos{" "}
-              <span className="font-medium text-foreground">uma única vez</span>, na etapa seguinte.
-            </p>
-          </div>
-
           {error && (
             <p className="text-xs text-destructive" role="alert">
               {error}
@@ -482,40 +531,49 @@ export function ConexaoWhatsappWizard({
             avancar={{
               label: "Criar conexão",
               onClick: handleCriar,
-              disabled: submitting,
+              disabled: submitting || !tokens,
               loading: submitting,
             }}
           />
         </div>
       )}
 
-      {/* ── Etapa 4 · Conclusão , tokens revelados 1x, no padrão da plataforma */}
-      {etapa === 4 && criada && (
+      {/* ── Etapa 4 · Conclusão , sem tokens: cada um já foi exibido na sua etapa */}
+      {etapa === 4 && (
         <div className="space-y-8">
-          <div className="space-y-1">
-            <h3 className="text-sm font-medium">Conexão criada</h3>
-            <p className="text-xs text-muted-foreground">
-              {tokenRecebimentoOk
-                ? "Agora guarde o token de assinatura, com que a plataforma assina cada resposta enviada."
-                : "Guarde o token de recebimento, que o seu fluxo usa para chamar o endereço de entrada."}
-            </p>
+          <div className="flex items-start gap-3 rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-4">
+            <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-600 dark:text-emerald-500" aria-hidden />
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Conexão criada</p>
+              <p className="text-xs text-muted-foreground">
+                Os dois tokens que você copiou nas etapas anteriores estão valendo a partir de agora.
+              </p>
+            </div>
           </div>
 
-          {!tokenRecebimentoOk ? (
-            <SecretRevealStep
-              secret={criada.tokenRecebimento}
-              label="Token de recebimento"
-              acknowledgeLabel="Já copiei, ver o token de assinatura"
-              onAcknowledge={() => setTokenRecebimentoOk(true)}
-            />
-          ) : (
-            <SecretRevealStep
-              secret={criada.tokenAssinatura}
-              label="Token de assinatura"
-              acknowledgeLabel="Concluir"
-              onAcknowledge={onDone}
-            />
-          )}
+          <Secao titulo="Próximos passos" descricao="O que fazer no seu ambiente para as mensagens começarem a fluir.">
+            <ol className="list-decimal space-y-2 pl-5 text-xs text-muted-foreground marker:text-muted-foreground/70">
+              <li>
+                Aponte o seu fluxo para{" "}
+                <code className="rounded bg-muted px-1 font-mono text-foreground">{enderecoCompleto}</code>, com o{" "}
+                <span className="font-medium text-foreground">token de recebimento</span> no header Authorization.
+              </li>
+              <li>
+                Prepare o seu destino para receber os disparos em{" "}
+                <code className="rounded bg-muted px-1 font-mono text-foreground">{urlTrim}</code> e valide a assinatura
+                com o <span className="font-medium text-foreground">token de assinatura</span>.
+              </li>
+              <li>
+                Perdeu algum token? Rotacione a ponta correspondente na tela de edição desta conexão.
+              </li>
+            </ol>
+          </Secao>
+
+          <div className="flex justify-end border-t border-border/60 pt-5">
+            <Button type="button" onClick={onDone} className="cursor-pointer">
+              Concluir
+            </Button>
+          </div>
         </div>
       )}
     </div>

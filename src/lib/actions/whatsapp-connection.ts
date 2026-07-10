@@ -30,6 +30,18 @@ type DataResult<T> = { success: true; data: T } | { success: false; error: strin
 // Types
 // ──────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Tokens da conexão, gerados no servidor ANTES da criação (sem persistir).
+ * Cada um é exibido na SUA etapa do assistente, em bloco reservado
+ * (mascarado, com aviso), e só passa a valer quando a conexão é criada.
+ */
+export interface TokensDaConexao {
+  /** Token que o fluxo externo usa para ENTRAR (Authorization: Bearer). */
+  tokenRecebimento: string;
+  /** Token com que assinamos o payload de SAÍDA (X-Signature). */
+  tokenAssinatura: string;
+}
+
 export interface CriarConexaoInput {
   name: string;
   description?: string | null;
@@ -39,19 +51,15 @@ export interface CriarConexaoInput {
   businessId: string;
   /** URL de destino do envio. */
   targetUrl: string;
+  /** Tokens exibidos nas etapas 1 e 2 (`prepararTokensConexao`). */
+  tokenRecebimento: string;
+  tokenAssinatura: string;
 }
 
 export interface ConexaoCriada {
   connectionId: string;
   inboundId: string;
   outboundId: string;
-  /**
-   * Tokens em claro, retornados UMA ÚNICA VEZ (mesmo padrão de `createWebhook`
-   * e das chaves de API): a tela os revela no passo final, mascarados, com
-   * aviso de que não reaparecem. Depois disso, só por rotação.
-   */
-  tokenRecebimento: string;
-  tokenAssinatura: string;
 }
 
 export interface ConexaoWhatsappListItem {
@@ -118,7 +126,28 @@ const criarSchema = z.object({
   path: pathSchema,
   businessId: z.string().trim().min(8, "Informe o número da empresa com DDI e DDD"),
   targetUrl: z.string().trim().url("URL de destino inválida"),
+  tokenRecebimento: z.string().min(32, "Token de recebimento inválido"),
+  tokenAssinatura: z.string().min(32, "Token de assinatura inválido"),
 });
+
+// ──────────────────────────────────────────────────────────────────────────────
+// prepararTokensConexao
+// ──────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Gera os dois tokens SEM efeito colateral (nada é persistido). O assistente
+ * exibe cada um na sua etapa, em bloco reservado; eles só passam a valer
+ * quando a conexão é criada. Recarregar a página gera tokens novos.
+ */
+export async function prepararTokensConexao(): Promise<DataResult<TokensDaConexao>> {
+  const guarda = await guardaSuperAdmin();
+  if (!guarda.ok) return { success: false, error: guarda.error };
+
+  return {
+    success: true,
+    data: { tokenRecebimento: gerarToken(), tokenAssinatura: gerarToken() },
+  };
+}
 
 // ──────────────────────────────────────────────────────────────────────────────
 // criarConexaoWhatsapp (TF.1)
@@ -162,10 +191,6 @@ export async function criarConexaoWhatsapp(
   if (!trava.ok) return { success: false, error: trava.error };
 
   const connectionId = randomUUID();
-  // Gerados AQUI, no servidor, no momento da criação: antes disso não existe
-  // segredo para vazar na tela (decisão do usuário 2026-07-10).
-  const tokenRecebimento = gerarToken();
-  const tokenAssinatura = gerarToken();
 
   try {
     const criadas = await prisma.$transaction(async (tx) => {
@@ -185,7 +210,7 @@ export async function criarConexaoWhatsapp(
           // A13: o assistente conclui a etapa de Envio, então o modo da
           // conexão nasce apontando para o webhook de saída.
           responseMode: "n8n_webhook",
-          secret: encrypt(tokenRecebimento),
+          secret: encrypt(data.tokenRecebimento),
           enabled: true,
         },
       });
@@ -203,7 +228,7 @@ export async function criarConexaoWhatsapp(
           businessId: null,
           connectionId,
           responseMode: null,
-          secret: encrypt(tokenAssinatura),
+          secret: encrypt(data.tokenAssinatura),
           enabled: true,
         },
       });
@@ -226,8 +251,6 @@ export async function criarConexaoWhatsapp(
         connectionId,
         inboundId: criadas.inbound.id,
         outboundId: criadas.outbound.id,
-        tokenRecebimento,
-        tokenAssinatura,
       },
     };
   } catch (err) {

@@ -57,6 +57,7 @@ jest.mock("@/lib/prisma", () => ({
 }));
 
 import {
+  prepararTokensConexao,
   criarConexaoWhatsapp,
   atualizarConexaoWhatsapp,
   alternarConexaoWhatsapp,
@@ -74,6 +75,8 @@ const INPUT_VALIDO = {
   path: "matrixgroup",
   businessId: "5561995630029",
   targetUrl: "https://fluxo.exemplo.com.br/hook",
+  tokenRecebimento: "a".repeat(64),
+  tokenAssinatura: "b".repeat(64),
 };
 
 beforeEach(() => {
@@ -95,6 +98,29 @@ beforeEach(() => {
   );
 });
 
+// ── prepararTokensConexao , tokens da tela (um por etapa) ────────────────────
+
+describe("prepararTokensConexao", () => {
+  it("gera dois tokens distintos com entropia mínima, SEM efeito colateral", async () => {
+    const r = await prepararTokensConexao();
+    expect(r.success).toBe(true);
+    if (r.success) {
+      expect(r.data.tokenRecebimento).not.toBe(r.data.tokenAssinatura);
+      expect(r.data.tokenRecebimento.length).toBeGreaterThanOrEqual(32);
+      expect(r.data.tokenAssinatura.length).toBeGreaterThanOrEqual(32);
+    }
+    // Nada é persistido: os tokens só passam a valer quando a conexão é criada.
+    expect(mockCreate).not.toHaveBeenCalled();
+    expect(mockTransaction).not.toHaveBeenCalled();
+  });
+
+  it("só super_admin", async () => {
+    mockGetCurrentUser.mockResolvedValue(ADMIN);
+    const r = await prepararTokensConexao();
+    expect(r.success).toBe(false);
+  });
+});
+
 // ── TF.1 , criarConexaoWhatsapp ──────────────────────────────────────────────
 
 describe("criarConexaoWhatsapp", () => {
@@ -114,8 +140,9 @@ describe("criarConexaoWhatsapp", () => {
     expect(inbound.connectionId).toBeDefined();
     expect(inbound.connectionId).toBe(outbound.connectionId);
 
-    // Recebimento: slug + número + modo gravado (A13).
+    // Recebimento: slug + número + token da etapa 1 + modo gravado (A13).
     expect(inbound.path).toBe("matrixgroup");
+    expect(inbound.secret).toBe(`enc:${INPUT_VALIDO.tokenRecebimento}`);
     expect(inbound.businessId).toBe(INPUT_VALIDO.businessId);
     expect(inbound.isWhatsappReceiver).toBe(true);
     expect(inbound.responseMode).toBe("n8n_webhook");
@@ -127,27 +154,29 @@ describe("criarConexaoWhatsapp", () => {
     expect(outbound.url).toBe(INPUT_VALIDO.targetUrl);
     expect(outbound.businessId).toBeNull();
     expect(outbound.events).toEqual(["agent_reply"]);
+    expect(outbound.secret).toBe(`enc:${INPUT_VALIDO.tokenAssinatura}`);
     expect(outbound.responseMode).toBeNull();
   });
 
-  it("tokens são gerados NO SERVIDOR na criação e retornados UMA única vez (decisão do usuário 2026-07-10)", async () => {
+  it("persiste exatamente os tokens que a tela exibiu em cada etapa (cifrados)", async () => {
     const r = await criarConexaoWhatsapp(INPUT_VALIDO);
     expect(r.success).toBe(true);
-    if (!r.success) return;
 
-    // Distintos, com entropia mínima, e exibidos só agora (na Conclusão).
-    expect(r.data.tokenRecebimento).not.toBe(r.data.tokenAssinatura);
-    expect(r.data.tokenRecebimento.length).toBeGreaterThanOrEqual(32);
-    expect(r.data.tokenAssinatura.length).toBeGreaterThanOrEqual(32);
-
-    // O que foi persistido é exatamente o que foi revelado (cifrado).
     const criadas = mockCreate.mock.calls.map(
       (c) => (c[0] as { data: Record<string, unknown> }).data,
     );
-    const inbound = criadas.find((d) => d.direction === "inbound")!;
-    const outbound = criadas.find((d) => d.direction === "outbound")!;
-    expect(inbound.secret).toBe(`enc:${r.data.tokenRecebimento}`);
-    expect(outbound.secret).toBe(`enc:${r.data.tokenAssinatura}`);
+    expect(criadas.find((d) => d.direction === "inbound")!.secret).toBe(
+      `enc:${INPUT_VALIDO.tokenRecebimento}`,
+    );
+    expect(criadas.find((d) => d.direction === "outbound")!.secret).toBe(
+      `enc:${INPUT_VALIDO.tokenAssinatura}`,
+    );
+  });
+
+  it("recusa token curto demais (o formulário nunca deve mandar isso)", async () => {
+    const r = await criarConexaoWhatsapp({ ...INPUT_VALIDO, tokenRecebimento: "curto" });
+    expect(r.success).toBe(false);
+    expect(mockTransaction).not.toHaveBeenCalled();
   });
 
   it("TF.1a: só super_admin", async () => {

@@ -210,21 +210,26 @@ passa a ser `Recebimento · Envio · Revisão · Conclusão`.
 - O guia da etapa 2 diz, com todas as letras, que a deduplicação deve usar
   **`message.inboundMessageId`**, não `deliveryId` (A16).
 
-### 3.8 Contrato dos tokens (v4 , DECISÃO DO USUÁRIO 2026-07-10, substitui a v3)
+### 3.8 Contrato dos tokens (v5 , DECISÃO DO USUÁRIO 2026-07-10)
 
-> A v3 exibia os tokens nas etapas 1 e 2. **Errado:** quebra o padrão da
-> plataforma (segredo é reservado), polui a etapa de configuração e mostra um
-> valor que ainda não vale nada. Volta ao padrão dos outros tipos de webhook.
+> **Cada token aparece na SUA etapa.** A conclusão não repete nenhum dos dois.
+> O que estava errado na v3 não era *onde* o token aparecia, e sim *como*: solto
+> no meio do formulário, em texto claro, competindo com outros avisos.
 
-- A configuração (etapas 1 e 2) **não exibe segredo nenhum**.
-- Os dois tokens são gerados **no servidor, no momento da criação**
-  (`criarConexaoWhatsapp`), e retornados **uma única vez** junto do resultado.
-- A etapa 4 (Conclusão) os revela em `SecretRevealStep` , mascarado, com botão
-  de mostrar/copiar e o aviso "copie agora, não aparece de novo" , um de cada
-  vez: primeiro o de recebimento, depois o de assinatura.
-- A etapa 3 (Revisão) avisa que os tokens serão exibidos uma única vez a seguir.
+- Os dois tokens são gerados **no servidor**, numa ação sem efeito colateral
+  (`prepararTokensConexao`), quando o assistente abre. Nada é persistido.
+- Cada um é exibido **no fim da sua etapa**, em seção própria, dentro do
+  componente **`SecretField`**: nasce **mascarado**, com botão de mostrar, botão
+  de copiar e aviso destacado. Nunca em texto claro por padrão.
+  - Etapa 1 (Recebimento) → **token de recebimento**.
+  - Etapa 2 (Envio) → **token de assinatura**.
+- O aviso diz, com todas as letras: o token **só passa a valer quando a conexão
+  for criada**, sair sem concluir **gera um token novo**, e depois de criada ele
+  **só reaparece por rotação**.
+- A etapa 4 (Conclusão) **não exibe token nenhum**: confirma a criação e lista os
+  próximos passos (endereço de entrada, destino de saída, como rotacionar).
 - Depois de criada, o token só reaparece por **rotação** (por ponta, na tela de
-  edição), também em `SecretRevealStep`.
+  edição), aí sim em `SecretRevealStep`.
 
 ### 3.8.1 Padrão visual das etapas (decisão do usuário 2026-07-10)
 
@@ -233,8 +238,10 @@ lista corrida de campos:
 
 | Etapa | Seções, nesta ordem |
 |---|---|
-| 1. Recebimento | **Identificação** (nome, descrição) → **Endereço de entrada** (endereço com URL final, número da empresa, `POST` travado) → **Como montar o payload** (guia colapsado) |
-| 2. Envio | **Endereço de saída** (URL de destino, `POST` travado) → **O que enviamos** (guia colapsado) |
+| 1. Recebimento | **Identificação** (nome, descrição) → **Endereço de entrada** (endereço com URL final, número da empresa, `POST` travado) → **Token de recebimento** (`SecretField`) → **Como montar o payload** (guia colapsado) |
+| 2. Envio | **Endereço de saída** (URL de destino, `POST` travado) → **Token de assinatura** (`SecretField`) → **O que enviamos** (guia colapsado) |
+| 3. Revisão | as duas pontas lado a lado, somente leitura |
+| 4. Conclusão | confirmação + próximos passos, **sem tokens** |
 
 Endereço, número da empresa e URL de destino usam o **botão de confirmar**
 (`FieldValidateButton`) dos outros webhooks: confirmar aplica o valor, sair sem
