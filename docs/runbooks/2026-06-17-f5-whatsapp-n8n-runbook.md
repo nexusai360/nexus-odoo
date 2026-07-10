@@ -1,63 +1,62 @@
 # Runbook , Integração WhatsApp ↔ Agente Nex via n8n (F5)
 
-> Como ligar o WhatsApp ao Agente Nex usando o n8n como ponte. Fluxo
-> assíncrono de 2 webhooks: o n8n recebe da Meta, chama a plataforma (ENTRADA);
-> a plataforma processa e dispara o resultado de volta para um receptor do n8n
-> (SAÍDA, evento `agent.reply`). Leitura obrigatória antes de configurar o n8n
-> em produção.
+> Como ligar o WhatsApp ao Agente Nex usando o n8n como ponte, através de uma
+> **Conexão com WhatsApp** (Integrações → Webhooks → Novo → Conexão com
+> WhatsApp). Fluxo assíncrono com as duas pontas da conexão: o n8n recebe da
+> Meta e chama a plataforma (RECEBIMENTO); a plataforma processa e dispara o
+> resultado para o destino da conexão (ENVIO, evento `agent.reply`).
+> Leitura obrigatória antes de configurar o n8n em produção.
+>
+> **Atualizado em 2026-07-09 (feature Conexão com WhatsApp):** rota fixa legada
+> agora responde **410 Gone**; envelope de saída passou a ser ANINHADO; dedup é
+> por `message.inboundMessageId`; o modo de resposta é POR CONEXÃO; e o disparo
+> de saída é isolado por conexão (fail-closed).
 
-## 1. Topologia , os 2 webhooks
+## 1. Topologia , uma Conexão, duas pontas
 
 ```
 Usuário(WhatsApp) → Meta → n8n (extrai campos, transcreve áudio)
-   → [ENTRADA]  POST  https://<plataforma>/api/hooks/<slug>     ← canônica (F5.1)
-        Authorization: Bearer <secret do webhook>
-        (a plataforma valida o token, resolve usuário, aplica barreiras, enfileira)
+   → [RECEBIMENTO] POST https://<plataforma>/api/webhooks/<slug>   ← canônica
+        Authorization: Bearer <token de recebimento da conexão>
+        (valida token, resolve usuário, aplica barreiras, enfileira)
    → worker processa (lock por usuário, sessão 24h, RBAC, runAgent, Judge)
-   → [SAÍDA]   POST  <URL do receptor n8n>   (envelope `agent.reply`, HMAC)
-   → n8n (receptor) deduplica por deliveryId → entrega ao usuário no WhatsApp
+   → [ENVIO]  POST <URL de destino da conexão>  (envelope `agent.reply`, HMAC)
+   → n8n (receptor) deduplica por message.inboundMessageId → entrega no WhatsApp
 ```
 
-- **ENTRADA:** webhook de ENTRADA da plataforma (cadastrado em Integrações →
-  Webhooks, direção "Receber eventos"). Você define o **caminho (slug)**, marca
-  **"Recebe dados do WhatsApp"** e informa o **número da empresa** (`businessId`),
-  que é o que roteia a resposta pelo número certo. A URL final é
-  `https://<plataforma>/api/hooks/<slug>`. O n8n é o cliente que a chama.
-  A rota antiga `/api/integrations/whatsapp/inbound` segue viva só por
-  compatibilidade: ela resolve o **primeiro** webhook de entrada habilitado, o
-  que é ambíguo quando há mais de um número. Prefira sempre o slug.
-- **SAÍDA:** webhook de SAÍDA da plataforma (direção "Enviar eventos"), com a
-  URL do nó Webhook do n8n que vai receber a resposta. Marque o evento
-  **`agent.reply`** (default já vem marcado). Sem o evento marcado, o webhook
-  não recebe nada.
+- A **Conexão com WhatsApp** cria as duas pontas juntas, ligadas por um
+  `connection_id`. O assistente tem 4 etapas (Recebimento · Envio · Revisão ·
+  Conclusão) e exibe os dois tokens nas etapas em que são usados.
+- **Isolamento por conexão (segurança):** a resposta (e o aviso de bloqueio) de
+  uma conexão sai **somente** para o destino DAQUELA conexão. Conexão sem
+  destino não dispara para ninguém (fail-closed) , não existe fallback para
+  outros webhooks.
+- **Rota antiga `/api/integrations/whatsapp/inbound`: DESCONTINUADA.** Responde
+  **`410 Gone`** com corpo explicativo (não 404, não redirect). Quem ainda
+  aponta para lá precisa migrar para a URL da conexão
+  (`https://<plataforma>/api/webhooks/<slug>`).
 
 ## 2. Autenticação (as duas pontas usam esquemas DIFERENTES)
 
-> **Corrigido em 2026-07-09 após perícia no código.** Este runbook dizia que a
-> ENTRADA era assinada com HMAC (`X-Signature`/`X-Timestamp`). **Não é.** O
-> código (`src/lib/whatsapp/inbound-handler.ts`, "Token fixo (fail-closed)")
-> exige um Bearer token. Seguir a instrução antiga faz o n8n tomar 401.
-
-- **ENTRADA (n8n → plataforma): Bearer token.** O n8n manda o header
-  `Authorization: Bearer <secret do webhook de ENTRADA>`. A comparação é
-  timing-safe (`verifyToken`). Não há assinatura, não há timestamp.
-  - O `secret` é gerado pela plataforma e **mostrado uma única vez**, na criação
-    do webhook (fica criptografado no banco). Se perder, rotacione.
+- **RECEBIMENTO (n8n → plataforma): Bearer token.** O n8n manda o header
+  `Authorization: Bearer <token de recebimento>`. A comparação é timing-safe
+  (`verifyToken`). Não há assinatura, não há timestamp.
+  - O token é gerado pela plataforma quando o assistente abre e **só passa a
+    valer quando a conexão é criada**. Se perder, rotacione (por ponta, na tela
+    de edição da conexão).
   - A assinatura própria da Meta (`x-hub-signature-256`) é validada **no n8n**,
     não na plataforma.
-- **SAÍDA (plataforma → n8n): HMAC-SHA256.** Aí sim a plataforma assina o
-  envelope (`src/lib/whatsapp/emit-reply.ts`):
+- **ENVIO (plataforma → n8n): HMAC-SHA256.** A plataforma assina o envelope
+  (`src/lib/whatsapp/emit-reply.ts`) com o **token de assinatura** da conexão:
   - `X-Timestamp`: epoch ms do disparo.
-  - `X-Signature`: `HMAC_SHA256(secret_do_webhook_de_saida, "${X-Timestamp}.${corpoJSON}")`, em hex.
+  - `X-Signature`: `HMAC_SHA256(token_de_assinatura, "${X-Timestamp}.${corpoJSON}")`, em hex.
   - **Valide essa HMAC no n8n** antes de confiar no payload.
 
-## 3. Mapeamento do payload da Meta para o contrato de ENTRADA
+## 3. Mapeamento do payload da Meta para o contrato de RECEBIMENTO
 
-> **Corrigido em 2026-07-09.** Os nomes de campo abaixo são os do schema Zod real
-> (`src/lib/whatsapp/inbound-payload.ts`), em `snake_case`. O runbook antigo
-> listava `from`, `messageId`, `contactName`, `phoneNumberId`, que o schema
-> **rejeita**. O número da empresa não vai no corpo: ele vem do próprio webhook
-> (campo `businessId`, resolvido pelo slug da URL).
+> Os nomes de campo abaixo são os do schema Zod real
+> (`src/lib/whatsapp/inbound-payload.ts`), em `snake_case`. O número da empresa
+> não vai no corpo: ele é da conexão (resolvido pelo slug da URL).
 
 O n8n extrai de `body.entry[0].changes[0].value` e envia à plataforma:
 
@@ -96,44 +95,61 @@ Exemplo mínimo de corpo (mensagem de texto):
 - Número sem o nono dígito: a plataforma resolve o usuário buscando com e sem o
   9, então o n8n pode mandar o `from` como veio da Meta.
 
-## 4. Envelope de SAÍDA , evento `agent.reply` (BREAKING CHANGE)
+## 4. Envelope de ENVIO , evento `agent.reply` (BREAKING CHANGE 2026-07-09)
 
-> **Atenção:** o contrato de saída MUDOU. Antes era
-> `{ to, message, messageId, timestamp }`. Agora é o envelope abaixo. Quem já
-> consumia o formato antigo precisa atualizar o nó do n8n.
+> **Atenção:** o contrato de saída MUDOU DE NOVO. O formato plano
+> (`{event, deliveryId, kind, data: {...}, timestamp}`) foi substituído pelo
+> envelope ANINHADO abaixo (SPEC §3.10). Não havia consumidor em produção
+> quando a troca foi feita.
 
 ```jsonc
 {
   "event": "agent.reply",
-  "deliveryId": "<uuid por disparo, usar para deduplicar>",
+  "deliveryId": "<uuid NOVO a cada tentativa , NÃO use para deduplicar>",
   "kind": "final",                 // "final" (resposta) | "blocked" (barreira)
-  "data": {
-    "inboundMessageId": "wamid...",
-    "to": "553491908624",
-    "phoneNumberId": "593237780533272",
-    "sessionId": "<conversationId | null se barrado antes da sessão>",
-    "assistantMessageId": "<id da Message | null>",
+  "timestamp": 1752090000000,
+  "connection": {
+    "name": "<nome da conexão>",
+    "businessId": "5561995630029"
+  },
+  "message": {
+    "inboundMessageId": "wamid...",  // ← use ESTE campo para deduplicar
+    "to": "5534991908624",
+    "type": "text"
+  },
+  "session": {
+    "conversationId": "<id | null se barrado antes da sessão>",
+    "assistantMessageId": "<id da Message | null>"
+  },
+  "result": {
     "ok": true,                    // false nas barreiras e em falha técnica
     "reason": null,                // ver §5 quando ok:false
     "reply": "<texto da resposta OU a mensagem padrão da barreira>",
     "suggestions": ["...", "..."], // [] quando ok:false
-    "tools": ["faturamento_periodo"], // [] quando ok:false
-    "reasoningMs": 4200,           // 0 quando ok:false
-    "usage": { "tokensInput": 0, "tokensOutput": 0, "costUsd": 0 },
-    "messageType": "text",
-    "deniedModule": "financeiro",      // só em permission_denied
-    "allowedModules": ["estoque","fiscal"] // só em permission_denied
+    "deniedModule": null,          // só em permission_denied
+    "allowedModules": []           // só em permission_denied
   },
-  "timestamp": 1718630000000
+  "diagnostics": {
+    "tools": ["faturamento_periodo"], // [] quando ok:false
+    "reasoningMs": 4200,              // 0 quando ok:false
+    "model": "<modelo efetivo da resposta final | null em blocked/erro>",
+    "usage": { "tokensInput": 1200, "tokensOutput": 340, "costUsd": 0.0021 }
+  }
 }
 ```
 
+- `connection.name`/`connection.businessId` identificam a conexão que recebeu a
+  mensagem (útil quando um mesmo fluxo atende mais de um número).
+- `diagnostics.model` é o modelo que produziu o texto final (pós retry/tier);
+  `null` em `kind:"blocked"` e em erro.
+- Jobs enfileirados antes do deploy desta versão podem sair sem
+  `connection.name`/`diagnostics.model` (campos nulos).
+
 ## 5. Barreiras de validação , como tratar cada `reason`
 
-Quando `data.ok === false`, `data.reason` traz o código e `data.reply` o texto
-padrão pronto para enviar ao usuário. Use o `reason` para lógica/roteamento e o
-`reply` para a mensagem. Textos atuais (versionados em
-`src/lib/whatsapp/blocked-messages.ts`):
+Quando `result.ok === false`, `result.reason` traz o código e `result.reply` o
+texto padrão pronto para enviar ao usuário. Textos versionados em
+`src/lib/whatsapp/blocked-messages.ts`:
 
 | `reason` | Camada | Texto padrão (`reply`) |
 |---|---|---|
@@ -141,33 +157,43 @@ padrão pronto para enviar ao usuário. Use o `reason` para lógica/roteamento e
 | `user_inactive` | L1 (inbound) | Sua conta está desativada no momento. Fale com o administrador para reativar o acesso. |
 | `channel_disabled` | L2 (inbound) | O Agente Nex está desativado para o WhatsApp neste momento. |
 | `role_not_allowed` | L2 (inbound) | Seu perfil ainda não tem acesso ao Agente Nex pelo WhatsApp. Fale com o administrador. |
+| `daily_limit_exceeded` | teto (inbound) | Você atingiu o limite diário de mensagens ao Agente Nex. Amanhã o limite renova; se precisar de mais, fale com o administrador. |
 | `permission_denied` | L3 (worker) | Sua pergunta toca em um módulo que o seu acesso na plataforma não cobre hoje. |
 | `technical_error` | técnica | Não consegui processar sua mensagem agora. Tente novamente em instantes. |
 
-- **L1/L2** acontecem no inbound, **sem custo de IA** (não enfileiram, não
-  chamam o LLM). Vêm com `kind:"blocked"`.
-- **L3 (`permission_denied`)** acontece no worker, **antes do LLM principal**
-  (sem custo do modelo principal), mas **cria sessão/Message e pode acionar o
-  Judge** (há custo de IA do Judge, não do LLM principal). Traz `deniedModule`
-  (módulo desejado) e `allowedModules` (os que o usuário acessa), úteis para o
-  n8n montar uma resposta mais rica se quiser.
-- **`technical_error`** cobre, por ora, também as recusas de mídia (imagem
-  provisória, áudio desabilitado sem texto, fallback de áudio). Ver §8.
+- **L1/L2/teto** acontecem no inbound, **sem custo de IA** (não enfileiram, não
+  chamam o LLM). Vêm com `kind:"blocked"`, **somente para o destino da conexão**.
+- **A entrega do bloqueio respeita o modo da conexão** (§7): `n8n_webhook` →
+  webhook de envio; `direct` → Graph API (cloud-client); nenhum caminho → log de
+  aviso no servidor (nunca silêncio).
+- **L3 (`permission_denied`)** acontece no worker, **antes do LLM principal**,
+  mas cria sessão/Message e pode acionar o Judge. Traz `deniedModule` e
+  `allowedModules` para o n8n montar resposta mais rica se quiser.
+- **`technical_error`** cobre, por ora, também as recusas de mídia. Ver §9.
 
 ## 6. Idempotência e deduplicação (defesa de ponta no n8n)
 
-- A plataforma é idempotente na saída: se a mesma `messageId` (inbound) for
+- A plataforma é idempotente na saída: se a mesma `message_id` (inbound) for
   reprocessada, ela **reentrega o payload salvo** sem re-rodar o agente
   (`whatsapp:replied:{messageId}` no Redis).
-- **No n8n, deduplique por `deliveryId`** (uuid por disparo) para não entregar
-  a mesma resposta duas vezes em caso de retry de POST.
-- **Janela estreita conhecida:** se o worker morrer entre persistir a Message e
-  gravar a chave de idempotência, um retry pode re-rodar o turno e emitir um 2º
-  `agent.reply` com **outro `deliveryId`** mas o **mesmo `inboundMessageId`**.
-  Para idempotência de PONTA, o n8n deve deduplicar **também por
-  `inboundMessageId`** quando precisar garantia forte (não só por `deliveryId`).
+- **No n8n, deduplique por `message.inboundMessageId`.** O `deliveryId` é
+  gerado de novo a cada tentativa de entrega (retry de POST = outro
+  `deliveryId`), então ele **não serve** como chave de dedup.
 
-## 7. Sessão e concorrência
+## 7. Modo de resposta POR CONEXÃO e trava de número único
+
+- O modo de resposta (`direct` × `n8n_webhook`) agora é **da conexão** (coluna
+  na linha de recebimento), com fallback para o singleton global e, por fim,
+  `direct`. O assistente grava `n8n_webhook` ao concluir a etapa de Envio; a
+  tela de edição grava ao configurar um destino.
+- **Trava de número único (decisão do usuário, SPEC §3.4.1):** um número de
+  WhatsApp existe em UMA configuração, e só uma , ou no canal direto
+  (credenciais Meta em Integrações → Canais) ou numa Conexão por webhook. A
+  trava vale nos dois sentidos, é verificada no servidor e compara o número
+  normalizado (tolerando o nono dígito). A tela de Canais passou a resolver o
+  telefone real (`display_phone_number`) na Graph API ao salvar (fail-closed).
+
+## 8. Sessão e concorrência
 
 - A sessão WhatsApp é a janela de 24h (igual à da Meta), encerrada de forma
   lazy. Não há encerramento manual.
@@ -175,18 +201,15 @@ padrão pronto para enviar ao usuário. Use o `reason` para lógica/roteamento e
   (Redis). Se duas chegarem juntas, a segunda espera (retry com backoff) , isso
   é normal e garante uma conversa por usuário sem sobrescrita.
 
-## 8. Pendências e dívidas conhecidas
+## 9. Pendências e dívidas conhecidas
 
 - **Mídia não suportada vs falha técnica:** hoje ambas saem como
-  `technical_error`. Se a operação quiser distinguir "mídia não suportada" de
-  "falha técnica" de fato, criar uma `BlockReason` nova numa onda futura (fora
-  de escopo desta entrega).
-- **Fuso do teto diário:** a contagem do teto diário usa a meia-noite do
-  servidor (`route.ts`). Conferir se bate com o fuso BR esperado antes de
-  confiar no corte por dia.
-- **`WhatsappChannel` vs `WhatsappInstance`:** o singleton `WhatsappChannel`
-  (`id:"global"`) é o caminho vivo; `WhatsappInstance` (R6) dorme. A unificação
-  fica fora de escopo (dívida documentada).
+  `technical_error`. Criar `media_unsupported` fica para uma onda futura.
+- **Fuso do teto diário:** a contagem usa a meia-noite do servidor. Conferir se
+  bate com o fuso BR esperado antes de confiar no corte por dia.
+- **`WhatsappInstance`:** modelo morto no schema; o `delete` da conexão verifica
+  a FK antes de apagar. Remoção do modelo é dívida em `docs/RADAR.md`.
+- **Jobs em voo no deploy:** payloads gravados no Redis antes desta versão não
+  têm `connection.name` nem `diagnostics.model` (saem `null`).
 - **Drop das colunas legadas `bubbleEnabled`/`whatsappEnabled`:** deferido para
-  depois do merge desta frente (banco compartilhado). Ver `docs/RADAR.md`
-  (`R-f5-drop-booleans-legados`).
+  depois do merge desta frente (banco compartilhado). Ver `docs/RADAR.md`.

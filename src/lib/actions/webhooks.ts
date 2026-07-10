@@ -149,13 +149,18 @@ async function guardaWebhook(
   return { ok: true, user: me };
 }
 
-/** O webhook alvo é um receptor de WhatsApp? (usado nas ações por id) */
+/**
+ * O webhook alvo pertence ao território do WhatsApp? (usado nas ações por id)
+ * Vale para o receptor E para qualquer linha de uma Conexão com WhatsApp
+ * (`connection_id` preenchido): a linha de ENVIO da conexão não é
+ * `isWhatsappReceiver`, mas editá-la/apagá-la desmontaria a conexão.
+ */
 async function alvoEhWhatsapp(id: string): Promise<boolean> {
   const row = await prisma.whatsappWebhook.findUnique({
     where: { id },
-    select: { isWhatsappReceiver: true },
+    select: { isWhatsappReceiver: true, connectionId: true },
   });
-  return row?.isWhatsappReceiver === true;
+  return row?.isWhatsappReceiver === true || row?.connectionId != null;
 }
 
 function generateSecret(): string {
@@ -473,7 +478,9 @@ export async function listWebhooks(): Promise<DataResult<WebhookListItem[]>> {
 
   try {
     const rows = await prisma.whatsappWebhook.findMany({
-      where: escondeWhatsapp ? { isWhatsappReceiver: false } : undefined,
+      // Some o receptor e TODAS as linhas de Conexões com WhatsApp (a linha de
+      // envio não é receptora, mas pertence à conexão do mesmo jeito).
+      where: escondeWhatsapp ? { isWhatsappReceiver: false, connectionId: null } : undefined,
       orderBy: { createdAt: "desc" },
     });
 

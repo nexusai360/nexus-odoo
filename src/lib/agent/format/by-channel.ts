@@ -53,6 +53,92 @@ function toWhatsApp(content: string): string {
   return r.trim();
 }
 
+// ─── Formatação compacta para mobile (SPEC §3.12) ───────────────────────────
+// A garantia é determinística e vive AQUI: o prompt do agente não muda.
+
+/** Teto de colunas aproveitadas por linha; as demais são descartadas. */
+const MAX_COLUNAS_POR_LINHA = 4;
+
+/**
+ * Mapa explícito de rótulos compactos. Cabeçalho fora do mapa entra truncado
+ * em 8 caracteres. A chave é o cabeçalho normalizado (minúsculas, sem espaço
+ * nas pontas).
+ */
+const ROTULOS_COMPACTOS: Record<string, string> = {
+  notas: "NF",
+  "notas fiscais": "NF",
+  quantidade: "Qtd",
+  documento: "Doc",
+  documentos: "Doc",
+  filial: "Filial",
+  vendedor: "Vend",
+  produtos: "Prod",
+};
+
+const MOEDA_RE = /^-?\s*R\$\s*\d{1,3}(\.\d{3})*(,\d{2})?$/;
+const NUMERO_RE = /^-?\d{1,3}(\.\d{3})*(,\d+)?$/;
+const PERCENTUAL_RE = /^-?\d+(,\d+)?%$/;
+
+export type ClasseDeCelula = "moeda" | "numero" | "texto";
+
+/**
+ * Classifica uma célula da tabela (SPEC §3.12, nesta ordem): moeda → número →
+ * texto. `1.2.3`, `,,,`, `.` e `R$` sozinho são texto.
+ */
+export function classificarCelula(valor: string): ClasseDeCelula {
+  const v = valor.trim();
+  if (MOEDA_RE.test(v)) return "moeda";
+  if (NUMERO_RE.test(v) || PERCENTUAL_RE.test(v)) return "numero";
+  return "texto";
+}
+
+const TRUNCAR_TEXTO_EM = 24;
+
+/** Truncamento só incide em TEXTO, nunca em moeda ou número. */
+function truncarTexto(valor: string): string {
+  return valor.length > TRUNCAR_TEXTO_EM
+    ? `${valor.slice(0, TRUNCAR_TEXTO_EM)}...`
+    : valor;
+}
+
+function rotuloDe(header: string): string {
+  const chave = header.trim().toLowerCase();
+  return ROTULOS_COMPACTOS[chave] ?? header.trim().slice(0, 8);
+}
+
+/**
+ * Converte UMA linha da tabela em UMA linha da lista compacta:
+ * 1. título = primeira coluna não vazia, sem rótulo (linha toda vazia sai);
+ * 2. moeda entra sem rótulo; número como `(valor RÓTULO)`; texto como
+ *    `(RÓTULO valor)`;
+ * 3. células vazias são omitidas; teto de MAX_COLUNAS_POR_LINHA colunas.
+ */
+function linhaCompacta(headers: string[], cells: string[]): string | null {
+  const colunas = headers
+    .map((h, idx) => ({ header: h, valor: (cells[idx] ?? "").trim() }))
+    .slice(0, MAX_COLUNAS_POR_LINHA)
+    .filter((c) => c.valor !== "");
+  if (colunas.length === 0) return null;
+
+  const [titulo, ...resto] = colunas;
+  const partes: string[] = [
+    classificarCelula(titulo.valor) === "texto" ? truncarTexto(titulo.valor) : titulo.valor,
+  ];
+
+  for (const c of resto) {
+    const classe = classificarCelula(c.valor);
+    if (classe === "moeda") {
+      partes.push(c.valor);
+    } else if (classe === "numero") {
+      partes.push(`(${c.valor} ${rotuloDe(c.header)})`);
+    } else {
+      partes.push(`(${rotuloDe(c.header)} ${truncarTexto(c.valor)})`);
+    }
+  }
+
+  return `- ${partes.join(" ")}`;
+}
+
 function convertTablesToList(text: string): string {
   const lines = text.split("\n");
   const out: string[] = [];
@@ -69,14 +155,8 @@ function convertTablesToList(text: string): string {
       const headers = splitCols(headerLine);
       i += 2;
       while (i < lines.length && lines[i].includes("|")) {
-        const cells = splitCols(lines[i]);
-        const pairs = headers
-          .map((h, idx) => {
-            const v = cells[idx] ?? "";
-            return v ? `${h}: ${v}` : null;
-          })
-          .filter((x): x is string => x != null);
-        out.push(`- ${pairs.join(" | ")}`);
+        const linha = linhaCompacta(headers, splitCols(lines[i]));
+        if (linha !== null) out.push(linha);
         i += 1;
       }
     } else {

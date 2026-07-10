@@ -26,6 +26,12 @@ import {
   toggleWebhook,
   type WebhookListItem,
 } from "@/lib/actions/webhooks";
+import {
+  alternarConexaoWhatsapp,
+  apagarConexaoWhatsapp,
+  listConnections,
+  type ConexaoWhatsappListItem,
+} from "@/lib/actions/whatsapp-connection";
 import { formatE164ForDisplay } from "@/lib/whatsapp/countries";
 import {
   webhookKindBadgeClass,
@@ -48,6 +54,10 @@ function webhookKindOf(webhook: WebhookListItem): WebhookKind {
 
 interface Props {
   initial: WebhookListItem[];
+  /** Conexões com WhatsApp (uma entrada por conexão; só super_admin as vê). */
+  initialConexoes?: ConexaoWhatsappListItem[];
+  /** Perfil pode ver/gerir Conexões (super_admin). Decide qual refresh usar. */
+  podeVerConexoes?: boolean;
   /** URL base dos webhooks de entrada (`.../api/hooks/`). */
   inboundBaseUrl: string;
 }
@@ -76,9 +86,10 @@ function formatDateTime(date: Date) {
 /** Tipos disponíveis no filtro (ordem da criação). */
 const KIND_OPTIONS: WebhookKind[] = ["whatsapp", "inbound_generic", "outbound"];
 
-export function WebhooksContent({ initial }: Props) {
+export function WebhooksContent({ initial, initialConexoes = [], podeVerConexoes = false }: Props) {
   const router = useRouter();
   const [webhooks, setWebhooks] = useState<WebhookListItem[]>(initial);
+  const [conexoes, setConexoes] = useState<ConexaoWhatsappListItem[]>(initialConexoes);
   const [isPending, startTransition] = useTransition();
   // Filtros (client-side): busca global + tipos selecionados.
   const [search, setSearch] = useState("");
@@ -108,6 +119,29 @@ export function WebhooksContent({ initial }: Props) {
     return haystack.includes(term);
   });
 
+  // Conexões passam pelos MESMOS filtros (tipo "whatsapp" + busca).
+  const conexoesFiltradas = conexoes.filter((c) => {
+    if (selectedKinds.length > 0 && !selectedKinds.includes("whatsapp")) return false;
+    if (!term) return true;
+    const haystack = [
+      c.name ?? "",
+      c.path ?? "",
+      c.path ? `/${c.path}` : "",
+      c.targetUrl ?? "",
+      c.businessId ?? "",
+      c.businessId ? formatE164ForDisplay(c.businessId) : "",
+      c.description ?? "",
+      webhookKindLabel("whatsapp"),
+      "post",
+    ]
+      .join(" ")
+      .toLowerCase();
+    return haystack.includes(term);
+  });
+
+  const totalItens = webhooks.length + conexoes.length;
+  const totalFiltrados = filtered.length + conexoesFiltradas.length;
+
   function toggleKind(k: WebhookKind) {
     setSelectedKinds((prev) => (prev.includes(k) ? prev.filter((x) => x !== k) : [...prev, k]));
   }
@@ -118,6 +152,14 @@ export function WebhooksContent({ initial }: Props) {
   }
 
   async function refresh() {
+    if (podeVerConexoes) {
+      const result = await listConnections();
+      if (result.success) {
+        setConexoes(result.data.conexoes);
+        setWebhooks(result.data.avulsos);
+      }
+      return;
+    }
     const result = await listWebhooks();
     if (result.success) setWebhooks(result.data);
   }
@@ -145,14 +187,37 @@ export function WebhooksContent({ initial }: Props) {
     });
   }
 
+  function handleToggleConexao(connectionId: string, enabled: boolean) {
+    startTransition(async () => {
+      const result = await alternarConexaoWhatsapp(connectionId, enabled);
+      if (result.success) {
+        await refresh();
+      } else {
+        toast.error(result.error ?? "Erro ao atualizar a conexão");
+      }
+    });
+  }
+
+  function handleDeleteConexao(connectionId: string) {
+    startTransition(async () => {
+      const result = await apagarConexaoWhatsapp(connectionId);
+      if (result.success) {
+        await refresh();
+        toast.success("Conexão removida");
+      } else {
+        toast.error(result.error ?? "Erro ao remover a conexão");
+      }
+    });
+  }
+
   return (
     <div className="space-y-6 ">
       {/* Cabeçalho com botão de criação (navega para a tela cheia) */}
       <div data-tour="webhooks-novo" className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          {webhooks.length === 0
+          {totalItens === 0
             ? "Nenhum webhook configurado"
-            : `${filtered.length} de ${webhooks.length} webhook${webhooks.length !== 1 ? "s" : ""}`}
+            : `${totalFiltrados} de ${totalItens} ${totalItens !== 1 ? "itens" : "item"}`}
         </p>
         <Button
           type="button"
@@ -166,7 +231,7 @@ export function WebhooksContent({ initial }: Props) {
       </div>
 
       {/* Busca global + filtro por tipo (client-side), no padrão do router. */}
-      {webhooks.length > 0 && (
+      {totalItens > 0 && (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="flex flex-1 items-center gap-2 sm:max-w-md">
             <div className="relative flex-1">
@@ -202,9 +267,9 @@ export function WebhooksContent({ initial }: Props) {
         </div>
       )}
 
-      {/* Lista de webhooks */}
+      {/* Lista: Conexões com WhatsApp (uma entrada por conexão) + webhooks. */}
       <div data-tour="webhooks-lista" className="space-y-3">
-        {webhooks.length === 0 ? (
+        {totalItens === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 py-12 text-center">
             <ArrowDownToLine className="h-8 w-8 text-muted-foreground/40 mb-3" />
             <p className="text-sm text-muted-foreground">Nenhum webhook configurado</p>
@@ -212,7 +277,7 @@ export function WebhooksContent({ initial }: Props) {
               Crie um webhook para receber ou enviar eventos de outros sistemas.
             </p>
           </div>
-        ) : filtered.length === 0 ? (
+        ) : totalFiltrados === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 py-10 text-center">
             <Search className="mb-3 h-7 w-7 text-muted-foreground/40" />
             <p className="text-sm text-muted-foreground">Nenhum webhook encontrado para o filtro.</p>
@@ -225,15 +290,26 @@ export function WebhooksContent({ initial }: Props) {
             </button>
           </div>
         ) : (
-          filtered.map((wh) => (
-            <WebhookRow
-              key={wh.id}
-              webhook={wh}
-              isPending={isPending}
-              onToggle={handleToggle}
-              onDelete={handleDelete}
-            />
-          ))
+          <>
+            {conexoesFiltradas.map((c) => (
+              <ConexaoRow
+                key={c.connectionId}
+                conexao={c}
+                isPending={isPending}
+                onToggle={handleToggleConexao}
+                onDelete={handleDeleteConexao}
+              />
+            ))}
+            {filtered.map((wh) => (
+              <WebhookRow
+                key={wh.id}
+                webhook={wh}
+                isPending={isPending}
+                onToggle={handleToggle}
+                onDelete={handleDelete}
+              />
+            ))}
+          </>
         )}
       </div>
     </div>
@@ -331,6 +407,156 @@ function TypeMultiSelect({
         )}
       </PopoverContent>
     </Popover>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// ConexaoRow , UMA entrada por Conexão com WhatsApp (as duas linhas agrupadas)
+// ──────────────────────────────────────────────────────────────────────────────
+
+function ConexaoRow({
+  conexao,
+  isPending,
+  onToggle,
+  onDelete,
+}: {
+  conexao: ConexaoWhatsappListItem;
+  isPending: boolean;
+  onToggle: (connectionId: string, enabled: boolean) => void;
+  onDelete: (connectionId: string) => void;
+}) {
+  const router = useRouter();
+  const km = KIND_META.whatsapp;
+  const semEnvio = conexao.outboundId === null || !conexao.targetUrl;
+
+  return (
+    <div
+      className={cn(
+        "rounded-xl border border-border bg-muted/30 p-3.5 transition-colors hover:border-foreground/20",
+        !conexao.enabled && "opacity-40",
+      )}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-start gap-3 min-w-0">
+          <span
+            className={cn(
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
+              conexao.enabled ? km.iconBg : "bg-muted",
+            )}
+          >
+            <MessageCircle
+              className={cn("h-4 w-4", conexao.enabled ? km.iconColor : "text-muted-foreground")}
+            />
+          </span>
+          <div className="space-y-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-semibold">{conexao.name ?? "Conexão"}</span>
+              <span
+                className={cn(
+                  "rounded-full px-2 py-0.5 text-[10px] font-medium",
+                  webhookKindBadgeClass("whatsapp"),
+                )}
+              >
+                {webhookKindLabel("whatsapp")}
+              </span>
+              {semEnvio && (
+                <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
+                  Envio pendente
+                </span>
+              )}
+            </div>
+            {conexao.description && (
+              <p className="text-[11px] text-muted-foreground">{conexao.description}</p>
+            )}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {conexao.path && (
+                <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                  <ArrowDownToLine className="h-3 w-3" aria-hidden />
+                  <code className="max-w-full truncate rounded-md border border-border bg-muted px-1.5 py-0.5 text-[11px] font-mono text-foreground">
+                    /{conexao.path}
+                  </code>
+                </span>
+              )}
+              {conexao.targetUrl && (
+                <span className="flex min-w-0 items-center gap-1 text-[11px] text-muted-foreground">
+                  <ArrowUpFromLine className="h-3 w-3 shrink-0" aria-hidden />
+                  <code className="max-w-[260px] truncate rounded-md border border-border bg-muted px-1.5 py-0.5 text-[11px] font-mono text-foreground">
+                    {conexao.targetUrl}
+                  </code>
+                </span>
+              )}
+              <span className="rounded-md border border-violet-500/30 bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-600 dark:text-violet-400">
+                POST
+              </span>
+            </div>
+            {conexao.businessId && (
+              <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                WhatsApp:
+                <span className="rounded-md border border-border bg-muted px-1.5 py-0.5 font-mono tabular-nums text-foreground">
+                  {formatE164ForDisplay(conexao.businessId)}
+                </span>
+              </p>
+            )}
+            <p className="text-[11px] text-muted-foreground">
+              Criada em {formatDateTime(conexao.createdAt)}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-1">
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Switch
+                  checked={conexao.enabled}
+                  onCheckedChange={(v) => onToggle(conexao.connectionId, v)}
+                  disabled={isPending}
+                  aria-label={conexao.enabled ? "Desabilitar conexão" : "Habilitar conexão"}
+                />
+              }
+            />
+            <TooltipContent>{conexao.enabled ? "Desabilitar" : "Habilitar"}</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  aria-label="Editar conexão"
+                  onClick={() =>
+                    router.push(`/integracoes/webhooks/conexao/${conexao.connectionId}/editar`)
+                  }
+                />
+              }
+            >
+              <Pencil className="h-4 w-4 text-muted-foreground" />
+            </TooltipTrigger>
+            <TooltipContent>Editar</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  disabled={isPending}
+                  onClick={() => onDelete(conexao.connectionId)}
+                  aria-label="Remover conexão"
+                />
+              }
+            >
+              <Trash2 className="h-4 w-4" />
+            </TooltipTrigger>
+            <TooltipContent>Remover (apaga as duas pontas)</TooltipContent>
+          </Tooltip>
+        </div>
+      </div>
+    </div>
   );
 }
 

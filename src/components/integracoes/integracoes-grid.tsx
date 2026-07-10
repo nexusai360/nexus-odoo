@@ -31,7 +31,7 @@ const CARDS: IntegrationCard[] = [
   },
   {
     label: "Webhooks",
-    description: "Endpoints de entrada e saída para integração com o n8n.",
+    description: "Endpoints de entrada e saída para integrar a plataforma aos seus fluxos.",
     icon: Webhook,
     href: "/integracoes/webhooks",
   },

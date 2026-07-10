@@ -27,10 +27,12 @@ export async function handleSlugInbound(
   }
 
   // Resolve o webhook receptor de WhatsApp por slug (path). Fail-closed.
+  // `connectionId`/`name`/`responseMode` identificam a Conexão dona da mensagem:
+  // é o que escopa a resposta (e o bloqueio) ao destino certo (SPEC §3.3).
   const webhook = await prisma.whatsappWebhook
     .findFirst({
       where: { direction: "inbound", enabled: true, isWhatsappReceiver: true, path },
-      select: { secret: true, businessId: true },
+      select: { secret: true, businessId: true, connectionId: true, name: true, responseMode: true },
     })
     .catch(() => null);
 
@@ -48,5 +50,11 @@ export async function handleSlugInbound(
     return NextResponse.json({ error: "Configuração de segurança inválida" }, { status: 500 });
   }
 
-  return handleWhatsappInbound(req, { secret, businessId: webhook.businessId });
+  return handleWhatsappInbound(req, {
+    secret,
+    businessId: webhook.businessId,
+    connectionId: webhook.connectionId,
+    connectionName: webhook.name,
+    responseMode: webhook.responseMode,
+  });
 }

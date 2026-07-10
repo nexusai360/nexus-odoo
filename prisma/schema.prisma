@@ -60,6 +60,10 @@ enum AuditAction {
   webhook_secret_rotated
   webhook_toggled
   webhook_deleted
+  whatsapp_connection_created
+  whatsapp_connection_updated
+  whatsapp_connection_deleted
+  whatsapp_connection_token_rotated
   external_mcp_server_created
   external_mcp_server_updated
   external_mcp_server_toggled
@@ -3479,6 +3483,11 @@ model WhatsappChannel {
   encryptedApiToken String?              @map("encrypted_api_token")
   businessAccountId String?              @map("business_account_id")
   phoneNumberId     String?              @map("phone_number_id")
+  /// Telefone real do número (display_phone_number da Graph API), resolvido a
+  /// partir do `phoneNumberId` ao salvar o canal. `phoneNumberId` é um ID da
+  /// Meta, não o telefone: sem esta coluna não há como comparar o canal direto
+  /// com as Conexões por webhook na trava de número único (SPEC §3.4.1).
+  phoneNumber       String?              @map("phone_number")
   responseMode      WhatsappResponseMode @default(direct)
   enabled           Boolean              @default(false)
   updatedAt         DateTime             @updatedAt @map("updated_at")
@@ -3512,6 +3521,15 @@ model WhatsappWebhook {
   /// F5.1: número da empresa (WhatsApp Business) que este receptor atende.
   /// Único entre os receptores de WhatsApp; vira a tag no card.
   businessId String?         @map("business_id")
+  /// Conexão com WhatsApp (2026-07-09): liga a linha de RECEBIMENTO à de ENVIO.
+  /// As duas linhas de uma conexão compartilham este id. Sem ele, o disparo da
+  /// resposta ia para TODOS os destinos habilitados, vazando dados entre
+  /// clientes. `loadOutboundTargets` filtra por aqui (fail-closed).
+  connectionId String?       @map("connection_id") @db.Uuid
+  /// Modo de resposta DA CONEXÃO (fica na linha de recebimento). Nulo = herda o
+  /// singleton `WhatsappChannel`. Sem isto, uma conexão nasceria em `direct` (o
+  /// default) e o webhook de saída seria ignorado em silêncio.
+  responseMode WhatsappResponseMode? @map("response_mode")
   secret    String
   enabled   Boolean          @default(true)
   createdAt DateTime         @default(now()) @map("created_at")
@@ -3519,6 +3537,7 @@ model WhatsappWebhook {
   instances WhatsappInstance[]
 
   @@unique([businessId])
+  @@index([connectionId])
   @@map("whatsapp_webhooks")
 }
 

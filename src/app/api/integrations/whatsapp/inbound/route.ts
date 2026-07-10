@@ -1,35 +1,25 @@
 /**
- * POST /api/integrations/whatsapp/inbound (rota fixa legada).
+ * POST /api/integrations/whatsapp/inbound (rota fixa DESCONTINUADA).
  *
- * Mantida por compatibilidade. O caminho canônico passou a ser o webhook com
- * SLUG definido pelo usuário (`/api/hooks/<slug>`, F5.1). Esta rota resolve o
- * primeiro webhook de entrada habilitado e delega ao handler compartilhado.
+ * O recebimento de WhatsApp passou a ser exclusivo do webhook com SLUG definido
+ * pelo usuário (`/api/webhooks/<slug>`): a rota fixa resolvia "o primeiro
+ * webhook de entrada habilitado", o que é ambíguo com mais de uma Conexão e
+ * impede o isolamento por conexão (SPEC 2026-07-09, A10).
+ *
+ * Responde `410 Gone` com corpo explicativo. O caminho PRECISA continuar em
+ * `src/lib/auth/public-paths.ts`: fora da lista pública o middleware devolveria
+ * um redirect de login (302), e quem ainda aponta para cá nunca veria o aviso.
  */
 
-import { type NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { decrypt } from "@/lib/encryption";
-import { handleWhatsappInbound } from "@/lib/whatsapp/inbound-handler";
+import { NextResponse } from "next/server";
 
-export async function POST(req: NextRequest): Promise<NextResponse> {
-  // Fail-closed: sem webhook de entrada habilitado, recusa (nunca aceita sem secret).
-  const inboundWebhook = await prisma.whatsappWebhook
-    .findFirst({ where: { direction: "inbound", enabled: true } })
-    .catch(() => null);
-
-  if (!inboundWebhook) {
-    return NextResponse.json({ error: "Canal WhatsApp não configurado" }, { status: 503 });
-  }
-
-  let secret: string;
-  try {
-    secret = decrypt(inboundWebhook.secret);
-  } catch {
-    return NextResponse.json({ error: "Configuração de segurança inválida" }, { status: 500 });
-  }
-
-  return handleWhatsappInbound(req, {
-    secret,
-    businessId: inboundWebhook.businessId ?? null,
-  });
+export async function POST(): Promise<NextResponse> {
+  return NextResponse.json(
+    {
+      error:
+        "Este endereço foi descontinuado. Use o endereço da sua Conexão com WhatsApp " +
+        "(/api/webhooks/<endereço-da-conexão>), exibido na tela de Integrações.",
+    },
+    { status: 410 },
+  );
 }

@@ -664,3 +664,88 @@ usuário limpar", mas **uma conversa mais nova (mesmo já arquivada) deve supera
 **Verificado (dado real):** usuário do bug 102 órfãs ativas → 0; mais recente vira
 a sessão de hoje (arquivada) → boot resolve para welcome. Outro usuário com sessão
 genuína manteve 1 ativa. tsc verde + jest (46 dos arquivos afetados).
+
+---
+
+## R-conexao-whatsapp , achados da sessao 2026-07-09 (WhatsApp / webhooks / agente)
+
+Perícia feita antes de implementar a "Conexão com WhatsApp". Tudo abaixo foi
+**medido no código ou no banco**, não suposto. O que já foi corrigido está
+marcado; o resto é dívida aberta.
+
+### CORRIGIDO e em producao
+
+1. **Menus: a UI escondia, o servidor liberava** (PR #158). `nav.ts` filtrava por
+   `visibleTo`/`superAdminOnly` e os layouts usavam `requireMinRole` fixo, então
+   a tela de Configuração conseguia RESTRINGIR um menu mas nunca LIBERAR.
+   `menu_access` virou a autoridade única. Trava: `menu-catalog-autoridade.test.ts`.
+2. **Bolha do Nex: gate só na interface** (PR #160). `bubbleAccessLevel` era lido
+   apenas no layout (escondia o botão). Nenhuma rota de API o checava: um admin
+   conversava com o agente chamando `POST /api/agent/stream` direto. Gate movido
+   para o servidor.
+3. **Webhook de entrada inalcançável de fora** (PR #161). A tela ensinava
+   `/api/webhooks/<slug>`, que não existia; a rota real (`/api/hooks/<slug>`) não
+   estava na lista pública e o middleware devolvia 302 para `/login`. Nenhuma
+   mensagem chegaria. Rota canônica passou a ser `/api/webhooks/<slug>`.
+4. **Banco de dev com sujeira silenciosa** (PR #159). 11 migrations com checksum
+   divergente, 4 tentativas falhas, 1 linha `manual-applied` e drift real. Nada
+   quebrava, mas `prisma migrate dev` exigiria RESET (perderia o cache do Odoo).
+   Saneado sem perder registro. Criado `scripts/db-health.py`.
+
+### CORRIGIDO NA BRANCH `feat/conexao-whatsapp` (2026-07-09, aguardando merge)
+
+5. ✅ **VAZAMENTO ENTRE CLIENTES (segurança).** `loadOutboundTargets(connectionId)`
+   agora exige e filtra por conexão (fail-closed: sem `connectionId`, ninguém
+   recebe); `fireBlocked` escopado à conexão que recebeu a mensagem. Prova:
+   `src/lib/whatsapp/isolamento.test.ts` (3/3 verdes).
+6. ✅ **Modo de resposta por conexão.** `responseMode` na linha de recebimento,
+   `modoEfetivo(conexão → singleton → direct)`. O assistente grava
+   `n8n_webhook` ao concluir o Envio; a EDIÇÃO também grava ao configurar um
+   destino (era o bug A13 reaparecendo no cliente real do backfill).
+7. ✅ **`daily_limit_exceeded` agora é emitido** com mensagem própria, e a entrega
+   do bloqueio respeita o modo (`direct` sai pelo cloud-client; nenhum caminho →
+   log de aviso, nunca silêncio).
+8. ✅ **`model` e `connectionName` no payload** (`RunAgentResult.model` = modelo
+   efetivo pós retry/tier; `connectionName` viaja pela fila).
+9. ✅ **Envelope aninhado da SPEC §3.10** montado dentro de `emitAgentReply`
+   (o `AgentReplyData` continua plano por causa do replay no Redis).
+10. ✅ **Dedup por `message.inboundMessageId`** documentado no runbook e no guia
+    da UI ("O que enviamos"); `deliveryId` declarado inadequado no próprio payload.
+11. ✅ **Trava de número único (§3.4.1)**, nos dois sentidos, comparação
+    normalizada; `WhatsappChannel.phone_number` resolvido na Graph API
+    (fail-closed). Substitui a ideia antiga de "bloquear direct na 2ª conexão".
+12. ✅ **Rota fixa legada responde 410 Gone** (pública, testável); cobertura de
+    `handleWhatsappInbound` portada para `slug-inbound.test.ts` antes.
+13. ✅ **Gate reforçado:** linhas de Conexão (`connection_id` preenchido) são
+    exclusivas do super_admin mesmo quando não são receptoras (a linha de ENVIO
+    aparecia como webhook genérico editável para admin comum).
+
+### DIVIDA (fora do escopo atual)
+
+- `technical_error` cobre falha técnica **e** mídia não suportada. Criar
+  `media_unsupported`.
+- `WhatsappInstance` existe no schema sem uso vivo. Remover (o `delete` da
+  conexão já verifica a FK e falha com mensagem clara).
+- Jobs em voo / payloads no Redis gravados antes do deploy não terão
+  `connectionName` nem `model` (saem `null`; sem consumidor em prod).
+- Formatação de tabela (SPEC §3.12): a regra assume que a primeira coluna é
+  texto. Se for um código numérico, o título da linha sai como número nu.
+- Aviso de hidratação do React aparece em `/dashboard` e `/integracoes`
+  (preexistente, não introduzido pelos PRs desta sessão).
+
+### ARMADILHAS que custaram tempo (não repetir)
+
+- **Teste vermelho pelo motivo errado.** O `isolamento.test.ts` falhou primeiro
+  porque `queue.add` não devolvia `job.id` e `emitAgentReply` não devolvia
+  promessa. Vermelho por erro de setup **não prova bug nenhum**. Sempre conferir a
+  mensagem da falha, não só a cor.
+- **Mock que ignora o `where`.** Se `findMany` devolve `[A,B]` fixo, o teste de
+  isolamento continua vermelho depois da correção e não tem poder de detecção.
+- **Editar migration já aplicada.** `migrate deploy` ignora o checksum (produção
+  passa liso), mas `migrate dev` exige RESET do banco. Ver `docs/runbooks/db-migrations.md`.
+- **O `worker` não tem build próprio.** `docker compose build worker` é no-op.
+  Use `docker compose build app` + `up -d --force-recreate worker`, senão os E2E
+  rodam contra imagem velha e dão **falso verde**.
+- **Runbook mentindo.** O runbook do n8n dizia que a entrada usa HMAC; o código
+  exige `Authorization: Bearer`, e os campos são `snake_case`. Corrigido, mas a
+  lição fica: conferir o código antes de seguir a documentação.

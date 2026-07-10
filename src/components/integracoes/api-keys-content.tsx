@@ -162,7 +162,7 @@ export function ApiKeysContent({ initial }: Props) {
             <Label htmlFor="key-label">Rótulo</Label>
             <Input
               id="key-label"
-              placeholder="Ex: n8n produção, integração externa..."
+              placeholder="Ex: automação de produção, integração externa..."
               value={newLabel}
               onChange={(e) => setNewLabel(e.target.value)}
               required

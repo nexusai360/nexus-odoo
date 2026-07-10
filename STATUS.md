@@ -1,5 +1,26 @@
 # STATUS — nexus-odoo
 
+> **2026-07-09/10 (CONEXÃO COM WHATSAPP , branch feat/conexao-whatsapp, EXECUÇÃO
+> 100% COMPLETA, aguardando merge com "sim").** As 9 ondas do PLAN v3 entregues
+> em TDD com commits atômicos. **O vazamento entre clientes morreu** (A1/A1b:
+> `loadOutboundTargets(connectionId)` fail-closed + `fireBlocked` escopado),
+> provado por unit (isolamento 3/3) e por **E2E contra o dev real (19/19):**
+> duas conexões, destinos capturados por HTTP local, bloqueio e resposta final
+> (worker+agente REAIS, imagem da branch) chegando SÓ no destino certo, rota
+> legada em 410. Entregue: modo de resposta POR CONEXÃO (mata A13), trava de
+> número único nos dois sentidos (§3.4.1, com `WhatsappChannel.phone_number`
+> resolvido na Graph API fail-closed), `daily_limit_exceeded` emitido, envelope
+> aninhado da SPEC §3.10 (`connection`/`message`/`session`/`result`/
+> `diagnostics.model`), formatação compacta §3.12 byte a byte, ações da Conexão
+> (criar/editar/apagar/rotacionar por ponta/listar agrupado), assistente de 4
+> etapas (Recebimento·Envio·Revisão·Conclusão) com tokens do servidor e guias
+> colapsados, listagem 1 card por conexão, edição das duas pontas, gate
+> super_admin reforçado (linha de ENVIO não vaza mais como webhook genérico),
+> teste "nenhum n8n visível" (limpou 5 textos PRÉ-existentes), runbook e RADAR
+> atualizados. tsc/eslint/jest(3878)/next build/db-health/drift: TUDO verde.
+> Migrations novas aplicadas SÓ no dev (`phone_number`, audit actions;
+> schema-changed registrado). **NUNCA mergear sem "sim" explícito.**
+
 > **2026-07-08 (INTELIGÊNCIA DE DEMANDA , branch feat/menu-diretoria, LOCAL, NÃO
 > mergeado) , SUB-PROJETO COMPLETO: Ondas 0/A/B/C + tabela do Nex + PAINÉIS DA
 > DIRETORIA.** Falta só a validação visual do usuário e o merge (com "sim").
@@ -1095,3 +1116,22 @@ Deploy validado: migrations 104/105 aplicadas em prod (menu_access + seed do niv
 de Relatorios 2.0), app/mcp/worker atualizados em rolling, `/api/health` OK, bundle em prod
 contendo o codigo novo, logs dos 3 servicos sem erro. Comportamento padrao identico ao de
 antes: ninguem ganha ou perde menu ate alguem mexer na tela.
+
+## 2026-07-09 (noite) , Conexao com WhatsApp (branch feat/conexao-whatsapp, NAO mergeada)
+
+**Em producao hoje:** PRs #158 (menu_access como autoridade real dos menus), #159
+(saude do banco + `scripts/db-health.py`), #160 (gate do canal in-app no servidor
++ receptor de WhatsApp so para super_admin + cards padronizados) e #161 (o
+endpoint de recebimento de webhook estava inalcancavel de fora). Todos validados
+em producao, migrations 105 -> 106 (a 106 e so no dev).
+
+**Em andamento:** feature "Conexao com WhatsApp" (webhook 2-em-1: recebimento +
+envio numa unica conexao). SPEC v3 e PLAN v3 fechados, cada um com duas reviews
+adversariais. Execucao na Onda A.
+
+**Achado mais grave (aberto):** `loadOutboundTargets()` dispara para TODOS os
+destinos habilitados, sem filtrar por conexao , inclusive no `fireBlocked()`, que
+roda antes da sessao. Com dois clientes, o "nao encontrei seu numero" de um vaza o
+telefone no destino do outro. Teste que prova: `src/lib/whatsapp/isolamento.test.ts`.
+
+**Retomada:** ler `branches/feat-conexao-whatsapp/.agente-handoff.md`.

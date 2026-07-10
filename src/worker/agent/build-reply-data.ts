@@ -8,6 +8,8 @@ export interface ReplyContext {
   inboundMessageId: string;
   to: string;
   businessId: string | null;
+  /** Nome da Conexão que recebeu a mensagem (SPEC A7); null em jobs antigos. */
+  connectionName: string | null;
   conversationId: string | null;
   messageType: import("@/lib/whatsapp/inbound-payload").InboundMessageType;
 }
@@ -36,6 +38,7 @@ export function buildReplyData(
       inboundMessageId: ctx.inboundMessageId,
       to: ctx.to,
       businessId: ctx.businessId,
+      connectionName: ctx.connectionName,
       sessionId: ctx.conversationId,
       assistantMessageId: null,
       ok: false,
@@ -44,6 +47,7 @@ export function buildReplyData(
       suggestions: [],
       tools: [],
       reasoningMs: 0,
+      model: null,
       usage: baseUsage,
       messageType: ctx.messageType,
     };
@@ -55,6 +59,7 @@ export function buildReplyData(
     inboundMessageId: ctx.inboundMessageId,
     to: ctx.to,
     businessId: ctx.businessId,
+    connectionName: ctx.connectionName,
     sessionId: ctx.conversationId,
     assistantMessageId: result.messageId,
     ok: !isDenied,
@@ -63,6 +68,7 @@ export function buildReplyData(
     suggestions: isDenied ? [] : result.suggestions,
     tools: isDenied ? [] : result.toolsCalled,
     reasoningMs: isDenied ? 0 : result.reasoningMs,
+    model: isDenied ? null : result.model,
     usage: isDenied
       ? baseUsage
       : {

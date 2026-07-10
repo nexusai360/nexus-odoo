@@ -9,7 +9,7 @@
 export type WebhookKind = "whatsapp" | "inbound_generic" | "outbound";
 
 const LABELS: Record<WebhookKind, string> = {
-  whatsapp: "Receber mensagens do WhatsApp",
+  whatsapp: "Conexão com WhatsApp",
   inbound_generic: "Receber eventos",
   outbound: "Enviar eventos",
 };
@@ -33,7 +33,8 @@ export function webhookKindBadgeClass(kind: WebhookKind): string {
 
 /** Subtítulo personalizado por tipo (cabeçalho da tela). */
 export function webhookKindSubtitle(kind: WebhookKind | null): string {
-  if (kind === "whatsapp") return "Configure um webhook para receber mensagens do WhatsApp.";
+  if (kind === "whatsapp")
+    return "Configure as duas pontas da conexão: o recebimento das mensagens e o envio das respostas.";
   if (kind === "inbound_generic") return "Configure um webhook para receber eventos de outros sistemas.";
   if (kind === "outbound") return "Configure um webhook para enviar eventos para outros sistemas.";
   return "Escolha o tipo de webhook que você quer criar.";

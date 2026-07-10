@@ -30,7 +30,9 @@ const PREFIXOS_PUBLICOS = [
   "/api/health",
   "/api/webhooks",
   "/api/hooks",
-  // Rota legada do receptor de WhatsApp (resolve o primeiro webhook habilitado).
+  // Rota legada do receptor de WhatsApp, descontinuada: responde 410 Gone.
+  // PRECISA seguir pública, senão o middleware devolve redirect de login e quem
+  // ainda aponta para cá nunca vê o aviso de descontinuação.
   "/api/integrations/whatsapp/inbound",
 ];
 
