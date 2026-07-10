@@ -26,6 +26,11 @@ migram para os níveis; **só então** rodar a migration de DROP (segunda migrat
 seguindo o protocolo de schema: avisar + `agente schema-changed`). As colunas
 permanecem fisicamente no schema/DB até lá (inertes para esta frente).
 
+**✅ FECHADO em 2026-07-10** (branch `chore/dividas-whatsapp-radar`): as frentes
+que liam as colunas foram encerradas; migration
+`20260710010000_drop_booleans_legados_canal` dropou as duas colunas
+(idempotente, aplicada no dev; prod aplica no boot do deploy).
+
 ---
 
 ## R-faturamento-duas-definicoes — Plataforma tem DUAS definicoes de faturamento divergentes (RESOLVIDO)
@@ -720,18 +725,22 @@ marcado; o resto é dívida aberta.
     exclusivas do super_admin mesmo quando não são receptoras (a linha de ENVIO
     aparecia como webhook genérico editável para admin comum).
 
-### DIVIDA (fora do escopo atual)
+### DIVIDA (estado em 2026-07-10, branch chore/dividas-whatsapp-radar)
 
-- `technical_error` cobre falha técnica **e** mídia não suportada. Criar
-  `media_unsupported`.
-- `WhatsappInstance` existe no schema sem uso vivo. Remover (o `delete` da
-  conexão já verifica a FK e falha com mensagem clara).
+- ✅ ~~`technical_error` cobre também mídia não suportada~~ → `media_unsupported`
+  criado (catálogo + processor), 2026-07-10.
+- ✅ ~~`WhatsappInstance` sem uso vivo~~ → removido (modelo, tabela com 0 linhas
+  em dev/prod, telas e actions), 2026-07-10.
+- ✅ ~~Fuso do teto diário (meia-noite do servidor = 21h BR)~~ → corte agora é a
+  meia-noite de America/Sao_Paulo (`inicioDoDiaEmSaoPaulo`), 2026-07-10.
 - Jobs em voo / payloads no Redis gravados antes do deploy não terão
-  `connectionName` nem `model` (saem `null`; sem consumidor em prod).
+  `connectionName` nem `model` (saem `null`; janela transitória, se resolve
+  sozinha em 24h de TTL do replay).
 - Formatação de tabela (SPEC §3.12): a regra assume que a primeira coluna é
-  texto. Se for um código numérico, o título da linha sai como número nu.
+  texto. Se for um código numérico, o título da linha sai como número nu
+  (mudar exige decisão de spec do usuário).
 - Aviso de hidratação do React aparece em `/dashboard` e `/integracoes`
-  (preexistente, não introduzido pelos PRs desta sessão).
+  (preexistente; frente própria de investigação de UI, fora deste escopo).
 
 ### ARMADILHAS que custaram tempo (não repetir)
 

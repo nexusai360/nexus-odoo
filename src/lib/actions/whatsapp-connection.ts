@@ -445,8 +445,6 @@ export async function alternarConexaoWhatsapp(
 
 /**
  * Apaga a Conexão inteira (as duas linhas), numa transação.
- * Se alguma `WhatsappInstance` ainda aponta para uma das linhas, falha com
- * mensagem clara em vez de estourar a FK (o modelo é morto, mas a FK existe).
  */
 export async function apagarConexaoWhatsapp(
   connectionId: string,
@@ -461,19 +459,6 @@ export async function apagarConexaoWhatsapp(
   });
   if (linhas.length === 0) {
     return { success: false, error: "Conexão não encontrada" };
-  }
-
-  const instancia = await prisma.whatsappInstance.findFirst({
-    where: { webhookId: { in: linhas.map((l) => l.id) } },
-    select: { id: true, name: true },
-  });
-  if (instancia) {
-    return {
-      success: false,
-      error:
-        `Há uma instância de WhatsApp ("${instancia.name}") apontando para esta conexão. ` +
-        "Remova a instância antes de apagar a conexão.",
-    };
   }
 
   try {

@@ -27,6 +27,7 @@ import type { AgentJobData } from "@/worker/agent/processor";
 import { emitAgentReply, type OutboundTarget } from "@/lib/whatsapp/emit-reply";
 import { blockedMessageFor, type BlockReason } from "@/lib/whatsapp/blocked-messages";
 import { modoEfetivo } from "@/lib/whatsapp/response-mode";
+import { inicioDoDiaEmSaoPaulo } from "@/lib/whatsapp/dia-local";
 import { roleMeetsChannelLevel } from "@/lib/agent/channel-access";
 import type { ChannelAccessLevel, WhatsappResponseMode } from "@/generated/prisma/client";
 
@@ -254,8 +255,9 @@ export async function handleWhatsappInbound(
     dailyLimitSetting && typeof dailyLimitSetting.value === "number"
       ? dailyLimitSetting.value
       : DEFAULT_DAILY_LIMIT;
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
+  // Dia civil de São Paulo: os containers rodam em UTC e o setHours(0,0,0,0)
+  // antigo cortava o teto às 21h do Brasil, zerando o contador à noite.
+  const todayStart = inicioDoDiaEmSaoPaulo();
   const userDailyCount = await prisma.processedWhatsappMessage
     .count({ where: { userId: user.id, processedAt: { gte: todayStart } } })
     .catch(() => 0);

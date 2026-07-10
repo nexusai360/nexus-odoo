@@ -158,6 +158,7 @@ texto padrão pronto para enviar ao usuário. Textos versionados em
 | `channel_disabled` | L2 (inbound) | O Agente Nex está desativado para o WhatsApp neste momento. |
 | `role_not_allowed` | L2 (inbound) | Seu perfil ainda não tem acesso ao Agente Nex pelo WhatsApp. Fale com o administrador. |
 | `daily_limit_exceeded` | teto (inbound) | Você atingiu o limite diário de mensagens ao Agente Nex. Amanhã o limite renova; se precisar de mais, fale com o administrador. |
+| `media_unsupported` | worker | Recebi seu arquivo, mas ainda não consigo lê-lo por aqui. Por enquanto, me envie sua pergunta por escrito que eu te ajudo. |
 | `permission_denied` | L3 (worker) | Sua pergunta toca em um módulo que o seu acesso na plataforma não cobre hoje. |
 | `technical_error` | técnica | Não consegui processar sua mensagem agora. Tente novamente em instantes. |
 
@@ -169,7 +170,9 @@ texto padrão pronto para enviar ao usuário. Textos versionados em
 - **L3 (`permission_denied`)** acontece no worker, **antes do LLM principal**,
   mas cria sessão/Message e pode acionar o Judge. Traz `deniedModule` e
   `allowedModules` para o n8n montar resposta mais rica se quiser.
-- **`technical_error`** cobre, por ora, também as recusas de mídia. Ver §9.
+- **`media_unsupported`** cobre imagem/documento/vídeo/sticker (a leitura de
+  mídia pela IA é etapa futura) e áudio Meta cru com o canal de áudio
+  desligado. `technical_error` é só falha técnica de fato.
 
 ## 6. Idempotência e deduplicação (defesa de ponta no n8n)
 
@@ -203,13 +206,13 @@ texto padrão pronto para enviar ao usuário. Textos versionados em
 
 ## 9. Pendências e dívidas conhecidas
 
-- **Mídia não suportada vs falha técnica:** hoje ambas saem como
-  `technical_error`. Criar `media_unsupported` fica para uma onda futura.
-- **Fuso do teto diário:** a contagem usa a meia-noite do servidor. Conferir se
-  bate com o fuso BR esperado antes de confiar no corte por dia.
-- **`WhatsappInstance`:** modelo morto no schema; o `delete` da conexão verifica
-  a FK antes de apagar. Remoção do modelo é dívida em `docs/RADAR.md`.
-- **Jobs em voo no deploy:** payloads gravados no Redis antes desta versão não
-  têm `connection.name` nem `diagnostics.model` (saem `null`).
-- **Drop das colunas legadas `bubbleEnabled`/`whatsappEnabled`:** deferido para
-  depois do merge desta frente (banco compartilhado). Ver `docs/RADAR.md`.
+- ~~Mídia não suportada vs falha técnica~~ → resolvido em 2026-07-10:
+  `media_unsupported` existe (ver §5).
+- ~~Fuso do teto diário~~ → resolvido em 2026-07-10: o corte é a meia-noite de
+  **America/Sao_Paulo** (`inicioDoDiaEmSaoPaulo`), não a do servidor (UTC).
+- ~~`WhatsappInstance`~~ → removido em 2026-07-10 (modelo, tabela e telas; a
+  tabela tinha 0 linhas em dev e em produção).
+- ~~Drop das colunas legadas `bubbleEnabled`/`whatsappEnabled`~~ → dropadas em
+  2026-07-10 (as frentes que ainda liam as colunas foram encerradas).
+- **Jobs em voo no deploy:** payloads gravados no Redis antes da versão de
+  2026-07-10 não têm `connection.name` nem `diagnostics.model` (saem `null`).
