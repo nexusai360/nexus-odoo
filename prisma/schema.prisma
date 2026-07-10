@@ -60,6 +60,10 @@ enum AuditAction {
   webhook_secret_rotated
   webhook_toggled
   webhook_deleted
+  whatsapp_connection_created
+  whatsapp_connection_updated
+  whatsapp_connection_deleted
+  whatsapp_connection_token_rotated
   external_mcp_server_created
   external_mcp_server_updated
   external_mcp_server_toggled
