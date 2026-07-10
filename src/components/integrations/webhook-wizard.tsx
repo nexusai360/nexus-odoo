@@ -39,6 +39,7 @@ import {
 } from "@/lib/whatsapp/countries"
 import { WebhookEventSelector } from "@/components/integrations/webhook-event-selector"
 import { WhatsappInboundHelp } from "@/components/integrations/whatsapp-inbound-help"
+import { ConexaoWhatsappWizard } from "@/components/integrations/conexao-whatsapp-wizard"
 import {
   createWebhook,
   type CreateWebhookInput,
@@ -114,6 +115,8 @@ export interface WebhookWizardProps {
   /** business_id já cadastrados, para validar unicidade em tempo real. */
   existingBusinessIds?: string[]
   onCreated: (webhook: CreatedWebhook) => void
+  /** Conexão com WhatsApp criada pelo assistente de 4 etapas (fluxo próprio). */
+  onConexaoCriada?: () => void
   onCancel?: () => void
   /** Notifica o tipo escolhido (para a navegação/cabeçalho da tela). */
   onKindChange?: (kind: WebhookKind | null) => void
@@ -139,6 +142,7 @@ export function WebhookWizard({
   existingPaths = [],
   existingBusinessIds = [],
   onCreated,
+  onConexaoCriada,
   onCancel,
   onKindChange,
   kindsPermitidos,
@@ -310,7 +314,22 @@ export function WebhookWizard({
       onSubmit={handleEnterAdvance}
       className={cn("space-y-6", !embedded && "rounded-xl border border-border p-6")}
     >
-      <StepIndicator steps={["Tipo", "Configuração", "Conclusão"]} current={step} />
+      {/* A Conexão com WhatsApp tem indicador próprio (4 etapas, SPEC §3.7). */}
+      {!(isWhatsapp && step >= 2) && (
+        <StepIndicator steps={["Tipo", "Configuração", "Conclusão"]} current={step} />
+      )}
+
+      {/* Conexão com WhatsApp: assistente de 4 etapas (Recebimento · Envio ·
+          Revisão · Conclusão). Os outros tipos seguem o fluxo genérico abaixo. */}
+      {step >= 2 && isWhatsapp && (
+        <ConexaoWhatsappWizard
+          inboundBaseUrl={inboundBaseUrl}
+          existingPaths={existingPaths}
+          existingBusinessIds={existingBusinessIds}
+          onBack={() => setStep(1)}
+          onDone={() => onConexaoCriada?.()}
+        />
+      )}
 
       {/* Passo 1, Tipo */}
       {step === 1 && (
@@ -349,8 +368,8 @@ export function WebhookWizard({
         </div>
       )}
 
-      {/* Passo 2, Configuração (personalizada pelo tipo) */}
-      {step === 2 && kind && (
+      {/* Passo 2, Configuração (tipos genéricos; WhatsApp usa o assistente acima) */}
+      {step === 2 && kind && !isWhatsapp && (
         <div className="space-y-5">
           <KindBanner kind={kind} />
 
@@ -541,7 +560,7 @@ export function WebhookWizard({
       )}
 
       {/* Passo 3, Secret */}
-      {step === 3 && created && (
+      {step === 3 && !isWhatsapp && created && (
         <div className="space-y-5">
           <div className="space-y-1">
             <h3 className="text-sm font-medium">Webhook criado</h3>

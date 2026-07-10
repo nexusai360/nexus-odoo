@@ -81,7 +81,7 @@ function ReqBadge({ req }: { req: Req }) {
 
 /** Linha de exemplo: texto cru + marca visual "(opcional)". A marca NÃO entra
  *  no que é copiado (o copy usa o texto limpo). */
-interface CodeLine {
+export interface CodeLine {
   text: string;
   optional?: boolean;
 }
@@ -151,7 +151,7 @@ function useCopy(): [boolean, (value: string) => void] {
   return [copied, copy];
 }
 
-function CopyButton({
+export function CopyButton({
   value,
   label = "Copiar",
   disabled = false,
@@ -182,7 +182,7 @@ function CopyButton({
 }
 
 /** Bloco de código com cabeçalho (rótulo + copiar) e corpo com linhas anotáveis. */
-function CodeBlock({ label, lines, hint }: { label: string; lines: CodeLine[]; hint?: string }) {
+export function CodeBlock({ label, lines, hint }: { label: string; lines: CodeLine[]; hint?: string }) {
   return (
     <div className="overflow-hidden rounded-lg border border-border">
       <div className="flex items-center justify-between gap-2 border-b border-border bg-muted/40 px-3 py-2">
@@ -207,7 +207,7 @@ function CodeBlock({ label, lines, hint }: { label: string; lines: CodeLine[]; h
 }
 
 /** Passo com dropdown próprio (abrir/fechar). Numerado quando `n` é informado. */
-function Step({
+export function Step({
   icon: Icon,
   n,
   title,

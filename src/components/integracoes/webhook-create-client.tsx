@@ -81,6 +81,11 @@ export function WebhookCreateClient({
             router.push("/integracoes/webhooks");
             router.refresh();
           }}
+          onConexaoCriada={() => {
+            toast.success("Conexão com WhatsApp criada");
+            router.push("/integracoes/webhooks");
+            router.refresh();
+          }}
           onCancel={() => router.push("/integracoes/webhooks")}
         />
       </div>
