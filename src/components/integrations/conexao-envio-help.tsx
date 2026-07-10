@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Guia "O que enviamos" da etapa de ENVIO da Conexão com WhatsApp.
+ * Guia "Payload que enviamos" da etapa de ENVIO da Conexão com WhatsApp.
  *
  * Mesma estrutura do guia de recebimento (blocos com dropdown próprio), mas
  * **sem numeração de passo**: aqui não há sequência a executar, só a descrição
@@ -189,7 +189,7 @@ export function ConexaoEnvioHelp({
         className="flex w-full cursor-pointer items-center justify-between gap-2 px-4 py-3 text-left"
       >
         <span>
-          <span className="block text-sm font-semibold text-foreground">O que enviamos</span>
+          <span className="block text-sm font-semibold text-foreground">Payload que enviamos</span>
           <span className="block text-xs text-muted-foreground">
             Headers, corpo do POST e exemplos completos.
           </span>

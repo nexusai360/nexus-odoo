@@ -378,9 +378,15 @@ ignora maiúsculas/minúsculas e espaços nas pontas. Verificada no **servidor**
 (fonte da verdade) e antecipada na tela. As duas linhas de uma Conexão
 compartilham o nome e não conflitam entre si.
 
-**Guias (`Como montar o payload` / `O que enviamos`):** nascem fechados, com
+**Confirmar campo é só na CRIAÇÃO (decisão do usuário 2026-07-10).** Nas telas de
+**edição** (todos os tipos) não existe o botão de confirmar: alterou um campo,
+salva no botão **"Salvar alterações"**, como no resto da plataforma. O botão de
+confirmar continua na criação, onde não há "salvar" e o valor precisa ser fixado
+antes de avançar.
+
+**Guias (`Como montar o payload` / `Payload que enviamos`):** nascem fechados, com
 **todos os sub-blocos fechados**. Ficam depois do token, com respiro, anunciados
-por uma dica de uma linha e contorno sutil. O guia de envio **não numera passos**
+por uma dica de uma linha e contorno sutil. O guia de envio chama-se **"Payload que enviamos"** e **não numera passos**
 (não há sequência a executar): blocos `Headers`, `Body` e `Exemplos`. O aviso de
 deduplicação é informativo, em **tom neutro**, para não competir com o token.
 

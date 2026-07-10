@@ -252,7 +252,7 @@ export function ConexaoEditForm({
           onRotate={() => handleRotacionar("recebimento")}
         />
 
-        <WhatsappInboundHelp inboundBaseUrl={inboundBaseUrl} path={pathTrim} defaultOpen={false} />
+        <WhatsappInboundHelp inboundBaseUrl={inboundBaseUrl} path={pathTrim} defaultOpen={false} destaque />
       </section>
 
       {/* ── Envio ───────────────────────────────────────────────────────────── */}
@@ -304,7 +304,7 @@ export function ConexaoEditForm({
           />
         )}
 
-        <ConexaoEnvioHelp defaultOpen={false} />
+        <ConexaoEnvioHelp defaultOpen={false} destaque />
       </section>
 
       {error && (
@@ -336,43 +336,53 @@ export function ConexaoEditForm({
   );
 }
 
+/**
+ * Bloco de rotação de token, no MESMO padrão dos outros tipos de webhook
+ * (`webhook-edit-form`): título, explicação, token atual mascarado e o botão
+ * de rotacionar à direita.
+ */
 function TokenRotacao({
   label,
   hint,
   rotating,
+  disabled = false,
   onRotate,
 }: {
   label: string;
   hint: string | null;
   rotating: boolean;
+  disabled?: boolean;
   onRotate: () => void;
 }) {
   return (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
-      <div className="flex items-center gap-2">
-        <code className="flex h-9 min-w-0 flex-1 items-center rounded-lg border border-input bg-background px-3 font-mono text-xs text-muted-foreground">
-          {hint ?? "••••"}
-        </code>
+    <div className="rounded-lg border border-border bg-muted/30 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="space-y-1">
+          <p className="text-sm font-medium">{label}</p>
+          <p className="text-xs text-muted-foreground">Gere um novo token e invalide o anterior.</p>
+          <p className="text-xs text-muted-foreground">
+            Token atual:{" "}
+            <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-foreground">
+              {hint ?? "••••"}
+            </code>
+          </p>
+        </div>
         <Button
           type="button"
           variant="outline"
           size="sm"
-          disabled={rotating}
+          className="shrink-0 gap-1.5"
+          disabled={rotating || disabled}
           onClick={onRotate}
-          className="h-9 cursor-pointer"
         >
           {rotating ? (
-            <Loader2 className="size-4 animate-spin" />
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
           ) : (
-            <RotateCcw className="size-4" />
+            <RotateCcw className="h-3.5 w-3.5" />
           )}
           Rotacionar
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground">
-        Rotacionar gera um valor novo na hora e invalida o atual. As duas pontas são independentes.
-      </p>
     </div>
   );
 }
