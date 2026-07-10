@@ -261,6 +261,12 @@ export type RunAgentResult =
       toolsCalled: string[];
       /** F5 B. Soma do tempo de raciocínio do turno em ms (por iteração). */
       reasoningMs: number;
+      /**
+       * Modelo EFETIVO da resposta final (pós tier T3 e pós retry do
+       * auto-validador). `null` quando o ramo não chamou LLM: a recusa L3
+       * (`permission-denial.ts`) retorna por este mesmo ramo ok:true.
+       */
+      model: string | null;
       /** F5 B/L3. Só em recusa por permissão: módulo desejado e permitidos. */
       deniedModule?: string;
       allowedModules?: string[];
@@ -742,6 +748,10 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
 
     // Passou o fast-path: agora sim instanciamos o cliente LLM.
     const client = buildLlmClient(resolvedLlm.provider, resolvedLlm.apiKey, resolvedLlm.model);
+    // Modelo EFETIVO da resposta final (SPEC §3.10): começa no modelo do
+    // cliente e só muda se o retry do auto-validador (cascata T3) reescrever a
+    // resposta em outro modelo.
+    let modeloDaResposta: string = client.model;
 
     const filteredCatalog = filterCatalog({
       allTools: allToolsBeforeRouter,
@@ -1375,6 +1385,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
                   );
                   if (retry.message && retry.message.trim().length > 0) {
                     message = retry.message;
+                    modeloDaResposta = retryClient.model;
                     autoValidatorRetryCount = 1;
                     console.warn(
                       `[autoValidator:active] retry OK ${outcome.reason} dur=${Date.now() - retryStart}ms`,
@@ -1523,6 +1534,8 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
           // F5 B. Tools e tempo de raciocínio do turno (envelope agent.reply).
           toolsCalled: allTurnToolNames,
           reasoningMs: turnReasoningMs,
+          // Modelo efetivo da resposta final (SPEC §3.10, resolve A6).
+          model: modeloDaResposta,
         };
       }
 

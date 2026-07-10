@@ -135,6 +135,7 @@ async function fireBlocked(
       inboundMessageId,
       to,
       businessId: webhook.businessId,
+      connectionName: webhook.connectionName ?? null,
       sessionId: null,
       assistantMessageId: null,
       ok: false,
@@ -143,6 +144,8 @@ async function fireBlocked(
       suggestions: [],
       tools: [],
       reasoningMs: 0,
+      // Bloqueio de barreira não chama LLM: não há modelo (SPEC §3.10).
+      model: null,
       usage: { tokensInput: 0, tokensOutput: 0, costUsd: 0 },
       messageType: "text",
     },
@@ -293,6 +296,7 @@ export async function handleWhatsappInbound(
     waUserId: payload.user_id,
     replyTo: payload.wa_id,
     businessId: webhook.businessId ?? undefined,
+    connectionName: webhook.connectionName ?? undefined,
     contactName: payload.contact_name,
     channelConfig,
   };

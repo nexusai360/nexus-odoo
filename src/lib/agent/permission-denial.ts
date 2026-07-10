@@ -140,6 +140,8 @@ export async function respondPermissionDenied(
     // F5 B. Recusa não aciona tools nem mede raciocínio do turno.
     toolsCalled: [],
     reasoningMs: 0,
+    // A recusa é template, sem chamada de LLM: não há modelo (SPEC §3.10).
+    model: null,
     // F5 B/L3. Estruturado para o n8n: módulo desejado e módulos permitidos.
     deniedModule: args.deniedDomains[0],
     allowedModules: args.availableDomains,
