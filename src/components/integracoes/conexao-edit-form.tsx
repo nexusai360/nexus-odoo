@@ -172,7 +172,7 @@ export function ConexaoEditForm({
   }
 
   return (
-    <div className="space-y-6 rounded-xl border border-border p-6">
+    <div className="space-y-7 rounded-xl border border-border p-6">
       <KindBanner kind="whatsapp" />
 
       <div className="space-y-1.5">
@@ -203,7 +203,7 @@ export function ConexaoEditForm({
       </div>
 
       {/* ── Recebimento ─────────────────────────────────────────────────────── */}
-      <section className="space-y-4 rounded-lg border border-border p-4">
+      <section className="space-y-5 rounded-lg border border-border p-5">
         <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <ArrowDownToLine className="h-4 w-4 text-green-500" aria-hidden />
           Recebimento
@@ -257,6 +257,8 @@ export function ConexaoEditForm({
           )}
         </div>
 
+        <MetodoPostTravado />
+
         <TokenRotacao
           label="Token de recebimento"
           hint={conexao.secretHintRecebimento}
@@ -264,11 +266,13 @@ export function ConexaoEditForm({
           onRotate={() => handleRotacionar("recebimento")}
         />
 
-        <WhatsappInboundHelp inboundBaseUrl={inboundBaseUrl} path={pathTrim} defaultOpen={false} destaque />
+        <div className="pt-1">
+          <WhatsappInboundHelp inboundBaseUrl={inboundBaseUrl} path={pathTrim} defaultOpen={false} destaque />
+        </div>
       </section>
 
       {/* ── Envio ───────────────────────────────────────────────────────────── */}
-      <section className="space-y-4 rounded-lg border border-border p-4">
+      <section className="space-y-5 rounded-lg border border-border p-5">
         <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <ArrowUpFromLine className="h-4 w-4 text-green-500" aria-hidden />
           Envio
@@ -299,13 +303,7 @@ export function ConexaoEditForm({
           )}
         </div>
 
-        <div className="space-y-1.5">
-          <Label>Método HTTP</Label>
-          <span className="inline-flex items-center gap-1 rounded-lg border border-violet-500/50 bg-violet-500/10 px-2.5 py-1 text-xs font-medium text-violet-600 dark:text-violet-400">
-            <Lock className="h-3 w-3" strokeWidth={1.5} aria-hidden />
-            POST
-          </span>
-        </div>
+        <MetodoPostTravado />
 
         {conexao.outboundId !== null && (
           <TokenRotacao
@@ -316,7 +314,9 @@ export function ConexaoEditForm({
           />
         )}
 
-        <ConexaoEnvioHelp defaultOpen={false} destaque />
+        <div className="pt-1">
+          <ConexaoEnvioHelp defaultOpen={false} destaque />
+        </div>
       </section>
 
       {error && (
@@ -353,6 +353,22 @@ export function ConexaoEditForm({
  * (`webhook-edit-form`): título, explicação, token atual mascarado e o botão
  * de rotacionar à direita.
  */
+/** Método HTTP fixo em POST (travado), igual às duas pontas do assistente. */
+function MetodoPostTravado() {
+  return (
+    <div className="space-y-1.5">
+      <Label>Método HTTP</Label>
+      <div className="flex items-center gap-2">
+        <span className="inline-flex items-center gap-1 rounded-lg border border-violet-500/50 bg-violet-500/10 px-2.5 py-1 text-xs font-medium text-violet-600 dark:text-violet-400">
+          <Lock className="h-3 w-3" strokeWidth={1.5} aria-hidden />
+          POST
+        </span>
+        <span className="text-xs text-muted-foreground">Definido automaticamente.</span>
+      </div>
+    </div>
+  );
+}
+
 function TokenRotacao({
   label,
   hint,
