@@ -85,29 +85,61 @@ async function loadOutboundTargets(connectionId?: string | null): Promise<Outbou
   });
 }
 
-/** Dispara o webhook de saída `agent.reply` com `kind:"blocked"` (barreiras L1/L2). */
+/**
+ * Entrega a mensagem de bloqueio das barreiras (L1/L2/teto) respeitando o modo
+ * efetivo da conexão (SPEC §3.5):
+ *  - `n8n_webhook` → webhook de saída DA conexão (escopado: o "não encontrei
+ *    seu número" expõe o telefone de quem escreveu e não pode ir para o
+ *    destino de outro cliente, SPEC A1b);
+ *  - `direct`      → envio pelo cloud-client (Graph API);
+ *  - nenhum caminho disponível → log de aviso, nunca silêncio.
+ */
 async function fireBlocked(
   reason: BlockReason,
   to: string,
   webhook: InboundWebhookContext,
   inboundMessageId: string,
 ): Promise<void> {
-  // Escopado à conexão que recebeu a mensagem: o "não encontrei seu número"
-  // expõe o telefone de quem escreveu e não pode ir para o destino de outro
-  // cliente (SPEC A1b).
+  const reply = blockedMessageFor(reason);
+  const canal = await prisma.whatsappChannel
+    .findUnique({ where: { id: "global" } })
+    .catch(() => null);
+  const mode = modoEfetivo(webhook.responseMode, canal?.responseMode);
+
+  if (mode === "direct") {
+    try {
+      const { buildCloudClientFromDb } = await import("@/lib/whatsapp/cloud-client");
+      const client = await buildCloudClientFromDb();
+      await client.sendText(to, reply);
+    } catch (e) {
+      console.warn(
+        "[inbound] fireBlocked: nenhum caminho de entrega disponível (envio direto falhou):",
+        e,
+      );
+    }
+    return;
+  }
+
   const targets = await loadOutboundTargets(webhook.connectionId);
-  const businessId = webhook.businessId;
+  if (targets.length === 0) {
+    console.warn(
+      "[inbound] fireBlocked: nenhum caminho de entrega disponível (conexão sem destino de saída):",
+      { reason, connectionId: webhook.connectionId ?? null },
+    );
+    return;
+  }
+
   await emitAgentReply(targets, {
     kind: "blocked",
     data: {
       inboundMessageId,
       to,
-      businessId: businessId,
+      businessId: webhook.businessId,
       sessionId: null,
       assistantMessageId: null,
       ok: false,
       reason,
-      reply: blockedMessageFor(reason),
+      reply,
       suggestions: [],
       tools: [],
       reasoningMs: 0,
@@ -225,6 +257,8 @@ export async function handleWhatsappInbound(
     .count({ where: { userId: user.id, processedAt: { gte: todayStart } } })
     .catch(() => 0);
   if (userDailyCount >= dailyLimit) {
+    // A14: quem estoura o teto recebia silêncio absoluto. Agora é avisado.
+    await fireBlocked("daily_limit_exceeded", payload.wa_id, webhook, payload.message_id);
     return NextResponse.json({ rejected: true, reason: "daily_limit_exceeded" }, { status: 200 });
   }
 

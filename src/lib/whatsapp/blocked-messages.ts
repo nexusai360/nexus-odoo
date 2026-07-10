@@ -1,9 +1,10 @@
-/** Códigos de bloqueio das barreiras de validação (L1/L2/L3 + falha técnica). */
+/** Códigos de bloqueio das barreiras de validação (L1/L2/L3 + teto + falha técnica). */
 export type BlockReason =
   | "user_not_found"
   | "user_inactive"
   | "channel_disabled"
   | "role_not_allowed"
+  | "daily_limit_exceeded"
   | "permission_denied"
   | "technical_error";
 
@@ -17,6 +18,8 @@ const MESSAGES: Record<BlockReason, string> = {
     "O Agente Nex está desativado para o WhatsApp neste momento.",
   role_not_allowed:
     "Seu perfil ainda não tem acesso ao Agente Nex pelo WhatsApp. Fale com o administrador.",
+  daily_limit_exceeded:
+    "Você atingiu o limite diário de mensagens ao Agente Nex. Amanhã o limite renova; se precisar de mais, fale com o administrador.",
   permission_denied:
     "Sua pergunta toca em um módulo que o seu acesso na plataforma não cobre hoje.",
   technical_error:

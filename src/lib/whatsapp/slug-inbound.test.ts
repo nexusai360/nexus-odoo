@@ -106,7 +106,9 @@ const WEBHOOK_INBOUND = {
   businessId: "5561995630029",
   connectionId: "conn-1",
   name: "Matrix Group",
-  responseMode: null,
+  // Conexão com o Envio configurado: os bloqueios saem pelo webhook dela.
+  // (Em modo `direct` o bloqueio sai pelo cloud-client, SPEC §3.5.)
+  responseMode: "n8n_webhook",
 };
 
 function makeRequest(
