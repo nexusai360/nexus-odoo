@@ -1,5 +1,19 @@
 # STATUS — nexus-odoo
 
+> **2026-07-10 (CONEXÃO COM WHATSAPP , TUDO EM PRODUÇÃO, FRENTE ENCERRADA).**
+> Três PRs mergeados e deployados em `agentenex.nexusai360.com`: **#162** (a
+> feature: isolamento por conexão que mata o vazamento entre clientes, modo por
+> conexão, trava de número, envelope §3.10, formatação compacta, assistente de 4
+> etapas), **#163** (dívidas: `media_unsupported`, teto diário no fuso de São
+> Paulo, drop dos booleans legados, remoção do `WhatsappInstance`) e **#164** (UI
+> refeita no padrão da plataforma após revisão do usuário: token reservado
+> revelado na sua etapa, seções com respiro, confirmar campo só na criação,
+> guias fechados com destaque sutil, cards com URL completa e tags copiáveis,
+> **trava de nome único** entre todos os webhooks). Prod verificado: health 200,
+> 110/110 migrations, rota legada 410, slug sem token 401. Worktrees da frente
+> encerradas. Dívidas remanescentes (decisão de produto / frente própria): título
+> numérico na formatação de tabela e aviso de hidratação do React.
+
 > **2026-07-10 (DÍVIDAS DO WHATSAPP , EM PRODUÇÃO).** PR #163 mergeado (squash
 > 82dcacb9) e deployado: rolling OK, 110/110 migrations, health 200. Fechadas:
 > `media_unsupported` (A5), teto diário cortando na meia-noite de São Paulo
