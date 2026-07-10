@@ -9,7 +9,8 @@
 > refeita no padrão da plataforma após revisão do usuário: token reservado
 > revelado na sua etapa, seções com respiro, confirmar campo só na criação,
 > guias fechados com destaque sutil, cards com URL completa e tags copiáveis,
-> **trava de nome único** entre todos os webhooks). Prod verificado: health 200,
+> **trava de nome único** entre todos os webhooks) e **#165** (método POST
+> travado também no Recebimento da tela de edição + espaçamentos afinados). Prod verificado: health 200,
 > 110/110 migrations, rota legada 410, slug sem token 401. Worktrees da frente
 > encerradas. Dívidas remanescentes (decisão de produto / frente própria): título
 > numérico na formatação de tabela e aviso de hidratação do React.
