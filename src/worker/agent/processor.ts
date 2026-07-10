@@ -19,6 +19,7 @@ import { getOrCreateWhatsappConversation } from "@/lib/agent/conversation";
 import { transcribeAudio } from "@/lib/agent/transcribe";
 import { buildCloudClientFromDb } from "@/lib/whatsapp/cloud-client";
 import { emitAgentReply, type AgentReplyData, type OutboundTarget } from "@/lib/whatsapp/emit-reply";
+import type { BlockReason } from "@/lib/whatsapp/blocked-messages";
 import { buildReplyData } from "./build-reply-data";
 import { prisma } from "@/lib/prisma";
 import { acquireUserLock, releaseUserLock } from "./user-lock";
@@ -96,7 +97,7 @@ export async function processAgentJob(data: AgentJobData): Promise<void> {
     const mediaNotice =
       "Recebi seu arquivo, mas ainda não consigo lê-lo por aqui. " +
       "Por enquanto, me envie sua pergunta por escrito que eu te ajudo.";
-    await dispatchNotice(data, mediaNotice);
+    await dispatchNotice(data, mediaNotice, "media_unsupported");
     return;
   }
 
@@ -106,7 +107,7 @@ export async function processAgentJob(data: AgentJobData): Promise<void> {
     // G2 , Áudio (mídia Meta) desativado para WhatsApp: responder explicando.
     const message =
       "No momento não consigo entender mensagens de áudio. Por favor, envie sua pergunta por escrito.";
-    await dispatchNotice(data, message);
+    await dispatchNotice(data, message, "media_unsupported");
     return;
   }
 
@@ -292,9 +293,14 @@ async function dispatchReply(data: AgentJobData, replyData: AgentReplyData): Pro
 
 /**
  * Aviso brando (mídia não suportada / fallback de áudio): monta um envelope
- * mínimo `ok:false`/`technical_error` com o texto fornecido e despacha.
+ * mínimo `ok:false` com o texto fornecido e despacha. O `reason` distingue
+ * mídia não suportada (`media_unsupported`, A5) de falha técnica de fato.
  */
-async function dispatchNotice(data: AgentJobData, text: string): Promise<void> {
+async function dispatchNotice(
+  data: AgentJobData,
+  text: string,
+  reason: BlockReason = "technical_error",
+): Promise<void> {
   await dispatchReply(data, {
     inboundMessageId: data.messageId,
     to: data.replyTo,
@@ -303,7 +309,7 @@ async function dispatchNotice(data: AgentJobData, text: string): Promise<void> {
     sessionId: null,
     assistantMessageId: null,
     ok: false,
-    reason: "technical_error",
+    reason,
     reply: text,
     suggestions: [],
     tools: [],

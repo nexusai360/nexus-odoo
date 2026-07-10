@@ -294,6 +294,52 @@ describe("processAgentJob , type=audio", () => {
 });
 
 // ──────────────────────────────────────────────
+// Testes , mídia não suportada (A5: reason próprio, não technical_error)
+// ──────────────────────────────────────────────
+
+describe("processAgentJob , mídia não suportada (media_unsupported)", () => {
+  const targets = [{ url: "https://destino/x", secret: "s1" }];
+
+  it("imagem/documento: envelope blocked com reason media_unsupported (não technical_error)", async () => {
+    const imageJob: AgentJobData = {
+      ...BASE_JOB,
+      type: "image",
+      text: undefined,
+      media: { url: "https://cdn/x.jpg", mime_type: "image/jpeg" },
+      channelConfig: { responseMode: "n8n_webhook", outboundTargets: targets },
+    };
+
+    await processAgentJob(imageJob);
+
+    expect(mockRunAgent).not.toHaveBeenCalled();
+    const [, envelope] = mockEmitAgentReply.mock.calls[0] as [unknown, { kind: string; data: Record<string, unknown> }];
+    expect(envelope.kind).toBe("blocked");
+    expect(envelope.data.reason).toBe("media_unsupported");
+    expect(String(envelope.data.reply)).toContain("arquivo");
+  });
+
+  it("áudio Meta com canal OFF e sem texto: reason media_unsupported", async () => {
+    mockAgentSettingsFindFirst.mockResolvedValue({
+      audioCheckpoint: "OFF",
+      imageCheckpoint: "OFF",
+    });
+    const metaAudioOffJob: AgentJobData = {
+      ...BASE_JOB,
+      type: "audio",
+      text: undefined,
+      audioMediaId: "media-id-abc",
+      channelConfig: { responseMode: "n8n_webhook", outboundTargets: targets },
+    };
+
+    await processAgentJob(metaAudioOffJob);
+
+    const [, envelope] = mockEmitAgentReply.mock.calls[0] as [unknown, { kind: string; data: Record<string, unknown> }];
+    expect(envelope.kind).toBe("blocked");
+    expect(envelope.data.reason).toBe("media_unsupported");
+  });
+});
+
+// ──────────────────────────────────────────────
 // Testes , runAgent retorna erro
 // ──────────────────────────────────────────────
 
