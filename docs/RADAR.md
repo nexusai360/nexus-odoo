@@ -692,37 +692,44 @@ marcado; o resto é dívida aberta.
    quebrava, mas `prisma migrate dev` exigiria RESET (perderia o cache do Odoo).
    Saneado sem perder registro. Criado `scripts/db-health.py`.
 
-### ABERTO , entra na "Conexão com WhatsApp" (SPEC/PLAN v3)
+### CORRIGIDO NA BRANCH `feat/conexao-whatsapp` (2026-07-09, aguardando merge)
 
-5. **VAZAMENTO ENTRE CLIENTES (segurança).** `loadOutboundTargets()` busca TODOS
-   os webhooks de saída habilitados com `agent_reply`, sem filtrar por conexão. E
-   `fireBlocked()` faz o mesmo ANTES de existir sessão: o "não encontrei seu
-   número" da conexão A é entregue no destino da conexão B, expondo o telefone de
-   quem escreveu. Teste que prova: `src/lib/whatsapp/isolamento.test.ts`.
-6. **O envio nem funcionaria hoje.** Produção não tem linha em `whatsapp_channel`,
-   então `responseMode` cai no default `direct` e o webhook de saída é ignorado,
-   mesmo configurado. Por isso o modo passou a ser por conexão.
-7. **`daily_limit_exceeded` não emite nada:** quem estoura o teto diário recebe
-   silêncio.
-8. **`model` não existe** em `RunAgentResult` nem em `AgentReplyData`; o **nome da
-   conexão** não trafega até o payload.
-9. **Envelope de saída** é `{event,deliveryId,kind,data,timestamp}` com `data`
-   plano. Vira aninhado (breaking, sem consumidor: prod tem 0 linhas outbound).
-10. **`deliveryId` não serve para deduplicar:** é `randomUUID()` por disparo, um
-    retry gera outro. A chave estável é `message.inboundMessageId`.
+5. ✅ **VAZAMENTO ENTRE CLIENTES (segurança).** `loadOutboundTargets(connectionId)`
+   agora exige e filtra por conexão (fail-closed: sem `connectionId`, ninguém
+   recebe); `fireBlocked` escopado à conexão que recebeu a mensagem. Prova:
+   `src/lib/whatsapp/isolamento.test.ts` (3/3 verdes).
+6. ✅ **Modo de resposta por conexão.** `responseMode` na linha de recebimento,
+   `modoEfetivo(conexão → singleton → direct)`. O assistente grava
+   `n8n_webhook` ao concluir o Envio; a EDIÇÃO também grava ao configurar um
+   destino (era o bug A13 reaparecendo no cliente real do backfill).
+7. ✅ **`daily_limit_exceeded` agora é emitido** com mensagem própria, e a entrega
+   do bloqueio respeita o modo (`direct` sai pelo cloud-client; nenhum caminho →
+   log de aviso, nunca silêncio).
+8. ✅ **`model` e `connectionName` no payload** (`RunAgentResult.model` = modelo
+   efetivo pós retry/tier; `connectionName` viaja pela fila).
+9. ✅ **Envelope aninhado da SPEC §3.10** montado dentro de `emitAgentReply`
+   (o `AgentReplyData` continua plano por causa do replay no Redis).
+10. ✅ **Dedup por `message.inboundMessageId`** documentado no runbook e no guia
+    da UI ("O que enviamos"); `deliveryId` declarado inadequado no próprio payload.
+11. ✅ **Trava de número único (§3.4.1)**, nos dois sentidos, comparação
+    normalizada; `WhatsappChannel.phone_number` resolvido na Graph API
+    (fail-closed). Substitui a ideia antiga de "bloquear direct na 2ª conexão".
+12. ✅ **Rota fixa legada responde 410 Gone** (pública, testável); cobertura de
+    `handleWhatsappInbound` portada para `slug-inbound.test.ts` antes.
+13. ✅ **Gate reforçado:** linhas de Conexão (`connection_id` preenchido) são
+    exclusivas do super_admin mesmo quando não são receptoras (a linha de ENVIO
+    aparecia como webhook genérico editável para admin comum).
 
 ### DIVIDA (fora do escopo atual)
 
 - `technical_error` cobre falha técnica **e** mídia não suportada. Criar
   `media_unsupported`.
-- `WhatsappInstance` existe no schema sem uso vivo. Remover.
+- `WhatsappInstance` existe no schema sem uso vivo. Remover (o `delete` da
+  conexão já verifica a FK e falha com mensagem clara).
 - Jobs em voo / payloads no Redis gravados antes do deploy não terão
-  `connectionName` nem `model` (campos opcionais, sem consumidor em prod).
-- Formatação de tabela: a regra assume que a primeira coluna é texto. Se for um
-  código numérico, o título da linha sai como número nu.
-- `direct` usa credenciais Meta **globais** (um `phoneNumberId`). Duas conexões em
-  `direct` responderiam pelo número errado. Decisão pendente do usuário: bloquear
-  na tela a partir da segunda conexão.
+  `connectionName` nem `model` (saem `null`; sem consumidor em prod).
+- Formatação de tabela (SPEC §3.12): a regra assume que a primeira coluna é
+  texto. Se for um código numérico, o título da linha sai como número nu.
 - Aviso de hidratação do React aparece em `/dashboard` e `/integracoes`
   (preexistente, não introduzido pelos PRs desta sessão).
 

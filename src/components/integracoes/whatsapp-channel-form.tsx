@@ -121,13 +121,13 @@ export function WhatsappChannelForm({ initial }: Props) {
             },
             {
               value: "n8n_webhook",
-              label: "Webhook n8n",
-              description: "A resposta é devolvida ao n8n via webhook de saída",
+              label: "Webhook de saída",
+              description: "A resposta é entregue ao seu fluxo pelo webhook de saída",
             },
           ]}
         />
         <p className="text-xs text-muted-foreground">
-          No modo &quot;Webhook n8n&quot;, configure também o webhook de saída em{" "}
+          No modo &quot;Webhook de saída&quot;, configure também o webhook de saída em{" "}
           <a href="/integracoes/webhooks" className="text-violet-500 hover:underline">
             Integrações → Webhooks
           </a>

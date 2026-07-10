@@ -1385,7 +1385,7 @@ requests.post(
             Quando usar o modo interno
           </SectionTitle>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Modo interno é só para código nosso, server-side: worker de sincronização, Agente Nex in-app, scripts internos. Cliente nunca recebe <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">MCP_SERVICE_TOKEN</code>. Se você está integrando uma plataforma externa (n8n, scripts de terceiros, automações em outro app), use o <a href="#auth" className="text-violet-600 dark:text-violet-400 hover:underline">modo externo</a> com Bearer mcp_live_*.
+            Modo interno é só para código nosso, server-side: worker de sincronização, Agente Nex in-app, scripts internos. Cliente nunca recebe <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">MCP_SERVICE_TOKEN</code>. Se você está integrando uma plataforma externa (ferramentas de automação, scripts de terceiros, automações em outro app), use o <a href="#auth" className="text-violet-600 dark:text-violet-400 hover:underline">modo externo</a> com Bearer mcp_live_*.
           </p>
         </motion.div>
 

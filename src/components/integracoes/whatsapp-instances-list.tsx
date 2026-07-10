@@ -114,7 +114,7 @@ export function WhatsappInstancesList() {
                   <span>
                     {it.responseMode === "direct"
                       ? "Resposta direta"
-                      : "Webhook n8n"}
+                      : "Webhook de saída"}
                   </span>
                   {it.hasToken ? (
                     <>
@@ -345,7 +345,7 @@ function CreateDialog({
               onChange={(v) => setMode(v as "direct" | "n8n_webhook")}
               options={[
                 { value: "direct", label: "Direta (Graph API)" },
-                { value: "n8n_webhook", label: "Webhook n8n" },
+                { value: "n8n_webhook", label: "Webhook de saída" },
               ]}
               triggerClassName="h-9 w-full"
             />
