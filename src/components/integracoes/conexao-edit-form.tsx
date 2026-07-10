@@ -91,6 +91,18 @@ export function ConexaoEditForm({
   const formValid =
     name.trim().length > 0 && !nomeDuplicado && pathValid && bizValid && urlValid;
 
+  /**
+   * "Salvar alterações" só acende quando algo mudou de verdade , mesmo padrão
+   * dos outros tipos de webhook. Os valores iniciais vêm da conexão carregada.
+   */
+  const initBizDigits = conexao.businessId ?? "";
+  const isDirty =
+    name.trim() !== (conexao.name ?? "").trim() ||
+    description.trim() !== (conexao.description ?? "").trim() ||
+    pathTrim !== (conexao.path ?? "").trim() ||
+    businessIdDigits !== initBizDigits ||
+    urlTrim !== (conexao.targetUrl ?? "").trim();
+
   async function handleSalvar() {
     setSaving(true);
     setError(null);
@@ -324,7 +336,7 @@ export function ConexaoEditForm({
         </Button>
         <Button
           type="button"
-          disabled={!formValid || saving}
+          disabled={!formValid || !isDirty || saving}
           onClick={handleSalvar}
           className="cursor-pointer"
         >
