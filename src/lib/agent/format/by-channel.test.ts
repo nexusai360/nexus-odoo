@@ -1,4 +1,32 @@
-import { formatForChannel } from "./by-channel";
+import { formatForChannel, classificarCelula } from "./by-channel";
+
+/**
+ * TE.1 , Classificadores puros de célula (SPEC §3.12).
+ * Ordem: moeda → número → texto.
+ */
+describe("classificarCelula", () => {
+  test("moeda: R$ com milhar/decimal, aceitando negativo", () => {
+    expect(classificarCelula("R$ 50.500.000,00")).toBe("moeda");
+    expect(classificarCelula("-R$ 5,00")).toBe("moeda");
+    expect(classificarCelula("R$ 10")).toBe("moeda");
+  });
+
+  test("número: inteiro com milhar, decimal com vírgula, percentual", () => {
+    expect(classificarCelula("12")).toBe("numero");
+    expect(classificarCelula("1.234")).toBe("numero");
+    expect(classificarCelula("3,5")).toBe("numero");
+    expect(classificarCelula("12%")).toBe("numero");
+    expect(classificarCelula("-4,2%")).toBe("numero");
+  });
+
+  test("texto: o que não casa moeda nem número", () => {
+    expect(classificarCelula("1.2.3")).toBe("texto");
+    expect(classificarCelula(",,,")).toBe("texto");
+    expect(classificarCelula(".")).toBe("texto");
+    expect(classificarCelula("R$")).toBe("texto");
+    expect(classificarCelula("Jht Comercial SP")).toBe("texto");
+  });
+});
 
 describe("formatForChannel", () => {
   test("bubble passa o conteudo direto", () => {
@@ -29,7 +57,7 @@ describe("formatForChannel", () => {
     );
   });
 
-  test("whatsapp: tabela markdown vira lista hifenizada", () => {
+  test("whatsapp: tabela markdown vira lista compacta (uma linha por linha da tabela)", () => {
     const tabela = [
       "| Produto | Saldo |",
       "|---|---|",
@@ -37,7 +65,7 @@ describe("formatForChannel", () => {
       "| B | 5 |",
     ].join("\n");
     expect(formatForChannel(tabela, "whatsapp")).toBe(
-      "- Produto: A | Saldo: 10\n- Produto: B | Saldo: 5",
+      "- A (10 Saldo)\n- B (5 Saldo)",
     );
   });
 
