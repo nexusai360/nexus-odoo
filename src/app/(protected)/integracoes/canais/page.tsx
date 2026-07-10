@@ -5,7 +5,6 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Breadcrumb } from "@/components/integracoes/breadcrumb";
-import { WhatsappInstancesList } from "@/components/integracoes/whatsapp-instances-list";
 import { TourTriggerButton } from "@/components/tour/tour-trigger-button";
 import { TourAutoStart } from "@/components/tour/tour-auto-start";
 import { canaisTour } from "@/lib/tours/canais-tour";
@@ -72,9 +71,6 @@ export default async function CanaisPage() {
         </Link>
       </div>
 
-      <div data-tour="canais-instancias" className="mt-8">
-        <WhatsappInstancesList />
-      </div>
     </PageShell>
   );
 }

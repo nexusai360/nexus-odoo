@@ -16,7 +16,6 @@ const mockCreate = jest.fn();
 const mockUpdate = jest.fn();
 const mockUpdateMany = jest.fn();
 const mockDeleteMany = jest.fn();
-const mockInstanceFindFirst = jest.fn();
 const mockTransaction = jest.fn();
 const mockLogAudit = jest.fn();
 const mockRevalidatePath = jest.fn();
@@ -53,7 +52,6 @@ jest.mock("@/lib/prisma", () => ({
       updateMany: mockUpdateMany,
       deleteMany: mockDeleteMany,
     },
-    whatsappInstance: { findFirst: mockInstanceFindFirst },
     $transaction: mockTransaction,
   },
 }));
@@ -87,7 +85,6 @@ beforeEach(() => {
   mockFindFirst.mockResolvedValue(null); // slug livre
   mockFindMany.mockResolvedValue([]);
   mockFindUnique.mockResolvedValue(null);
-  mockInstanceFindFirst.mockResolvedValue(null);
   mockVerificarNumeroParaConexao.mockResolvedValue({ ok: true });
   mockCreate.mockImplementation(async (args: { data: Record<string, unknown> }) => ({
     id: `id-${args.data.direction}`,
@@ -360,14 +357,6 @@ describe("apagarConexaoWhatsapp", () => {
       expect.objectContaining({ action: "whatsapp_connection_deleted" }),
     );
     expect(mockRevalidatePath).toHaveBeenCalledWith("/integracoes/webhooks");
-  });
-
-  it("falha com mensagem clara quando uma WhatsappInstance aponta para a conexão", async () => {
-    mockInstanceFindFirst.mockResolvedValue({ id: "inst-1", name: "Instância antiga" });
-    const r = await apagarConexaoWhatsapp(CONN_ID);
-    expect(r.success).toBe(false);
-    if (!r.success) expect(r.error.toLowerCase()).toContain("instância");
-    expect(mockDeleteMany).not.toHaveBeenCalled();
   });
 
   it("conexão inexistente falha claro", async () => {

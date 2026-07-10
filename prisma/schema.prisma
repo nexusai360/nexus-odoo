@@ -3528,33 +3528,10 @@ model WhatsappWebhook {
   enabled   Boolean          @default(true)
   createdAt DateTime         @default(now()) @map("created_at")
 
-  instances WhatsappInstance[]
 
   @@unique([businessId])
   @@index([connectionId])
   @@map("whatsapp_webhooks")
-}
-
-/// Instância do canal WhatsApp — substitui o singleton WhatsappChannel (R6).
-/// Cada instância tem credenciais Meta próprias, modo de resposta e um
-/// webhook associado.
-model WhatsappInstance {
-  id                String               @id @default(uuid()) @db.Uuid
-  name              String
-  phoneNumber       String               @map("phone_number")
-  /// Token da Graph API (cifrado AES-256).
-  graphApiToken     String?              @map("graph_api_token")
-  businessAccountId String?              @map("business_account_id")
-  phoneNumberId     String?              @map("phone_number_id")
-  responseMode      WhatsappResponseMode @default(direct) @map("response_mode")
-  webhookId         String?              @map("webhook_id") @db.Uuid
-  webhook           WhatsappWebhook?     @relation(fields: [webhookId], references: [id])
-  enabled           Boolean              @default(true)
-  createdAt         DateTime             @default(now()) @map("created_at")
-  updatedAt         DateTime             @updatedAt @map("updated_at")
-
-  @@index([webhookId])
-  @@map("whatsapp_instances")
 }
 
 /// API key da plataforma para acesso externo (ex.: node Agent do n8n).
