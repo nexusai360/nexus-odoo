@@ -1,38 +1,46 @@
 "use client";
 
 /**
- * Assistente de criação da CONEXÃO COM WHATSAPP (SPEC §3.7): 4 etapas
+ * Assistente de criação da CONEXÃO COM WHATSAPP: 4 etapas
  * (Recebimento · Envio · Revisão · Conclusão), renderizado pelo WebhookWizard
  * quando o tipo escolhido é "whatsapp".
  *
- * Os dois tokens são gerados NO SERVIDOR quando o assistente abre
- * (`prepararTokensConexao`, sem efeito colateral) e exibidos nas etapas onde o
- * usuário precisa deles; só passam a valer quando a conexão é criada
- * (SPEC §3.8). Recarregar a página gera tokens novos.
+ * Segue o MESMO padrão dos outros tipos de webhook:
+ *  - a configuração NÃO exibe segredo nenhum;
+ *  - os campos que definem identidade (endereço, número, destino) têm botão de
+ *    confirmar (`FieldValidateButton`), com reversão ao sair sem confirmar;
+ *  - os tokens são gerados no servidor no momento da criação e revelados UMA
+ *    ÚNICA VEZ no passo final, em `SecretRevealStep` (mascarado, com aviso).
+ *
+ * Cada etapa é dividida em SEÇÕES com respiro (identificação → configuração →
+ * guia), para o preenchimento ter uma ordem óbvia.
  */
 
 import * as React from "react";
-import { AlertTriangle, ArrowDownToLine, ArrowUpFromLine, Loader2, Lock } from "lucide-react";
+import { ArrowDownToLine, ArrowUpFromLine, KeyRound, Loader2, Lock } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { StepIndicator } from "@/components/ui/step-indicator";
+import { SecretRevealStep } from "@/components/ui/secret-reveal-step";
 import { PhoneInput } from "@/components/ui/phone-input";
+import {
+  FieldValidateButton,
+  type FieldConfirmVariant,
+} from "@/components/integrations/field-validate-button";
 import {
   type Country,
   DEFAULT_COUNTRY,
   composeE164,
+  splitE164,
   validateNationalPhone,
 } from "@/lib/whatsapp/countries";
-import { WhatsappInboundHelp, CopyButton } from "@/components/integrations/whatsapp-inbound-help";
+import { WhatsappInboundHelp } from "@/components/integrations/whatsapp-inbound-help";
 import { ConexaoEnvioHelp } from "@/components/integrations/conexao-envio-help";
-import {
-  prepararTokensConexao,
-  criarConexaoWhatsapp,
-  type TokensDaConexao,
-} from "@/lib/actions/whatsapp-connection";
+import { criarConexaoWhatsapp, type ConexaoCriada } from "@/lib/actions/whatsapp-connection";
 
 /** Slug seguro: mesma regra do schema da Server Action. */
 const PATH_RE = /^[a-z0-9][a-z0-9-/]*$/;
@@ -42,11 +50,8 @@ type Etapa = 1 | 2 | 3 | 4;
 const ETAPAS = ["Recebimento", "Envio", "Revisão", "Conclusão"];
 
 export interface ConexaoWhatsappWizardProps {
-  /** URL base read-only exibida como prefixo do endereço de recebimento. */
   inboundBaseUrl: string;
-  /** Slugs (path) já cadastrados, para validar unicidade em tempo real. */
   existingPaths: string[];
-  /** business_id já cadastrados, para validar unicidade em tempo real. */
   existingBusinessIds: string[];
   /** Volta para a seleção de tipo. */
   onBack: () => void;
@@ -62,38 +67,32 @@ export function ConexaoWhatsappWizard({
   onDone,
 }: ConexaoWhatsappWizardProps) {
   const [etapa, setEtapa] = React.useState<Etapa>(1);
-  const [tokens, setTokens] = React.useState<TokensDaConexao | null>(null);
-  const [tokensError, setTokensError] = React.useState<string | null>(null);
 
   const [name, setName] = React.useState("");
   const [description, setDescription] = React.useState("");
+
+  // Endereço (slug) , com confirmação, como nos outros webhooks.
   const [path, setPath] = React.useState("");
   const [pathTouched, setPathTouched] = React.useState(false);
+  const [pathConfirmed, setPathConfirmed] = React.useState("");
+
+  // Número da empresa , com confirmação.
   const [bizCountry, setBizCountry] = React.useState<Country>(DEFAULT_COUNTRY);
   const [bizNational, setBizNational] = React.useState("");
   const [bizTouched, setBizTouched] = React.useState(false);
+  const [bizConfirmed, setBizConfirmed] = React.useState("");
+
+  // URL de destino , com confirmação.
   const [targetUrl, setTargetUrl] = React.useState("");
   const [urlTouched, setUrlTouched] = React.useState(false);
+  const [urlConfirmed, setUrlConfirmed] = React.useState("");
 
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [criada, setCriada] = React.useState<ConexaoCriada | null>(null);
+  const [tokenRecebimentoOk, setTokenRecebimentoOk] = React.useState(false);
 
-  // Tokens gerados no servidor quando o assistente abre (SPEC §3.8).
-  const carregarTokens = React.useCallback(() => {
-    setTokensError(null);
-    prepararTokensConexao().then(
-      (r) => {
-        if (r.success) setTokens(r.data);
-        else setTokensError(r.error);
-      },
-      () => setTokensError("Não foi possível preparar os tokens da conexão."),
-    );
-  }, []);
-  React.useEffect(() => {
-    carregarTokens();
-  }, [carregarTokens]);
-
-  // ── Validações ──────────────────────────────────────────────────────────────
+  // ── Endereço ────────────────────────────────────────────────────────────────
   const pathTrim = path.trim();
   const pathFormatOk = PATH_RE.test(pathTrim);
   const pathDuplicate = pathFormatOk && existingPaths.includes(pathTrim);
@@ -104,7 +103,31 @@ export function ConexaoWhatsappWizard({
       ? "Já existe um webhook de entrada com esse caminho."
       : null;
   const showPathError = pathErrorMsg !== null && (pathTrim.length > 0 || pathTouched);
+  const pathVariant: FieldConfirmVariant = !pathValid
+    ? pathTrim.length > 0 || pathTouched
+      ? "error"
+      : "idle"
+    : pathTrim === pathConfirmed
+      ? "confirmed"
+      : "pending";
 
+  function confirmPath() {
+    if (!pathValid) {
+      setPathTouched(true);
+      return;
+    }
+    const wasEmpty = pathConfirmed.length === 0;
+    setPathConfirmed(pathTrim);
+    toast.success(wasEmpty ? "Endereço definido" : "Endereço atualizado");
+  }
+  function revertPath() {
+    if (pathTrim !== pathConfirmed) {
+      setPath(pathConfirmed);
+      setPathTouched(false);
+    }
+  }
+
+  // ── Número da empresa ───────────────────────────────────────────────────────
   const businessIdDigits = bizNational ? composeE164(bizCountry.dial, bizNational).slice(1) : "";
   const bizFormatError = validateNationalPhone(bizCountry, bizNational);
   const bizDuplicate = bizFormatError === null && existingBusinessIds.includes(businessIdDigits);
@@ -112,18 +135,74 @@ export function ConexaoWhatsappWizard({
   const bizErrorMsg =
     bizFormatError ?? (bizDuplicate ? "Já existe uma conexão de WhatsApp com esse número." : null);
   const showBizError = bizErrorMsg !== null && (bizNational.length > 0 || bizTouched);
+  const bizVariant: FieldConfirmVariant = !bizValid
+    ? bizNational.length > 0 || bizTouched
+      ? "error"
+      : "idle"
+    : businessIdDigits === bizConfirmed
+      ? "confirmed"
+      : "pending";
 
+  function confirmBiz() {
+    if (!bizValid) {
+      setBizTouched(true);
+      return;
+    }
+    const wasEmpty = bizConfirmed.length === 0;
+    setBizConfirmed(businessIdDigits);
+    toast.success(wasEmpty ? "Número da empresa definido" : "Número da empresa atualizado");
+  }
+  const bizFieldRef = React.useRef<HTMLDivElement>(null);
+  function revertBiz(e: React.FocusEvent) {
+    const next = e.relatedTarget as Node | null;
+    if (next && bizFieldRef.current?.contains(next)) return;
+    if (businessIdDigits !== bizConfirmed) {
+      const snap = splitE164(bizConfirmed ? `+${bizConfirmed}` : "");
+      setBizCountry(snap.country ?? DEFAULT_COUNTRY);
+      setBizNational(snap.nationalDigits);
+      setBizTouched(false);
+    }
+  }
+
+  // ── URL de destino ──────────────────────────────────────────────────────────
   const urlTrim = targetUrl.trim();
   const urlValid = isValidUrl(urlTrim);
   const showUrlError = !urlValid && (urlTrim.length > 0 || urlTouched);
+  const urlVariant: FieldConfirmVariant = !urlValid
+    ? urlTrim.length > 0 || urlTouched
+      ? "error"
+      : "idle"
+    : urlTrim === urlConfirmed
+      ? "confirmed"
+      : "pending";
 
-  const etapa1Valida = name.trim().length > 0 && pathValid && bizValid && tokens !== null;
-  const etapa2Valida = urlValid && tokens !== null;
+  function confirmUrl() {
+    if (!urlValid) {
+      setUrlTouched(true);
+      return;
+    }
+    const wasEmpty = urlConfirmed.length === 0;
+    setUrlConfirmed(urlTrim);
+    toast.success(wasEmpty ? "Destino definido" : "Destino atualizado");
+  }
+  function revertUrl() {
+    if (urlTrim !== urlConfirmed) {
+      setTargetUrl(urlConfirmed);
+      setUrlTouched(false);
+    }
+  }
+
+  const etapa1Valida =
+    name.trim().length > 0 &&
+    pathValid &&
+    pathTrim === pathConfirmed &&
+    bizValid &&
+    businessIdDigits === bizConfirmed;
+  const etapa2Valida = urlValid && urlTrim === urlConfirmed;
 
   const enderecoCompleto = `${inboundBaseUrl}${pathTrim}`;
 
   async function handleCriar() {
-    if (!tokens) return;
     setSubmitting(true);
     setError(null);
     const res = await criarConexaoWhatsapp({
@@ -132,11 +211,10 @@ export function ConexaoWhatsappWizard({
       path: pathTrim,
       businessId: businessIdDigits,
       targetUrl: urlTrim,
-      tokenRecebimento: tokens.tokenRecebimento,
-      tokenAssinatura: tokens.tokenAssinatura,
     });
     setSubmitting(false);
     if (res.success) {
+      setCriada(res.data);
       setEtapa(4);
     } else {
       setError(res.error);
@@ -144,197 +222,225 @@ export function ConexaoWhatsappWizard({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <StepIndicator steps={ETAPAS} current={etapa} />
-
-      {tokensError && (
-        <div className="flex items-center justify-between gap-3 rounded-lg border border-destructive/40 bg-destructive/5 p-3">
-          <p className="text-xs text-destructive" role="alert">
-            {tokensError}
-          </p>
-          <Button type="button" variant="outline" size="sm" onClick={carregarTokens} className="cursor-pointer">
-            Tentar de novo
-          </Button>
-        </div>
-      )}
 
       {/* ── Etapa 1 · Recebimento ─────────────────────────────────────────── */}
       {etapa === 1 && (
-        <div className="space-y-5">
-          <EtapaCabecalho
+        <div className="space-y-10">
+          <EtapaBanner
             icon={ArrowDownToLine}
             titulo="Recebimento"
             texto="Por onde as mensagens do WhatsApp entram na plataforma."
           />
 
-          <div className="space-y-1.5">
-            <Label htmlFor="cx-name">Nome</Label>
-            <Input
-              id="cx-name"
-              value={name}
-              onChange={(e) => setName(e.currentTarget.value)}
-              placeholder="Ex.: WhatsApp da loja matriz"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="cx-desc">Descrição</Label>
-            <Textarea
-              id="cx-desc"
-              value={description}
-              onChange={(e) => setDescription(e.currentTarget.value)}
-              placeholder="O que esta conexão atende (opcional)."
-              rows={2}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="cx-path">Endereço (URL)</Label>
-            <div
-              className={cn(
-                "flex h-9 items-stretch overflow-hidden rounded-lg border bg-transparent transition-colors dark:bg-input/30",
-                showPathError
-                  ? "border-destructive focus-within:border-destructive focus-within:ring-2 focus-within:ring-destructive/40"
-                  : "border-input focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/50",
-              )}
-            >
-              <span className="flex items-center whitespace-nowrap bg-muted px-2.5 text-xs text-muted-foreground">
-                {inboundBaseUrl}
-              </span>
-              <div className="my-1.5 w-px shrink-0 bg-border" aria-hidden />
-              <input
-                id="cx-path"
-                value={path}
-                onChange={(e) => setPath(e.currentTarget.value)}
-                onBlur={() => setPathTouched(true)}
-                placeholder="whatsapp/loja-matriz"
-                aria-invalid={showPathError}
-                className="min-w-0 flex-1 bg-transparent px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground"
+          <Secao titulo="Identificação" descricao="Como esta conexão aparece na lista.">
+            <div className="space-y-1.5">
+              <Label htmlFor="cx-name">Nome</Label>
+              <Input
+                id="cx-name"
+                value={name}
+                onChange={(e) => setName(e.currentTarget.value)}
+                placeholder="Ex.: WhatsApp da loja matriz"
               />
             </div>
-            {showPathError ? (
-              <p className="text-xs text-destructive" role="alert">
-                {pathErrorMsg}
-              </p>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                Você define o final do endereço. Apenas minúsculas, números, hífen e barra. Precisa ser único.
-              </p>
-            )}
-          </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="cx-business">Número da empresa</Label>
-            <PhoneInput
-              country={bizCountry}
-              onCountryChange={setBizCountry}
-              national={bizNational}
-              onNationalChange={setBizNational}
-              onBlur={() => setBizTouched(true)}
-              invalid={showBizError}
-              inputId="cx-business"
+            <div className="space-y-1.5">
+              <Label htmlFor="cx-desc">Descrição</Label>
+              <Textarea
+                id="cx-desc"
+                value={description}
+                onChange={(e) => setDescription(e.currentTarget.value)}
+                placeholder="O que esta conexão atende (opcional)."
+                rows={2}
+              />
+            </div>
+          </Secao>
+
+          <Secao
+            titulo="Endereço de entrada"
+            descricao="O endereço que o seu fluxo vai chamar, e o número que ele atende."
+          >
+            <div className="space-y-1.5">
+              <Label htmlFor="cx-path">Endereço (URL)</Label>
+              <div className="flex items-stretch">
+                <div
+                  className={cn(
+                    "flex h-9 flex-1 items-stretch overflow-hidden rounded-lg border bg-transparent transition-colors dark:bg-input/30",
+                    showPathError
+                      ? "border-destructive focus-within:border-destructive focus-within:ring-2 focus-within:ring-destructive/40"
+                      : "border-input focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/50",
+                  )}
+                >
+                  <span className="flex items-center whitespace-nowrap bg-muted px-2.5 text-xs text-muted-foreground">
+                    {inboundBaseUrl}
+                  </span>
+                  <div className="my-1.5 w-px shrink-0 bg-border" aria-hidden />
+                  <input
+                    id="cx-path"
+                    value={path}
+                    onChange={(e) => setPath(e.currentTarget.value)}
+                    onBlur={revertPath}
+                    placeholder="whatsapp/loja-matriz"
+                    aria-invalid={showPathError}
+                    className="min-w-0 flex-1 bg-transparent px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground"
+                  />
+                </div>
+                <div
+                  className={cn(
+                    "flex items-stretch transition-all duration-200",
+                    pathTrim.length > 0 ? "ml-2 w-9 opacity-100" : "ml-0 w-0 opacity-0",
+                  )}
+                >
+                  <FieldValidateButton
+                    variant={pathVariant}
+                    onClick={confirmPath}
+                    label="Confirmar endereço"
+                  />
+                </div>
+              </div>
+              {showPathError ? (
+                <p className="text-xs text-destructive" role="alert">
+                  {pathErrorMsg}
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Você define o final do endereço. Apenas minúsculas, números, hífen e barra.
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="cx-business">Número da empresa</Label>
+              <div ref={bizFieldRef} className="flex items-stretch">
+                <PhoneInput
+                  className="flex-1"
+                  country={bizCountry}
+                  onCountryChange={setBizCountry}
+                  national={bizNational}
+                  onNationalChange={setBizNational}
+                  onBlur={revertBiz}
+                  invalid={showBizError}
+                  inputId="cx-business"
+                />
+                <div
+                  className={cn(
+                    "flex items-stretch transition-all duration-200",
+                    bizNational.length > 0 ? "ml-2 w-9 opacity-100" : "ml-0 w-0 opacity-0",
+                  )}
+                >
+                  <FieldValidateButton
+                    variant={bizVariant}
+                    onClick={confirmBiz}
+                    label="Confirmar número"
+                  />
+                </div>
+              </div>
+              {showBizError ? (
+                <p className="text-xs text-destructive" role="alert">
+                  {bizErrorMsg}
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Um número existe em uma única configuração, aqui ou no envio direto.
+                </p>
+              )}
+            </div>
+
+            <MetodoPostTravado />
+          </Secao>
+
+          <Secao
+            titulo="Como montar o payload"
+            descricao="Enquanto o payload não for montado no seu ambiente, nenhuma mensagem chega ao Agente Nex."
+          >
+            <WhatsappInboundHelp
+              inboundBaseUrl={inboundBaseUrl}
+              path={pathConfirmed}
+              defaultOpen={false}
             />
-            {showBizError ? (
-              <p className="text-xs text-destructive" role="alert">
-                {bizErrorMsg}
-              </p>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                Número do WhatsApp da empresa que recebe as mensagens. Um número existe em uma única
-                configuração.
-              </p>
-            )}
-          </div>
+          </Secao>
 
-          <MetodoPostTravado />
-
-          <TokenBloco
-            label="Token de recebimento"
-            valor={tokens?.tokenRecebimento ?? null}
-            descricao="É o Bearer que o seu fluxo usa para chamar o endereço acima."
-            avisoValidade="O token só funciona depois que você concluir a criação da conexão. Recarregar esta página gera tokens novos e invalida os copiados."
+          <Rodape
+            voltar={{ label: "Voltar", onClick: onBack }}
+            avancar={{
+              label: "Concluir configuração e continuar",
+              onClick: () => setEtapa(2),
+              disabled: !etapa1Valida,
+            }}
           />
-
-          <AvisoPayload />
-
-          <WhatsappInboundHelp inboundBaseUrl={inboundBaseUrl} path={pathTrim} defaultOpen={false} />
-
-          <div className="flex justify-between gap-2 border-t border-border/60 pt-5">
-            <Button type="button" variant="outline" onClick={onBack} className="cursor-pointer">
-              Voltar
-            </Button>
-            <Button
-              type="button"
-              disabled={!etapa1Valida}
-              onClick={() => setEtapa(2)}
-              className="cursor-pointer"
-            >
-              Concluir configuração e continuar
-            </Button>
-          </div>
         </div>
       )}
 
       {/* ── Etapa 2 · Envio ───────────────────────────────────────────────── */}
       {etapa === 2 && (
-        <div className="space-y-5">
-          <EtapaCabecalho
+        <div className="space-y-10">
+          <EtapaBanner
             icon={ArrowUpFromLine}
             titulo="Envio"
             texto="Para onde a plataforma entrega a resposta pronta do Agente Nex."
           />
 
-          <div className="space-y-1.5">
-            <Label htmlFor="cx-target">URL de destino</Label>
-            <Input
-              id="cx-target"
-              value={targetUrl}
-              onChange={(e) => setTargetUrl(e.currentTarget.value)}
-              onBlur={() => setUrlTouched(true)}
-              placeholder="https://seu-ambiente.exemplo.com/whatsapp/resposta"
-              aria-invalid={showUrlError}
-            />
-            {showUrlError ? (
-              <p className="text-xs text-destructive" role="alert">
-                Informe uma URL válida (http ou https).
-              </p>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                A resposta desta conexão é entregue somente neste endereço.
-              </p>
-            )}
-          </div>
+          <Secao
+            titulo="Endereço de saída"
+            descricao="A resposta desta conexão é entregue somente neste endereço."
+          >
+            <div className="space-y-1.5">
+              <Label htmlFor="cx-target">URL de destino</Label>
+              <div className="flex items-stretch">
+                <Input
+                  id="cx-target"
+                  className="flex-1"
+                  value={targetUrl}
+                  onChange={(e) => setTargetUrl(e.currentTarget.value)}
+                  onBlur={revertUrl}
+                  placeholder="https://seu-ambiente.exemplo.com/whatsapp/resposta"
+                  aria-invalid={showUrlError}
+                />
+                <div
+                  className={cn(
+                    "flex items-stretch transition-all duration-200",
+                    urlTrim.length > 0 ? "ml-2 w-9 opacity-100" : "ml-0 w-0 opacity-0",
+                  )}
+                >
+                  <FieldValidateButton
+                    variant={urlVariant}
+                    onClick={confirmUrl}
+                    label="Confirmar destino"
+                  />
+                </div>
+              </div>
+              {showUrlError && (
+                <p className="text-xs text-destructive" role="alert">
+                  Informe uma URL válida (http ou https).
+                </p>
+              )}
+            </div>
 
-          <MetodoPostTravado />
+            <MetodoPostTravado />
+          </Secao>
 
-          <TokenBloco
-            label="Token de assinatura"
-            valor={tokens?.tokenAssinatura ?? null}
-            descricao="Cada disparo vai assinado (X-Signature, HMAC SHA-256 do corpo) com este token."
-            avisoValidade="O token só passa a valer quando você concluir a criação da conexão."
+          <Secao
+            titulo="O que enviamos"
+            descricao="Headers assinados, corpo do POST e como deduplicar as entregas."
+          >
+            <ConexaoEnvioHelp defaultOpen={false} />
+          </Secao>
+
+          <Rodape
+            voltar={{ label: "Voltar", onClick: () => setEtapa(1) }}
+            avancar={{
+              label: "Concluir configuração e continuar",
+              onClick: () => setEtapa(3),
+              disabled: !etapa2Valida,
+            }}
           />
-
-          <ConexaoEnvioHelp defaultOpen={false} />
-
-          <div className="flex justify-between gap-2 border-t border-border/60 pt-5">
-            <Button type="button" variant="outline" onClick={() => setEtapa(1)} className="cursor-pointer">
-              Voltar
-            </Button>
-            <Button
-              type="button"
-              disabled={!etapa2Valida}
-              onClick={() => setEtapa(3)}
-              className="cursor-pointer"
-            >
-              Concluir configuração e continuar
-            </Button>
-          </div>
         </div>
       )}
 
       {/* ── Etapa 3 · Revisão ─────────────────────────────────────────────── */}
       {etapa === 3 && (
-        <div className="space-y-5">
+        <div className="space-y-8">
           <div className="space-y-1">
             <h3 className="text-sm font-medium">Revise a conexão</h3>
             <p className="text-xs text-muted-foreground">
@@ -342,7 +448,7 @@ export function ConexaoWhatsappWizard({
             </p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2">
             <RevisaoCard icon={ArrowDownToLine} titulo="Recebimento">
               <RevisaoLinha rotulo="Nome" valor={name.trim()} />
               {description.trim() && <RevisaoLinha rotulo="Descrição" valor={description.trim()} />}
@@ -357,57 +463,59 @@ export function ConexaoWhatsappWizard({
             </RevisaoCard>
           </div>
 
+          <div className="flex gap-2.5 rounded-lg border border-border bg-muted/30 p-3">
+            <KeyRound className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+            <p className="text-xs text-muted-foreground">
+              Ao criar a conexão, os dois tokens são gerados e exibidos{" "}
+              <span className="font-medium text-foreground">uma única vez</span>, na etapa seguinte.
+            </p>
+          </div>
+
           {error && (
             <p className="text-xs text-destructive" role="alert">
               {error}
             </p>
           )}
 
-          <div className="flex justify-between gap-2 border-t border-border/60 pt-5">
-            <Button type="button" variant="outline" onClick={() => setEtapa(2)} className="cursor-pointer">
-              Voltar
-            </Button>
-            <Button
-              type="button"
-              disabled={submitting || !tokens}
-              onClick={handleCriar}
-              className="cursor-pointer"
-            >
-              {submitting && <Loader2 className="size-4 animate-spin" />}
-              Criar conexão
-            </Button>
-          </div>
+          <Rodape
+            voltar={{ label: "Voltar", onClick: () => setEtapa(2) }}
+            avancar={{
+              label: "Criar conexão",
+              onClick: handleCriar,
+              disabled: submitting,
+              loading: submitting,
+            }}
+          />
         </div>
       )}
 
-      {/* ── Etapa 4 · Conclusão ───────────────────────────────────────────── */}
-      {etapa === 4 && tokens && (
-        <div className="space-y-5">
+      {/* ── Etapa 4 · Conclusão , tokens revelados 1x, no padrão da plataforma */}
+      {etapa === 4 && criada && (
+        <div className="space-y-8">
           <div className="space-y-1">
             <h3 className="text-sm font-medium">Conexão criada</h3>
             <p className="text-xs text-muted-foreground">
-              Os dois tokens agora estão valendo. Depois desta tela, eles só reaparecem por rotação.
+              {tokenRecebimentoOk
+                ? "Agora guarde o token de assinatura, com que a plataforma assina cada resposta enviada."
+                : "Guarde o token de recebimento, que o seu fluxo usa para chamar o endereço de entrada."}
             </p>
           </div>
 
-          <div className="space-y-3 rounded-lg border border-amber-500/40 bg-amber-500/5 p-4">
-            <div className="flex items-start gap-2">
-              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-500" aria-hidden />
-              <div className="space-y-0.5">
-                <p className="text-sm font-medium">Copie agora, eles não aparecem de novo</p>
-                <p className="text-xs text-muted-foreground">
-                  Guarde em local seguro. Se perder, rotacione o token na tela da conexão.
-                </p>
-              </div>
-            </div>
-
-            <TokenLinha label="Token de recebimento" valor={tokens.tokenRecebimento} />
-            <TokenLinha label="Token de assinatura" valor={tokens.tokenAssinatura} />
-          </div>
-
-          <Button type="button" onClick={onDone} className="w-full cursor-pointer">
-            Concluir
-          </Button>
+          {!tokenRecebimentoOk ? (
+            <SecretRevealStep
+              secret={criada.tokenRecebimento}
+              label="Token de recebimento"
+              acknowledgeLabel="Já copiei, ver o token de assinatura"
+              onAcknowledge={() => setTokenRecebimentoOk(true)}
+            />
+          ) : (
+            <SecretRevealStep
+              secret={criada.tokenAssinatura}
+              label="Token de assinatura"
+              acknowledgeLabel="Concluir"
+              onAcknowledge={onDone}
+            />
+          )}
         </div>
       )}
     </div>
@@ -418,7 +526,28 @@ export function ConexaoWhatsappWizard({
 // Blocos de apoio
 // ──────────────────────────────────────────────────────────────────────────────
 
-function EtapaCabecalho({
+/** Seção do formulário: título, descrição e campos, com respiro entre elas. */
+function Secao({
+  titulo,
+  descricao,
+  children,
+}: {
+  titulo: string;
+  descricao?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="space-y-5">
+      <div className="space-y-1 border-b border-border/60 pb-3">
+        <h4 className="text-sm font-semibold text-foreground">{titulo}</h4>
+        {descricao && <p className="text-xs text-muted-foreground">{descricao}</p>}
+      </div>
+      <div className="space-y-5">{children}</div>
+    </section>
+  );
+}
+
+function EtapaBanner({
   icon: Icon,
   titulo,
   texto,
@@ -428,7 +557,7 @@ function EtapaCabecalho({
   texto: string;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-green-500/40 bg-green-500/5 p-3 ring-green-500/50">
+    <div className="flex items-center gap-3 rounded-lg border border-green-500/40 bg-green-500/5 p-3">
       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-background/60">
         <Icon className="h-5 w-5 text-green-500" aria-hidden />
       </span>
@@ -455,62 +584,27 @@ function MetodoPostTravado() {
   );
 }
 
-/** Aviso da etapa 1, visível sem abrir nada (SPEC §3.7). */
-function AvisoPayload() {
-  return (
-    <div className="flex gap-2 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3">
-      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
-      <p className="text-xs text-muted-foreground">
-        Enquanto o payload não for montado no seu ambiente, nenhuma mensagem chega ao Agente Nex.
-        O guia abaixo mostra o endereço, os headers e o corpo esperado.
-      </p>
-    </div>
-  );
-}
-
-/** Bloco de token nas etapas 1 e 2: valor visível + copiar + avisos. */
-function TokenBloco({
-  label,
-  valor,
-  descricao,
-  avisoValidade,
+function Rodape({
+  voltar,
+  avancar,
 }: {
-  label: string;
-  valor: string | null;
-  descricao: string;
-  avisoValidade: string;
+  voltar: { label: string; onClick: () => void };
+  avancar: { label: string; onClick: () => void; disabled?: boolean; loading?: boolean };
 }) {
   return (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
-      <div className="flex items-stretch gap-2">
-        <code
-          className={cn(
-            "flex h-9 min-w-0 flex-1 items-center overflow-x-auto rounded-lg border border-input bg-background px-3 font-mono text-xs whitespace-nowrap",
-            !valor && "text-muted-foreground",
-          )}
-        >
-          {valor ?? "gerando…"}
-        </code>
-        <CopyButton value={valor ?? ""} disabled={!valor} />
-      </div>
-      <p className="text-xs text-muted-foreground">{descricao}</p>
-      <p className="text-xs text-amber-600 dark:text-amber-400">{avisoValidade}</p>
-    </div>
-  );
-}
-
-/** Linha de token na conclusão (etapa 4). */
-function TokenLinha({ label, valor }: { label: string; valor: string }) {
-  return (
-    <div className="space-y-1.5">
-      <Label className="text-xs text-muted-foreground">{label}</Label>
-      <div className="flex items-stretch gap-2">
-        <code className="flex h-9 min-w-0 flex-1 items-center overflow-x-auto rounded-lg border border-input bg-background px-3 font-mono text-xs whitespace-nowrap">
-          {valor}
-        </code>
-        <CopyButton value={valor} />
-      </div>
+    <div className="flex justify-between gap-2 border-t border-border/60 pt-5">
+      <Button type="button" variant="outline" onClick={voltar.onClick} className="cursor-pointer">
+        {voltar.label}
+      </Button>
+      <Button
+        type="button"
+        disabled={avancar.disabled}
+        onClick={avancar.onClick}
+        className="cursor-pointer"
+      >
+        {avancar.loading && <Loader2 className="size-4 animate-spin" />}
+        {avancar.label}
+      </Button>
     </div>
   );
 }
@@ -535,7 +629,15 @@ function RevisaoCard({
   );
 }
 
-function RevisaoLinha({ rotulo, valor, mono = false }: { rotulo: string; valor: string; mono?: boolean }) {
+function RevisaoLinha({
+  rotulo,
+  valor,
+  mono = false,
+}: {
+  rotulo: string;
+  valor: string;
+  mono?: boolean;
+}) {
   return (
     <div className="space-y-0.5">
       <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">{rotulo}</dt>

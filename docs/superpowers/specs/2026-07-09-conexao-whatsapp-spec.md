@@ -210,20 +210,35 @@ passa a ser `Recebimento · Envio · Revisão · Conclusão`.
 - O guia da etapa 2 diz, com todas as letras, que a deduplicação deve usar
   **`message.inboundMessageId`**, não `deliveryId` (A16).
 
-### 3.8 Contrato dos tokens (fecha a ambiguidade da v2)
+### 3.8 Contrato dos tokens (v4 , DECISÃO DO USUÁRIO 2026-07-10, substitui a v3)
 
-- Os dois tokens são gerados **no servidor**, numa ação sem efeito colateral
-  (`prepararTokensConexao`), quando o assistente abre.
-- Eles são **exibidos nas etapas 1 e 2** (onde o usuário precisa deles) e
-  **repetidos na etapa 4**. Não são "revelados uma vez na conclusão": são os
-  mesmos valores do começo ao fim do assistente.
-- **Só passam a valer quando a conexão é criada.** A etapa 1 avisa: *"O token só
-  funciona depois que você concluir a criação da conexão."*
-- **Recarregar a página gera tokens novos** e invalida os que foram copiados
-  (nada foi persistido). O aviso diz isso.
-- Se o `submit` falhar (slug duplicado, por exemplo), os tokens continuam os
-  mesmos e valem quando a criação for concluída.
-- Depois de criada, o token só reaparece por **rotação**.
+> A v3 exibia os tokens nas etapas 1 e 2. **Errado:** quebra o padrão da
+> plataforma (segredo é reservado), polui a etapa de configuração e mostra um
+> valor que ainda não vale nada. Volta ao padrão dos outros tipos de webhook.
+
+- A configuração (etapas 1 e 2) **não exibe segredo nenhum**.
+- Os dois tokens são gerados **no servidor, no momento da criação**
+  (`criarConexaoWhatsapp`), e retornados **uma única vez** junto do resultado.
+- A etapa 4 (Conclusão) os revela em `SecretRevealStep` , mascarado, com botão
+  de mostrar/copiar e o aviso "copie agora, não aparece de novo" , um de cada
+  vez: primeiro o de recebimento, depois o de assinatura.
+- A etapa 3 (Revisão) avisa que os tokens serão exibidos uma única vez a seguir.
+- Depois de criada, o token só reaparece por **rotação** (por ponta, na tela de
+  edição), também em `SecretRevealStep`.
+
+### 3.8.1 Padrão visual das etapas (decisão do usuário 2026-07-10)
+
+As etapas 1 e 2 são divididas em **seções** com respiro entre elas, e não numa
+lista corrida de campos:
+
+| Etapa | Seções, nesta ordem |
+|---|---|
+| 1. Recebimento | **Identificação** (nome, descrição) → **Endereço de entrada** (endereço com URL final, número da empresa, `POST` travado) → **Como montar o payload** (guia colapsado) |
+| 2. Envio | **Endereço de saída** (URL de destino, `POST` travado) → **O que enviamos** (guia colapsado) |
+
+Endereço, número da empresa e URL de destino usam o **botão de confirmar**
+(`FieldValidateButton`) dos outros webhooks: confirmar aplica o valor, sair sem
+confirmar reverte. Avançar de etapa exige os campos confirmados.
 
 ### 3.9 Payload de saída , envelope NOVO (breaking, declarado)
 
