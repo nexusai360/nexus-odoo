@@ -1,7 +1,10 @@
 # STATUS — nexus-odoo
 
-> **2026-07-09/10 (CONEXÃO COM WHATSAPP , branch feat/conexao-whatsapp, EXECUÇÃO
-> 100% COMPLETA, aguardando merge com "sim").** As 9 ondas do PLAN v3 entregues
+> **2026-07-10 (CONEXÃO COM WHATSAPP , EM PRODUÇÃO).** PR #162 mergeado
+> (squash 9bbe4b2f) e deployado em agentenex.nexusai360.com: rolling OK,
+> 108/108 migrations aplicadas, health 200, rota legada respondendo 410 EM
+> PROD, slug sem token 401, backfill do Matrix Group verificado no banco real
+> (connection_id preenchido, response_mode NULL até configurarem o Envio). As 9 ondas do PLAN v3 entregues
 > em TDD com commits atômicos. **O vazamento entre clientes morreu** (A1/A1b:
 > `loadOutboundTargets(connectionId)` fail-closed + `fireBlocked` escopado),
 > provado por unit (isolamento 3/3) e por **E2E contra o dev real (19/19):**
