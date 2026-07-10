@@ -43,6 +43,13 @@ export default async function EditarConexaoPage({
   const existingBusinessIds = dados.data.conexoes
     .filter((c) => c.connectionId !== connectionId && c.businessId)
     .map((c) => c.businessId as string);
+  // Nome e unico entre TODOS os webhooks; a propria conexao fica de fora.
+  const existingNames = [
+    ...dados.data.conexoes
+      .filter((c) => c.connectionId !== connectionId)
+      .map((c) => c.name ?? ""),
+    ...dados.data.avulsos.map((w) => w.name ?? ""),
+  ].filter(Boolean);
 
   return (
     <PageShell variant="narrow">
@@ -64,6 +71,7 @@ export default async function EditarConexaoPage({
           inboundBaseUrl={inboundBaseUrl}
           existingPaths={existingPaths}
           existingBusinessIds={existingBusinessIds}
+          existingNames={existingNames}
         />
       </div>
     </PageShell>

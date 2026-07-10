@@ -187,11 +187,36 @@ describe("criarConexaoWhatsapp", () => {
   });
 
   it("TF.1a: recusa slug já usado", async () => {
-    mockFindFirst.mockResolvedValue({ id: "outro" });
+    // Só a consulta por `path` acha algo; a de nome continua livre.
+    mockFindFirst.mockImplementation(async (args: { where?: { path?: string } }) =>
+      args?.where?.path ? { id: "outro" } : null,
+    );
     const r = await criarConexaoWhatsapp(INPUT_VALIDO);
     expect(r.success).toBe(false);
     if (!r.success) expect(r.error).toContain("caminho");
     expect(mockTransaction).not.toHaveBeenCalled();
+  });
+
+  it("recusa NOME já usado por outro webhook, sem diferenciar maiúsculas", async () => {
+    mockFindFirst.mockImplementation(async (args: { where?: { name?: unknown } }) =>
+      args?.where?.name ? { id: "outro-webhook" } : null,
+    );
+    const r = await criarConexaoWhatsapp(INPUT_VALIDO);
+    expect(r.success).toBe(false);
+    if (!r.success) expect(r.error).toContain("Já existe um webhook com o nome");
+    expect(mockTransaction).not.toHaveBeenCalled();
+  });
+
+  it("a busca por nome é case-insensitive", async () => {
+    await criarConexaoWhatsapp(INPUT_VALIDO);
+    const chamadaNome = mockFindFirst.mock.calls.find(
+      (c) => (c[0] as { where?: { name?: unknown } })?.where?.name,
+    );
+    expect(chamadaNome).toBeDefined();
+    expect((chamadaNome![0] as { where: { name: unknown } }).where.name).toEqual({
+      equals: INPUT_VALIDO.name,
+      mode: "insensitive",
+    });
   });
 
   it("TF.1a: recusa URL de destino inválida", async () => {
@@ -317,6 +342,17 @@ describe("atualizarConexaoWhatsapp", () => {
     expect(r.success).toBe(true);
     if (r.success) expect(r.data.novoTokenAssinatura).toBeNull();
     expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it("a trava de NOME ignora as duas linhas da própria conexão na edição", async () => {
+    await atualizarConexaoWhatsapp(CONN_ID, EDICAO);
+    const chamadaNome = mockFindFirst.mock.calls.find(
+      (c) => (c[0] as { where?: { name?: unknown } })?.where?.name,
+    );
+    expect(chamadaNome).toBeDefined();
+    expect((chamadaNome![0] as { where: { connectionId?: unknown } }).where.connectionId).toEqual({
+      not: CONN_ID,
+    });
   });
 
   it("a trava de número ignora a própria conexão na edição", async () => {

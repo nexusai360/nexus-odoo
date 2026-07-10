@@ -31,6 +31,7 @@ import {
   splitE164,
   validateNationalPhone,
 } from "@/lib/whatsapp/countries";
+import { mesmoNome } from "@/lib/integrations/nome-webhook";
 import {
   atualizarConexaoWhatsapp,
   rotacionarTokenConexao,
@@ -45,9 +46,12 @@ export function ConexaoEditForm({
   inboundBaseUrl,
   existingPaths = [],
   existingBusinessIds = [],
+  existingNames = [],
 }: {
   conexao: ConexaoWhatsappListItem;
   inboundBaseUrl: string;
+  /** Nomes de OUTROS webhooks/conexões, para a trava de nome único. */
+  existingNames?: string[];
   /** Slugs de OUTROS webhooks (exclui esta conexão), para unicidade. */
   existingPaths?: string[];
   /** business_id de OUTRAS conexões (exclui esta), para unicidade. */
@@ -83,7 +87,9 @@ export function ConexaoEditForm({
   const urlTrim = targetUrl.trim();
   const urlValid = urlTrim.length === 0 || isValidUrl(urlTrim);
 
-  const formValid = name.trim().length > 0 && pathValid && bizValid && urlValid;
+  const nomeDuplicado = existingNames.some((n) => mesmoNome(n, name));
+  const formValid =
+    name.trim().length > 0 && !nomeDuplicado && pathValid && bizValid && urlValid;
 
   async function handleSalvar() {
     setSaving(true);
@@ -159,8 +165,19 @@ export function ConexaoEditForm({
 
       <div className="space-y-1.5">
         <Label htmlFor="ce-name">Nome</Label>
-        <Input id="ce-name" value={name} onChange={(e) => setName(e.currentTarget.value)} />
-        <p className="text-xs text-muted-foreground">O nome vale para as duas pontas da conexão.</p>
+        <Input
+          id="ce-name"
+          value={name}
+          onChange={(e) => setName(e.currentTarget.value)}
+          aria-invalid={nomeDuplicado}
+        />
+        {nomeDuplicado ? (
+          <p className="text-xs text-destructive" role="alert">
+            Já existe um webhook com esse nome. Escolha outro.
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">O nome vale para as duas pontas da conexão.</p>
+        )}
       </div>
 
       <div className="space-y-1.5">

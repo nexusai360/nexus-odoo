@@ -48,6 +48,7 @@ import {
   splitE164,
   validateNationalPhone,
 } from "@/lib/whatsapp/countries";
+import { mesmoNome } from "@/lib/integrations/nome-webhook";
 import { WhatsappInboundHelp } from "@/components/integrations/whatsapp-inbound-help";
 import { ConexaoEnvioHelp } from "@/components/integrations/conexao-envio-help";
 import {
@@ -67,6 +68,8 @@ export interface ConexaoWhatsappWizardProps {
   inboundBaseUrl: string;
   existingPaths: string[];
   existingBusinessIds: string[];
+  /** Nomes já usados por QUALQUER webhook (trava de nome único). */
+  existingNames: string[];
   /** Volta para a seleção de tipo. */
   onBack: () => void;
   /** Conexão criada e tokens confirmados: fecha o fluxo. */
@@ -77,12 +80,14 @@ export function ConexaoWhatsappWizard({
   inboundBaseUrl,
   existingPaths,
   existingBusinessIds,
+  existingNames,
   onBack,
   onDone,
 }: ConexaoWhatsappWizardProps) {
   const [etapa, setEtapa] = React.useState<Etapa>(1);
 
   const [name, setName] = React.useState("");
+  const [nameTouched, setNameTouched] = React.useState(false);
   const [description, setDescription] = React.useState("");
 
   // Endereço (slug) , com confirmação, como nos outros webhooks.
@@ -117,6 +122,12 @@ export function ConexaoWhatsappWizard({
   React.useEffect(() => {
     carregarTokens();
   }, [carregarTokens]);
+
+  // ── Nome (único entre TODOS os webhooks) ────────────────────────────────────
+  const nameTrim = name.trim();
+  const nameDuplicate = existingNames.some((n) => mesmoNome(n, nameTrim));
+  const nameValid = nameTrim.length > 0 && !nameDuplicate;
+  const showNameError = nameDuplicate && (nameTrim.length > 0 || nameTouched);
 
   // ── Endereço ────────────────────────────────────────────────────────────────
   const pathTrim = path.trim();
@@ -219,7 +230,7 @@ export function ConexaoWhatsappWizard({
   }
 
   const etapa1Valida =
-    name.trim().length > 0 &&
+    nameValid &&
     pathValid &&
     pathTrim === pathConfirmed &&
     bizValid &&
@@ -281,8 +292,15 @@ export function ConexaoWhatsappWizard({
                 id="cx-name"
                 value={name}
                 onChange={(e) => setName(e.currentTarget.value)}
+                onBlur={() => setNameTouched(true)}
                 placeholder="Ex.: WhatsApp da loja matriz"
+                aria-invalid={showNameError}
               />
+              {showNameError && (
+                <p className="text-xs text-destructive" role="alert">
+                  Já existe um webhook com esse nome. Escolha outro.
+                </p>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -396,7 +414,7 @@ export function ConexaoWhatsappWizard({
             descricao="Copie agora e envie no header Authorization das chamadas de entrada. Ele passa a valer quando você criar a conexão; depois disso, só reaparece por rotação."
           />
 
-          <GuiaDaEtapa dica="Não sabe o formato das mensagens? Veja como montar o payload.">
+          <GuiaDaEtapa dica="Veja como montar o payload">
             <WhatsappInboundHelp
               inboundBaseUrl={inboundBaseUrl}
               path={pathConfirmed}
@@ -470,7 +488,7 @@ export function ConexaoWhatsappWizard({
             descricao="Copie agora e use para conferir a assinatura (X-Signature) de cada entrega. Ele passa a valer quando você criar a conexão; depois disso, só reaparece por rotação."
           />
 
-          <GuiaDaEtapa dica="Quer ver o que a plataforma envia e como tratar as entregas?">
+          <GuiaDaEtapa dica="Veja como será enviado o payload">
             <ConexaoEnvioHelp defaultOpen={false} destaque />
           </GuiaDaEtapa>
 

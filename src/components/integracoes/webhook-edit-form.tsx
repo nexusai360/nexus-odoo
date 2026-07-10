@@ -25,6 +25,7 @@ import {
   validateNationalPhone,
 } from "@/lib/whatsapp/countries";
 import { cn } from "@/lib/utils";
+import { mesmoNome } from "@/lib/integrations/nome-webhook";
 import {
   updateWebhook,
   rotateWebhookSecret,
@@ -48,6 +49,7 @@ export function WebhookEditForm({
   inboundBaseUrl,
   existingPaths = [],
   existingBusinessIds = [],
+  existingNames = [],
 }: {
   webhook: WebhookListItem;
   inboundBaseUrl: string;
@@ -55,6 +57,8 @@ export function WebhookEditForm({
   existingPaths?: string[];
   /** business_id de OUTROS webhooks (exclui o atual), para unicidade. */
   existingBusinessIds?: string[];
+  /** Nomes de OUTROS webhooks (exclui o atual), para a trava de nome único. */
+  existingNames?: string[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -176,8 +180,11 @@ export function WebhookEditForm({
     });
   }
 
+  // Nome único entre TODOS os webhooks (a lista já exclui o próprio).
+  const nomeDuplicado = existingNames.some((n) => mesmoNome(n, name));
   const valid =
     name.trim().length > 0 &&
+    !nomeDuplicado &&
     methods.length > 0 &&
     (isInbound
       ? pathValid &&
@@ -235,7 +242,17 @@ export function WebhookEditForm({
 
       <div className="space-y-1.5">
         <Label htmlFor="wh-name">Nome</Label>
-        <Input id="wh-name" value={name} onChange={(e) => setName(e.target.value)} />
+        <Input
+          id="wh-name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          aria-invalid={nomeDuplicado}
+        />
+        {nomeDuplicado && (
+          <p className="text-xs text-destructive" role="alert">
+            Já existe um webhook com esse nome. Escolha outro.
+          </p>
+        )}
       </div>
 
       <div className="space-y-1.5">

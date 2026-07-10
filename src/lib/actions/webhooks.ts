@@ -26,6 +26,7 @@ import {
 } from "@/lib/integrations/webhook-permissions";
 import { encrypt, decrypt } from "@/lib/encryption";
 import { logAudit } from "@/lib/audit";
+import { verificarNomeDeWebhook } from "@/lib/integrations/nome-unico";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Types
@@ -248,6 +249,11 @@ export async function createWebhook(
 
   const data = parsed.data;
 
+  // Nome único entre TODOS os webhooks (qualquer tipo), sem diferenciar
+  // maiúsculas de minúsculas: dois "teste" na lista são indistinguíveis.
+  const nomeEmUso = await verificarNomeDeWebhook(data.name);
+  if (nomeEmUso) return { success: false, error: nomeEmUso };
+
   // Caminho (path) de webhook de entrada precisa ser único, duplicado quebraria
   // o roteamento das requisições recebidas.
   if (data.direction === "inbound" && data.path) {
@@ -358,6 +364,8 @@ export async function updateWebhook(
 
   const nameOk = z.string().trim().min(1).safeParse(input.name);
   if (!nameOk.success) return { success: false, error: "Nome obrigatório" };
+  const nomeEmUso = await verificarNomeDeWebhook(nameOk.data, { ignorarId: id });
+  if (nomeEmUso) return { success: false, error: nomeEmUso };
   const methodsOk = z.array(methodSchema).min(1).safeParse(input.methods);
   if (!methodsOk.success) {
     return { success: false, error: "Selecione ao menos um método" };

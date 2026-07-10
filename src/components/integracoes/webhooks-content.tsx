@@ -33,6 +33,7 @@ import {
   type ConexaoWhatsappListItem,
 } from "@/lib/actions/whatsapp-connection";
 import { formatE164ForDisplay } from "@/lib/whatsapp/countries";
+import { CopyTag } from "@/components/integracoes/copy-tag";
 import {
   webhookKindBadgeClass,
   webhookKindLabel,
@@ -86,7 +87,12 @@ function formatDateTime(date: Date) {
 /** Tipos disponíveis no filtro (ordem da criação). */
 const KIND_OPTIONS: WebhookKind[] = ["whatsapp", "inbound_generic", "outbound"];
 
-export function WebhooksContent({ initial, initialConexoes = [], podeVerConexoes = false }: Props) {
+export function WebhooksContent({
+  initial,
+  initialConexoes = [],
+  podeVerConexoes = false,
+  inboundBaseUrl,
+}: Props) {
   const router = useRouter();
   const [webhooks, setWebhooks] = useState<WebhookListItem[]>(initial);
   const [conexoes, setConexoes] = useState<ConexaoWhatsappListItem[]>(initialConexoes);
@@ -295,6 +301,7 @@ export function WebhooksContent({ initial, initialConexoes = [], podeVerConexoes
               <ConexaoRow
                 key={c.connectionId}
                 conexao={c}
+                inboundBaseUrl={inboundBaseUrl}
                 isPending={isPending}
                 onToggle={handleToggleConexao}
                 onDelete={handleDeleteConexao}
@@ -304,6 +311,7 @@ export function WebhooksContent({ initial, initialConexoes = [], podeVerConexoes
               <WebhookRow
                 key={wh.id}
                 webhook={wh}
+                inboundBaseUrl={inboundBaseUrl}
                 isPending={isPending}
                 onToggle={handleToggle}
                 onDelete={handleDelete}
@@ -416,11 +424,13 @@ function TypeMultiSelect({
 
 function ConexaoRow({
   conexao,
+  inboundBaseUrl,
   isPending,
   onToggle,
   onDelete,
 }: {
   conexao: ConexaoWhatsappListItem;
+  inboundBaseUrl: string;
   isPending: boolean;
   onToggle: (connectionId: string, enabled: boolean) => void;
   onDelete: (connectionId: string) => void;
@@ -428,6 +438,7 @@ function ConexaoRow({
   const router = useRouter();
   const km = KIND_META.whatsapp;
   const semEnvio = conexao.outboundId === null || !conexao.targetUrl;
+  const urlEntrada = conexao.path ? `${inboundBaseUrl}${conexao.path}` : null;
 
   return (
     <div
@@ -437,7 +448,7 @@ function ConexaoRow({
       )}
     >
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-start gap-3 min-w-0">
+        <div className="flex min-w-0 items-start gap-3">
           <span
             className={cn(
               "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
@@ -448,8 +459,8 @@ function ConexaoRow({
               className={cn("h-4 w-4", conexao.enabled ? km.iconColor : "text-muted-foreground")}
             />
           </span>
-          <div className="space-y-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm font-semibold">{conexao.name ?? "Conexão"}</span>
               <span
                 className={cn(
@@ -465,36 +476,37 @@ function ConexaoRow({
                 </span>
               )}
             </div>
-            {conexao.description && (
-              <p className="text-[11px] text-muted-foreground">{conexao.description}</p>
-            )}
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {conexao.path && (
-                <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                  <ArrowDownToLine className="h-3 w-3" aria-hidden />
-                  <code className="max-w-full truncate rounded-md border border-border bg-muted px-1.5 py-0.5 text-[11px] font-mono text-foreground">
-                    /{conexao.path}
-                  </code>
-                </span>
+
+            <Descricao texto={conexao.description} />
+
+            {/* Uma linha por ponta: recebimento em cima, envio embaixo. */}
+            <div className="space-y-1">
+              {urlEntrada && (
+                <EnderecoLinha
+                  icone={ArrowDownToLine}
+                  url={urlEntrada}
+                  rotulo="Copiar endereço de recebimento"
+                />
               )}
               {conexao.targetUrl && (
-                <span className="flex min-w-0 items-center gap-1 text-[11px] text-muted-foreground">
-                  <ArrowUpFromLine className="h-3 w-3 shrink-0" aria-hidden />
-                  <code className="max-w-[260px] truncate rounded-md border border-border bg-muted px-1.5 py-0.5 text-[11px] font-mono text-foreground">
-                    {conexao.targetUrl}
-                  </code>
-                </span>
+                <EnderecoLinha
+                  icone={ArrowUpFromLine}
+                  url={conexao.targetUrl}
+                  rotulo="Copiar endereço de envio"
+                />
               )}
-              <span className="rounded-md border border-violet-500/30 bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-600 dark:text-violet-400">
-                POST
-              </span>
             </div>
+
             {conexao.businessId && (
               <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                 WhatsApp:
-                <span className="rounded-md border border-border bg-muted px-1.5 py-0.5 font-mono tabular-nums text-foreground">
+                <CopyTag
+                  value={conexao.businessId}
+                  label="Copiar número (somente dígitos)"
+                  className="tabular-nums"
+                >
                   {formatE164ForDisplay(conexao.businessId)}
-                </span>
+                </CopyTag>
               </p>
             )}
             <p className="text-[11px] text-muted-foreground">
@@ -560,29 +572,67 @@ function ConexaoRow({
   );
 }
 
+/** Descrição do webhook. */
+function Descricao({ texto }: { texto: string | null }) {
+  if (!texto) return null;
+  return <p className="text-[11px] text-muted-foreground">{texto}</p>;
+}
+
+/**
+ * Uma ponta do webhook: seta (entrada/saída) + URL COMPLETA copiável + método.
+ * A URL só ganha reticências quando falta espaço de verdade (`min-w-0` +
+ * `truncate`), nunca por uma largura fixa , em tela larga ela aparece inteira.
+ */
+function EnderecoLinha({
+  icone: Icone,
+  url,
+  rotulo,
+  metodo = "POST",
+}: {
+  icone: typeof ArrowDownToLine;
+  url: string;
+  rotulo: string;
+  metodo?: string;
+}) {
+  return (
+    <div className="flex min-w-0 items-center gap-1.5">
+      <Icone className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
+      <CopyTag value={url} label={rotulo}>
+        {url}
+      </CopyTag>
+      <span className="shrink-0 rounded-md border border-violet-500/30 bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-600 dark:text-violet-400">
+        {metodo}
+      </span>
+    </div>
+  );
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // WebhookRow
 // ──────────────────────────────────────────────────────────────────────────────
 
 interface WebhookRowProps {
   webhook: WebhookListItem;
+  inboundBaseUrl: string;
   isPending: boolean;
   onToggle: (id: string, enabled: boolean) => void;
   onDelete: (id: string) => void;
 }
 
-function WebhookRow({ webhook, isPending, onToggle, onDelete }: WebhookRowProps) {
+function WebhookRow({ webhook, inboundBaseUrl, isPending, onToggle, onDelete }: WebhookRowProps) {
   const router = useRouter();
   const isInbound = webhook.direction === "inbound";
   const kind = webhookKindOf(webhook);
   const km = KIND_META[kind];
   const KindIcon = km.icon;
   const isWhatsapp = kind === "whatsapp";
+  // URL COMPLETA nas duas direções (entrada = base + slug; saída = destino).
   const endpoint = isInbound
     ? webhook.path
-      ? `/${webhook.path}`
+      ? `${inboundBaseUrl}${webhook.path}`
       : null
     : webhook.targetUrl;
+  const enderecoLabel = isInbound ? "Copiar endereço de entrada" : "Copiar endereço de destino";
 
   return (
     <div
@@ -592,7 +642,7 @@ function WebhookRow({ webhook, isPending, onToggle, onDelete }: WebhookRowProps)
       )}
     >
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-start gap-3 min-w-0">
+        <div className="flex min-w-0 items-start gap-3">
           {/* Desativado: card fica ofuscado e o ícone vira cinza. */}
           <span
             className={cn(
@@ -602,8 +652,8 @@ function WebhookRow({ webhook, isPending, onToggle, onDelete }: WebhookRowProps)
           >
             <KindIcon className={cn("h-4 w-4", webhook.enabled ? km.iconColor : "text-muted-foreground")} />
           </span>
-          <div className="space-y-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm font-semibold">{webhook.name ?? "Webhook"}</span>
               <span
                 className={cn(
@@ -614,19 +664,17 @@ function WebhookRow({ webhook, isPending, onToggle, onDelete }: WebhookRowProps)
                 {webhookKindLabel(kind)}
               </span>
             </div>
-            {webhook.description && (
-              <p className="text-[11px] text-muted-foreground">{webhook.description}</p>
-            )}
-            <div className="flex items-center gap-1.5 flex-wrap">
+            <Descricao texto={webhook.description} />
+            <div className="flex min-w-0 items-center gap-1.5">
               {endpoint && (
-                <code className="max-w-full truncate rounded-md border border-border bg-muted px-1.5 py-0.5 text-[11px] font-mono text-foreground">
+                <CopyTag value={endpoint} label={enderecoLabel}>
                   {endpoint}
-                </code>
+                </CopyTag>
               )}
               {webhook.methods.map((m) => (
                 <span
                   key={m}
-                  className="rounded-md border border-violet-500/30 bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-600 dark:text-violet-400"
+                  className="shrink-0 rounded-md border border-violet-500/30 bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-600 dark:text-violet-400"
                 >
                   {m}
                 </span>
@@ -635,9 +683,13 @@ function WebhookRow({ webhook, isPending, onToggle, onDelete }: WebhookRowProps)
             {isWhatsapp && webhook.businessId && (
               <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                 WhatsApp:
-                <span className="rounded-md border border-border bg-muted px-1.5 py-0.5 font-mono tabular-nums text-foreground">
+                <CopyTag
+                  value={webhook.businessId}
+                  label="Copiar número (somente dígitos)"
+                  className="tabular-nums"
+                >
                   {formatE164ForDisplay(webhook.businessId)}
-                </span>
+                </CopyTag>
               </p>
             )}
             <p className="text-[11px] text-muted-foreground">

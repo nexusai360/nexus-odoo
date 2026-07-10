@@ -211,7 +211,7 @@ export function Step({
   icon: Icon,
   n,
   title,
-  defaultOpen = true,
+  defaultOpen = false,
   children,
 }: {
   icon: React.ElementType;
@@ -333,7 +333,7 @@ export function WhatsappInboundHelp({
       {open && (
         <div className="space-y-2.5 border-t border-border/60 p-3">
           {/* Passo 1 , Endereço (URL real) */}
-          <Step icon={Link2} n={1} title="Endereço (URL)">
+          <Step icon={Link2} n={1} title="Endereço (URL)" defaultOpen={false}>
             <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
               Use o método
               <span className="rounded-md bg-primary/10 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-primary ring-1 ring-primary/20">
@@ -360,7 +360,7 @@ export function WhatsappInboundHelp({
           </Step>
 
           {/* Passo 2 , Headers (explicação para leigo) */}
-          <Step icon={KeyRound} n={2} title="Headers">
+          <Step icon={KeyRound} n={2} title="Headers" defaultOpen={false}>
             <p className="text-xs text-muted-foreground">A requisição leva dois cabeçalhos:</p>
             <div className="space-y-4">
               <HeaderHelp icon={FileJson} name="Content-Type" required={false}>
@@ -392,7 +392,7 @@ export function WhatsappInboundHelp({
           </Step>
 
           {/* Passo 3 , Campos do body */}
-          <Step icon={Table2} n={3} title="Body">
+          <Step icon={Table2} n={3} title="Body" defaultOpen={false}>
             <div className="overflow-hidden rounded-lg border border-border">
               <table className="w-full text-left text-xs">
                 <thead>

@@ -38,6 +38,8 @@ export default async function EditarWebhookPage({
   const existingBusinessIds = others
     .filter((w) => w.isWhatsappReceiver && w.businessId)
     .map((w) => w.businessId as string);
+  // Nome e unico entre TODOS os webhooks (a lista ja exclui o proprio).
+  const existingNames = others.map((w) => w.name ?? "").filter(Boolean);
   const kind: WebhookKind =
     webhook.direction !== "inbound"
       ? "outbound"
@@ -75,6 +77,7 @@ export default async function EditarWebhookPage({
           inboundBaseUrl={inboundBaseUrl}
           existingPaths={existingPaths}
           existingBusinessIds={existingBusinessIds}
+          existingNames={existingNames}
         />
       </div>
     </PageShell>

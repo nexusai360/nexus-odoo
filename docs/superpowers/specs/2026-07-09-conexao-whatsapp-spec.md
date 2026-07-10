@@ -359,6 +359,31 @@ Caso fixo (é o critério de aceite, e bate com as regras):
 
 Negrito, itálico, tachado e links seguem convertidos como hoje.
 
+### 3.13 Cards da listagem e trava de nome (decisões do usuário 2026-07-10)
+
+**Cards (vale para os TRÊS tipos de webhook):**
+- O endereço aparece **completo** (base + slug na entrada; URL de destino na
+  saída). Reticências **só** quando falta espaço de verdade (`min-w-0` +
+  `truncate`), nunca por largura fixa , em tela larga a URL aparece inteira.
+- As tags de endereço e a do número da empresa são **clicáveis e copiam**, com
+  retorno visual ("Copiado!"). O número copia **somente dígitos** (sem `+`,
+  espaço ou traço), embora exiba formatado.
+- **Só na Conexão com WhatsApp:** duas linhas, uma por ponta , recebimento (seta
+  para baixo) em cima, envio (seta para cima) embaixo, **cada uma com sua tag de
+  método** (`POST`).
+
+**Trava de NOME único (todos os tipos):** não é possível criar nem editar um
+webhook com nome já usado por outro, mesmo de tipo diferente. A comparação
+ignora maiúsculas/minúsculas e espaços nas pontas. Verificada no **servidor**
+(fonte da verdade) e antecipada na tela. As duas linhas de uma Conexão
+compartilham o nome e não conflitam entre si.
+
+**Guias (`Como montar o payload` / `O que enviamos`):** nascem fechados, com
+**todos os sub-blocos fechados**. Ficam depois do token, com respiro, anunciados
+por uma dica de uma linha e contorno sutil. O guia de envio **não numera passos**
+(não há sequência a executar): blocos `Headers`, `Body` e `Exemplos`. O aviso de
+deduplicação é informativo, em **tom neutro**, para não competir com o token.
+
 ## 4. Fora de escopo
 
 - `media_unsupported` (A5); remoção do modelo `WhatsappInstance` (A12): dívida.

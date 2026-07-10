@@ -21,6 +21,7 @@ import type { AuthUser } from "@/lib/auth-helpers";
 import { encrypt, decrypt } from "@/lib/encryption";
 import { logAudit } from "@/lib/audit";
 import { verificarNumeroParaConexao } from "@/lib/whatsapp/numero-unico";
+import { verificarNomeDeWebhook } from "@/lib/integrations/nome-unico";
 import type { WhatsappResponseMode } from "@/generated/prisma/client";
 import type { WebhookListItem } from "@/lib/actions/webhooks";
 
@@ -176,6 +177,10 @@ export async function criarConexaoWhatsapp(
   }
   const data = parsed.data;
 
+  // Nome único entre TODOS os webhooks (qualquer tipo).
+  const nomeEmUso = await verificarNomeDeWebhook(data.name);
+  if (nomeEmUso) return { success: false, error: nomeEmUso };
+
   // Slug único entre os webhooks de entrada.
   const slugOcupado = await prisma.whatsappWebhook.findFirst({
     where: { direction: "inbound", path: data.path },
@@ -321,6 +326,12 @@ export async function atualizarConexaoWhatsapp(
     return { success: false, error: "Conexão não encontrada" };
   }
   const outbound = linhas.find((l) => l.direction === "outbound") ?? null;
+
+  // Nome único, ignorando as DUAS linhas desta conexão (compartilham o nome).
+  const nomeEmUso = await verificarNomeDeWebhook(data.name, {
+    ignorarConnectionId: connectionId,
+  });
+  if (nomeEmUso) return { success: false, error: nomeEmUso };
 
   // Slug único entre os webhooks de entrada (excluindo a própria linha).
   const slugOcupado = await prisma.whatsappWebhook.findFirst({

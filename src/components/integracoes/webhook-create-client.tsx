@@ -21,11 +21,14 @@ export function WebhookCreateClient({
   inboundBaseUrl,
   existingPaths,
   existingBusinessIds,
+  existingNames,
   kindsPermitidos,
 }: {
   inboundBaseUrl: string;
   existingPaths: string[];
   existingBusinessIds: string[];
+  /** Nomes ja usados por QUALQUER webhook (trava de nome unico). */
+  existingNames: string[];
   /** Tipos que o perfil pode criar (resolvido no servidor). */
   kindsPermitidos: WebhookKind[];
 }) {
@@ -75,6 +78,7 @@ export function WebhookCreateClient({
           inboundBaseUrl={inboundBaseUrl}
           existingPaths={existingPaths}
           existingBusinessIds={existingBusinessIds}
+          existingNames={existingNames}
           onKindChange={setKind}
           onCreated={() => {
             toast.success("Webhook criado");
