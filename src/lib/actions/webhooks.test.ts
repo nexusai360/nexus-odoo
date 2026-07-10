@@ -496,12 +496,15 @@ describe("gate do receptor de WhatsApp", () => {
     expect(mockPrismaWebhookUpdate).not.toHaveBeenCalled();
   });
 
-  it("admin nao ve o receptor de WhatsApp na listagem", async () => {
+  it("admin nao ve o receptor de WhatsApp nem linhas de Conexao na listagem", async () => {
     menuLiberadoParaAdmin();
     mockGetCurrentUser.mockResolvedValue(REGULAR_USER);
     await listWebhooks();
     const where = mockPrismaWebhookFindMany.mock.calls[0][0]?.where;
-    expect(where).toEqual({ isWhatsappReceiver: false });
+    // A linha de ENVIO de uma Conexao nao e receptora, mas pertence a conexao:
+    // sem o filtro por connectionId ela apareceria (e seria editavel) como
+    // webhook generico para quem nao e super_admin.
+    expect(where).toEqual({ isWhatsappReceiver: false, connectionId: null });
   });
 
   it("super_admin ve todos os webhooks na listagem", async () => {

@@ -50,6 +50,8 @@ jest.mock("@/lib/prisma", () => ({
       findUnique: mockFindUnique,
       create: mockCreate,
       update: mockUpdate,
+      updateMany: mockUpdateMany,
+      deleteMany: mockDeleteMany,
     },
     whatsappInstance: { findFirst: mockInstanceFindFirst },
     $transaction: mockTransaction,
@@ -60,6 +62,7 @@ import {
   prepararTokensConexao,
   criarConexaoWhatsapp,
   atualizarConexaoWhatsapp,
+  alternarConexaoWhatsapp,
   apagarConexaoWhatsapp,
   rotacionarTokenConexao,
   listConnections,
@@ -435,6 +438,41 @@ describe("rotacionarTokenConexao", () => {
     mockGetCurrentUser.mockResolvedValue(ADMIN);
     const r = await rotacionarTokenConexao(CONN_ID, "recebimento");
     expect(r.success).toBe(false);
+  });
+});
+
+// ── alternarConexaoWhatsapp ──────────────────────────────────────────────────
+
+describe("alternarConexaoWhatsapp", () => {
+  const CONN_ID = "55555555-5555-5555-5555-555555555555";
+
+  it("liga/desliga as DUAS linhas da conexão", async () => {
+    mockUpdateMany.mockResolvedValue({ count: 2 });
+    const r = await alternarConexaoWhatsapp(CONN_ID, false);
+    expect(r.success).toBe(true);
+    expect(mockUpdateMany).toHaveBeenCalledWith({
+      where: { connectionId: CONN_ID },
+      data: { enabled: false },
+    });
+    expect(mockLogAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "whatsapp_connection_updated",
+        details: expect.objectContaining({ enabled: false }),
+      }),
+    );
+  });
+
+  it("conexão inexistente falha claro", async () => {
+    mockUpdateMany.mockResolvedValue({ count: 0 });
+    const r = await alternarConexaoWhatsapp(CONN_ID, true);
+    expect(r.success).toBe(false);
+  });
+
+  it("só super_admin", async () => {
+    mockGetCurrentUser.mockResolvedValue(ADMIN);
+    const r = await alternarConexaoWhatsapp(CONN_ID, true);
+    expect(r.success).toBe(false);
+    expect(mockUpdateMany).not.toHaveBeenCalled();
   });
 });
 

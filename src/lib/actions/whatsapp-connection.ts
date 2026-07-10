@@ -22,6 +22,7 @@ import { encrypt, decrypt } from "@/lib/encryption";
 import { logAudit } from "@/lib/audit";
 import { verificarNumeroParaConexao } from "@/lib/whatsapp/numero-unico";
 import type { WhatsappResponseMode } from "@/generated/prisma/client";
+import type { WebhookListItem } from "@/lib/actions/webhooks";
 
 type DataResult<T> = { success: true; data: T } | { success: false; error: string };
 
@@ -74,26 +75,10 @@ export interface ConexaoWhatsappListItem {
   createdAt: Date;
 }
 
-/** Webhook sem conexão (genéricos e legados), no formato da listagem atual. */
-export interface WebhookAvulsoListItem {
-  id: string;
-  direction: "inbound" | "outbound";
-  name: string | null;
-  description: string | null;
-  path: string | null;
-  targetUrl: string | null;
-  methods: string[];
-  events: string[];
-  isWhatsappReceiver: boolean;
-  businessId: string | null;
-  secretHint: string;
-  enabled: boolean;
-  createdAt: Date;
-}
-
 export interface ListConnectionsData {
   conexoes: ConexaoWhatsappListItem[];
-  avulsos: WebhookAvulsoListItem[];
+  /** Webhooks sem conexão (genéricos e legados), no formato da listagem atual. */
+  avulsos: WebhookListItem[];
 }
 
 export type PontaDaConexao = "recebimento" | "assinatura";
@@ -417,6 +402,44 @@ export async function atualizarConexaoWhatsapp(
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// alternarConexaoWhatsapp
+// ──────────────────────────────────────────────────────────────────────────────
+
+/** Liga/desliga a Conexão inteira (as duas linhas juntas). */
+export async function alternarConexaoWhatsapp(
+  connectionId: string,
+  enabled: boolean,
+): Promise<DataResult<void>> {
+  const guarda = await guardaSuperAdmin();
+  if (!guarda.ok) return { success: false, error: guarda.error };
+  const me = guarda.user;
+
+  try {
+    const r = await prisma.whatsappWebhook.updateMany({
+      where: { connectionId },
+      data: { enabled },
+    });
+    if (r.count === 0) {
+      return { success: false, error: "Conexão não encontrada" };
+    }
+
+    await logAudit({
+      userId: me.id,
+      action: "whatsapp_connection_updated",
+      targetType: "whatsapp_connection",
+      targetId: connectionId,
+      details: { enabled },
+    });
+
+    revalidatePath("/integracoes/webhooks");
+    return { success: true, data: undefined };
+  } catch (err) {
+    console.error("[whatsapp-connection] alternarConexaoWhatsapp:", err);
+    return { success: false, error: "Erro ao atualizar a conexão" };
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // apagarConexaoWhatsapp (TF.2)
 // ──────────────────────────────────────────────────────────────────────────────
 
@@ -549,7 +572,7 @@ export async function listConnections(): Promise<DataResult<ListConnectionsData>
     });
 
     const porConexao = new Map<string, typeof rows>();
-    const avulsos: WebhookAvulsoListItem[] = [];
+    const avulsos: WebhookListItem[] = [];
 
     for (const r of rows) {
       if (r.connectionId) {
@@ -559,13 +582,13 @@ export async function listConnections(): Promise<DataResult<ListConnectionsData>
       } else {
         avulsos.push({
           id: r.id,
-          direction: r.direction as "inbound" | "outbound",
+          direction: r.direction as WebhookListItem["direction"],
           name: r.name,
           description: r.description ?? null,
           path: r.path,
           targetUrl: r.targetUrl ?? r.url,
           methods: r.methods,
-          events: (r.events as string[] | undefined) ?? [],
+          events: (r.events as WebhookListItem["events"] | undefined) ?? [],
           isWhatsappReceiver: r.isWhatsappReceiver ?? false,
           businessId: r.businessId ?? null,
           secretHint: maskSecret(r.secret),
