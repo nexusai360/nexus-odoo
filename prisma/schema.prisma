@@ -3146,15 +3146,9 @@ model AgentSettings {
   /// Pra voltar a TRUE: botão "Voltar ao padrão do sistema" na UI.
   usesCodeDefaults Boolean @default(true) @map("uses_code_defaults")
 
-  /// Exibição da bolha flutuante do Agente Nex nas páginas autenticadas.
-  bubbleEnabled Boolean @default(true) @map("bubble_enabled")
-
-  /// Habilita o Agente Nex no canal WhatsApp (F5). Independente de bubble.
-  whatsappEnabled Boolean @default(true) @map("whatsapp_enabled")
-
-  /// F5: nível mínimo de acesso da bubble in-app. Default viewer = todos (preserva bubbleEnabled=true).
+  /// F5: nível mínimo de acesso da bubble in-app. Default viewer = todos.
   bubbleAccessLevel   ChannelAccessLevel @default(viewer) @map("bubble_access_level")
-  /// F5: nível mínimo de acesso do canal WhatsApp. Default viewer = todos (preserva whatsappEnabled=true).
+  /// F5: nível mínimo de acesso do canal WhatsApp. Default viewer = todos.
   whatsappAccessLevel ChannelAccessLevel @default(viewer) @map("whatsapp_access_level")
 
   /// Checkpoints de 3 estados (OFF/PLAYGROUND/PRODUCTION).
