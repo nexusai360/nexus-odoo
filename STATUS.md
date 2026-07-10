@@ -1,5 +1,14 @@
 # STATUS — nexus-odoo
 
+> **2026-07-10 (DÍVIDAS DO WHATSAPP , EM PRODUÇÃO).** PR #163 mergeado (squash
+> 82dcacb9) e deployado: rolling OK, 110/110 migrations, health 200. Fechadas:
+> `media_unsupported` (A5), teto diário cortando na meia-noite de São Paulo
+> (era UTC = 21h BR), drop de `bubble_enabled`/`whatsapp_enabled`
+> (R-f5-drop-booleans-legados) e remoção do `WhatsappInstance` (A12; 0 linhas
+> conferidas em dev/prod ANTES do DROP , confirmado em prod: colunas e tabela
+> não existem mais). Restam no RADAR só as dívidas que exigem decisão de
+> produto (título numérico na formatação) ou frente própria (hidratação React).
+
 > **2026-07-10 (CONEXÃO COM WHATSAPP , EM PRODUÇÃO).** PR #162 mergeado
 > (squash 9bbe4b2f) e deployado em agentenex.nexusai360.com: rolling OK,
 > 108/108 migrations aplicadas, health 200, rota legada respondendo 410 EM
