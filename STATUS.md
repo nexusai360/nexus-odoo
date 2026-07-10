@@ -1,5 +1,26 @@
 # STATUS — nexus-odoo
 
+> **2026-07-09/10 (CONEXÃO COM WHATSAPP , branch feat/conexao-whatsapp, EXECUÇÃO
+> 100% COMPLETA, aguardando merge com "sim").** As 9 ondas do PLAN v3 entregues
+> em TDD com commits atômicos. **O vazamento entre clientes morreu** (A1/A1b:
+> `loadOutboundTargets(connectionId)` fail-closed + `fireBlocked` escopado),
+> provado por unit (isolamento 3/3) e por **E2E contra o dev real (19/19):**
+> duas conexões, destinos capturados por HTTP local, bloqueio e resposta final
+> (worker+agente REAIS, imagem da branch) chegando SÓ no destino certo, rota
+> legada em 410. Entregue: modo de resposta POR CONEXÃO (mata A13), trava de
+> número único nos dois sentidos (§3.4.1, com `WhatsappChannel.phone_number`
+> resolvido na Graph API fail-closed), `daily_limit_exceeded` emitido, envelope
+> aninhado da SPEC §3.10 (`connection`/`message`/`session`/`result`/
+> `diagnostics.model`), formatação compacta §3.12 byte a byte, ações da Conexão
+> (criar/editar/apagar/rotacionar por ponta/listar agrupado), assistente de 4
+> etapas (Recebimento·Envio·Revisão·Conclusão) com tokens do servidor e guias
+> colapsados, listagem 1 card por conexão, edição das duas pontas, gate
+> super_admin reforçado (linha de ENVIO não vaza mais como webhook genérico),
+> teste "nenhum n8n visível" (limpou 5 textos PRÉ-existentes), runbook e RADAR
+> atualizados. tsc/eslint/jest(3878)/next build/db-health/drift: TUDO verde.
+> Migrations novas aplicadas SÓ no dev (`phone_number`, audit actions;
+> schema-changed registrado). **NUNCA mergear sem "sim" explícito.**
+
 > **2026-07-08 (INTELIGÊNCIA DE DEMANDA , branch feat/menu-diretoria, LOCAL, NÃO
 > mergeado) , SUB-PROJETO COMPLETO: Ondas 0/A/B/C + tabela do Nex + PAINÉIS DA
 > DIRETORIA.** Falta só a validação visual do usuário e o merge (com "sim").
