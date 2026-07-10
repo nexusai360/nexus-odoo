@@ -28,6 +28,8 @@ export default async function NovoWebhookPage() {
   const existingBusinessIds = items
     .filter((w) => w.isWhatsappReceiver && w.businessId)
     .map((w) => w.businessId as string);
+  // Nome e unico entre TODOS os webhooks (qualquer tipo).
+  const existingNames = items.map((w) => w.name ?? "").filter(Boolean);
 
   // O breadcrumb e o cabeçalho são renderizados pelo client (refletem o tipo).
   return (
@@ -37,6 +39,7 @@ export default async function NovoWebhookPage() {
         inboundBaseUrl={inboundBaseUrl}
         existingPaths={existingPaths}
         existingBusinessIds={existingBusinessIds}
+        existingNames={existingNames}
       />
     </PageShell>
   );

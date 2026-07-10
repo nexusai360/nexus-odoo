@@ -21,6 +21,7 @@ import type { AuthUser } from "@/lib/auth-helpers";
 import { encrypt, decrypt } from "@/lib/encryption";
 import { logAudit } from "@/lib/audit";
 import { verificarNumeroParaConexao } from "@/lib/whatsapp/numero-unico";
+import { verificarNomeDeWebhook } from "@/lib/integrations/nome-unico";
 import type { WhatsappResponseMode } from "@/generated/prisma/client";
 import type { WebhookListItem } from "@/lib/actions/webhooks";
 
@@ -30,6 +31,11 @@ type DataResult<T> = { success: true; data: T } | { success: false; error: strin
 // Types
 // ──────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Tokens da conexão, gerados no servidor ANTES da criação (sem persistir).
+ * Cada um é exibido na SUA etapa do assistente, em bloco reservado
+ * (mascarado, com aviso), e só passa a valer quando a conexão é criada.
+ */
 export interface TokensDaConexao {
   /** Token que o fluxo externo usa para ENTRAR (Authorization: Bearer). */
   tokenRecebimento: string;
@@ -46,7 +52,7 @@ export interface CriarConexaoInput {
   businessId: string;
   /** URL de destino do envio. */
   targetUrl: string;
-  /** Tokens gerados por `prepararTokensConexao` (o assistente os exibe antes). */
+  /** Tokens exibidos nas etapas 1 e 2 (`prepararTokensConexao`). */
   tokenRecebimento: string;
   tokenAssinatura: string;
 }
@@ -126,13 +132,13 @@ const criarSchema = z.object({
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
-// prepararTokensConexao (TF.0)
+// prepararTokensConexao
 // ──────────────────────────────────────────────────────────────────────────────
 
 /**
- * Gera os dois tokens da conexão SEM efeito colateral (nada é persistido).
- * O assistente os exibe nas etapas 1 e 2; eles só passam a valer quando a
- * conexão é criada. Recarregar a página gera tokens novos (SPEC §3.8).
+ * Gera os dois tokens SEM efeito colateral (nada é persistido). O assistente
+ * exibe cada um na sua etapa, em bloco reservado; eles só passam a valer
+ * quando a conexão é criada. Recarregar a página gera tokens novos.
  */
 export async function prepararTokensConexao(): Promise<DataResult<TokensDaConexao>> {
   const guarda = await guardaSuperAdmin();
@@ -170,6 +176,10 @@ export async function criarConexaoWhatsapp(
     return { success: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
   }
   const data = parsed.data;
+
+  // Nome único entre TODOS os webhooks (qualquer tipo).
+  const nomeEmUso = await verificarNomeDeWebhook(data.name);
+  if (nomeEmUso) return { success: false, error: nomeEmUso };
 
   // Slug único entre os webhooks de entrada.
   const slugOcupado = await prisma.whatsappWebhook.findFirst({
@@ -316,6 +326,12 @@ export async function atualizarConexaoWhatsapp(
     return { success: false, error: "Conexão não encontrada" };
   }
   const outbound = linhas.find((l) => l.direction === "outbound") ?? null;
+
+  // Nome único, ignorando as DUAS linhas desta conexão (compartilham o nome).
+  const nomeEmUso = await verificarNomeDeWebhook(data.name, {
+    ignorarConnectionId: connectionId,
+  });
+  if (nomeEmUso) return { success: false, error: nomeEmUso };
 
   // Slug único entre os webhooks de entrada (excluindo a própria linha).
   const slugOcupado = await prisma.whatsappWebhook.findFirst({

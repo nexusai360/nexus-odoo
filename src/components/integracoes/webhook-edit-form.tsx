@@ -10,10 +10,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { SecretRevealStep } from "@/components/ui/secret-reveal-step";
 import { PhoneInput } from "@/components/ui/phone-input";
-import {
-  FieldValidateButton,
-  type FieldConfirmVariant,
-} from "@/components/integrations/field-validate-button";
 import { WebhookEventSelector } from "@/components/integrations/webhook-event-selector";
 import { WhatsappInboundHelp } from "@/components/integrations/whatsapp-inbound-help";
 import { KindBanner } from "@/components/integrations/webhook-wizard";
@@ -25,6 +21,7 @@ import {
   validateNationalPhone,
 } from "@/lib/whatsapp/countries";
 import { cn } from "@/lib/utils";
+import { mesmoNome } from "@/lib/integrations/nome-webhook";
 import {
   updateWebhook,
   rotateWebhookSecret,
@@ -48,6 +45,7 @@ export function WebhookEditForm({
   inboundBaseUrl,
   existingPaths = [],
   existingBusinessIds = [],
+  existingNames = [],
 }: {
   webhook: WebhookListItem;
   inboundBaseUrl: string;
@@ -55,6 +53,8 @@ export function WebhookEditForm({
   existingPaths?: string[];
   /** business_id de OUTROS webhooks (exclui o atual), para unicidade. */
   existingBusinessIds?: string[];
+  /** Nomes de OUTROS webhooks (exclui o atual), para a trava de nome único. */
+  existingNames?: string[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -77,8 +77,6 @@ export function WebhookEditForm({
   const [bizTouched, setBizTouched] = useState(false);
   const [pathTouched, setPathTouched] = useState(false);
   // Valores já gravados começam "confirmados"; alterar exige reconfirmar.
-  const [pathConfirmed, setPathConfirmed] = useState((webhook.path ?? "").trim());
-  const [bizConfirmed, setBizConfirmed] = useState(initBizDigits);
   const [revealedSecret, setRevealedSecret] = useState<string | null>(null);
 
   // Validação em tempo real (formato + unicidade contra os outros webhooks).
@@ -102,62 +100,14 @@ export function WebhookEditForm({
   const showBizError = bizErrorMsg !== null && (bizNational.length > 0 || bizTouched);
 
   // Estado visual + confirmação dos campos com botão de confirmar.
-  const pathVariant: FieldConfirmVariant = !pathValid
-    ? pathTrim.length > 0 || pathTouched
-      ? "error"
-      : "idle"
-    : pathTrim === pathConfirmed
-      ? "confirmed"
-      : "pending";
-  const bizVariant: FieldConfirmVariant = !bizValid
-    ? bizNational.length > 0 || bizTouched
-      ? "error"
-      : "idle"
-    : businessIdDigits === bizConfirmed
-      ? "confirmed"
-      : "pending";
 
-  function confirmPath() {
-    if (!pathValid) {
-      setPathTouched(true);
-      return;
-    }
-    setPathConfirmed(pathTrim);
-    toast.success("Endereço atualizado");
-  }
 
-  function confirmBiz() {
-    if (!bizValid) {
-      setBizTouched(true);
-      return;
-    }
-    setBizConfirmed(businessIdDigits);
-    toast.success("Número da empresa atualizado");
-  }
 
   // Ao sair do campo sem confirmar, volta ao último valor aplicado.
-  function revertPath() {
-    if (pathTrim !== pathConfirmed) {
-      setPath(pathConfirmed);
-      setPathTouched(false);
-    }
-  }
 
   const bizFieldRef = useRef<HTMLDivElement>(null);
-  function revertBiz(e: React.FocusEvent) {
-    const next = e.relatedTarget as Node | null;
-    if (next && bizFieldRef.current?.contains(next)) return;
-    if (businessIdDigits !== bizConfirmed) {
-      const snap = splitE164(bizConfirmed);
-      setBizCountry(snap.country ?? DEFAULT_COUNTRY);
-      setBizNational(snap.nationalDigits);
-      setBizTouched(false);
-    }
-  }
 
   // O botão de confirmar só aparece quando há algo digitado (some quando vazio).
-  const showPathConfirm = pathTrim.length > 0;
-  const showBizConfirm = bizNational.length > 0;
 
   function toggleMethod(m: WebhookMethod) {
     setMethods((prev) => (prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m]));
@@ -176,14 +126,13 @@ export function WebhookEditForm({
     });
   }
 
+  // Nome único entre TODOS os webhooks (a lista já exclui o próprio).
+  const nomeDuplicado = existingNames.some((n) => mesmoNome(n, name));
   const valid =
     name.trim().length > 0 &&
+    !nomeDuplicado &&
     methods.length > 0 &&
-    (isInbound
-      ? pathValid &&
-        pathTrim === pathConfirmed &&
-        (!isWhatsapp || (bizValid && businessIdDigits === bizConfirmed))
-      : isValidUrl(targetUrl.trim()));
+    (isInbound ? pathValid && (!isWhatsapp || bizValid) : isValidUrl(targetUrl.trim()));
 
   // Salvar só habilita quando houve alteração de fato.
   const isDirty =
@@ -191,8 +140,8 @@ export function WebhookEditForm({
     description.trim() !== (webhook.description ?? "").trim() ||
     arrKey(methods) !== arrKey(webhook.methods) ||
     (isInbound
-      ? pathConfirmed !== (webhook.path ?? "").trim() ||
-        (isWhatsapp && bizConfirmed !== initBizDigits)
+      ? pathTrim !== (webhook.path ?? "").trim() ||
+        (isWhatsapp && businessIdDigits !== initBizDigits)
       : targetUrl.trim() !== (webhook.targetUrl ?? "").trim() ||
         arrKey(events) !== arrKey(webhook.events ?? []));
 
@@ -235,7 +184,17 @@ export function WebhookEditForm({
 
       <div className="space-y-1.5">
         <Label htmlFor="wh-name">Nome</Label>
-        <Input id="wh-name" value={name} onChange={(e) => setName(e.target.value)} />
+        <Input
+          id="wh-name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          aria-invalid={nomeDuplicado}
+        />
+        {nomeDuplicado && (
+          <p className="text-xs text-destructive" role="alert">
+            Já existe um webhook com esse nome. Escolha outro.
+          </p>
+        )}
       </div>
 
       <div className="space-y-1.5">
@@ -270,22 +229,10 @@ export function WebhookEditForm({
                   id="wh-path"
                   value={path}
                   onChange={(e) => setPath(e.target.value)}
-                  onBlur={revertPath}
+                  onBlur={() => setPathTouched(true)}
                   placeholder={isWhatsapp ? "whatsapp/loja-matriz" : "meu-sistema/eventos"}
                   aria-invalid={showPathError}
                   className="min-w-0 flex-1 bg-transparent px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground"
-                />
-              </div>
-              <div
-                className={cn(
-                  "flex items-stretch transition-all duration-200",
-                  showPathConfirm ? "ml-2 w-9 opacity-100" : "ml-0 w-0 opacity-0",
-                )}
-              >
-                <FieldValidateButton
-                  variant={pathVariant}
-                  onClick={confirmPath}
-                  label="Confirmar endereço"
                 />
               </div>
             </div>
@@ -310,22 +257,10 @@ export function WebhookEditForm({
                   onCountryChange={setBizCountry}
                   national={bizNational}
                   onNationalChange={setBizNational}
-                  onBlur={revertBiz}
+                  onBlur={() => setBizTouched(true)}
                   invalid={showBizError}
                   inputId="wh-business"
                 />
-                <div
-                  className={cn(
-                    "flex items-stretch transition-all duration-200",
-                    showBizConfirm ? "ml-2 w-9 opacity-100" : "ml-0 w-0 opacity-0",
-                  )}
-                >
-                  <FieldValidateButton
-                    variant={bizVariant}
-                    onClick={confirmBiz}
-                    label="Confirmar número"
-                  />
-                </div>
               </div>
               {showBizError ? (
                 <p className="text-xs text-destructive" role="alert">
@@ -402,7 +337,7 @@ export function WebhookEditForm({
       )}
 
       {isWhatsapp && (
-        <WhatsappInboundHelp inboundBaseUrl={inboundBaseUrl} path={pathConfirmed} defaultOpen={false} />
+        <WhatsappInboundHelp inboundBaseUrl={inboundBaseUrl} path={pathTrim} defaultOpen={false} destaque />
       )}
 
       {!isInbound && (

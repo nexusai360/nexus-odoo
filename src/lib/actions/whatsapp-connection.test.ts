@@ -98,10 +98,10 @@ beforeEach(() => {
   );
 });
 
-// ── TF.0 , prepararTokensConexao ─────────────────────────────────────────────
+// ── prepararTokensConexao , tokens da tela (um por etapa) ────────────────────
 
 describe("prepararTokensConexao", () => {
-  it("gera dois tokens distintos com entropia mínima, sem efeito colateral", async () => {
+  it("gera dois tokens distintos com entropia mínima, SEM efeito colateral", async () => {
     const r = await prepararTokensConexao();
     expect(r.success).toBe(true);
     if (r.success) {
@@ -109,6 +109,7 @@ describe("prepararTokensConexao", () => {
       expect(r.data.tokenRecebimento.length).toBeGreaterThanOrEqual(32);
       expect(r.data.tokenAssinatura.length).toBeGreaterThanOrEqual(32);
     }
+    // Nada é persistido: os tokens só passam a valer quando a conexão é criada.
     expect(mockCreate).not.toHaveBeenCalled();
     expect(mockTransaction).not.toHaveBeenCalled();
   });
@@ -139,22 +140,43 @@ describe("criarConexaoWhatsapp", () => {
     expect(inbound.connectionId).toBeDefined();
     expect(inbound.connectionId).toBe(outbound.connectionId);
 
-    // Recebimento: slug + número + token de recebimento + modo gravado (A13).
+    // Recebimento: slug + número + token da etapa 1 + modo gravado (A13).
     expect(inbound.path).toBe("matrixgroup");
+    expect(inbound.secret).toBe(`enc:${INPUT_VALIDO.tokenRecebimento}`);
     expect(inbound.businessId).toBe(INPUT_VALIDO.businessId);
     expect(inbound.isWhatsappReceiver).toBe(true);
-    expect(inbound.secret).toBe(`enc:${INPUT_VALIDO.tokenRecebimento}`);
     expect(inbound.responseMode).toBe("n8n_webhook");
     expect(inbound.events).toEqual([]);
 
     // Envio: url E targetUrl (loadOutboundTargets lê targetUrl ?? url),
-    // businessId NULO (A9: único na tabela), agent_reply, token de assinatura.
+    // businessId NULO (A9: único na tabela), agent_reply.
     expect(outbound.targetUrl).toBe(INPUT_VALIDO.targetUrl);
     expect(outbound.url).toBe(INPUT_VALIDO.targetUrl);
     expect(outbound.businessId).toBeNull();
     expect(outbound.events).toEqual(["agent_reply"]);
     expect(outbound.secret).toBe(`enc:${INPUT_VALIDO.tokenAssinatura}`);
     expect(outbound.responseMode).toBeNull();
+  });
+
+  it("persiste exatamente os tokens que a tela exibiu em cada etapa (cifrados)", async () => {
+    const r = await criarConexaoWhatsapp(INPUT_VALIDO);
+    expect(r.success).toBe(true);
+
+    const criadas = mockCreate.mock.calls.map(
+      (c) => (c[0] as { data: Record<string, unknown> }).data,
+    );
+    expect(criadas.find((d) => d.direction === "inbound")!.secret).toBe(
+      `enc:${INPUT_VALIDO.tokenRecebimento}`,
+    );
+    expect(criadas.find((d) => d.direction === "outbound")!.secret).toBe(
+      `enc:${INPUT_VALIDO.tokenAssinatura}`,
+    );
+  });
+
+  it("recusa token curto demais (o formulário nunca deve mandar isso)", async () => {
+    const r = await criarConexaoWhatsapp({ ...INPUT_VALIDO, tokenRecebimento: "curto" });
+    expect(r.success).toBe(false);
+    expect(mockTransaction).not.toHaveBeenCalled();
   });
 
   it("TF.1a: só super_admin", async () => {
@@ -165,11 +187,36 @@ describe("criarConexaoWhatsapp", () => {
   });
 
   it("TF.1a: recusa slug já usado", async () => {
-    mockFindFirst.mockResolvedValue({ id: "outro" });
+    // Só a consulta por `path` acha algo; a de nome continua livre.
+    mockFindFirst.mockImplementation(async (args: { where?: { path?: string } }) =>
+      args?.where?.path ? { id: "outro" } : null,
+    );
     const r = await criarConexaoWhatsapp(INPUT_VALIDO);
     expect(r.success).toBe(false);
     if (!r.success) expect(r.error).toContain("caminho");
     expect(mockTransaction).not.toHaveBeenCalled();
+  });
+
+  it("recusa NOME já usado por outro webhook, sem diferenciar maiúsculas", async () => {
+    mockFindFirst.mockImplementation(async (args: { where?: { name?: unknown } }) =>
+      args?.where?.name ? { id: "outro-webhook" } : null,
+    );
+    const r = await criarConexaoWhatsapp(INPUT_VALIDO);
+    expect(r.success).toBe(false);
+    if (!r.success) expect(r.error).toContain("Já existe um webhook com o nome");
+    expect(mockTransaction).not.toHaveBeenCalled();
+  });
+
+  it("a busca por nome é case-insensitive", async () => {
+    await criarConexaoWhatsapp(INPUT_VALIDO);
+    const chamadaNome = mockFindFirst.mock.calls.find(
+      (c) => (c[0] as { where?: { name?: unknown } })?.where?.name,
+    );
+    expect(chamadaNome).toBeDefined();
+    expect((chamadaNome![0] as { where: { name: unknown } }).where.name).toEqual({
+      equals: INPUT_VALIDO.name,
+      mode: "insensitive",
+    });
   });
 
   it("TF.1a: recusa URL de destino inválida", async () => {
@@ -295,6 +342,17 @@ describe("atualizarConexaoWhatsapp", () => {
     expect(r.success).toBe(true);
     if (r.success) expect(r.data.novoTokenAssinatura).toBeNull();
     expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it("a trava de NOME ignora as duas linhas da própria conexão na edição", async () => {
+    await atualizarConexaoWhatsapp(CONN_ID, EDICAO);
+    const chamadaNome = mockFindFirst.mock.calls.find(
+      (c) => (c[0] as { where?: { name?: unknown } })?.where?.name,
+    );
+    expect(chamadaNome).toBeDefined();
+    expect((chamadaNome![0] as { where: { connectionId?: unknown } }).where.connectionId).toEqual({
+      not: CONN_ID,
+    });
   });
 
   it("a trava de número ignora a própria conexão na edição", async () => {

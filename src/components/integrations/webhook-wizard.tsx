@@ -37,6 +37,7 @@ import {
   splitE164,
   validateNationalPhone,
 } from "@/lib/whatsapp/countries"
+import { mesmoNome } from "@/lib/integrations/nome-webhook"
 import { WebhookEventSelector } from "@/components/integrations/webhook-event-selector"
 import { WhatsappInboundHelp } from "@/components/integrations/whatsapp-inbound-help"
 import { ConexaoWhatsappWizard } from "@/components/integrations/conexao-whatsapp-wizard"
@@ -114,6 +115,8 @@ export interface WebhookWizardProps {
   existingPaths?: string[]
   /** business_id já cadastrados, para validar unicidade em tempo real. */
   existingBusinessIds?: string[]
+  /** Nomes já usados por QUALQUER webhook (trava de nome único). */
+  existingNames?: string[]
   onCreated: (webhook: CreatedWebhook) => void
   /** Conexão com WhatsApp criada pelo assistente de 4 etapas (fluxo próprio). */
   onConexaoCriada?: () => void
@@ -141,6 +144,7 @@ export function WebhookWizard({
   inboundBaseUrl = "https://app.nexus-odoo.com/api/hooks/",
   existingPaths = [],
   existingBusinessIds = [],
+  existingNames = [],
   onCreated,
   onConexaoCriada,
   onCancel,
@@ -160,6 +164,7 @@ export function WebhookWizard({
     onKindChange?.(k)
   }
   const [name, setName] = React.useState("")
+  const [nameTouched, setNameTouched] = React.useState(false)
   const [description, setDescription] = React.useState("")
   const [path, setPath] = React.useState("")
   const [targetUrl, setTargetUrl] = React.useState("")
@@ -178,6 +183,11 @@ export function WebhookWizard({
 
   const isWhatsapp = kind === "whatsapp"
   const isOutbound = kind === "outbound"
+  // Nome é único entre TODOS os webhooks (qualquer tipo), sem case-sensitive.
+  const nameTrim = name.trim()
+  const nameDuplicate = existingNames.some((n) => mesmoNome(n, nameTrim))
+  const nameValid = nameTrim.length > 0 && !nameDuplicate
+  const showNameError = nameDuplicate && (nameTrim.length > 0 || nameTouched)
   const direction = isOutbound ? "outbound" : "inbound"
 
   // Validação do endereço (slug) e do número da empresa, com erro em tempo real
@@ -275,7 +285,7 @@ export function WebhookWizard({
   }
 
   const step2Valid =
-    name.trim().length > 0 &&
+    nameValid &&
     (isOutbound
       ? isValidUrl(targetUrl.trim()) && methods.length > 0
       : pathValid &&
@@ -326,6 +336,7 @@ export function WebhookWizard({
           inboundBaseUrl={inboundBaseUrl}
           existingPaths={existingPaths}
           existingBusinessIds={existingBusinessIds}
+          existingNames={existingNames}
           onBack={() => setStep(1)}
           onDone={() => onConexaoCriada?.()}
         />
@@ -379,8 +390,15 @@ export function WebhookWizard({
               id="wh-name"
               value={name}
               onChange={(e) => setName(e.currentTarget.value)}
+              onBlur={() => setNameTouched(true)}
               placeholder={isWhatsapp ? "Ex.: WhatsApp da loja matriz" : "Ex.: Receptor de pedidos"}
+              aria-invalid={showNameError}
             />
+            {showNameError && (
+              <p className="text-xs text-destructive" role="alert">
+                Já existe um webhook com esse nome. Escolha outro.
+              </p>
+            )}
           </div>
 
           <div className="space-y-1.5">

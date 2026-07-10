@@ -210,20 +210,51 @@ passa a ser `Recebimento · Envio · Revisão · Conclusão`.
 - O guia da etapa 2 diz, com todas as letras, que a deduplicação deve usar
   **`message.inboundMessageId`**, não `deliveryId` (A16).
 
-### 3.8 Contrato dos tokens (fecha a ambiguidade da v2)
+### 3.8 Contrato dos tokens (v5 , DECISÃO DO USUÁRIO 2026-07-10)
+
+> **Cada token aparece na SUA etapa.** A conclusão não repete nenhum dos dois.
+> O que estava errado na v3 não era *onde* o token aparecia, e sim *como*: solto
+> no meio do formulário, em texto claro, competindo com outros avisos.
 
 - Os dois tokens são gerados **no servidor**, numa ação sem efeito colateral
-  (`prepararTokensConexao`), quando o assistente abre.
-- Eles são **exibidos nas etapas 1 e 2** (onde o usuário precisa deles) e
-  **repetidos na etapa 4**. Não são "revelados uma vez na conclusão": são os
-  mesmos valores do começo ao fim do assistente.
-- **Só passam a valer quando a conexão é criada.** A etapa 1 avisa: *"O token só
-  funciona depois que você concluir a criação da conexão."*
-- **Recarregar a página gera tokens novos** e invalida os que foram copiados
-  (nada foi persistido). O aviso diz isso.
-- Se o `submit` falhar (slug duplicado, por exemplo), os tokens continuam os
-  mesmos e valem quando a criação for concluída.
-- Depois de criada, o token só reaparece por **rotação**.
+  (`prepararTokensConexao`), quando o assistente abre. Nada é persistido.
+- Cada um é exibido **no fim da sua etapa**, em seção própria, dentro do
+  componente **`SecretField`**: nasce **mascarado**, com botão de mostrar, botão
+  de copiar e aviso destacado. Nunca em texto claro por padrão.
+  - Etapa 1 (Recebimento) → **token de recebimento**.
+  - Etapa 2 (Envio) → **token de assinatura**.
+- O aviso diz, com todas as letras: o token **só passa a valer quando a conexão
+  for criada**, sair sem concluir **gera um token novo**, e depois de criada ele
+  **só reaparece por rotação**.
+- A etapa 4 (Conclusão) **não exibe token nenhum**: confirma a criação e lista os
+  próximos passos (endereço de entrada, destino de saída, como rotacionar).
+
+**Sem texto repetido (decisão do usuário 2026-07-10).** O `SecretField` e os
+guias já trazem o próprio título; envolvê-los num cabeçalho de seção duplicava
+título, descrição e aviso. Por isso:
+- o bloco de token entra **direto**, com **uma** linha de explicação;
+- o guia entra depois de um **respiro grande**, anunciado por uma **dica
+  discreta** (uma linha, ícone de livro) e com **contorno sutil** (`destaque`)
+  , atenção suficiente para ser notado, sem competir com o token, que é o
+  único elemento da etapa que pede cuidado de verdade.
+- Depois de criada, o token só reaparece por **rotação** (por ponta, na tela de
+  edição), aí sim em `SecretRevealStep`.
+
+### 3.8.1 Padrão visual das etapas (decisão do usuário 2026-07-10)
+
+As etapas 1 e 2 são divididas em **seções** com respiro entre elas, e não numa
+lista corrida de campos:
+
+| Etapa | Seções, nesta ordem |
+|---|---|
+| 1. Recebimento | **Identificação** (nome, descrição) → **Endereço de entrada** (endereço com URL final, número da empresa, `POST` travado) → token de recebimento (`SecretField`, sem título de seção) → respiro → guia "Como montar o payload" |
+| 2. Envio | **Endereço de saída** (URL de destino, `POST` travado) → token de assinatura (`SecretField`, sem título de seção) → respiro → guia "O que enviamos" |
+| 3. Revisão | as duas pontas lado a lado, somente leitura |
+| 4. Conclusão | confirmação + próximos passos, **sem tokens** |
+
+Endereço, número da empresa e URL de destino usam o **botão de confirmar**
+(`FieldValidateButton`) dos outros webhooks: confirmar aplica o valor, sair sem
+confirmar reverte. Avançar de etapa exige os campos confirmados.
 
 ### 3.9 Payload de saída , envelope NOVO (breaking, declarado)
 
@@ -327,6 +358,37 @@ Caso fixo (é o critério de aceite, e bate com as regras):
 ```
 
 Negrito, itálico, tachado e links seguem convertidos como hoje.
+
+### 3.13 Cards da listagem e trava de nome (decisões do usuário 2026-07-10)
+
+**Cards (vale para os TRÊS tipos de webhook):**
+- O endereço aparece **completo** (base + slug na entrada; URL de destino na
+  saída). Reticências **só** quando falta espaço de verdade (`min-w-0` +
+  `truncate`), nunca por largura fixa , em tela larga a URL aparece inteira.
+- As tags de endereço e a do número da empresa são **clicáveis e copiam**, com
+  retorno visual ("Copiado!"). O número copia **somente dígitos** (sem `+`,
+  espaço ou traço), embora exiba formatado.
+- **Só na Conexão com WhatsApp:** duas linhas, uma por ponta , recebimento (seta
+  para baixo) em cima, envio (seta para cima) embaixo, **cada uma com sua tag de
+  método** (`POST`).
+
+**Trava de NOME único (todos os tipos):** não é possível criar nem editar um
+webhook com nome já usado por outro, mesmo de tipo diferente. A comparação
+ignora maiúsculas/minúsculas e espaços nas pontas. Verificada no **servidor**
+(fonte da verdade) e antecipada na tela. As duas linhas de uma Conexão
+compartilham o nome e não conflitam entre si.
+
+**Confirmar campo é só na CRIAÇÃO (decisão do usuário 2026-07-10).** Nas telas de
+**edição** (todos os tipos) não existe o botão de confirmar: alterou um campo,
+salva no botão **"Salvar alterações"**, como no resto da plataforma. O botão de
+confirmar continua na criação, onde não há "salvar" e o valor precisa ser fixado
+antes de avançar.
+
+**Guias (`Como montar o payload` / `Payload que enviamos`):** nascem fechados, com
+**todos os sub-blocos fechados**. Ficam depois do token, com respiro, anunciados
+por uma dica de uma linha e contorno sutil. O guia de envio chama-se **"Payload que enviamos"** e **não numera passos**
+(não há sequência a executar): blocos `Headers`, `Body` e `Exemplos`. O aviso de
+deduplicação é informativo, em **tom neutro**, para não competir com o token.
 
 ## 4. Fora de escopo
 
