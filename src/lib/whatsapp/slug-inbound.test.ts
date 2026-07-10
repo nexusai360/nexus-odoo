@@ -399,6 +399,28 @@ describe("handleSlugInbound , enfileiramento", () => {
     expect(mockEmitAgentReply).not.toHaveBeenCalled();
   });
 
+  it("TB.2: o responseMode da conexão vence o singleton global", async () => {
+    // Conexão em n8n_webhook, singleton em direct: o job precisa sair com o
+    // modo da conexão e os targets dela (SPEC §3.4, resolve A13).
+    mockWebhookFindFirst.mockResolvedValue({ ...WEBHOOK_INBOUND, responseMode: "n8n_webhook" });
+    mockChannelFindUnique.mockResolvedValue({ id: "global", responseMode: "direct", enabled: true });
+
+    await callInbound(VALID_PAYLOAD);
+
+    const [, jobData] = mockQueueAdd.mock.calls[0] as [string, AgentJobData];
+    expect(jobData.channelConfig?.responseMode).toBe("n8n_webhook");
+  });
+
+  it("TB.2: conexão sem modo (NULL do backfill) cai no singleton global", async () => {
+    mockWebhookFindFirst.mockResolvedValue({ ...WEBHOOK_INBOUND, responseMode: null });
+    mockChannelFindUnique.mockResolvedValue({ id: "global", responseMode: "n8n_webhook", enabled: true });
+
+    await callInbound(VALID_PAYLOAD);
+
+    const [, jobData] = mockQueueAdd.mock.calls[0] as [string, AgentJobData];
+    expect(jobData.channelConfig?.responseMode).toBe("n8n_webhook");
+  });
+
   it("payload do job enfileirado contém userId e dados da mensagem", async () => {
     await callInbound(VALID_PAYLOAD);
 

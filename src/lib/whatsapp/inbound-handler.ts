@@ -26,6 +26,7 @@ import { AGENT_QUEUE_NAME } from "@/worker/agent/queue";
 import type { AgentJobData } from "@/worker/agent/processor";
 import { emitAgentReply, type OutboundTarget } from "@/lib/whatsapp/emit-reply";
 import { blockedMessageFor, type BlockReason } from "@/lib/whatsapp/blocked-messages";
+import { modoEfetivo } from "@/lib/whatsapp/response-mode";
 import { roleMeetsChannelLevel } from "@/lib/agent/channel-access";
 import type { ChannelAccessLevel, WhatsappResponseMode } from "@/generated/prisma/client";
 
@@ -227,11 +228,12 @@ export async function handleWhatsappInbound(
     return NextResponse.json({ rejected: true, reason: "daily_limit_exceeded" }, { status: 200 });
   }
 
-  // Config de resposta do canal.
+  // Config de resposta: o modo da CONEXÃO vence; o singleton global é só
+  // fallback para linhas antigas sem `response_mode` (SPEC §3.4, resolve A13).
   const channel = await prisma.whatsappChannel
     .findUnique({ where: { id: "global" } })
     .catch(() => null);
-  const responseMode = channel?.responseMode ?? "direct";
+  const responseMode = modoEfetivo(webhook.responseMode, channel?.responseMode);
   let channelConfig: AgentJobData["channelConfig"];
   if (responseMode === "n8n_webhook") {
     // Escopado à conexão (SPEC §3.3). Trade-off declarado: os targets são
