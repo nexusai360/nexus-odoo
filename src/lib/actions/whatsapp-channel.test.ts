@@ -32,6 +32,17 @@ jest.mock("@/lib/prisma", () => ({
   },
 }));
 
+// Trava de número único (SPEC §3.4.1): a ação resolve o telefone real na Graph
+// API e valida contra as Conexões por webhook antes de salvar.
+const mockFetchDisplayPhoneNumber = jest.fn();
+jest.mock("@/lib/whatsapp/cloud-client", () => ({
+  fetchDisplayPhoneNumber: mockFetchDisplayPhoneNumber,
+}));
+const mockVerificarNumeroParaCanalDireto = jest.fn();
+jest.mock("@/lib/whatsapp/numero-unico", () => ({
+  verificarNumeroParaCanalDireto: mockVerificarNumeroParaCanalDireto,
+}));
+
 // ──────────────────────────────────────────────
 // Import após mocks
 // ──────────────────────────────────────────────
@@ -64,6 +75,9 @@ beforeEach(() => {
   mockGetCurrentUser.mockResolvedValue(SUPER_ADMIN);
   mockPrismaChannelFindUnique.mockResolvedValue(CHANNEL_ROW);
   mockPrismaChannelUpsert.mockResolvedValue({ ...CHANNEL_ROW });
+  // Por padrão: a Graph API resolve o número e a trava libera.
+  mockFetchDisplayPhoneNumber.mockResolvedValue("+55 61 99563-0029");
+  mockVerificarNumeroParaCanalDireto.mockResolvedValue({ ok: true });
 });
 
 // ──────────────────────────────────────────────
@@ -187,5 +201,75 @@ describe("updateWhatsappChannel", () => {
       enabled: true,
     });
     expect(result.success).toBe(false);
+  });
+});
+
+// ──────────────────────────────────────────────
+// updateWhatsappChannel , trava de número único (SPEC §3.4.1)
+// ──────────────────────────────────────────────
+
+describe("updateWhatsappChannel , trava de número único", () => {
+  const INPUT = {
+    apiToken: "tok",
+    businessAccountId: "biz",
+    phoneNumberId: "phone-456",
+    responseMode: "direct" as const,
+    enabled: true,
+  };
+
+  it("resolve o display_phone_number e grava o número normalizado", async () => {
+    await updateWhatsappChannel(INPUT);
+
+    expect(mockFetchDisplayPhoneNumber).toHaveBeenCalledWith(
+      expect.objectContaining({ phoneNumberId: "phone-456", apiToken: "tok" }),
+    );
+    expect(mockPrismaChannelUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({ phoneNumber: "+5561995630029" }),
+      }),
+    );
+  });
+
+  it("usa o token já gravado (decifrado) quando apiToken não é fornecido", async () => {
+    await updateWhatsappChannel({ ...INPUT, apiToken: undefined });
+
+    expect(mockFetchDisplayPhoneNumber).toHaveBeenCalledWith(
+      expect.objectContaining({ apiToken: "real-token-abc" }),
+    );
+  });
+
+  it("fail-closed: se a resolução do número falhar, o canal NÃO é salvo", async () => {
+    mockFetchDisplayPhoneNumber.mockRejectedValue(new Error("Graph API caiu"));
+
+    const result = await updateWhatsappChannel(INPUT);
+    expect(result.success).toBe(false);
+    expect(mockPrismaChannelUpsert).not.toHaveBeenCalled();
+  });
+
+  it("fail-closed: sem nenhum token disponível, o canal NÃO é salvo", async () => {
+    mockPrismaChannelFindUnique.mockResolvedValue(null);
+
+    const result = await updateWhatsappChannel({ ...INPUT, apiToken: undefined });
+    expect(result.success).toBe(false);
+    expect(mockPrismaChannelUpsert).not.toHaveBeenCalled();
+  });
+
+  it("recusa quando o número pertence a uma Conexão por webhook, com a mensagem da trava", async () => {
+    mockVerificarNumeroParaCanalDireto.mockResolvedValue({
+      ok: false,
+      error:
+        "Já existe uma conexão de WhatsApp usando este número (Matrix Group). " +
+        "Edite essa conexão ou use outro número.",
+    });
+
+    const result = await updateWhatsappChannel(INPUT);
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toContain("Matrix Group");
+    expect(mockPrismaChannelUpsert).not.toHaveBeenCalled();
+  });
+
+  it("a trava é consultada com o número resolvido da Graph API", async () => {
+    await updateWhatsappChannel(INPUT);
+    expect(mockVerificarNumeroParaCanalDireto).toHaveBeenCalledWith("+55 61 99563-0029");
   });
 });

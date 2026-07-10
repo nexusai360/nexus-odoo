@@ -3479,6 +3479,11 @@ model WhatsappChannel {
   encryptedApiToken String?              @map("encrypted_api_token")
   businessAccountId String?              @map("business_account_id")
   phoneNumberId     String?              @map("phone_number_id")
+  /// Telefone real do número (display_phone_number da Graph API), resolvido a
+  /// partir do `phoneNumberId` ao salvar o canal. `phoneNumberId` é um ID da
+  /// Meta, não o telefone: sem esta coluna não há como comparar o canal direto
+  /// com as Conexões por webhook na trava de número único (SPEC §3.4.1).
+  phoneNumber       String?              @map("phone_number")
   responseMode      WhatsappResponseMode @default(direct)
   enabled           Boolean              @default(false)
   updatedAt         DateTime             @updatedAt @map("updated_at")

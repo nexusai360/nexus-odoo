@@ -5,7 +5,11 @@
  * As credenciais são injetadas diretamente nos testes (sem banco).
  */
 
-import { buildCloudClient, type WhatsappCredentials } from "./cloud-client";
+import {
+  buildCloudClient,
+  fetchDisplayPhoneNumber,
+  type WhatsappCredentials,
+} from "./cloud-client";
 
 const CREDS: WhatsappCredentials = {
   apiToken: "EAAtest...",
@@ -123,6 +127,37 @@ describe("downloadMedia", () => {
 
     const client = buildCloudClient(CREDS);
     await expect(client.downloadMedia("media-id")).rejects.toThrow();
+  });
+});
+
+// ──────────────────────────────────────────────
+// fetchDisplayPhoneNumber (trava de número único, SPEC §3.4.1)
+// ──────────────────────────────────────────────
+
+describe("fetchDisplayPhoneNumber", () => {
+  it("resolve o display_phone_number a partir do phoneNumberId", async () => {
+    const fetchMock = mockFetchJson({ display_phone_number: "+55 61 99563-0029" });
+    global.fetch = fetchMock;
+
+    const numero = await fetchDisplayPhoneNumber(CREDS);
+    expect(numero).toBe("+55 61 99563-0029");
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain(CREDS.phoneNumberId);
+    expect(url).toContain("fields=display_phone_number");
+    expect((init.headers as Record<string, string>)["Authorization"]).toBe(
+      `Bearer ${CREDS.apiToken}`,
+    );
+  });
+
+  it("lança quando a Graph API retorna falha", async () => {
+    global.fetch = mockFetchJson({ error: { message: "Invalid token" } }, 401);
+    await expect(fetchDisplayPhoneNumber(CREDS)).rejects.toThrow();
+  });
+
+  it("lança quando a resposta não traz display_phone_number", async () => {
+    global.fetch = mockFetchJson({});
+    await expect(fetchDisplayPhoneNumber(CREDS)).rejects.toThrow();
   });
 });
 

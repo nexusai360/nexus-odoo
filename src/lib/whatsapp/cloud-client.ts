@@ -109,6 +109,34 @@ export function buildCloudClient(creds: WhatsappCredentials): WhatsappCloudClien
 }
 
 /**
+ * Resolve o telefone real (`display_phone_number`) de um `phoneNumberId`.
+ *
+ * `phoneNumberId` é um identificador da Meta, não o telefone. A trava de
+ * número único (SPEC §3.4.1) precisa do telefone comparável, então a tela de
+ * Canais resolve e grava este valor ao salvar. Lança em qualquer falha ,
+ * quem chama decide o fail-closed.
+ */
+export async function fetchDisplayPhoneNumber(creds: WhatsappCredentials): Promise<string> {
+  const url = `${GRAPH_API_BASE}/${creds.phoneNumberId}?fields=display_phone_number`;
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${creds.apiToken}` },
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(
+      `Graph API fetchDisplayPhoneNumber falhou (${response.status}): ${JSON.stringify(err)}`,
+    );
+  }
+
+  const data = (await response.json()) as { display_phone_number?: string };
+  if (!data.display_phone_number) {
+    throw new Error("Graph API não retornou display_phone_number para este phoneNumberId");
+  }
+  return data.display_phone_number;
+}
+
+/**
  * Carrega as credenciais do banco (WhatsappChannel) e constrói o cliente.
  * Lança erro se o canal não estiver configurado ou não estiver habilitado.
  */

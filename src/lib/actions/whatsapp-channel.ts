@@ -16,6 +16,9 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { encrypt, decrypt, mask } from "@/lib/encryption";
 import { logAudit } from "@/lib/audit";
+import { fetchDisplayPhoneNumber } from "@/lib/whatsapp/cloud-client";
+import { verificarNumeroParaCanalDireto } from "@/lib/whatsapp/numero-unico";
+import { normalizeE164 } from "@/lib/whatsapp/resolve";
 type DataResult<T> = { success: true; data: T } | { success: false; error: string };
 
 /** Schema de atualização do canal WhatsApp. */
@@ -125,10 +128,66 @@ export async function updateWhatsappChannel(
   const { apiToken, businessAccountId, phoneNumberId, responseMode, enabled } = parsed.data;
 
   try {
+    // ── Trava de número único (SPEC §3.4.1) ─────────────────────────────────
+    // `phoneNumberId` é um ID da Meta, não o telefone: para a trava ser
+    // comparável com as Conexões por webhook, o telefone real é resolvido na
+    // Graph API e gravado junto. Fail-closed: sem resolver, não salva.
+    let tokenParaGraph = apiToken ?? null;
+    if (!tokenParaGraph) {
+      const atual = await prisma.whatsappChannel
+        .findUnique({ where: { id: "global" }, select: { encryptedApiToken: true } })
+        .catch(() => null);
+      if (atual?.encryptedApiToken) {
+        try {
+          tokenParaGraph = decrypt(atual.encryptedApiToken);
+        } catch {
+          tokenParaGraph = null;
+        }
+      }
+    }
+    if (!tokenParaGraph) {
+      return {
+        success: false,
+        error: "Informe o token da Graph API para validar o número deste canal.",
+      };
+    }
+
+    let displayPhoneNumber: string;
+    try {
+      displayPhoneNumber = await fetchDisplayPhoneNumber({
+        apiToken: tokenParaGraph,
+        phoneNumberId,
+      });
+    } catch (err) {
+      console.error("[whatsapp-channel] resolução do número falhou:", err);
+      return {
+        success: false,
+        error:
+          "Não foi possível confirmar o número deste canal na Meta. " +
+          "Confira o token e o ID do número e tente de novo. Sem essa confirmação, a configuração não é salva.",
+      };
+    }
+
+    const trava = await verificarNumeroParaCanalDireto(displayPhoneNumber);
+    if (!trava.ok) {
+      return { success: false, error: trava.error };
+    }
+
+    let phoneNumber: string;
+    try {
+      phoneNumber = normalizeE164(displayPhoneNumber);
+    } catch {
+      return {
+        success: false,
+        error: "A Meta retornou um número em formato inesperado. A configuração não foi salva.",
+      };
+    }
+
     // Monta o payload de atualização
     const updateData: Record<string, unknown> = {
       businessAccountId,
       phoneNumberId,
+      phoneNumber,
       responseMode,
       enabled,
     };
