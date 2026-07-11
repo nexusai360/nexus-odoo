@@ -8,23 +8,20 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { buildPeriodoWhere } from "@/lib/metrics/_shared/periodo";
 import { buildEmpresaWhere } from "@/lib/metrics/_shared/empresa";
-import { idsNaoVenda, buildNaturezaVendaWhere } from "@/lib/metrics/_shared/naturezas";
+import { SO_VENDA_EXTERNA } from "@/lib/metrics/_shared/venda";
 
 export async function queryFaturamentoPeriodo(
   prisma: PrismaClient,
   filtros: { periodoDe?: string; periodoAte?: string; empresaId?: number },
 ): Promise<{ totalNotas: number; valorFaturado: number }> {
-  // F1: passa a usar a definicao canonica de faturamento de venda (borda de periodo
-  // exclusiva, exclui operacoes nao-venda como devolucao/transferencia, corte por empresa).
-  // A chave publica valorFaturado e mantida. O numero muda onde houver nao-venda (correto).
-  const naoVenda = await idsNaoVenda(prisma);
+  // Le a MESMA verdade do agente Nex e do dashboard: a coluna materializada
+  // `is_venda_externa` (operacao de venda, nao interna, sem devolucao, destinatario fora do
+  // grupo). Filtrar por natureza, como era antes, contava a venda INTERNA como faturamento.
   const rows = await prisma.fatoNotaFiscal.findMany({
     where: {
-      entradaSaida: "1",
-      situacaoNfe: "autorizada",
+      ...SO_VENDA_EXTERNA,
       ...buildPeriodoWhere(filtros.periodoDe, filtros.periodoAte),
       ...buildEmpresaWhere(filtros.empresaId),
-      ...buildNaturezaVendaWhere(naoVenda),
     },
     select: { vrNf: true },
   });
@@ -199,16 +196,13 @@ export async function queryFaturamentoPorCliente(
   total: number;
   valorGeral: number;
 }> {
-  // F1: faturamento por cliente = venda autorizada (borda exclusiva, exclui
-  // operacoes nao-venda, corte por empresa).
-  const naoVenda = await idsNaoVenda(prisma);
+  // Faturamento por cliente = venda externa (mesma base do faturamento do periodo, entao a
+  // soma das linhas fecha com o KPI).
   const rows = await prisma.fatoNotaFiscal.findMany({
     where: {
-      entradaSaida: "1",
-      situacaoNfe: "autorizada",
+      ...SO_VENDA_EXTERNA,
       ...buildPeriodoWhere(filtros.periodoDe, filtros.periodoAte),
       ...buildEmpresaWhere(filtros.empresaId),
-      ...buildNaturezaVendaWhere(naoVenda),
     },
     select: { participanteNome: true, vrNf: true },
   });

@@ -36,23 +36,31 @@ export interface VisaoGeralData {
   vendasMarca: DonutDatum[];
   estoqueFamilia: DonutDatum[];
   atalhos: { href: string; label: string; desc: string }[];
+  /** Empresa do recorte atual; null = grupo inteiro. */
+  empresaNome: string | null;
 }
 
 export function VisaoGeralScreen({ data }: { data: VisaoGeralData }) {
+  const empresa = data.empresaNome;
+  // Estoque, contas e demandas não têm recorte por empresa no cache: quando o filtro está
+  // ativo, o card diz que segue mostrando o grupo, em vez de fingir que filtrou.
+  const doGrupo = (base: string) => (empresa ? `${base} · grupo inteiro` : base);
+  const daEmpresa = (base: string) => (empresa ? `${base} · ${empresa}` : base);
+
   return (
     <div className="flex flex-col gap-5">
       {/* KPIs globais */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
-        <KpiButton rotulo="Faturamento" valor={brlCompacto(data.faturamento)} valorCompleto={brl.format(data.faturamento)} icone={TrendingUp} hint="Vendas no período" />
+        <KpiButton rotulo="Faturamento" valor={brlCompacto(data.faturamento)} valorCompleto={brl.format(data.faturamento)} icone={TrendingUp} hint={daEmpresa("Vendas no período")} />
         <KpiButton rotulo="Ticket médio" valor={brlCompacto(data.ticketMedio)} valorCompleto={brl.format(data.ticketMedio)} icone={Receipt} tone="info" hint={`${num.format(data.numPedidos)} pedidos`} />
-        <KpiButton rotulo="A receber" valor={brlCompacto(data.aReceber)} valorCompleto={brl.format(data.aReceber)} icone={HandCoins} tone="warning" hint="Clientes em aberto" />
-        <KpiButton rotulo="A pagar" valor={brlCompacto(data.aPagar)} valorCompleto={brl.format(data.aPagar)} icone={Wallet} tone="warning" hint="Fornecedores em aberto" />
-        <KpiButton rotulo="Valor em estoque" valor={brlCompacto(data.valorEstoque)} valorCompleto={brl.format(data.valorEstoque)} icone={Boxes} hint={`${num.format(data.produtos)} produtos`} />
-        <KpiButton rotulo="Demandas a entregar" valor={num.format(data.demandasTotal)} icone={Truck} tone={data.demandasAtrasadas > 0 ? "danger" : "info"} hint={`${num.format(data.demandasAtrasadas)} atrasadas`} />
+        <KpiButton rotulo="A receber" valor={brlCompacto(data.aReceber)} valorCompleto={brl.format(data.aReceber)} icone={HandCoins} tone="warning" hint={doGrupo("Clientes em aberto")} />
+        <KpiButton rotulo="A pagar" valor={brlCompacto(data.aPagar)} valorCompleto={brl.format(data.aPagar)} icone={Wallet} tone="warning" hint={doGrupo("Fornecedores em aberto")} />
+        <KpiButton rotulo="Valor em estoque" valor={brlCompacto(data.valorEstoque)} valorCompleto={brl.format(data.valorEstoque)} icone={Boxes} hint={doGrupo(`${num.format(data.produtos)} produtos`)} />
+        <KpiButton rotulo="Demandas a entregar" valor={num.format(data.demandasTotal)} icone={Truck} tone={data.demandasAtrasadas > 0 ? "danger" : "info"} hint={doGrupo(`${num.format(data.demandasAtrasadas)} atrasadas`)} />
       </div>
 
       {/* Mapa em destaque */}
-      <SectionCard title="Faturamento por estado" subtitle="Vendas no período · passe o mouse no mapa" icon={TrendingUp}>
+      <SectionCard title="Faturamento por estado" subtitle={daEmpresa("Vendas no período · passe o mouse no mapa")} icon={TrendingUp}>
         {data.mapData.length ? (
           <BrazilMap data={data.mapData} metric="Faturamento" maxSelection={1} />
         ) : (
@@ -62,7 +70,7 @@ export function VisaoGeralScreen({ data }: { data: VisaoGeralData }) {
 
       {/* Distribuições */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <SectionCard title="Vendas por marca" subtitle="Participação no faturamento" icon={Tag}>
+        <SectionCard title="Vendas por marca" subtitle={daEmpresa("Participação no faturamento")} icon={Tag}>
           {data.vendasMarca.length ? (
             <DonutChart data={data.vendasMarca} maxFatias={8} />
           ) : (

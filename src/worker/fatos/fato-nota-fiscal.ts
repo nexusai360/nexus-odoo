@@ -26,6 +26,10 @@ export interface FatoNotaFiscalRow {
   participanteNome: string | null;
   naturezaOperacaoId: number | null;
   naturezaOperacaoNome: string | null;
+  // Operação fiscal (sped.documento.operacao_id, ex.: [3, "AOP1 - Venda LR"]). É o único
+  // campo que separa venda de venda interna , as duas compartilham a mesma natureza.
+  operacaoId: number | null;
+  operacaoNome: string | null;
   empresaId: number | null;
   empresaNome: string | null;
   dataEmissao: Date | null;
@@ -68,6 +72,8 @@ export function mapNotaFiscalRow(raw: Record<string, unknown>): FatoNotaFiscalRo
     participanteNome: relNome(raw.participante_id as OdooM2O),
     naturezaOperacaoId: relId(raw.natureza_operacao_id as OdooM2O),
     naturezaOperacaoNome: relNome(raw.natureza_operacao_id as OdooM2O),
+    operacaoId: relId(raw.operacao_id as OdooM2O),
+    operacaoNome: relNome(raw.operacao_id as OdooM2O),
     empresaId: relId(raw.empresa_id as OdooM2O),
     empresaNome: relNome(raw.empresa_id as OdooM2O),
     dataEmissao: typeof raw.data_emissao === "string" ? new Date(`${raw.data_emissao}T00:00:00Z`) : null,

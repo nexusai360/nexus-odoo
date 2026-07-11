@@ -1,8 +1,14 @@
 // src/lib/fiscal/regras/nota-venda-externa.ts
 // Regra canonica de "nota de VENDA EXTERNA REAL". Funcao PURA. Usada pela
 // materializacao (fato_nota_fiscal.is_venda_externa) e por metricas em memoria.
-// Alinhada ao core carregarItensVendaComGrupo + ao review #2 (filtro de modelo).
-// Ver SPEC v3 secao 3.
+// Ver SPEC v3 secao 3 e docs/superpowers/plans/2026-07-11-faturamento-venda-operacao.md.
+
+/** Operacao de venda: o nome da operacao fiscal contem "venda". */
+export const OPERACAO_VENDA_TERMO = "venda";
+/** Venda INTERNA (entre empresas do grupo): faturada, mas nao e faturamento de venda. */
+export const OPERACAO_INTERNA_TERMO = "interna";
+/** finalidade_nfe "4" = devolucao/retorno. Saida que nao e venda. */
+export const FINALIDADE_DEVOLUCAO = "4";
 
 export interface NotaParaVendaExterna {
   /** '1' = saida; '0' = entrada. */
@@ -12,25 +18,50 @@ export interface NotaParaVendaExterna {
   /** '55' = NF-e, '65' = NFC-e (venda a consumidor). A venda real concentra em
    *  55 (hoje 100%); 65 incluido por alinhamento a spec (57=CT-e, 03/23 fora). */
   modelo: string | null;
-  /** algum item com CFOP de receita de venda (classificarCfop.ehReceita). */
-  ehReceita: boolean;
+  /** nome da operacao fiscal da nota (sped.documento.operacao_id), ex.: "AOP1 - Venda LR". */
+  operacaoNome: string | null;
+  /** finalidade_nfe da nota ('4' = devolucao). */
+  finalidadeNfe: string | null;
   /** participante e do proprio grupo (triangulacao/venda interna). */
   intragrupo: boolean;
 }
 
-/**
- * Verdadeiro somente quando a nota e uma venda a cliente externo real:
- * saida + autorizada + modelo NF-e/NFC-e (55/65) + gera receita de venda + nao intragrupo.
- */
 const MODELOS_VENDA = new Set(["55", "65"]);
 
+/**
+ * A OPERACAO FISCAL e o criterio primario de venda: contem "venda" e NAO contem "interna"
+ * (a "venda interna" e transferencia faturada entre empresas do grupo), e a finalidade nao
+ * e devolucao. E o mesmo criterio que o Odoo usa , conferido pelo dono contra o Odoo:
+ * julho/2026 = R$ 7.242.504,80 em 136 notas.
+ *
+ * Por que a operacao, e nao a natureza nem o CFOP:
+ *   - natureza: "venda" e "venda interna" tem a MESMA natureza ("VENDA DE MERCADORIA...");
+ *     filtrar por ela conta a venda interna como faturamento (inflava milhoes).
+ *   - CFOP de receita: nao separa venda de servico/outra saida/entrega futura, e derruba a
+ *     nota de venda que nao tem item no cache (1 nota em julho, R$ 3.220,00). Ficou fora da
+ *     condicao, mas segue disponivel para as metricas que agregam por CFOP.
+ */
+export function ehOperacaoVenda(n: {
+  operacaoNome: string | null;
+  finalidadeNfe: string | null;
+}): boolean {
+  if (n.finalidadeNfe === FINALIDADE_DEVOLUCAO) return false;
+  const op = (n.operacaoNome ?? "").toLowerCase();
+  return op.includes(OPERACAO_VENDA_TERMO) && !op.includes(OPERACAO_INTERNA_TERMO);
+}
+
+/**
+ * Verdadeiro somente quando a nota e uma venda a cliente externo real:
+ * saida + autorizada + modelo NF-e/NFC-e (55/65) + operacao de venda (nao interna, nao
+ * devolucao) + destinatario fora do grupo.
+ */
 export function notaEhVendaExterna(n: NotaParaVendaExterna): boolean {
   return (
     n.entradaSaida === "1" &&
     n.situacaoNfe === "autorizada" &&
     n.modelo !== null &&
     MODELOS_VENDA.has(n.modelo) &&
-    n.ehReceita &&
+    ehOperacaoVenda(n) &&
     !n.intragrupo
   );
 }

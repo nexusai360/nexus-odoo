@@ -5,12 +5,15 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 
 import { siglaDeUf } from "@/lib/diretoria/uf";
+import { buildEmpresaWhere } from "@/lib/metrics/_shared/empresa";
 
 export interface FiltrosVendas {
   periodoDe?: string;
   periodoAte?: string;
   /** Recorte geográfico (UF-scoping); vazio/undefined = todas as UFs. */
   ufs?: string[];
+  /** Recorte por empresa do grupo (empresaId do fato); undefined = grupo inteiro. */
+  empresaId?: number;
 }
 
 function periodoWhere(
@@ -93,6 +96,7 @@ async function idsNotasVendaExterna(
   const notas = await prisma.fatoNotaFiscal.findMany({
     where: {
       ...SO_VENDA_NOTA,
+      ...buildEmpresaWhere(filtros.empresaId),
       ...periodoWhere(filtros.periodoDe, filtros.periodoAte, "dataEmissao"),
     },
     select: { odooId: true },
@@ -186,6 +190,7 @@ export async function queryVendasPorUf(
   const notas = await prisma.fatoNotaFiscal.findMany({
     where: {
       ...SO_VENDA_NOTA,
+      ...buildEmpresaWhere(filtros.empresaId),
       ...periodoWhere(filtros.periodoDe, filtros.periodoAte, "dataEmissao"),
     },
     select: { participanteId: true, vrNf: true },
@@ -257,6 +262,7 @@ export async function queryModalidadesEMaiorPedido(
   const pedidos = await prisma.fatoPedido.findMany({
     where: {
       ...SO_VENDA_PEDIDO,
+      ...buildEmpresaWhere(filtros.empresaId),
       ...periodoWhere(filtros.periodoDe, filtros.periodoAte, "dataOrcamento"),
     },
     select: {
@@ -314,6 +320,7 @@ export async function queryIndicadoresVendas(
   const notas = await prisma.fatoNotaFiscal.findMany({
     where: {
       ...SO_VENDA_NOTA,
+      ...buildEmpresaWhere(filtros.empresaId),
       ...periodoWhere(filtros.periodoDe, filtros.periodoAte, "dataEmissao"),
     },
     select: { vrNf: true, participanteId: true },
@@ -343,6 +350,7 @@ export async function queryIndicadoresVendas(
   const numPedidos = await prisma.fatoPedido.count({
     where: {
       ...SO_VENDA_PEDIDO,
+      ...buildEmpresaWhere(filtros.empresaId),
       ...periodoWhere(filtros.periodoDe, filtros.periodoAte, "dataOrcamento"),
     },
   });
