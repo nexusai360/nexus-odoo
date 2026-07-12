@@ -54,22 +54,58 @@ Fonte única: **`src/lib/corte-dados.ts`**.
 - Rótulo "Analisar dados a partir de" + texto dizendo que nada é apagado.
 - Purge saiu do fluxo (continua como ferramenta avulsa).
 
-## O que falta (próxima sessão)
+## Revisão completa das regras de consulta (feita em 2026-07-12)
 
-1. **Revisão completa das regras de consulta** (pedido explícito do dono): varrer TODA
-   consulta que lê histórico e garantir que ela respeita o início da análise , dashboard,
-   Relatórios, Relatórios 2.0, tools do MCP, KPIs, séries temporais, acumulados. Hoje o
-   clamp está em `metrics/_shared/periodo` (piso), `diretoria/periodo` (presets),
-   `mcp/tools/fiscal/_periodo-padrao` e nas contas. **Falta auditar o resto**: estoque
-   (saldo é foto atual, provavelmente não filtra por data , decidir), entregas/demandas,
-   compras/DF-e, séries mensais, relatórios 2.0.
-2. **Cache local do Nexus Odoo foi purgado por engano** (`nexus_odoo_l1` só tem >= 16/03).
-   O worker repõe sozinho (a ingestão volta a puxar desde 2026-01-01); conferir que o
-   histórico voltou.
-3. **Replicar tudo no ERP Nexus** (projeto local, `Projetos Internos/ERP Nexus`): ele já tem
-   o faturamento por operação (mergeado na main local), mas **não tem** a data configurável,
-   os centavos nem as correções de KPI.
-4. **"A receber" ainda parece alto** (~R$ 53 mi de cliente externo, contra ~R$ 7 mi/mês de
-   faturamento). Investigar a composição (parcelamentos? títulos sem baixa no Odoo?).
-5. Estoque: as demais telas de estoque (catálogo, seriais) ainda usam `vr_saldo` em alguns
-   pontos , alinhar tudo ao custo.
+Auditoria de TODA leitura de histórico (7 frentes em paralelo): **148 pontos** não respeitavam
+a data. Corrigidos por domínio, com teste, e provados contra o cache real.
+
+### A raiz era arquitetural
+`corteAtual()` é síncrono e lê um **cache em memória do processo**, que só é preenchido quando
+alguém chama `getCorteDados(prisma)`. **Só o app chamava.** O MCP é outro processo: nunca lia o
+`AppSetting`, então **todas as tools do Nex grampeavam pela data padrão** e mudar a data na tela
+não mudava nada nas respostas do agente. Agora o pipeline de tools (`mcp/server.ts` e o
+dispatcher externo) hidrata o corte, e `aquecerCorte()` (`src/lib/corte-app.ts`) faz o mesmo nos
+pontos de entrada do app.
+
+Peça nova, canônica: **`janelaClampada(de?, ate?)`** em `corte-dados.ts` , piso no corte inclusive
+quando não vem período, borda de fim exclusiva, e `cortado` para a resposta poder ser honesta.
+Vale para QUALQUER campo de data (emissão, vencimento, movimento, lançamento).
+
+### O corte da ingestão não era fixo (bug do PR #168)
+O #168 trocou `corteAtual()` por `CORTE_DADOS_ISO`, mas essa constante era o **próprio
+`corteAtual()` avaliado no import**, ou seja, o padrão da tela (16/03). A ingestão continuou
+amarrada à data de análise e o worker **nunca repunha janeiro a março**. Agora
+`CORTE_INGESTAO_ISO = "2026-01-01"` é literal e `worker/sync/corte.ts` não importa nada de
+`corte-dados.ts`. Teste garante que o domínio do Odoo nunca é igual à data da tela.
+
+### O que mais saiu daqui
+- **KPIs zeravam a cada sync.** `fato_pedido_classificacao` fazia `is_venda_externa = false` em
+  TODAS as notas e só depois remarcava, **fora de transação**: por alguns segundos, a cada ciclo,
+  o faturamento e os gráficos liam zero. `fato_pedido_item` usava `TRUNCATE` solto. Agora a troca
+  é atômica (a leitura vê o estado antigo até o commit) e existe um **marcador de fim de ciclo**:
+  a tela só se atualiza quando o dado está inteiro, com uma troca suave (sem tela vazia).
+- **"A receber" era R$ 49,2 mi; é R$ 17,8 mi.** O Odoo da Tauga gera o financeiro pelo PEDIDO ou
+  pela NOTA, e o cache não guardava a origem: R$ 31,3 mi de **pedidos sem nenhuma nota emitida**
+  (carteira, receita contratada) entravam como recebível, mais R$ 146 mil de dupla contagem.
+  `fato_financeiro_titulo` agora materializa `pedido_id`, `nota_fiscal_id` e `pedido_faturado`;
+  a tela mostra "A receber" (faturado) e "Carteira a faturar" separados.
+- **Estoque a custo em toda parte**: catálogo, linhas granulares e giro/cobertura ainda somavam
+  `vr_saldo`. R$ 45,7 mi -> R$ 37,2 mi, igual ao KPI.
+- **Calendário da Configuração** no padrão do sistema: mês por extenso, selects do design system
+  (não o `<select>` nativo do react-day-picker), trava em 01/01/2026 (limite do cache).
+
+### Prova (E2E contra `nexus_odoo_l1`)
+`scripts/e2e-data-inicio-analises.ts`: move a data e confere que os 7 indicadores de histórico
+reagem, que o saldo de estoque (foto) NÃO muda, e que a contagem das tabelas é idêntica no fim
+(nada é apagado).
+
+## O que falta
+
+1. **Replicar no ERP Nexus** (projeto local, `Projetos Internos/ERP Nexus`): ele já tem o
+   faturamento por operação; falta a data configurável, os centavos e as correções de KPI.
+2. **Reposição do histórico no cache local**: o incremental usa marca d'água por `write_date`, e
+   registro antigo não "mudou", então o purge não voltava sozinho. Zerado
+   `sync_state.last_incremental_at` dos 15 modelos transacionais para forçar o backfill desde
+   01/01/2026. Conferir que as notas de jan a mar voltaram.
+3. Ver `docs/RADAR.md` para os pontos que os agentes deixaram como decisão de produto (dias
+   parado, DRE com lançamento sem data, comparativo de estoque pré-corte).
