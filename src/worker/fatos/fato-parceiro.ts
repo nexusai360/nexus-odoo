@@ -122,16 +122,81 @@ export function mapParceiroRow(raw: Record<string, unknown>): FatoParceiroRow {
   };
 }
 
-/** Reconstrói fato_parceiro a partir de raw_sped_participante.
- * Filtro: rawDeleted=false. Ciclo: incremental (deleteMany+createMany, em transação). */
+/** Colunas extraidas do jsonb , so o que o fato usa. */
+interface ParticipanteRow {
+  id: number;
+  nome: string | null;
+  razao_social: string | null;
+  cnpj_cpf: string | null;
+  estado: string | null;
+  cidade: string | null;
+  municipio: string | null;
+  cep: string | null;
+  email: string | null;
+  fone: string | null;
+  fone_comercial: string | null;
+  eh_cliente: boolean | null;
+  eh_fornecedor: boolean | null;
+  eh_empresa: boolean | null;
+  partner_id: number | null;
+  create_date: string | null;
+}
+
+/**
+ * Reconstrói fato_parceiro a partir de raw_sped_participante.
+ *
+ * A leitura EXTRAI AS COLUNAS do jsonb no proprio Postgres, em vez de trazer o `data` inteiro
+ * para o heap: o `findMany` carregava os 7,3 mil participantes com TODOS os campos e derrubou o
+ * worker de producao por falta de memoria (heap OOM em serie, 2026-07-12). O fato usa 16 campos.
+ *
+ * Filtro: rawDeleted=false. Ciclo: incremental (delete + insert, na mesma transação).
+ */
 export async function rebuildFatoParceiro(
   prisma: PrismaClient,
 ): Promise<number> {
-  const rawRows = await prisma.rawSpedParticipante.findMany({
-    where: { rawDeleted: false },
-  });
-  const mapped = rawRows.map((r) =>
-    mapParceiroRow(r.data as Record<string, unknown>),
+  const rows = await prisma.$queryRaw<ParticipanteRow[]>`
+    SELECT
+      odoo_id                                     AS id,
+      NULLIF(data->>'nome', '')                   AS nome,
+      NULLIF(data->>'razao_social', '')           AS razao_social,
+      NULLIF(data->>'cnpj_cpf', '')               AS cnpj_cpf,
+      NULLIF(data->>'estado', '')                 AS estado,
+      NULLIF(data->>'cidade', '')                 AS cidade,
+      CASE WHEN jsonb_typeof(data->'municipio_id') = 'array'
+           THEN data->'municipio_id'->>1 END      AS municipio,
+      NULLIF(data->>'cep', '')                    AS cep,
+      NULLIF(data->>'email', '')                  AS email,
+      NULLIF(data->>'fone', '')                   AS fone,
+      NULLIF(data->>'fone_comercial', '')         AS fone_comercial,
+      CASE WHEN data->>'eh_cliente' = 'true' THEN true ELSE false END    AS eh_cliente,
+      CASE WHEN data->>'eh_fornecedor' = 'true' THEN true ELSE false END AS eh_fornecedor,
+      CASE WHEN data->>'eh_empresa' = 'true' THEN true ELSE false END    AS eh_empresa,
+      CASE WHEN jsonb_typeof(data->'partner_id') = 'array'
+           THEN (data->'partner_id'->>0)::int END AS partner_id,
+      NULLIF(data->>'create_date', '')            AS create_date
+    FROM raw_sped_participante
+    WHERE coalesce(raw_deleted, false) = false`;
+
+  const mapped = rows.map((r) =>
+    mapParceiroRow({
+      id: r.id,
+      nome: r.nome,
+      razao_social: r.razao_social,
+      cnpj_cpf: r.cnpj_cpf,
+      estado: r.estado,
+      cidade: r.cidade,
+      // O mapper aceita o m2o do Odoo; aqui basta o rotulo ("Aracaju - SE").
+      municipio_id: r.municipio ? [0, r.municipio] : false,
+      cep: r.cep,
+      email: r.email,
+      fone: r.fone,
+      fone_comercial: r.fone_comercial,
+      eh_cliente: r.eh_cliente,
+      eh_fornecedor: r.eh_fornecedor,
+      eh_empresa: r.eh_empresa,
+      partner_id: r.partner_id != null ? [r.partner_id, ""] : false,
+      create_date: r.create_date,
+    }),
   );
   await prisma.$transaction(
     async (tx) => {
