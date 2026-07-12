@@ -23,6 +23,14 @@ export const CORTE_DADOS_KEY = "sync.corte_dados";
 /** Data usada enquanto ninguem configurou nada (decisao do dono, 2026-07-11). */
 export const CORTE_DADOS_PADRAO = "2026-03-16";
 
+/**
+ * A data mais antiga que se pode escolher na tela. E o limite do que o cache guarda: a
+ * ingestao tem corte tecnico proprio em 2026-01-01 (src/worker/sync/corte.ts), entao nao
+ * existe documento anterior a isso para analisar. Escolher antes so daria falsa impressao
+ * de cobertura. Se um dia a ingestao passar a puxar mais historico, os dois andam juntos.
+ */
+export const CORTE_DADOS_MINIMO = "2026-01-01";
+
 /** AAAA-MM-DD. */
 const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
 

@@ -1,5 +1,6 @@
 // src/worker/fatos/registry.ts
 import type { PrismaClient } from "../../generated/prisma/client";
+import { markFatoBuilt } from "./fato-build-state";
 import { rebuildFatoEstoqueSaldo } from "./fato-estoque-saldo";
 import { rebuildFatoEstoqueMovimento } from "./fato-estoque-movimento";
 import { rebuildFatoProdutoParado } from "./fato-produto-parado";
@@ -118,6 +119,15 @@ export const FATO_BUILDERS: FatoBuilderEntry[] = [
 ];
 
 /**
+ * Marcador de FIM DE CICLO. Gravado depois que todos os builders rodaram, ou seja, quando o
+ * dado ja esta inteiro e estavel. E ele (nao o timestamp da ingestao) que a tela observa para
+ * se atualizar: antes o front olhava `sync_state.last_incremental_at`, que avanca ASSIM QUE o
+ * raw chega, e o soft-refresh caia no meio da reconstrucao dos fatos , dai os KPIs e os
+ * graficos "zeravam" por alguns segundos.
+ */
+export const MARCADOR_CICLO = "__ciclo__";
+
+/**
  * Executa todos os builders do `cycle` dado. Isola falhas: um builder com erro
  * não impede os demais de rodar.
  */
@@ -135,4 +145,6 @@ export async function runBuilders(
       console.error(`[worker] falha ao reconstruir ${nome}:`, err);
     }
   }
+  // Só agora o ciclo terminou: a partir daqui a tela pode se atualizar com segurança.
+  await markFatoBuilt(prisma, MARCADOR_CICLO);
 }

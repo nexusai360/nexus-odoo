@@ -22,6 +22,10 @@ import { emitAgentReply, type AgentReplyData, type OutboundTarget } from "@/lib/
 import type { BlockReason } from "@/lib/whatsapp/blocked-messages";
 import { buildReplyData } from "./build-reply-data";
 import { prisma } from "@/lib/prisma";
+// Data de inicio das analises: o Nex do WhatsApp roda no processo WORKER, que tem o SEU
+// proprio cache em memoria do corte. Hidratamos aqui (TTL de 60s no helper) para que o
+// clamp e o aviso do agente usem a data configurada, e nao o valor padrao do boot.
+import { getCorteDados } from "@/lib/corte-dados";
 import { acquireUserLock, releaseUserLock } from "./user-lock";
 import { isMediaType, type InboundMedia, type InboundMessageType } from "@/lib/whatsapp/inbound-payload";
 import type { AgentChannel } from "@/generated/prisma/client";
@@ -88,6 +92,11 @@ export async function processAgentJob(data: AgentJobData): Promise<void> {
   // WhatsApp; outros valores indicam que o canal não deve processar mídia.
   const settings = await prisma.agentSettings.findFirst().catch(() => null);
   const audioInProduction = settings?.audioCheckpoint === "PRODUCTION";
+
+  // Hidrata a data de inicio das analises neste processo antes de qualquer leitura de
+  // historico (o runAgent tambem hidrata; aqui garante o valor fresco desde o inicio do job
+  // e nao quebra o fluxo se o banco estiver indisponivel , o helper ja e defensivo).
+  await getCorteDados(prisma).catch(() => null);
 
   // F5.1 , Mídia (image/document/video/sticker): a leitura do arquivo pela IA
   // (ler PDF/imagem e entender o contexto) é etapa futura. Por ora aceitamos os

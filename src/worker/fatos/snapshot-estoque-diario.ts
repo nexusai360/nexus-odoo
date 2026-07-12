@@ -20,9 +20,6 @@ export async function capturarSnapshotEstoqueDiario(
 ): Promise<{ dataRef: string; linhas: number }> {
   const dataRef = dataRefBRT(agora);
 
-  // Idempotente: regrava a foto do dia (a última execução do dia prevalece).
-  await prisma.fatoEstoqueSaldoSnapshot.deleteMany({ where: { dataRef } });
-
   const saldos = await prisma.fatoEstoqueSaldo.findMany({
     select: {
       produtoId: true,
@@ -42,10 +39,19 @@ export async function capturarSnapshotEstoqueDiario(
     return { dataRef: dataRef.toISOString().slice(0, 10), linhas: 0 };
   }
 
-  // id tem @default(uuid()) no schema; createMany deixa o Prisma gerar.
-  await prisma.fatoEstoqueSaldoSnapshot.createMany({
-    data: saldos.map((s) => ({ ...s, dataRef })),
-  });
+  // Regrava a foto do dia numa transacao so (a ultima execucao do dia prevalece). Apagar
+  // fora de transacao deixaria a comparacao de estoque sem a foto de hoje enquanto o insert
+  // nao terminasse, e a tela mostraria variacao zerada.
+  await prisma.$transaction(
+    async (tx) => {
+      await tx.fatoEstoqueSaldoSnapshot.deleteMany({ where: { dataRef } });
+      // id tem @default(uuid()) no schema; createMany deixa o Prisma gerar.
+      await tx.fatoEstoqueSaldoSnapshot.createMany({
+        data: saldos.map((s) => ({ ...s, dataRef })),
+      });
+    },
+    { timeout: 180_000, maxWait: 15_000 },
+  );
 
   return { dataRef: dataRef.toISOString().slice(0, 10), linhas: saldos.length };
 }

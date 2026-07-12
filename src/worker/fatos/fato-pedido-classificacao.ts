@@ -231,16 +231,6 @@ export async function rebuildFatoPedidoClassificacao(prisma: PrismaClient): Prom
     else gruposPedido.set(chave, [p.odoo_id]);
   }
 
-  for (const [chave, ids] of gruposPedido) {
-    const [categoria, bucket, pendencia] = JSON.parse(chave) as [string, string, string | null];
-    for (let i = 0; i < ids.length; i += CHUNK) {
-      await prisma.fatoPedido.updateMany({
-        where: { odooId: { in: ids.slice(i, i + CHUNK) } },
-        data: { categoriaOperacao: categoria, bucketDemanda: bucket, pendenciaEtapa: pendencia },
-      });
-    }
-  }
-
   // Notas: is_venda_externa. O criterio de venda passou a ser a OPERACAO FISCAL da propria
   // nota (operacao_nome), que e o que o Odoo usa. O CFOP representativo do item saiu da
   // regra: ele nao separava venda de venda interna (as duas tem CFOP de venda) e derrubava a
@@ -271,15 +261,42 @@ export async function rebuildFatoPedidoClassificacao(prisma: PrismaClient): Prom
     }
   }
 
-  // reset todas false, depois marca as externas (evita IN gigante)
-  await prisma.fatoNotaFiscal.updateMany({ data: { isVendaExterna: false } });
-  for (let i = 0; i < notasExternas.length; i += CHUNK) {
-    await prisma.fatoNotaFiscal.updateMany({
-      where: { odooId: { in: notasExternas.slice(i, i + CHUNK) } },
-      data: { isVendaExterna: true },
-    });
-  }
+  // TODA a escrita numa transacao so. Antes cada updateMany commitava sozinho, e o
+  // "reset todas false" das notas deixava is_venda_externa=false por alguns segundos a cada
+  // ciclo: quem estivesse olhando a Diretoria via o faturamento e os graficos ZERAREM, e
+  // voltarem depois. Com a transacao, o leitor continua vendo o estado anterior (Postgres em
+  // READ COMMITTED) e a troca acontece de uma vez, no commit.
+  await prisma.$transaction(
+    async (tx) => {
+      for (const [chave, ids] of gruposPedido) {
+        const [categoria, bucket, pendencia] = JSON.parse(chave) as [
+          string,
+          string,
+          string | null,
+        ];
+        for (let i = 0; i < ids.length; i += CHUNK) {
+          await tx.fatoPedido.updateMany({
+            where: { odooId: { in: ids.slice(i, i + CHUNK) } },
+            data: { categoriaOperacao: categoria, bucketDemanda: bucket, pendenciaEtapa: pendencia },
+          });
+        }
+      }
 
-  await markFatoBuilt(prisma, "fato_pedido_classificacao");
+      // reset todas false, depois marca as externas (evita IN gigante)
+      await tx.fatoNotaFiscal.updateMany({ data: { isVendaExterna: false } });
+      for (let i = 0; i < notasExternas.length; i += CHUNK) {
+        await tx.fatoNotaFiscal.updateMany({
+          where: { odooId: { in: notasExternas.slice(i, i + CHUNK) } },
+          data: { isVendaExterna: true },
+        });
+      }
+
+      // Estado de build commitado junto com os dados: freshness so avanca quando o dado novo
+      // ja esta visivel (senao a tela faz o soft-refresh no meio da reconstrucao).
+      await markFatoBuilt(tx, "fato_pedido_classificacao");
+    },
+    { timeout: 180_000, maxWait: 15_000 },
+  );
+
   return pedidos.length;
 }

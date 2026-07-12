@@ -1,10 +1,22 @@
 import { z } from "zod";
 
-/** Data (AAAA-MM-DD) a partir da qual a plataforma considera documentos. */
+import { CORTE_DADOS_MINIMO } from "@/lib/corte-dados";
+
+/**
+ * Data (AAAA-MM-DD) a partir da qual a plataforma considera documentos.
+ *
+ * O piso (2026-01-01) e o mesmo limite que a UI oferece no calendario, repetido aqui de
+ * proposito: a trava de tela nao e seguranca. Antes disso nao ha o que analisar , o cache
+ * so guarda a partir do corte tecnico da ingestao.
+ */
 export const corteDadosSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Use uma data válida (AAAA-MM-DD).")
-  .refine((v) => !Number.isNaN(new Date(`${v}T00:00:00Z`).getTime()), "Data inválida.");
+  .refine((v) => !Number.isNaN(new Date(`${v}T00:00:00Z`).getTime()), "Data inválida.")
+  .refine(
+    (v) => v >= CORTE_DADOS_MINIMO,
+    `A plataforma só guarda dados a partir de ${CORTE_DADOS_MINIMO.split("-").reverse().join("/")}.`,
+  );
 
 export const syncConfigSchema = z.object({
   corteDados: corteDadosSchema,

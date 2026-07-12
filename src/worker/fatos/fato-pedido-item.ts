@@ -8,8 +8,15 @@ import type { PrismaClient } from "../../generated/prisma/client";
 import { markFatoBuilt } from "./fato-build-state";
 
 export async function rebuildFatoPedidoItem(prisma: PrismaClient): Promise<number> {
-  await prisma.$executeRawUnsafe("TRUNCATE TABLE fato_pedido_item");
-  await prisma.$executeRaw`
+  // Troca atomica: DELETE + INSERT na MESMA transacao. Antes era um TRUNCATE solto, que
+  // commita sozinho e deixava a tabela VAZIA por alguns segundos , quem abrisse a tela nesse
+  // intervalo via demanda por produto e estoque disponivel zerados. DELETE (e nao TRUNCATE)
+  // de proposito: nao pega ACCESS EXCLUSIVE, entao o leitor nem bloqueia, so continua vendo
+  // as linhas antigas ate o commit.
+  const n = await prisma.$transaction(
+    async (tx) => {
+      await tx.fatoPedidoItem.deleteMany({});
+      await tx.$executeRaw`
     INSERT INTO fato_pedido_item (
       odoo_id, pedido_id, produto_id, produto_nome, familia_nome, marca_nome,
       quantidade, cfop_id, local_reserva_id, vr_produtos, vr_custo, atualizado_em
@@ -34,8 +41,13 @@ export async function rebuildFatoPedidoItem(prisma: PrismaClient): Promise<numbe
     WHERE (i.data->'pedido_id'->>0) ~ '^[0-9]+$'
       AND COALESCE((i.data->>'quantidade')::numeric, 0) > 0
   `;
-  const [{ n }] = await prisma.$queryRaw<{ n: bigint }[]>`
+      const [{ n }] = await tx.$queryRaw<{ n: bigint }[]>`
     SELECT count(*)::bigint AS n FROM fato_pedido_item`;
-  await markFatoBuilt(prisma, "fato_pedido_item");
-  return Number(n);
+      // Estado de build junto com os dados: o freshness so avanca no commit.
+      await markFatoBuilt(tx, "fato_pedido_item");
+      return Number(n);
+    },
+    { timeout: 180_000, maxWait: 15_000 },
+  );
+  return n;
 }
