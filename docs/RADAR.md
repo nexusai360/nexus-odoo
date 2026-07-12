@@ -810,3 +810,22 @@ marcado; o resto é dívida aberta.
   worker reescreveu as colunas novas com os defaults. Ver a regra de raiz no CLAUDE.md.
 - **`docker compose` na worktree não enxerga o `.env` da pasta principal.** O worker subiu sem as
   credenciais do Odoo. Passar `--env-file <pasta-principal>/.env`.
+
+---
+
+## R-mapa-uf , "Sem UF" no mapa da Diretoria (investigado 2026-07-12, a pedido do dono)
+
+O mapa por estado usa a **UF do CADASTRO DO CLIENTE** (`fato_parceiro.uf`), não a UF da nota.
+A nota fiscal sempre tem destinatário, mas o CADASTRO do parceiro no Odoo pode estar sem estado
+preenchido , e é isso que cai no balde "Sem UF" (a query normaliza para `??`).
+
+Em produção, julho/2026: R$ 450 mil em 8 notas, por duas causas:
+- **5 notas (R$ 423.818)**: o cadastro do cliente está sem UF no Odoo. Os dois maiores são
+  pessoas físicas (GEORGE OLIVEIRA DA SILVA, R$ 291.719; JOÃO ANNES GUIMARÃES, R$ 130.499).
+- **3 notas (R$ 26.631)**: o participante da nota não existe em `fato_parceiro` (cadastro ainda
+  não ingerido ou removido no Odoo).
+
+Não é bug de cálculo: o dinheiro está certo e entra no faturamento total. É **qualidade de
+cadastro no Odoo**. Duas saídas possíveis (decisão do dono):
+1. corrigir o cadastro desses clientes no Odoo (o mapa se resolve sozinho no próximo sync);
+2. usar a UF do ENDEREÇO DE ENTREGA da nota como segunda fonte, quando o cadastro não tiver.
