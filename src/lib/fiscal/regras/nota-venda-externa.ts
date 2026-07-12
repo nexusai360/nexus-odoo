@@ -5,7 +5,14 @@
 
 /** Operacao de venda: o nome da operacao fiscal contem "venda". */
 export const OPERACAO_VENDA_TERMO = "venda";
-/** Venda INTERNA (entre empresas do grupo): faturada, mas nao e faturamento de venda. */
+/**
+ * Termos que, mesmo com "venda" no nome da operacao, NAO sao faturamento de mercadoria:
+ *   - "interna": venda interna = transferencia faturada entre empresas do grupo;
+ *   - "imobilizado": "Venda de bens do ativo imobilizado 5551/6551" e baixa de ativo, nao
+ *     receita (o cfop-mapa ja tratava 5551/6551 assim , as duas camadas agora concordam).
+ */
+export const OPERACAO_NAO_VENDA_TERMOS = ["interna", "imobilizado"] as const;
+/** @deprecated use OPERACAO_NAO_VENDA_TERMOS. */
 export const OPERACAO_INTERNA_TERMO = "interna";
 /** finalidade_nfe "4" = devolucao/retorno. Saida que nao e venda. */
 export const FINALIDADE_DEVOLUCAO = "4";
@@ -47,7 +54,8 @@ export function ehOperacaoVenda(n: {
 }): boolean {
   if (n.finalidadeNfe === FINALIDADE_DEVOLUCAO) return false;
   const op = (n.operacaoNome ?? "").toLowerCase();
-  return op.includes(OPERACAO_VENDA_TERMO) && !op.includes(OPERACAO_INTERNA_TERMO);
+  if (!op.includes(OPERACAO_VENDA_TERMO)) return false;
+  return !OPERACAO_NAO_VENDA_TERMOS.some((t) => op.includes(t));
 }
 
 /**

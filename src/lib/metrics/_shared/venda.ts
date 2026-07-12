@@ -1,4 +1,4 @@
-import type { Prisma } from "../../../generated/prisma/client";
+import type { Prisma, PrismaClient } from "../../../generated/prisma/client";
 
 /**
  * A REGRA DE "SO VENDA" DA PLATAFORMA, em forma de where.
@@ -30,8 +30,55 @@ export function buildVendaOperacaoWhereItem(): Prisma.FatoNotaFiscalItemWhereInp
   return {
     entradaSaida: "1",
     situacaoNfe: "autorizada",
-    operacaoNome: { contains: "venda", mode: "insensitive" },
-    NOT: [{ operacaoNome: { contains: "interna", mode: "insensitive" } }],
-    finalidadeNfe: { not: "4" },
+    AND: [
+      { operacaoNome: { contains: "venda", mode: "insensitive" } },
+      { NOT: [{ operacaoNome: { contains: "interna", mode: "insensitive" } }] },
+      { NOT: [{ operacaoNome: { contains: "imobilizado", mode: "insensitive" } }] },
+      { finalidadeNfe: { not: "4" } },
+    ],
   };
+}
+
+/**
+ * Where das notas de VENDA no grao de nota, SEM o corte de intragrupo , o universo que a
+ * receita consolidada precisa (ela separa externa de intragrupo eliminavel). E a mesma
+ * regra que materializa `is_venda_externa`, menos o corte de destinatario: saida +
+ * autorizada + modelo 55/65 + operacao de venda (nao interna, nao imobilizado, sem
+ * devolucao).
+ */
+export function buildVendaOperacaoWhereNota(): Prisma.FatoNotaFiscalWhereInput {
+  return {
+    entradaSaida: "1",
+    situacaoNfe: "autorizada",
+    modelo: { in: ["55", "65"] },
+    AND: [
+      { operacaoNome: { contains: "venda", mode: "insensitive" } },
+      { NOT: [{ operacaoNome: { contains: "interna", mode: "insensitive" } }] },
+      { NOT: [{ operacaoNome: { contains: "imobilizado", mode: "insensitive" } }] },
+      { finalidadeNfe: { not: "4" } },
+    ],
+  };
+}
+
+/**
+ * Gap de cadastro: notas de saida autorizada (modelo de venda) SEM operacao no cache. Elas
+ * nao entram no faturamento (a regra exige a operacao), entao o numero precisa ser
+ * observavel , se crescer, e cadastro quebrado no Odoo, nao receita que evaporou.
+ */
+export async function contarNotasSemOperacao(
+  prisma: PrismaClient,
+  recorte: Prisma.FatoNotaFiscalWhereInput = {},
+): Promise<{ totalNotas: number; valor: number }> {
+  const notas = await prisma.fatoNotaFiscal.findMany({
+    where: {
+      entradaSaida: "1",
+      situacaoNfe: "autorizada",
+      modelo: { in: ["55", "65"] },
+      operacaoNome: null,
+      ...recorte,
+    },
+    select: { vrNf: true },
+  });
+  const valor = notas.reduce((s, n) => s + Number(n.vrNf), 0);
+  return { totalNotas: notas.length, valor: Math.round(valor * 100) / 100 };
 }
