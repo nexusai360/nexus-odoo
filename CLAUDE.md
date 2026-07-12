@@ -21,6 +21,15 @@
 
 
 
+> ## 📊 BASE DE CÁLCULO DOS KPIs , `docs/kpis-diretoria.md`
+>
+> Toda pergunta do tipo "de onde vem esse número?" (faturamento, ticket médio, a receber,
+> carteira a faturar, a pagar, valor em estoque, demandas, atrasadas, mapa por UF e o balde
+> "Sem UF") é respondida em **`docs/kpis-diretoria.md`**, com a fórmula, a fonte no cache, o
+> arquivo do código e o número conferido em produção.
+>
+> **Ao mudar a regra de um KPI, atualize esse documento no MESMO commit.**
+
 > Carregado automaticamente em toda sessão. Define como conduzir o trabalho.
 > Sobrescreve regras globais quando houver conflito específico.
 
