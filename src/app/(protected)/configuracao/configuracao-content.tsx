@@ -848,10 +848,11 @@ export function ConfiguracaoContent({ config, estado, fatos }: Props) {
                   minIso={CORTE_DADOS_MINIMO}
                 />
               </div>
-              <p className="max-w-md text-xs leading-relaxed text-muted-foreground sm:pt-8">
-                Define o início de tudo o que a plataforma analisa: faturamento, estoque,
-                contas, entregas, relatórios e o agente Nex. Nada é apagado: o histórico
-                fica no cache.
+              {/* Duas linhas do mesmo tamanho: `text-balance` distribui o texto e a quebra cai
+                  naturalmente depois de "contas,". Antes sobrava um "no cache." órfão embaixo. */}
+              <p className="max-w-lg flex-1 text-xs leading-relaxed text-balance text-muted-foreground sm:pt-8">
+                Define o início de tudo o que a plataforma analisa: faturamento, estoque, contas,
+                entregas, relatórios e o Agente Nex. Nada é apagado: o histórico fica no cache.
               </p>
             </div>
           </div>
