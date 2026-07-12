@@ -5,6 +5,7 @@ import type { ToolEntry } from "../../catalog/types.js";
 import { queryTopMovimentados } from "@/lib/reports/queries/estoque.js";
 import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
+import { resolverPeriodoCorte } from "../../lib/periodo-corte.js";
 
 const TOP_TOOL = 20;
 
@@ -18,6 +19,8 @@ const inputSchema = z.object({
 const dados = z.object({
   kpis: z.object({ totalProdutos: z.number().int(), totalUnidades: z.number() }),
   top: z.array(z.object({ rotulo: z.string(), valor: z.number() })),
+  /** Periodo EFETIVAMENTE coberto (ja grampeado a data de inicio das analises). */
+  periodoCoberto: z.string().optional(),
   // Contrato de lista (Fase B): ranking ordenado por movimentacao desc na query.
   ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
@@ -62,19 +65,30 @@ export const estoqueTopMovimentados: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
+    // Ranking sobre movimento de estoque (historico): sem periodo, somava o cache inteiro.
+    const per = resolverPeriodoCorte(input.periodoDe, input.periodoAte);
     const envelope = await withFreshness(
       ctx.prisma,
       ["fato_estoque_movimento"],
-      async () => shape(await queryTopMovimentados(ctx.prisma, input)),
+      async () =>
+        shape(
+          await queryTopMovimentados(ctx.prisma, {
+            periodoDe: per.periodoDe,
+            periodoAte: per.periodoAte,
+            sentido: input.sentido,
+          }),
+        ),
     );
     if (envelope.estado === "preparando") return envelope;
     const top0 = envelope.dados.top[0];
     return enriquecerEnvelope(envelope, "estoque_top_movimentados", {
+      periodo: per,
       destaque: {
         totalProdutos: envelope.dados.kpis.totalProdutos,
         totalUnidades: envelope.dados.kpis.totalUnidades,
         topProduto: top0?.rotulo ?? "",
         movimentosTop: top0?.valor ?? 0,
+        periodoCoberto: per.label,
       },
     });
   },

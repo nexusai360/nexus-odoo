@@ -1,5 +1,8 @@
 import { faturamentoPorCfop } from "./faturamento-por-cfop";
 import type { PrismaClient } from "../../../generated/prisma/client";
+import { CORTE_DADOS_PADRAO } from "@/lib/corte-dados";
+
+const CORTE_ISO = new Date(`${CORTE_DADOS_PADRAO}T00:00:00Z`).toISOString();
 
 function mockPrisma(
   grupos: unknown[],
@@ -118,5 +121,49 @@ describe("faturamentoPorCfop , agruparPor cfop", () => {
     expect(arg.where.situacaoNfe).toBe("autorizada");
     expect(arg.where.empresaId).toBe(7);
     expect(arg.where.dataEmissao).toBeDefined();
+  });
+});
+
+// Os baldes semCfopPorFinalidade e outrasNaoEspecificadas sao SQL cru e precisam nascer do
+// MESMO recorte de data dos totais (que ja e clampado). Se divergirem, a resposta se contradiz
+// sozinha: o balde soma item anterior a data de inicio das analises e nao fecha com
+// totalProdutos / totalNaoReceita.
+describe("faturamentoPorCfop , data de inicio das analises (blocos SQL cru)", () => {
+  it("sem periodo: o SQL cru emite o recorte com piso no corte, igual ao groupBy", async () => {
+    const { prisma, groupBy, queryRawUnsafe } = mockPrisma([], [], 0);
+    await faturamentoPorCfop(prisma, {});
+
+    const dataDoGroupBy = groupBy.mock.calls[0][0].where.dataEmissao;
+    expect(dataDoGroupBy.gte).toEqual(new Date(CORTE_ISO));
+
+    for (const [sql, ...params] of queryRawUnsafe.mock.calls as [string, ...unknown[]][]) {
+      expect(sql).toContain("i.data_emissao >= $1::timestamptz");
+      expect(sql).toContain("i.data_emissao < $2::timestamptz");
+      expect(params[0]).toBe(dataDoGroupBy.gte.toISOString()); // o MESMO piso dos totais
+      expect(params[1]).toBe(dataDoGroupBy.lt.toISOString());
+    }
+  });
+
+  it("periodoDe anterior ao corte: SQL cru e groupBy grampeiam no mesmo ponto", async () => {
+    const { prisma, groupBy, queryRawUnsafe } = mockPrisma([], [], 0);
+    await faturamentoPorCfop(prisma, { periodoDe: "2023-01-01", periodoAte: "2026-06-30" });
+
+    const dataDoGroupBy = groupBy.mock.calls[0][0].where.dataEmissao;
+    expect(dataDoGroupBy.gte).toEqual(new Date(CORTE_ISO));
+
+    const [, gte, lt] = queryRawUnsafe.mock.calls[0] as [string, string, string];
+    expect(gte).toBe(CORTE_ISO);
+    expect(lt).toBe(new Date("2026-07-01T00:00:00Z").toISOString()); // borda exclusiva
+  });
+
+  it("com empresa, a empresa vira o 3o parametro (depois do par de datas)", async () => {
+    const { prisma, queryRawUnsafe } = mockPrisma([], [], 0);
+    await faturamentoPorCfop(prisma, { periodoDe: "2026-05-01", periodoAte: "2026-05-31", empresaId: 7 });
+
+    const [sql, gte, lt, empresa] = queryRawUnsafe.mock.calls[0] as [string, string, string, number];
+    expect(gte).toBe(new Date("2026-05-01T00:00:00Z").toISOString());
+    expect(lt).toBe(new Date("2026-06-01T00:00:00Z").toISOString());
+    expect(sql).toContain("i.empresa_id = $3");
+    expect(empresa).toBe(7);
   });
 });

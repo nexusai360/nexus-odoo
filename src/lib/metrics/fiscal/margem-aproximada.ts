@@ -1,6 +1,7 @@
 import type { PrismaClient } from "../../../generated/prisma/client";
 import type { FaturamentoInput } from "../_shared/types";
 import { classificarCfop, extrairCfop } from "../../fiscal/regras";
+import { janelaClampada } from "@/lib/corte-dados";
 
 /**
  * MARGEM BRUTA APROXIMADA (Fase 4). receita de venda - custo estimado (Σ quantidade x
@@ -47,12 +48,15 @@ export async function margemAproximada(
   prisma: PrismaClient,
   input: FaturamentoInput & { porFamilia?: boolean },
 ): Promise<MargemAproximadaResultado> {
-  const params: unknown[] = [];
-  let cond = "i.entrada_saida = '1' AND i.situacao_nfe = 'autorizada'";
-  if (input.periodoDe && input.periodoAte) {
-    params.push(`${input.periodoDe}T00:00:00Z`, `${input.periodoAte}T00:00:00Z`);
-    cond += ` AND i.data_emissao >= $${params.length - 1}::timestamptz AND i.data_emissao < ($${params.length}::timestamptz + interval '1 day')`;
-  }
+  // Data de inicio das analises: o recorte de data e SEMPRE emitido. Sem periodo, o piso e o
+  // corte (a margem nunca varre o cache inteiro); com periodo anterior ao corte, o inicio e
+  // grampeado nele. Item de nota fiscal e documento historico, entao a regra vale sempre.
+  // A borda de fim ja vem exclusiva da janela (ate + 1 dia).
+  const janela = janelaClampada(input.periodoDe, input.periodoAte);
+  const params: unknown[] = [janela.gte.toISOString(), janela.lt.toISOString()];
+  let cond =
+    "i.entrada_saida = '1' AND i.situacao_nfe = 'autorizada'" +
+    " AND i.data_emissao >= $1::timestamptz AND i.data_emissao < $2::timestamptz";
   if (input.empresaId !== undefined) {
     params.push(input.empresaId);
     cond += ` AND i.empresa_id = $${params.length}`;

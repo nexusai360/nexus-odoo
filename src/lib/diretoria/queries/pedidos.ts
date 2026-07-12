@@ -8,10 +8,15 @@
 
 import type { PrismaClient } from "@/generated/prisma/client";
 
+import { janelaClampada } from "@/lib/corte-dados";
 import { siglaDeUf } from "@/lib/diretoria/uf";
 
 export interface FiltrosDemandas {
   ufs?: string[];
+  /** Início da janela (AAAA-MM-DD). Ausente ou anterior ao corte = piso na data de início das análises. */
+  periodoDe?: string;
+  /** Fim da janela (AAAA-MM-DD). Ausente = janela aberta até hoje. */
+  periodoAte?: string;
 }
 
 async function ufPorParticipante(
@@ -39,11 +44,23 @@ interface PedidoAbertoRow {
   vrProdutos: unknown;
 }
 
+/**
+ * Universo único do módulo: os pedidos em demanda aberta. Pedido é DOCUMENTO com data, ou
+ * seja, histórico , entra a partir da data de início das análises (`sync.corte_dados`).
+ * Sem período informado (é como as páginas chamam hoje), o piso continua sendo o corte:
+ * "em aberto" nunca significa "desde sempre". Pedido sem `dataOrcamento` fica de fora, pois
+ * não há data de documento que prove que ele pertence à janela analisada.
+ *
+ * Como TUDO no módulo (B2, B4, B6, B6b, B7 e o mapa da visão geral) sai daqui, o piso
+ * aplicado neste ponto vale para todos eles.
+ */
 async function carregarAbertas(
   prisma: PrismaClient,
+  filtros: FiltrosDemandas = {},
 ): Promise<PedidoAbertoRow[]> {
+  const j = janelaClampada(filtros.periodoDe, filtros.periodoAte);
   return prisma.fatoPedido.findMany({
-    where: { bucketDemanda: "ABERTA" },
+    where: { bucketDemanda: "ABERTA", dataOrcamento: { gte: j.gte, lt: j.lt } },
     select: {
       odooId: true,
       numero: true,
@@ -89,7 +106,7 @@ export async function queryDemandasPorUf(
   prisma: PrismaClient,
   filtros: FiltrosDemandas = {},
 ): Promise<{ linhas: DemandaUf[]; valorGeral: number }> {
-  const pedidos = await carregarAbertas(prisma);
+  const pedidos = await carregarAbertas(prisma, filtros);
   const ufMap = await ufMapDe(prisma, pedidos);
   const escopo = escopoDe(filtros);
 
@@ -126,7 +143,7 @@ export async function queryIndicadoresDemandas(
   hoje: Date,
   filtros: FiltrosDemandas = {},
 ): Promise<IndicadoresDemandas> {
-  const pedidos = await carregarAbertas(prisma);
+  const pedidos = await carregarAbertas(prisma, filtros);
   const escopo = escopoDe(filtros);
   const ufMap = escopo ? await ufMapDe(prisma, pedidos) : null;
 
@@ -158,7 +175,7 @@ export async function queryDemandasPendentes(
   hoje: Date,
   filtros: FiltrosDemandas = {},
 ): Promise<{ linhas: DemandaLinha[] }> {
-  const pedidos = await carregarAbertas(prisma);
+  const pedidos = await carregarAbertas(prisma, filtros);
   const ufMap = await ufMapDe(prisma, pedidos);
   const escopo = escopoDe(filtros);
 
@@ -194,7 +211,7 @@ export async function queryDemandaPorEtapa(
   prisma: PrismaClient,
   filtros: FiltrosDemandas = {},
 ): Promise<{ linhas: DemandaEtapa[]; total: number; valorGeral: number }> {
-  const pedidos = await carregarAbertas(prisma);
+  const pedidos = await carregarAbertas(prisma, filtros);
   const ufMap = await ufMapDe(prisma, pedidos);
   const escopo = escopoDe(filtros);
 
@@ -236,11 +253,15 @@ export async function queryDemandasMaisParadas(
   hoje: Date,
   filtros: FiltrosDemandas & { limite?: number } = {},
 ): Promise<{ linhas: DemandaParada[] }> {
-  const pedidos = await carregarAbertas(prisma);
+  const pedidos = await carregarAbertas(prisma, filtros);
   const ufMap = await ufMapDe(prisma, pedidos);
   const escopo = escopoDe(filtros);
   const limite = Math.min(Math.max(filtros.limite ?? 20, 1), 100);
 
+  // O histórico de etapas é lido APENAS para os pedidos já grampeados acima, então o
+  // universo já respeita a data de início das análises. A data de entrada na etapa não leva
+  // piso próprio de propósito: ela é o relógio do "parado há N dias" desse pedido, e cortá-la
+  // faria o pedido parecer mais novo na etapa do que ele é.
   const ids = pedidos.map((p) => p.odooId);
   const historico = ids.length
     ? await prisma.fatoPedidoHistorico.findMany({

@@ -9,6 +9,7 @@ import {
   resolverPaginacao,
   montarPaginacaoMeta,
 } from "../../lib/paginacao.js";
+import { resolverPeriodoFiscal } from "./_periodo-padrao.js";
 
 const inputSchema = z.object({
   documento: z
@@ -34,6 +35,8 @@ const dados = z.object({
   totalAgregado: z.object({ quantidade: z.number().int(), valorTotal: z.number() }),
   totalFornecedoresDistintos: z.number().int(),
   aviso: z.string(),
+  /** Periodo EFETIVAMENTE coberto (ja grampeado a data de inicio das analises). */
+  periodoCoberto: z.string().optional(),
   // Contrato de lista (Fase B): a query ordena por quantidade de notas desc
   // (vrNf costuma vir 0 nesta base), com desempate por valor e CNPJ.
   ordenadoPor: z.string().optional(),
@@ -60,16 +63,22 @@ const outputSchema = z.union([
 type Input = z.infer<typeof inputSchema>;
 type Output = z.infer<typeof outputSchema>;
 
-function shape(d: Awaited<ReturnType<typeof queryDfePorFornecedor>>) {
+function shape(
+  d: Awaited<ReturnType<typeof queryDfePorFornecedor>>,
+  periodoLabel: string,
+  avisoPeriodo?: string,
+) {
   return {
     linhas: d.linhas,
     totalAgregado: d.totalAgregado,
     totalFornecedoresDistintos: d.totalFornecedoresDistintos,
     ordenadoPor: "quantidade desc",
+    periodoCoberto: periodoLabel,
     aviso:
       "DF-e de fornecedores agrupados por CNPJ/CPF (participante_id costuma vir " +
       "vazio, por isso a chave é o documento). Ordenado por quantidade de notas. " +
-      "vrNf pode estar 0 nesta base.",
+      `vrNf pode estar 0 nesta base. Período coberto: ${periodoLabel}.` +
+      (avisoPeriodo ? ` ${avisoPeriodo}` : ""),
   };
 }
 
@@ -86,8 +95,20 @@ export const fiscalDfePorFornecedor: ToolEntry<Input, Output> = {
   outputSchema,
   handler: async (input, ctx) => {
     const { limit, offset } = resolverPaginacao(input);
+    // Ranking de fornecedores sobre documentos com data: piso obrigatorio no corte.
+    const per = resolverPeriodoFiscal(input.periodoDe, input.periodoAte);
     const envelope = await withFreshness(ctx.prisma, ["fato_dfe"], async () =>
-      shape(await queryDfePorFornecedor(ctx.prisma, { ...input, limit, offset })),
+      shape(
+        await queryDfePorFornecedor(ctx.prisma, {
+          documento: input.documento,
+          periodoDe: per.periodoDe,
+          periodoAte: per.periodoAte,
+          limit,
+          offset,
+        }),
+        per.label,
+        per.aviso,
+      ),
     );
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
@@ -98,14 +119,16 @@ export const fiscalDfePorFornecedor: ToolEntry<Input, Output> = {
       ...envelope,
       dados: {
         ...d,
-        _RESPOSTA: top
-          ? `DF-e por fornecedor: ${d.totalAgregado.quantidade} notas em ${d.totalFornecedoresDistintos} fornecedores. Top: ${top.fornecedorNome ?? top.cnpjFornecedor ?? "(sem cnpj)"} com ${top.quantidade} notas.`
-          : "Nenhum DF-e no período.",
+        _RESPOSTA:
+          (top
+            ? `DF-e por fornecedor (${per.label}): ${d.totalAgregado.quantidade} notas em ${d.totalFornecedoresDistintos} fornecedores. Top: ${top.fornecedorNome ?? top.cnpjFornecedor ?? "(sem cnpj)"} com ${top.quantidade} notas.`
+            : `Nenhum DF-e no período ${per.label}.`) + (per.aviso ? ` ${per.aviso}` : ""),
         _DESTAQUE: {
           totalDfe: d.totalAgregado.quantidade,
           totalFornecedores: d.totalFornecedoresDistintos,
           topFornecedor: top?.fornecedorNome ?? top?.cnpjFornecedor ?? "",
           notasTopFornecedor: top?.quantidade ?? 0,
+          periodoCoberto: per.label,
         },
         _agregado: { contagem: d.totalAgregado.quantidade, soma: d.totalAgregado.valorTotal },
         _listaTruncada: paginacao.temMais,

@@ -2,6 +2,12 @@
 // Helpers puros para o delta periodo-a-periodo dos KPIs temporais. A janela
 // anterior so existe quando ha um periodo explicito (de..ate em "YYYY-MM"); o
 // delta so e honesto quando ha uma base anterior valida e != 0.
+//
+// A janela anterior tambem obedece a DATA DE INICIO DAS ANALISES: a plataforma nao
+// analisa nada antes dela, entao nao existe base de comparacao la atras. Se a janela
+// anterior termina antes do corte, NAO ha delta (null); se ela cruza o corte, o inicio
+// e grampeado (a base fica menor, mas so cobre o que a plataforma analisa).
+import { corteAtual } from "@/lib/corte-dados";
 
 /** Converte "YYYY-MM" em indice de mes absoluto (ano*12 + mes-1). Null se invalido. */
 function indiceMes(s: string | undefined): number | null {
@@ -22,12 +28,22 @@ function deIndice(idx: number): string {
 }
 
 /**
- * Janela imediatamente anterior, de mesmo tamanho. Ex.: Jan..Mar 2026 (3 meses)
- * -> Out..Dez 2025. Retorna null se faltar um dos limites ou o formato for invalido.
+ * Janela imediatamente anterior, de mesmo tamanho, ja grampeada a data de inicio das
+ * analises. Ex.: Jan..Mar 2026 (3 meses) -> Out..Dez 2025.
+ *
+ * Retorna null quando:
+ *   - falta um dos limites ou o formato nao e "YYYY-MM" (sem periodo, sem base);
+ *   - a janela anterior termina ANTES do mes do corte , ali a plataforma nao analisa
+ *     nada, entao a base seria zero e o delta, inventado (ex.: comparar mar/2026 com
+ *     fev/2026 quando as analises comecam em 16/03/2026 devolveria "+infinito").
+ *
+ * Quando a janela anterior CRUZA o corte, o inicio e puxado para o mes do corte: a base
+ * fica menor, porem so com o que a plataforma de fato analisa.
  */
 export function janelaAnterior(
   de: string | undefined,
   ate: string | undefined,
+  corte: string = corteAtual(),
 ): { de: string; ate: string } | null {
   const iDe = indiceMes(de);
   const iAte = indiceMes(ate);
@@ -35,6 +51,14 @@ export function janelaAnterior(
   const span = iAte - iDe + 1;
   const priorAte = iDe - 1;
   const priorDe = priorAte - (span - 1);
+
+  const iCorte = indiceMes(corte.slice(0, 7));
+  if (iCorte !== null) {
+    // Janela anterior inteiramente antes do inicio das analises: sem base, sem delta.
+    if (priorAte < iCorte) return null;
+    // Cruza o corte: grampeia o inicio no mes do corte.
+    if (priorDe < iCorte) return { de: deIndice(iCorte), ate: deIndice(priorAte) };
+  }
   return { de: deIndice(priorDe), ate: deIndice(priorAte) };
 }
 

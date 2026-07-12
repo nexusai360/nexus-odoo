@@ -133,3 +133,36 @@ describe("previsualizarSecoes", () => {
     expect(r.tipo).toBe("invalida");
   });
 });
+
+// O preview e o que o admin aprova: tem que respeitar a data de inicio das analises
+// (prisma mockado sem appSetting => corte padrao 2026-03-16).
+describe("previsualizarSecoes , data de inicio das analises", () => {
+  beforeEach(() => {
+    getCurrentUser.mockResolvedValue(ADMIN);
+    resolveSecao.mockResolvedValue({ estado: "ok", dado: { colunas: [], linhas: [] } });
+  });
+
+  it("grampeia o periodo pedido pelo cliente ao corte (mes)", async () => {
+    await previsualizarSecoes(FICHA_VALIDA, { periodoDe: "2025-02", periodoAte: "2026-05" });
+    expect(resolveSecao).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ periodoDe: "2026-03", periodoAte: "2026-05" }),
+    );
+  });
+
+  it("grampeia o periodo pedido pelo cliente ao corte (dia)", async () => {
+    await previsualizarSecoes(FICHA_VALIDA, { periodoDe: "2024-01-05", periodoAte: "2026-05-31" });
+    expect(resolveSecao).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ periodoDe: "2026-03-16", periodoAte: "2026-05-31" }),
+    );
+  });
+
+  it("periodo dentro da janela passa intacto", async () => {
+    await previsualizarSecoes(FICHA_VALIDA, { periodoDe: "2026-06", periodoAte: "2026-07" });
+    expect(resolveSecao).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ periodoDe: "2026-06", periodoAte: "2026-07" }),
+    );
+  });
+});

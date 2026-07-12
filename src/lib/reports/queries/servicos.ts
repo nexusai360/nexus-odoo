@@ -3,6 +3,10 @@
 // Núcleo de consulta do catálogo de serviços, framework-neutro. Recebe
 // `prisma` + filtros, devolve dados crus. `withFreshness` vive no handler MCP.
 // Fonte primária: fato_servico (de sped.servico).
+//
+// A data de início das análises NÃO se aplica: isto é CATÁLOGO/cadastro (código do serviço,
+// tributação, alíquota de INSS retido), não documento com data. O fato não tem data de
+// negócio. O piso valeria para uma nota de serviço emitida, não para o item do catálogo.
 
 import type { PrismaClient } from "@/generated/prisma/client";
 

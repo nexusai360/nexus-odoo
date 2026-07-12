@@ -5,6 +5,7 @@ import type { ToolEntry } from "../../catalog/types.js";
 import { queryResultadoPorConta } from "@/lib/reports/queries/financeiro-resultado.js";
 import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
+import { resolverPeriodoCorte } from "../../lib/periodo-corte.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional().describe("Início do período, AAAA-MM-DD."),
@@ -28,6 +29,8 @@ const dados = z.object({
   totalDespesa: z.number(),
   resultado: z.number(),
   aviso: z.string(),
+  /** Periodo EFETIVAMENTE coberto (ja grampeado a data de inicio das analises). */
+  periodoCoberto: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -41,15 +44,21 @@ const outputSchema = z.union([
 type Input = z.infer<typeof inputSchema>;
 type Output = z.infer<typeof outputSchema>;
 
-function shape(d: Awaited<ReturnType<typeof queryResultadoPorConta>>) {
+function shape(
+  d: Awaited<ReturnType<typeof queryResultadoPorConta>>,
+  periodoLabel: string,
+  avisoPeriodo?: string,
+) {
   return {
     ...d,
     // A query ja ordena por total desc (contrato de lista).
     ordenadoPor: "total desc",
+    periodoCoberto: periodoLabel,
     aviso:
       "DRE gerencial: receitas e despesas agrupadas por conta gerencial (itens do " +
       "lançamento financeiro). resultado = receita - despesa. Não confundir com " +
-      "saldo bancário (financeiro_saldo_contas) nem fluxo de caixa.",
+      `saldo bancário (financeiro_saldo_contas) nem fluxo de caixa. Período coberto: ${periodoLabel}.` +
+      (avisoPeriodo ? ` ${avisoPeriodo}` : ""),
   };
 }
 
@@ -66,8 +75,20 @@ export const financeiroResultadoPorConta: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
+    // Lancamento financeiro e historico: sem periodo, a DRE somava o cache inteiro. Periodo
+    // sempre resolvido, com inicio grampeado a data de inicio das analises.
+    const per = resolverPeriodoCorte(input.periodoDe, input.periodoAte);
     const envelope = await withFreshness(ctx.prisma, ["fato_financeiro_lancamento_item"], async () =>
-      shape(await queryResultadoPorConta(ctx.prisma, input)),
+      shape(
+        await queryResultadoPorConta(ctx.prisma, {
+          periodoDe: per.periodoDe,
+          periodoAte: per.periodoAte,
+          natureza: input.natureza,
+          limite: input.limite,
+        }),
+        per.label,
+        per.aviso,
+      ),
     );
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
@@ -79,6 +100,7 @@ export const financeiroResultadoPorConta: ToolEntry<Input, Output> = {
       totalDespesa: d.totalDespesa,
       resultado: d.resultado,
       contaTop: top?.contaNome ?? "",
+      periodoCoberto: per.label,
     };
     if (top) {
       // Campos extras p/ o formatador reproduzir "Maior: X (natureza, valor)".
@@ -91,6 +113,7 @@ export const financeiroResultadoPorConta: ToolEntry<Input, Output> = {
       { ...envelope, dados: { ...d, linhas: linhasCap } },
       "financeiro_resultado_por_conta",
       {
+        periodo: per,
         destaque,
         agregado: { soma: d.resultado },
         listaTruncada: todasLinhas.length > linhasCap.length,

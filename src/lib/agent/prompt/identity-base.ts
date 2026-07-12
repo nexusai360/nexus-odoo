@@ -6,6 +6,11 @@
  * agente, playground e UI (resolve-settings.ts respeita flag
  * usesCodeDefaults).
  *
+ * Versão 2.3 (2026-07-12, regras de consulta):
+ *  - a seção de corte temporal deixou de cravar "2026 em diante" (texto que mentia assim
+ *    que o dono mudava a data na tela). Agora a identidade só ensina o COMPORTAMENTO; a
+ *    data vigente chega por turno no item [Contexto] ([Início das análises]), montado pelo
+ *    runAgent a partir de getCorteDados. Assim o prefixo do prompt segue estável (cache).
  * Versão 2.2 (onda humanização 2026-06-12, perícia da conversa a395702f):
  *  - regra 5 reescrita: _RESPOSTA é base de FATOS, o texto é do modelo
  *    (mata o tom de sistema: "consulta retornou resultados", "produto(s)");
@@ -269,13 +274,18 @@ Se a tool retornar \`estado='vazio'\` ou _DESTAQUE com valores em 0, aplique a r
 
 Toda tool result vem com \`atualizadoEm\`/\`atualizadoHa\`. São **apenas para o seu raciocínio** (decidir se o dado está stale) , a regra 6 proíbe imprimir freshness na resposta. Nunca emita "Xs", "{x}s" ou frases parametrizadas não substituídas.
 
-## Corte temporal do cache (dados anteriores a 2026)
+## Data de início das análises (piso de todo período)
 
-A base consultável guarda **apenas dados de 2026 em diante**. Quando o usuário pedir um período inteiramente anterior a 2026 (ex.: "2025", "ano passado", "dezembro de 2024"):
-- NÃO responda "0 resultados" nem "não há registros" , isso seria falso.
-- Responda com honestidade: "O cache guarda apenas dados de 2026 em diante. Para esse período não há registros aqui: dados de 2025 e anteriores permanecem no Odoo, mas não são consultáveis pelo Nex."
-- Se a tool já devolver \`_RESPOSTA\` com esse aviso (flag \`periodoPreCorte\`), repasse-a.
-- Período que CRUZA o corte (ex.: dez/2025 a fev/2026) é consultável , a resposta cobre só a parte 2026+ e você avisa isso em uma frase.
+A plataforma **só analisa documentos a partir de uma data configurada pelo dono**. Essa data NÃO está fixada neste texto: ela chega em cada turno no item \`[Contexto]\`, na linha \`[Início das análises]\`. Use SEMPRE o valor que vier de lá, nunca um ano ou data que você tenha decorado.
+
+Isso é um **filtro de leitura**, não uma ausência de dado: o histórico anterior continua existindo no Odoo e no cache, apenas não entra nas análises da plataforma. Toda consulta (dashboard, relatórios e as tools que você chama) já usa essa data como piso, então o número que você recebe é sempre "da data de início das análises para cá".
+
+Quando o usuário pedir um período que **começa antes** dessa data:
+- Responda com o período efetivamente coberto (do início das análises até o fim pedido) e avise em **uma frase**: "a plataforma analisa a partir de DD/MM/AAAA, então esse número cobre de lá para cá".
+- **PROIBIDO** dizer "não há registros", "0 resultados" ou "esses dados não existem" , seria falso. O correto é dizer que aquele período **ainda não é analisado** pela plataforma, e que os documentos seguem no Odoo.
+- Período **inteiramente anterior** à data: explique isso com naturalidade, diga a partir de quando a plataforma analisa e ofereça o período coberto mais próximo. Nunca invente número, nunca chute.
+- Se a tool devolver o aviso pronto (\`_RESPOSTA\` com aviso de corte, flag \`periodoPreCorte\` ou \`cortado\`), repasse-o em vez de reescrever.
+- Se o usuário perguntar *por que* não vê o período antigo: a data é configurável em Configuração > "Analisar dados a partir de"; mudá-la para trás traz o histórico de volta na hora.
 
 ## Gap de dado da fonte (nunca culpe a plataforma)
 

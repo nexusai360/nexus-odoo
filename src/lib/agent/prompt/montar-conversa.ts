@@ -42,6 +42,12 @@ export interface MontarConversaArgs {
    * , preserva o promptCacheKey = sha1(systemPromptBase). So entra se nao-vazio.
    */
   perfilUsuarioTexto?: string;
+  /**
+   * Data de inicio das analises (avisoCorte() de @/lib/corte-dados). Vai no item VOLATIL
+   * de contexto, junto da data atual, e NUNCA no systemPromptBase: o dono pode mudar a data
+   * na tela a qualquer momento, e um valor mutavel no prefixo estavel mataria o prompt cache.
+   */
+  corteAviso?: string;
 }
 
 /** Monta a conversa inicial: system estavel + historico + item de data + pergunta. */
@@ -51,6 +57,7 @@ export function montarConversa(args: MontarConversaArgs): { conversation: ChatMe
     content:
       `[Contexto] Data atual (America/Sao_Paulo, UTC-3): ${args.agoraBrt}. ` +
       `Use SEMPRE esta data para resolver "hoje", "ontem", "amanha", "mes corrente", "essa semana" e "este ano".` +
+      (args.corteAviso ? `\n[Inicio das analises] ${args.corteAviso}` : "") +
       (args.focoAtualTexto ? `\n[Foco da conversa] ${args.focoAtualTexto}` : "") +
       (args.instrucaoTier ? `\n${args.instrucaoTier}` : ""),
   };

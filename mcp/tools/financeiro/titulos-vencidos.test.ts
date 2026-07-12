@@ -9,6 +9,9 @@ function makePrisma(overrides: Record<string, unknown> = {}) {
     fatoBuildState: { findMany: jest.fn() },
     syncState: { findMany: jest.fn() },
     fatoFinanceiroTitulo: { findMany: jest.fn() },
+    // queryTitulosVencidos passou a eliminar titulo intragrupo (mesma regra de contas a
+    // receber/pagar), e a eliminacao le fato_parceiro.
+    fatoParceiro: { findMany: jest.fn().mockResolvedValue([]) },
     ...overrides,
   };
 }

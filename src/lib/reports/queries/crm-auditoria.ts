@@ -1,5 +1,10 @@
 // src/lib/reports/queries/crm-auditoria.ts , B7.
 // Fontes: fato_crm_pipeline (0 reg), fato_auditoria_regra (15 reg).
+//
+// A data de início das análises NÃO se aplica a nenhuma das duas: funil de CRM (nome, tipo,
+// ativo) e regra de auditoria (nome, ativa, prazo em dias) são CONFIGURAÇÃO/cadastro, não
+// documento com data. Nenhum dos dois fatos tem data de negócio, só `atualizado_em` (metadado
+// da sincronização). O piso valeria para a OPORTUNIDADE que anda no funil, não para o funil.
 import type { PrismaClient } from "@/generated/prisma/client";
 
 export interface PipelineLinha {

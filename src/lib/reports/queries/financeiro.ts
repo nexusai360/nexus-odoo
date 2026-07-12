@@ -1,4 +1,4 @@
-import { corteAtualDate } from "@/lib/corte-dados";
+import { corteAtualDate, janelaClampada } from "@/lib/corte-dados";
 import { carregarParticipantesGrupo, ehNotaIntragrupo } from "@/lib/fiscal/grupo";
 // src/lib/reports/queries/financeiro.ts
 //
@@ -19,6 +19,10 @@ import { diasAtraso as calcDiasAtraso } from "../../../../mcp/lib/dias-atraso";
 // querySaldoContas , fato_financeiro_saldo (task 4d.1-q)
 // ---------------------------------------------------------------------------
 
+/**
+ * Saldo das contas bancarias. Corte NAO se aplica: fato_financeiro_saldo e FOTO do saldo
+ * de hoje (sem eixo de tempo), como o saldo de estoque.
+ */
 export async function querySaldoContas(
   prisma: PrismaClient,
 ): Promise<{ contas: { bancoNome: string | null; tipo: string | null; saldo: number }[]; saldoTotal: number }> {
@@ -40,17 +44,19 @@ export async function querySaldoContas(
 // queryCaixaPeriodo , fato_financeiro_movimento (task 4d.2-q)
 // ---------------------------------------------------------------------------
 
+/**
+ * Entradas/saidas de caixa no periodo. Movimento financeiro e HISTORICO: a janela e sempre
+ * grampeada a data de inicio das analises e, sem periodo, o piso e o proprio corte (antes,
+ * um where vazio somava todo o cache). A borda superior e exclusiva (o dia "ate" inteiro).
+ */
 export async function queryCaixaPeriodo(
   prisma: PrismaClient,
   filtros: { periodoDe?: string; periodoAte?: string },
 ): Promise<{ entrada: number; saida: number; saldo: number }> {
-  const where =
-    filtros.periodoDe && filtros.periodoAte
-      ? { data: { gte: new Date(filtros.periodoDe), lte: new Date(filtros.periodoAte) } }
-      : {};
+  const j = janelaClampada(filtros.periodoDe, filtros.periodoAte);
 
   const rows = await prisma.fatoFinanceiroMovimento.findMany({
-    where,
+    where: { data: { gte: j.gte, lt: j.lt } },
     select: { entrada: true, saida: true },
   });
 
@@ -68,17 +74,19 @@ export async function queryCaixaPeriodo(
 // queryFluxoCaixa , fato_financeiro_movimento (task 4d.3-q)
 // ---------------------------------------------------------------------------
 
+/**
+ * Serie mensal de realizado x previsto. Mesma regra do caixa: HISTORICO, janela grampeada
+ * ao corte, piso obrigatorio quando nao vem periodo , senao a serie do grafico nascia em
+ * meses anteriores a data configurada na tela.
+ */
 export async function queryFluxoCaixa(
   prisma: PrismaClient,
   filtros: { periodoDe?: string; periodoAte?: string },
 ): Promise<{ serie: { periodo: string; realizado: number; previsto: number }[] }> {
-  const where =
-    filtros.periodoDe && filtros.periodoAte
-      ? { data: { gte: new Date(filtros.periodoDe), lte: new Date(filtros.periodoAte) } }
-      : {};
+  const j = janelaClampada(filtros.periodoDe, filtros.periodoAte);
 
   const rows = await prisma.fatoFinanceiroMovimento.findMany({
-    where,
+    where: { data: { gte: j.gte, lt: j.lt } },
     select: { data: true, valor: true, valorPrevisto: true },
   });
 
@@ -277,6 +285,13 @@ export interface TituloVencidoRow {
 // Fonte corrigida para finan.lancamento (bug R1 , 2026-05-18).
 // Só títulos em aberto E com dataVencimento < início do dia de hoje estão vencidos.
 // totalVencido usa vrSaldo (= valor correto a receber/pagar na nova fonte).
+//
+// Alinhado a queryContasAReceber/queryContasAPagar (mesma tabela, mesma regra):
+//   - piso `dataDocumento >= corte` (data de inicio das analises). Sem ele, a divida velha
+//     do Odoo que ja tinha sido tirada dos KPIs voltava pelo relatorio/tool de vencidos
+//     (titulo de 2019 com saldo residual aparecia "vencido ha 2000 dias");
+//   - eliminacao intragrupo (filtrarTitulosExternos): conta entre empresas da casa nao e
+//     divida vencida com terceiro.
 // ---------------------------------------------------------------------------
 
 export async function queryTitulosVencidos(
@@ -293,9 +308,12 @@ export async function queryTitulosVencidos(
     where: {
       vrSaldo: { gt: 0 },
       dataVencimento: { lt: inicioDoDia },
+      // Marco zero: so titulo cujo DOCUMENTO e do periodo coberto pela plataforma.
+      dataDocumento: { gte: corteAtualDate() },
     },
     select: {
       tipo: true,
+      participanteId: true,
       participanteNome: true,
       numeroDocumento: true,
       dataVencimento: true,
@@ -309,7 +327,10 @@ export async function queryTitulosVencidos(
     orderBy: [{ vrSaldo: "desc" }, { odooId: "asc" }],
   });
 
-  const titulos: TituloVencidoRow[] = rows.map((r) => ({
+  // Idem contas a receber/pagar: titulo com empresa do proprio grupo nao entra.
+  const externos = await filtrarTitulosExternos(prisma, rows);
+
+  const titulos: TituloVencidoRow[] = externos.map((r) => ({
     tipo: r.tipo,
     participanteNome: r.participanteNome,
     numeroDocumento: r.numeroDocumento,

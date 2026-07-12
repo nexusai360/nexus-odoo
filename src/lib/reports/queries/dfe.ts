@@ -10,16 +10,21 @@
 // base , o valor confiável de compra vem do financeiro, não do DF-e.
 
 import type { PrismaClient } from "@/generated/prisma/client";
+import { janelaClampada } from "@/lib/corte-dados";
 
-function periodoWhere(filtros: { periodoDe?: string; periodoAte?: string }) {
-  return filtros.periodoDe && filtros.periodoAte
-    ? {
-        dataEmissao: {
-          gte: new Date(`${filtros.periodoDe}T00:00:00Z`),
-          lte: new Date(`${filtros.periodoAte}T23:59:59Z`),
-        },
-      }
-    : {};
+/**
+ * Recorte de `dataEmissao` grampeado a data de inicio das analises.
+ *
+ * DF-e e nota fiscal de fornecedor: documento com data, ou seja, HISTORICO. O piso vale
+ * sempre, inclusive quando o chamador nao manda periodo (antes, sem o par completo, o where
+ * saia vazio e a consulta varria o cache inteiro). Periodo que comeca antes do corte e puxado
+ * para ele; a borda de fim e exclusiva (o dia `ate` entra inteiro).
+ */
+function periodoWhere(filtros: { periodoDe?: string; periodoAte?: string }): {
+  dataEmissao: { gte: Date; lt: Date };
+} {
+  const j = janelaClampada(filtros.periodoDe, filtros.periodoAte);
+  return { dataEmissao: { gte: j.gte, lt: j.lt } };
 }
 
 export interface LinhaDfe {

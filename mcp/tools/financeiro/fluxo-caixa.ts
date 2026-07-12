@@ -5,6 +5,7 @@ import type { ToolEntry } from "../../catalog/types.js";
 import { queryFluxoCaixa } from "@/lib/reports/queries/financeiro.js";
 import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
+import { resolverPeriodoCorte } from "../../lib/periodo-corte.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional(),
@@ -23,6 +24,9 @@ const dados = z.object({
       previsto: z.number(),
     }),
   ),
+  /** Periodo EFETIVAMENTE coberto (ja grampeado a data de inicio das analises). */
+  periodoCoberto: z.string().optional(),
+  aviso: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -56,10 +60,20 @@ export const financeiroFluxoCaixa: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
+    // Serie mensal de realizado x previsto sobre movimento financeiro: historico puro. Sem
+    // periodo, a serie nascia com meses anteriores a data de inicio das analises.
+    const per = resolverPeriodoCorte(input.periodoDe, input.periodoAte);
     const envelope = await withFreshness(
       ctx.prisma,
       ["fato_financeiro_movimento"],
-      async () => queryFluxoCaixa(ctx.prisma, input),
+      async () => ({
+        ...(await queryFluxoCaixa(ctx.prisma, {
+          periodoDe: per.periodoDe,
+          periodoAte: per.periodoAte,
+        })),
+        periodoCoberto: per.label,
+        ...(per.aviso ? { aviso: per.aviso } : {}),
+      }),
     );
     if (envelope.estado === "preparando") return envelope;
     const totalRealizado = envelope.dados.serie.reduce(
@@ -71,10 +85,12 @@ export const financeiroFluxoCaixa: ToolEntry<Input, Output> = {
       0,
     );
     return enriquecerEnvelope(envelope, "financeiro_fluxo_caixa", {
+      periodo: per,
       destaque: {
         realizadoTotal: totalRealizado,
         previstoTotal: totalPrevisto,
         contagemPeriodos: envelope.dados.serie.length,
+        periodoCoberto: per.label,
       },
       agregado: {
         soma: totalRealizado + totalPrevisto,

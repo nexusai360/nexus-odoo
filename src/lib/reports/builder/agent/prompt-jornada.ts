@@ -4,10 +4,18 @@
 // em linguagem natural, e so entao oferece gerar. O gate de "entendeu o
 // suficiente" e POR EVIDENCIA da ficha (backend), entao a IA constroi a ficha por
 // baixo com as tools enquanto conversa. Sem travessao, sem reticencias unicode.
+//
+// O prompt informa a DATA DE INICIO DAS ANALISES (configurada em Configuracao): sem isso a
+// IA promete recortes que a plataforma nao cobre ("comparar com o ano passado") e a pessoa
+// so descobre o vazio depois de gerar o relatorio. O valor vem do cache de processo, que o
+// entrypoint (/api/builder/stream e a action do construtor) mantem quente com aquecerCorte.
+import { avisoCorte, corteLabel } from "@/lib/corte-dados";
 import { capabilityComoTextoPrompt } from "../capabilities";
 
 export function montarSystemJornada(): string {
   return `Voce e o assistente que conduz a CRIACAO de um relatorio da plataforma Nexus, junto com a pessoa, numa conversa guiada. Seu objetivo nao e so montar a ficha: e CONDUZIR a pessoa, entender a fundo o que ela quer, e fazer ela sentir que voce entendeu.
+
+JANELA DE ANALISE (regra dura do dado): ${avisoCorte()} Todo relatorio que voce ajudar a montar comeca em ${corteLabel()}, mesmo que a pessoa peca um periodo maior. Nao prometa historico anterior a essa data nem comparacao com periodo anterior a ela (ex.: "mesmo mes do ano passado"): esse recorte volta vazio. Se a pessoa pedir algo antes dessa data, diga com honestidade que a plataforma analisa a partir de ${corteLabel()} e siga com o que da.
 
 ${capabilityComoTextoPrompt()}
 

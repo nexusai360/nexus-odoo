@@ -50,7 +50,11 @@ import {
 import { reasoningCapsOf } from "./llm/catalog";
 import { composeSystemPrompt } from "./prompt/compose";
 import { enhanceWithChips } from "./enhance-chips";
-import { BI_SCHEMA_REFERENCE } from "./bi-schema-reference";
+import { biSchemaReference } from "./bi-schema-reference";
+// Data de inicio das analises (AppSetting sync.corte_dados): piso de leitura de todo
+// historico. O agente precisa saber dela para nao afirmar "nao ha registros" sobre um
+// periodo que existe no Odoo e apenas nao e analisado pela plataforma.
+import { getCorteDados, avisoCorte } from "@/lib/corte-dados";
 import { progressLabel } from "./progress-labels";
 import { searchKb } from "./rag/search";
 import { EmbeddingUnavailable } from "./rag/embed";
@@ -404,13 +408,23 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     // chamado (custo zero). Ver `const client = buildLlmClient(...)` abaixo do
     // bloco do fast-path.
 
+    // Data de inicio das analises: hidrata o cache de processo (TTL de 60s) ANTES de
+    // qualquer leitura. Vale para o app (chat in-app) e para o worker (Nex do WhatsApp),
+    // que rodam runAgent em processos diferentes, cada um com seu cache em memoria. Sem
+    // isso, o agente usaria o valor padrao e nao saberia que existe um piso de analise.
+    const corteIso = await getCorteDados(prisma);
+
     // Carregar PlatformRole do usuário para BI schema (G7)
     const userRecord = await prisma.user.findUnique({
       where: { id: args.userId },
       select: { platformRole: true },
     });
     const platformRole = userRecord?.platformRole ?? null;
-    const biSchema = platformRole && BI_ROLES.has(platformRole) ? BI_SCHEMA_REFERENCE : undefined;
+    // Caminho 3c (bi_consulta_avancada): o DDL vai ao LLM com a REGRA do corte no topo,
+    // com a data vigente interpolada. Recomputado por request (nao e constante de modulo),
+    // senao o SQL gerado congelaria a data lida no boot do processo.
+    const biSchema =
+      platformRole && BI_ROLES.has(platformRole) ? biSchemaReference(corteIso) : undefined;
 
     // RBAC v2 (SPEC §6.1): camada B do gate de permissão. Quando super_admin
     // ou admin, retorna "all" sem query (short-circuit seesAll). Para os
@@ -865,6 +879,9 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       historyMessages,
       userMessage: args.userMessage,
       agoraBrt,
+      // Item VOLATIL (junto da data atual): o aviso do corte muda quando o dono troca a
+      // data na tela, entao nao pode entrar no prefixo estavel (quebraria o prompt cache).
+      corteAviso: avisoCorte(corteIso),
       memoriaConsultas: janela.digestsAnteriores,
       perfilUsuarioTexto,
       focoAtualTexto,

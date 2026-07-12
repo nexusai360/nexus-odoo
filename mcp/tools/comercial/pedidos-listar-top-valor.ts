@@ -13,6 +13,8 @@ import {
   resolverPaginacao,
   montarPaginacaoMeta,
 } from "../../lib/paginacao.js";
+import { resolverPeriodoCorte, type PeriodoCorte } from "../../lib/periodo-corte.js";
+import { janelaClampada } from "@/lib/corte-dados.js";
 import type { PrismaClient } from "@/generated/prisma/client.js";
 
 const inputSchema = z.object({
@@ -50,6 +52,9 @@ const dados = z.object({
   // Contrato de lista (Fase B): ordenacao real reflete o parametro `ordenacao`
   // (valor_desc default). orderBy estavel na query, desempate por odooId.
   ordenadoPor: z.string().optional(),
+  /** Periodo EFETIVAMENTE coberto (ja grampeado a data de inicio das analises). */
+  periodoCoberto: z.string().optional(),
+  aviso: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -77,21 +82,24 @@ const outputSchema = z.union([
 type Input = z.infer<typeof inputSchema>;
 type Output = z.infer<typeof outputSchema>;
 
-async function queryPedidosListarTopValor(prisma: PrismaClient, input: Input) {
+async function queryPedidosListarTopValor(prisma: PrismaClient, input: Input, per: PeriodoCorte) {
   const { limit, offset } = resolverPaginacao(input);
   const status = input.status ?? "aberto";
   const ordenacao = input.ordenacao ?? "valor_desc";
   // Base: só pedidos de VENDA (exclui transferência/remessa/anomalia), via a
   // coluna materializada categoria_operacao. Ver perícia 08 (P0.2).
-  const where: Record<string, unknown> = { categoriaOperacao: "venda" };
+  //
+  // Pedido e documento com data: o piso de dataOrcamento e INCONDICIONAL. Antes o filtro so
+  // existia quando o agente informava periodo , sem periodo, "o maior pedido em aberto"
+  // podia ser um pedido anterior a data de inicio das analises, e o count/aggregate somavam
+  // o cache inteiro.
+  const j = janelaClampada(per.periodoDe, per.periodoAte);
+  const where: Record<string, unknown> = {
+    categoriaOperacao: "venda",
+    dataOrcamento: { gte: j.gte, lt: j.lt },
+  };
   if (status === "aberto") where.etapaFinaliza = false;
   else if (status === "fechado") where.etapaFinaliza = true;
-  if (input.periodoDe || input.periodoAte) {
-    where.dataOrcamento = {
-      ...(input.periodoDe ? { gte: new Date(`${input.periodoDe}T00:00:00`) } : {}),
-      ...(input.periodoAte ? { lte: new Date(`${input.periodoAte}T23:59:59`) } : {}),
-    };
-  }
   if (input.clienteTermo) {
     where.participanteNome = { contains: input.clienteTermo, mode: "insensitive" };
   }
@@ -147,6 +155,8 @@ async function queryPedidosListarTopValor(prisma: PrismaClient, input: Input) {
     totalEncontrados,
     valorTotalListados: linhas.reduce((a, b) => a + b.valorTotal, 0),
     valorTotalGeral: Number(agg._sum.vrProdutos ?? 0),
+    periodoCoberto: per.label,
+    ...(per.aviso ? { aviso: per.aviso } : {}),
   };
 }
 
@@ -164,8 +174,9 @@ export const comercialPedidosListarTopValor: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
+    const per = resolverPeriodoCorte(input.periodoDe, input.periodoAte);
     const envelope = await withFreshness(ctx.prisma, ["fato_pedido"], () =>
-      queryPedidosListarTopValor(ctx.prisma, input),
+      queryPedidosListarTopValor(ctx.prisma, input, per),
     );
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
@@ -209,9 +220,10 @@ export const comercialPedidosListarTopValor: ToolEntry<Input, Output> = {
         valorTotalListados: d.valorTotalListados ?? linhas.reduce((s, l) => s + l.valorTotal, 0),
         valorTotalGeral: d.valorTotalGeral ?? 0,
         ordenadoPor,
-        _RESPOSTA: resposta,
+        _RESPOSTA: resposta + (per.aviso ? ` ${per.aviso}` : ` Periodo coberto: ${per.label}.`),
         _DESTAQUE: {
           totalPedidos: totalEncontrados,
+          periodoCoberto: per.label,
           topPedido: top?.numero ?? "",
           valorTopPedido: top?.valorTotal ?? 0,
           topParticipante: top?.participanteNome ?? "",

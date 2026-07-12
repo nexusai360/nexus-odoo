@@ -329,15 +329,11 @@ export async function queryNotasRecebidasPorFornecedor(
   const fornecedorWhere = filtros.fornecedor
     ? { participanteNome: { contains: filtros.fornecedor, mode: "insensitive" as const } }
     : {};
-  const periodoWhere =
-    filtros.periodoDe && filtros.periodoAte
-      ? {
-          dataEmissao: {
-            gte: new Date(`${filtros.periodoDe}T00:00:00Z`),
-            lte: new Date(`${filtros.periodoAte}T00:00:00Z`),
-          },
-        }
-      : {};
+  // Nota de entrada e documento com data (historico): usa o helper canonico, igual as demais
+  // funcoes do arquivo. Ele grampeia o inicio na data de inicio das analises, mantem o piso
+  // mesmo sem periodo (antes o where saia vazio e o ranking somava o cache inteiro) e fecha a
+  // janela com borda exclusiva (antes o `lte` na meia-noite perdia o ultimo dia).
+  const periodoWhere = buildPeriodoWhere(filtros.periodoDe, filtros.periodoAte);
 
   // Filtro por documento (CNPJ/CPF): fato_nota_fiscal não guarda o documento
   // do participante , resolve via fato_parceiro, comparando só os dígitos para
@@ -396,14 +392,21 @@ export async function queryNotasRecebidasPorFornecedor(
 /** Conta o total de notas fiscais (fato_nota_fiscal), segmentado por entrada
  * (entradaSaida = "0", DF-e de fornecedores) e saída (entradaSaida = "1",
  * notas emitidas). Devolve só os números, para perguntas de contagem-total
- * ("quantas notas fiscais"). */
+ * ("quantas notas fiscais").
+ *
+ * Nota fiscal é documento com data (histórico), então a contagem respeita a data
+ * de início das análises: `buildPeriodoWhere` aplica o piso do corte mesmo sem
+ * período informado. Antes, os três `count()` iam sem `where` e devolviam um número
+ * que contradizia o faturamento do mesmo arquivo (esse, sim, clampado). */
 export async function queryContarNotas(
   prisma: PrismaClient,
+  filtros: { periodoDe?: string; periodoAte?: string } = {},
 ): Promise<{ total: number; totalEntrada: number; totalSaida: number }> {
+  const periodo = buildPeriodoWhere(filtros.periodoDe, filtros.periodoAte);
   const [total, totalEntrada, totalSaida] = await Promise.all([
-    prisma.fatoNotaFiscal.count(),
-    prisma.fatoNotaFiscal.count({ where: { entradaSaida: "0" } }),
-    prisma.fatoNotaFiscal.count({ where: { entradaSaida: "1" } }),
+    prisma.fatoNotaFiscal.count({ where: { ...periodo } }),
+    prisma.fatoNotaFiscal.count({ where: { entradaSaida: "0", ...periodo } }),
+    prisma.fatoNotaFiscal.count({ where: { entradaSaida: "1", ...periodo } }),
   ]);
   return { total, totalEntrada, totalSaida };
 }

@@ -9,6 +9,7 @@ import {
   resolverPaginacao,
   montarPaginacaoMeta,
 } from "../../lib/paginacao.js";
+import { resolverPeriodoFiscal } from "./_periodo-padrao.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional().describe("Início do período, AAAA-MM-DD."),
@@ -32,6 +33,8 @@ const dados = z.object({
   totalPendentes: z.number().int(),
   valorTotal: z.number(),
   aviso: z.string(),
+  /** Periodo EFETIVAMENTE coberto (ja grampeado a data de inicio das analises). */
+  periodoCoberto: z.string().optional(),
   // Contrato de lista (Fase B): a query ordena por dataEmissao desc com
   // desempate por odooId; aqui apenas declaramos ao LLM.
   ordenadoPor: z.string().optional(),
@@ -58,16 +61,22 @@ const outputSchema = z.union([
 type Input = z.infer<typeof inputSchema>;
 type Output = z.infer<typeof outputSchema>;
 
-function shape(d: Awaited<ReturnType<typeof queryDfePendentesManifestacao>>) {
+function shape(
+  d: Awaited<ReturnType<typeof queryDfePendentesManifestacao>>,
+  periodoLabel: string,
+  avisoPeriodo?: string,
+) {
   return {
     linhas: d.linhas,
     totalPendentes: d.totalPendentes,
     valorTotal: d.valorTotal,
     ordenadoPor: "data desc",
+    periodoCoberto: periodoLabel,
     aviso:
       "DF-e sem manifestação do destinatário (campo manifestação vazio). São " +
       "notas de fornecedores que ainda aguardam ciência/confirmação. vrNf pode " +
-      "estar 0 nesta base.",
+      `estar 0 nesta base. Período coberto: ${periodoLabel}.` +
+      (avisoPeriodo ? ` ${avisoPeriodo}` : ""),
   };
 }
 
@@ -83,8 +92,20 @@ export const fiscalDfePendentesManifestacao: ToolEntry<Input, Output> = {
   outputSchema,
   handler: async (input, ctx) => {
     const { limit, offset } = resolverPaginacao(input);
+    // DF-e e documento com data: inicio grampeado a data de inicio das analises; sem periodo,
+    // o piso e o corte (pendencia antiga do Odoo nao entra na janela de analise).
+    const per = resolverPeriodoFiscal(input.periodoDe, input.periodoAte);
     const envelope = await withFreshness(ctx.prisma, ["fato_dfe"], async () =>
-      shape(await queryDfePendentesManifestacao(ctx.prisma, { ...input, limit, offset })),
+      shape(
+        await queryDfePendentesManifestacao(ctx.prisma, {
+          periodoDe: per.periodoDe,
+          periodoAte: per.periodoAte,
+          limit,
+          offset,
+        }),
+        per.label,
+        per.aviso,
+      ),
     );
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
@@ -94,10 +115,11 @@ export const fiscalDfePendentesManifestacao: ToolEntry<Input, Output> = {
       dados: {
         ...d,
         _RESPOSTA:
-          d.totalPendentes > 0
-            ? `${d.totalPendentes} DF-e pendentes de manifestação no período.`
-            : "Nenhum DF-e pendente de manifestação no período.",
-        _DESTAQUE: { pendentes: d.totalPendentes },
+          (d.totalPendentes > 0
+            ? `${d.totalPendentes} DF-e pendentes de manifestação no período ${per.label}.`
+            : `Nenhum DF-e pendente de manifestação no período ${per.label}.`) +
+          (per.aviso ? ` ${per.aviso}` : ""),
+        _DESTAQUE: { pendentes: d.totalPendentes, periodoCoberto: per.label },
         _agregado: { contagem: d.totalPendentes },
         _listaTruncada: paginacao.temMais,
         _PAGINACAO: paginacao,

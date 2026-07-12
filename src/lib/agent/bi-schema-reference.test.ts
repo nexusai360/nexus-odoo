@@ -7,7 +7,8 @@
 
 import * as fs from "fs";
 import * as path from "path";
-import { BI_SCHEMA_REFERENCE } from "./bi-schema-reference";
+import { BI_SCHEMA_REFERENCE, biSchemaReference, regraCorteBi } from "./bi-schema-reference";
+import { CORTE_DADOS_PADRAO } from "@/lib/corte-dados";
 
 /** Extrai os nomes das fact tables (@@map("fato_*")) excluindo tabelas internas. */
 function extractFatoTableNames(schemaContent: string): string[] {
@@ -82,6 +83,54 @@ describe("BI_SCHEMA_REFERENCE , trava de drift", () => {
     for (const tableName of inConstant) {
       expect(fatoTableNames).toContain(tableName);
     }
+  });
+
+  // Data de inicio das analises: o SQL do Caminho 3c (bi_consulta_avancada) e escrito pelo
+  // LLM. Sem a regra no topo do DDL, ele soma fato de historico sem piso e diverge do
+  // dashboard, dos relatorios e das demais tools (que ja grampeiam no corte).
+  describe("regra da data de inicio das analises", () => {
+    test("a regra exige o piso de data e interpola a data vigente", () => {
+      const regra = regraCorteBi("2026-05-10");
+      expect(regra).toContain("REGRA OBRIGATORIA");
+      expect(regra).toContain("2026-05-10");
+      expect(regra).toContain("10/05/2026");
+      expect(regra).toContain(">= '2026-05-10'");
+      expect(regra).toContain("mes >= '2026-05'"); // serie mensal (coluna AAAA-MM)
+    });
+
+    test("a regra proibe responder 'nao ha registros' para periodo pre-corte", () => {
+      const regra = regraCorteBi("2026-05-10").toLowerCase();
+      expect(regra).toContain("nao ha registros");
+      expect(regra).toContain("odoo");
+    });
+
+    test("a regra lista as excecoes (foto/cadastro nao se aplicam)", () => {
+      const regra = regraCorteBi("2026-05-10");
+      expect(regra).toContain("fato_estoque_saldo");
+      expect(regra).toContain("data_ref");
+    });
+
+    test("biSchemaReference: regra ANTES do DDL, e o DDL intacto", () => {
+      const ddl = biSchemaReference("2026-05-10");
+      expect(ddl.indexOf("REGRA OBRIGATORIA")).toBeLessThan(ddl.indexOf("TABLE fato_"));
+      expect(ddl).toContain(BI_SCHEMA_REFERENCE);
+    });
+
+    test("recomputado por request: outra data, outro piso no DDL", () => {
+      const a = biSchemaReference("2026-05-10");
+      const b = biSchemaReference("2026-06-01");
+      expect(a).toContain(">= '2026-05-10'");
+      expect(b).toContain(">= '2026-06-01'");
+      expect(a).not.toContain(">= '2026-06-01'");
+    });
+
+    test("sem argumento, usa o corte vigente em memoria (padrao quando nao hidratado)", () => {
+      expect(biSchemaReference()).toContain(`>= '${CORTE_DADOS_PADRAO}'`);
+    });
+
+    test("a constante crua NAO carrega a regra (ela e por request, nao de modulo)", () => {
+      expect(BI_SCHEMA_REFERENCE).not.toContain("REGRA OBRIGATORIA");
+    });
   });
 
   // Skip: ha drift legitimo entre schema.prisma e BI_SCHEMA_REFERENCE

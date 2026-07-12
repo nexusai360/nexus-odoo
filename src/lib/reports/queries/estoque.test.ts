@@ -6,6 +6,7 @@
 // Jest roda com transform CJS (ts-jest, preset:"ts-jest", sem
 // --experimental-vm-modules). jest.spyOn() intercepta corretamente , ver N7.
 
+import { corteAtual, corteAtualDate } from "@/lib/corte-dados";
 import { createMockContext } from "@/lib/reports/queries/__mocks__/prisma";
 import {
   querySaldoProduto,
@@ -15,6 +16,9 @@ import {
   queryTopMovimentados,
   queryConcentracao,
 } from "./estoque";
+
+/** Mes do corte vigente ("AAAA-MM"). */
+const MES_CORTE = corteAtual().slice(0, 7);
 
 // Tipo auxiliar para o mock do prisma usado neste arquivo
 type MockPrisma = ReturnType<typeof createMockContext>;
@@ -208,12 +212,41 @@ describe("queryEntradasSaidas", () => {
     expect(result.detalhe[0]?.produto).toBe("Sem produto");
   });
 
-  it("aplica filtro de período no where", async () => {
+  it("aplica filtro de período no where (mês pedido depois do corte é preservado)", async () => {
     mockPrisma.fatoEstoqueMovimento.groupBy.mockResolvedValue([]);
-    await queryEntradasSaidas(mockPrisma as never, { periodoDe: "2026-01", periodoAte: "2026-03" });
-    expect(mockPrisma.fatoEstoqueMovimento.groupBy).toHaveBeenCalledWith(
-      expect.objectContaining({ where: expect.objectContaining({ mes: { gte: "2026-01", lte: "2026-03" } }) }),
-    );
+    await queryEntradasSaidas(mockPrisma as never, { periodoDe: "2026-05", periodoAte: "2026-06" });
+    const where = mockPrisma.fatoEstoqueMovimento.groupBy.mock.calls[0][0].where;
+    expect(where.mes).toEqual({ gte: "2026-05", lte: "2026-06" });
+    expect(where.data.gte).toEqual(new Date("2026-05-01T00:00:00Z"));
+    expect(where.data.lt).toEqual(new Date("2026-07-01T00:00:00Z"));
+  });
+
+  // Regra do corte: movimento de estoque e historico. Sem periodo, a serie varria o cache
+  // inteiro (meses anteriores a data de inicio das analises).
+  it("aplica o piso do corte quando não vem período", async () => {
+    mockPrisma.fatoEstoqueMovimento.groupBy.mockResolvedValue([]);
+    await queryEntradasSaidas(mockPrisma as never, {});
+    const where = mockPrisma.fatoEstoqueMovimento.groupBy.mock.calls[0][0].where;
+    expect(where.mes).toEqual({ gte: MES_CORTE });
+    // O balde do mes do corte NAO pode arrastar os dias anteriores ao corte: piso exato
+    // na coluna `data` do fato.
+    expect(where.data.gte).toEqual(corteAtualDate());
+  });
+
+  it("grampeia período anterior ao corte (mês e dia)", async () => {
+    mockPrisma.fatoEstoqueMovimento.groupBy.mockResolvedValue([]);
+    await queryEntradasSaidas(mockPrisma as never, { periodoDe: "2025-01", periodoAte: "2026-06" });
+    const where = mockPrisma.fatoEstoqueMovimento.groupBy.mock.calls[0][0].where;
+    expect(where.mes).toEqual({ gte: MES_CORTE, lte: "2026-06" });
+    expect(where.data.gte).toEqual(corteAtualDate());
+  });
+
+  it("o mesmo where clampado vale para a série e para o detalhe", async () => {
+    mockPrisma.fatoEstoqueMovimento.groupBy.mockResolvedValue([]);
+    await queryEntradasSaidas(mockPrisma as never, {});
+    const whereSerie = mockPrisma.fatoEstoqueMovimento.groupBy.mock.calls[0][0].where;
+    const whereDetalhe = mockPrisma.fatoEstoqueMovimento.groupBy.mock.calls[1][0].where;
+    expect(whereDetalhe).toEqual(whereSerie);
   });
 });
 
@@ -306,6 +339,29 @@ describe("queryTopMovimentados", () => {
     mockPrisma.fatoEstoqueMovimento.groupBy.mockResolvedValue(grupos);
     const result = await queryTopMovimentados(mockPrisma as never, {});
     expect(result.linhas).toHaveLength(15);
+  });
+
+  // Regra do corte: o ranking somava movimentacao de todo o cache (o produtor do
+  // construtor nem repassa periodo). Piso obrigatorio.
+  it("aplica o piso do corte quando não vem período", async () => {
+    mockPrisma.fatoEstoqueMovimento.groupBy.mockResolvedValue([]);
+    await queryTopMovimentados(mockPrisma as never, {});
+    const where = mockPrisma.fatoEstoqueMovimento.groupBy.mock.calls[0][0].where;
+    expect(where.mes).toEqual({ gte: MES_CORTE });
+    expect(where.data.gte).toEqual(corteAtualDate());
+  });
+
+  it("grampeia período anterior ao corte e preserva o filtro de sentido", async () => {
+    mockPrisma.fatoEstoqueMovimento.groupBy.mockResolvedValue([]);
+    await queryTopMovimentados(mockPrisma as never, {
+      periodoDe: "2024-02",
+      periodoAte: "2026-06",
+      sentido: "saida",
+    });
+    const where = mockPrisma.fatoEstoqueMovimento.groupBy.mock.calls[0][0].where;
+    expect(where.mes).toEqual({ gte: MES_CORTE, lte: "2026-06" });
+    expect(where.data.gte).toEqual(corteAtualDate());
+    expect(where.sentido).toBe("saida");
   });
 });
 

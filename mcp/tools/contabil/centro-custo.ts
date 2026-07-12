@@ -13,6 +13,7 @@ import {
 } from "@/lib/reports/queries/contabil.js";
 import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
+import { resolverPeriodoCorte } from "../../lib/periodo-corte.js";
 
 const inputSchema = z.object({
   dataInicio: z.string().optional(),
@@ -33,6 +34,9 @@ const dados = z.object({
   ordenadoPor: z.string().optional(),
   linhas: z.array(linhaSchema),
   total: z.number().int(),
+  /** Periodo EFETIVAMENTE coberto (ja grampeado a data de inicio das analises). */
+  periodoCoberto: z.string().optional(),
+  aviso: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -66,17 +70,32 @@ export const contabilCentroCusto: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
+    // Lancamento contabil e HISTORICO (dataLancamento). O helper de periodo da query so monta
+    // o range quando recebe data, entao sem periodo a tool varria todo o razao. Aqui o periodo
+    // e SEMPRE resolvido, com o inicio grampeado a data de inicio das analises.
+    const per = resolverPeriodoCorte(input.dataInicio, input.dataFim);
     const envelope = await withFreshness(
       ctx.prisma,
       ["fato_contabil_lancamento_item"],
       async () => {
-        const result = await queryCentroCusto(ctx.prisma, input);
-        return { linhas: result.linhas, total: result.total, ordenadoPor: "nome do centro de custo asc" };
+        const result = await queryCentroCusto(ctx.prisma, {
+          ...input,
+          dataInicio: per.periodoDe,
+          dataFim: per.periodoAte,
+        });
+        return {
+          linhas: result.linhas,
+          total: result.total,
+          ordenadoPor: "nome do centro de custo asc",
+          periodoCoberto: per.label,
+          ...(per.aviso ? { aviso: per.aviso } : {}),
+        };
       },
     );
     if (envelope.estado === "preparando") return envelope;
     const out = enriquecerEnvelope(envelope, "contabil_centro_custo", {
-      destaque: { contagem: envelope.dados.total },
+      periodo: per,
+      destaque: { contagem: envelope.dados.total, periodoCoberto: per.label },
     });
     if (out.estado === "vazio") {
       const n = await fatoContabilItemCount(ctx.prisma);

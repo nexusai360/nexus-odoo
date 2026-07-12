@@ -1,5 +1,6 @@
 import type { Prisma, PrismaClient } from "../../../generated/prisma/client";
 import type { FaturamentoInput } from "../_shared/types";
+import { janelaClampada } from "@/lib/corte-dados";
 
 export interface FaturamentoRecebidoResultado {
   disponivelPorPedido: boolean;
@@ -19,12 +20,23 @@ export interface FaturamentoRecebidoResultado {
  * lancamentoId/pedidoId). O eixo "recebido por NOTA individual" continua GAP honesto:
  * falta o elo nota->financeiro (notaId/chaveNfe no pedido), previsto para a Fase 2.
  * Filtro por empresa: via os pedidos da empresa (FatoPedido.empresaId).
+ *
+ * PERIODO: recorta por `dataDocumento` do lancamento (a data do documento financeiro, herdada
+ * do lancamento pai). O cache nao guarda a data da BAIXA no item, entao "recebido no periodo"
+ * significa: quanto ja foi pago dos lancamentos EMITIDOS no periodo. E o recorte honesto que o
+ * dado permite, e e o mesmo eixo (data do documento) que contas a pagar/receber usam. Sem
+ * periodo, o piso e a data de inicio das analises , nunca o historico inteiro (era o bug: a
+ * funcao recebia o periodo da tool e o ignorava, somando todo o cache).
  */
 export async function faturamentoRecebido(
   prisma: PrismaClient,
   input: FaturamentoInput,
 ): Promise<FaturamentoRecebidoResultado> {
-  const where: Prisma.FatoFinanceiroLancamentoItemWhereInput = { pedidoId: { not: null } };
+  const j = janelaClampada(input.periodoDe, input.periodoAte);
+  const where: Prisma.FatoFinanceiroLancamentoItemWhereInput = {
+    pedidoId: { not: null },
+    dataDocumento: { gte: j.gte, lt: j.lt },
+  };
 
   if (input.empresaId !== undefined) {
     const pedidos = await prisma.fatoPedido.findMany({

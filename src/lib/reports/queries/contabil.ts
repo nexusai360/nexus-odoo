@@ -9,6 +9,7 @@
 // , apenas a estrutura do plano de contas (tipo S=sintética, A=analítica).
 
 import type { PrismaClient } from "@/generated/prisma/client";
+import { janelaClampada } from "@/lib/corte-dados";
 
 // ---------------------------------------------------------------------------
 // queryPlanoDeContas
@@ -17,7 +18,10 @@ import type { PrismaClient } from "@/generated/prisma/client";
 /** Lista contas do plano, opcionalmente filtrando por termo (ILIKE em codigo/nome).
  * Devolve até `limite` (padrão 250) resultados ordenados por codigo, junto com
  * `total` (contagem completa do filtro) e `truncado` , para a resposta nunca
- * ocultar silenciosamente que há mais contas do que as retornadas. */
+ * ocultar silenciosamente que há mais contas do que as retornadas.
+ *
+ * A data de início das análises NÃO se aplica: plano de contas é CADASTRO (estrutura), não
+ * documento com data. O piso vale para o movimento (lançamentos), não para a conta em si. */
 export async function queryPlanoDeContas(
   prisma: PrismaClient,
   filtros: { termo?: string; limit: number; offset: number },
@@ -77,7 +81,9 @@ export async function queryPlanoDeContas(
 // ---------------------------------------------------------------------------
 
 /** Retorna a conta pelo odooId e suas contas filhas diretas.
- * Casos: (a) conta com filhas; (b) conta-folha sem filhas; (c) conta inexistente. */
+ * Casos: (a) conta com filhas; (b) conta-folha sem filhas; (c) conta inexistente.
+ *
+ * Estrutura de conta é CADASTRO: a data de início das análises não se aplica. */
 export async function queryEstruturaConta(
   prisma: PrismaClient,
   filtros: { odooId: number },
@@ -139,16 +145,17 @@ function num(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-/** Monta o filtro de período sobre `dataLancamento` (gte/lte), só quando há datas. */
+/**
+ * Filtro de período sobre `dataLancamento`, já grampeado à data de início das análises.
+ *
+ * Lançamento contábil é documento com data (histórico): balancete, razão, resultado e centro
+ * de custo são agregações desses lançamentos, e todas respeitam o piso. Ele vale mesmo quando
+ * nenhuma data é informada (antes, sem `dataInicio`/`dataFim`, o where saía vazio e as quatro
+ * consultas varriam o cache inteiro). Borda de fim exclusiva: o dia `dataFim` entra inteiro.
+ */
 function periodoWhere(filtros: { dataInicio?: string; dataFim?: string }): Record<string, unknown> {
-  const where: Record<string, unknown> = {};
-  if (filtros.dataInicio || filtros.dataFim) {
-    const range: Record<string, Date> = {};
-    if (filtros.dataInicio) range.gte = new Date(filtros.dataInicio);
-    if (filtros.dataFim) range.lte = new Date(filtros.dataFim);
-    where.dataLancamento = range;
-  }
-  return where;
+  const j = janelaClampada(filtros.dataInicio, filtros.dataFim);
+  return { dataLancamento: { gte: j.gte, lt: j.lt } };
 }
 
 /**
@@ -163,7 +170,9 @@ export function mensagemContabilGestaoVazia(totalItensNoFato: number): string {
     : "Não encontrei lançamentos contábeis nesse recorte (conta ou período). Ajuste o filtro e consulte de novo.";
 }
 
-/** Contagem barata do fato de itens , usada pelo handler para escolher a mensagem honesta. */
+/** Contagem barata do fato de itens , usada pelo handler para escolher a mensagem honesta.
+ * Sem piso de propósito: a pergunta é sobre o cache ("a contabilidade já é operada?"), não
+ * sobre o período de análise. Filtrar aqui faria contabilidade operada parecer não operada. */
 export async function fatoContabilItemCount(prisma: PrismaClient): Promise<number> {
   return prisma.fatoContabilLancamentoItem.count();
 }
@@ -373,7 +382,9 @@ export interface ContaReferencialLinha {
 
 /** Lista o plano referencial SPED (`fato_contabil_conta_referencial`), filtrável
  * por `natureza` (01..09) e/ou `termo` (código/nome). Diferente das tools de
- * gestão, esta responde com DADO REAL hoje. */
+ * gestão, esta responde com DADO REAL hoje.
+ *
+ * De-para SPED é CADASTRO/metadado (não tem data de documento): o piso não se aplica. */
 export async function queryContaReferencial(
   prisma: PrismaClient,
   filtros: { natureza?: string; termo?: string; limite?: number },

@@ -1,6 +1,7 @@
 // src/lib/reports/queries/financeiro.test.ts
 // Testes do núcleo de query de financeiro.
 
+import { corteAtual, corteAtualDate } from "@/lib/corte-dados";
 import {
   querySaldoContas,
   queryCaixaPeriodo,
@@ -67,20 +68,32 @@ describe("queryCaixaPeriodo", () => {
     expect(result.saldo).toBe(900);
   });
 
-  it("passa filtro de data quando periodoDe e periodoAte fornecidos", async () => {
+  it("passa filtro de data quando periodoDe e periodoAte fornecidos (borda superior exclusiva)", async () => {
     const prisma = makePrisma();
     (prisma.fatoFinanceiroMovimento.findMany as jest.Mock).mockResolvedValue([]);
-    await queryCaixaPeriodo(prisma as never, { periodoDe: "2026-01-01", periodoAte: "2026-01-31" });
+    await queryCaixaPeriodo(prisma as never, { periodoDe: "2026-04-01", periodoAte: "2026-04-30" });
     const call = (prisma.fatoFinanceiroMovimento.findMany as jest.Mock).mock.calls[0][0];
-    expect(call.where).toMatchObject({ data: { gte: expect.any(Date), lte: expect.any(Date) } });
+    expect(call.where.data.gte).toEqual(new Date("2026-04-01T00:00:00Z"));
+    // O dia "ate" entra inteiro: a borda e o dia seguinte, exclusiva.
+    expect(call.where.data.lt).toEqual(new Date("2026-05-01T00:00:00Z"));
   });
 
-  it("não passa filtro de data quando filtros ausentes", async () => {
+  // Regra do corte: sem periodo, o piso e a data de inicio das analises , a consulta
+  // NUNCA pode varrer o cache inteiro.
+  it("aplica o piso do corte quando os filtros vêm vazios", async () => {
     const prisma = makePrisma();
     (prisma.fatoFinanceiroMovimento.findMany as jest.Mock).mockResolvedValue([]);
     await queryCaixaPeriodo(prisma as never, {});
     const call = (prisma.fatoFinanceiroMovimento.findMany as jest.Mock).mock.calls[0][0];
-    expect(call.where).toEqual({});
+    expect(call.where.data.gte).toEqual(corteAtualDate());
+  });
+
+  it("grampeia periodoDe anterior ao corte", async () => {
+    const prisma = makePrisma();
+    (prisma.fatoFinanceiroMovimento.findMany as jest.Mock).mockResolvedValue([]);
+    await queryCaixaPeriodo(prisma as never, { periodoDe: "2020-01-01", periodoAte: "2026-12-31" });
+    const call = (prisma.fatoFinanceiroMovimento.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where.data.gte).toEqual(corteAtualDate());
   });
 });
 
@@ -109,6 +122,24 @@ describe("queryFluxoCaixa", () => {
     ]);
     const result = await queryFluxoCaixa(prisma as never, {});
     expect(result.serie).toHaveLength(0);
+  });
+
+  // Regra do corte: a serie mensal e historico puro , sem periodo, comeca no corte.
+  it("aplica o piso do corte quando os filtros vêm vazios", async () => {
+    const prisma = makePrisma();
+    (prisma.fatoFinanceiroMovimento.findMany as jest.Mock).mockResolvedValue([]);
+    await queryFluxoCaixa(prisma as never, {});
+    const call = (prisma.fatoFinanceiroMovimento.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where.data.gte).toEqual(corteAtualDate());
+  });
+
+  it("grampeia periodoDe anterior ao corte", async () => {
+    const prisma = makePrisma();
+    (prisma.fatoFinanceiroMovimento.findMany as jest.Mock).mockResolvedValue([]);
+    await queryFluxoCaixa(prisma as never, { periodoDe: "2019-05-01", periodoAte: "2026-06-30" });
+    const call = (prisma.fatoFinanceiroMovimento.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where.data.gte).toEqual(corteAtualDate());
+    expect(call.where.data.lt).toEqual(new Date("2026-07-01T00:00:00Z"));
   });
 });
 
@@ -342,5 +373,40 @@ describe("queryTitulosVencidos", () => {
     expect(result.titulos[0].vrSaldo).toBeCloseTo(500);
     // totalVencido usa vrSaldo
     expect(result.totalVencido).toBeCloseTo(500);
+  });
+
+  // Regra do corte: titulo cujo DOCUMENTO e anterior a data de inicio das analises nao e
+  // da operacao coberta , e a mesma divida velha do Odoo que ja foi tirada de
+  // queryContasAReceber/queryContasAPagar. Sem este piso ela voltava pelo relatorio de
+  // vencidos (titulo de 2019 "vencido ha 2000 dias").
+  it("aplica o piso do corte em dataDocumento (mesma regra de contas a receber/pagar)", async () => {
+    const prisma = makePrisma();
+    (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([]);
+    await queryTitulosVencidos(prisma as never, hoje);
+    const call = (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where.dataDocumento).toEqual({ gte: corteAtualDate() });
+    expect(corteAtual()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it("exclui título intragrupo (mesma regra das contas a receber/pagar)", async () => {
+    const prisma = makePrisma();
+    // Participante do proprio grupo (via fato_parceiro com raiz de CNPJ do grupo).
+    (prisma.fatoParceiro.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([
+      { tipo: "a_receber", participanteId: 7, participanteNome: "Cliente Externo", numeroDocumento: "NF-1", dataVencimento: new Date(2026, 3, 1), vrSaldo: "100.00", vrTotal: "100.00", situacaoSimples: "aberto" },
+      { tipo: "a_receber", participanteId: 2, participanteNome: "Empresa do Grupo", numeroDocumento: "NF-2", dataVencimento: new Date(2026, 3, 1), vrSaldo: "900.00", vrTotal: "900.00", situacaoSimples: "aberto" },
+    ]);
+    const result = await queryTitulosVencidos(prisma as never, hoje);
+    // O pid 2 esta na whitelist de participantes do grupo (whitelist-grupo.ts).
+    expect(result.titulos.map((t) => t.numeroDocumento)).toEqual(["NF-1"]);
+    expect(result.totalVencido).toBeCloseTo(100);
+  });
+
+  it("seleciona participanteId (necessário para o filtro intragrupo)", async () => {
+    const prisma = makePrisma();
+    (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([]);
+    await queryTitulosVencidos(prisma as never, hoje);
+    const call = (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.select).toHaveProperty("participanteId", true);
   });
 });

@@ -5,7 +5,22 @@
  * CRIT-A v1 (review do plano) endereçado: container roda em UTC; getDate/setDate
  * local nao basta. Sempre que precisar de "dia BR" (-3), usar Intl formatter
  * com timeZone explicito.
+ *
+ * PISO DA DATA DE INICIO DAS ANALISES (2026-07-12): a saida deste helper alimenta wheres
+ * de HISTORICO, entao o inicio e sempre grampeado a data de inicio das analises
+ * (AppSetting `sync.corte_dados`, fonte unica em src/lib/corte-dados.ts):
+ *
+ *   - "ano_corrente" pedia 01/01, que pode ser meses antes do inicio das analises , agora
+ *     volta grampeado no corte, com `cortado: true`;
+ *   - `periodoDe`/`periodoAte` explicitos tambem sao grampeados;
+ *   - sem `periodoNome` e sem par de datas, NAO estoura mais: assume o piso do corte ate
+ *     hoje (uma consulta "sem periodo" jamais pode varrer o historico inteiro).
+ *
+ * Nada e apagado: o clamp so estreita a LEITURA. Quem quiser o periodo pedido "cru" (para
+ * dizer ao usuario o que ele pediu) tem `cortado` e o proprio input.
  */
+
+import { clampIsoAoCorte, corteAtual, pedeAntesDoCorte } from "@/lib/corte-dados.js";
 
 export type PeriodoNome =
   | "hoje"
@@ -18,8 +33,10 @@ export type PeriodoNome =
   | "ano_corrente";
 
 export interface PeriodoResolvido {
-  periodoDe: string; // YYYY-MM-DD
+  periodoDe: string; // YYYY-MM-DD , nunca anterior a data de inicio das analises
   periodoAte: string; // YYYY-MM-DD
+  /** true quando o periodo pedido comecava antes do corte e foi grampeado nele. */
+  cortado: boolean;
 }
 
 export interface ResolverPeriodoInput {
@@ -84,60 +101,78 @@ function endOfMonth(d: Date): Date {
   return addDays(dateFromBR(next.y, next.m, 1), -1);
 }
 
+/**
+ * Grampeia o inicio ao corte e marca `cortado`. Passa por aqui TODA saida do helper , e o
+ * unico ponto que garante que nenhum preset (nem um `periodoDe` cru do agente) leve a
+ * consulta para antes da data de inicio das analises.
+ */
+function clampar(periodoDe: string, periodoAte: string): PeriodoResolvido {
+  const corte = corteAtual();
+  return {
+    periodoDe: clampIsoAoCorte(periodoDe, corte),
+    periodoAte,
+    cortado: pedeAntesDoCorte(periodoDe, corte),
+  };
+}
+
 export function resolverPeriodo(
   input: ResolverPeriodoInput,
 ): PeriodoResolvido {
   if (input.periodoDe && input.periodoAte) {
-    return { periodoDe: input.periodoDe, periodoAte: input.periodoAte };
+    return clampar(input.periodoDe, input.periodoAte);
   }
 
   const hoje = input.hoje ?? new Date();
 
+  // Nada informado: em vez de estourar (e antes de qualquer chamador cair na tentacao de
+  // consultar "tudo"), assume o piso , da data de inicio das analises ate hoje.
+  if (!input.periodoNome) {
+    if (input.periodoDe || input.periodoAte) {
+      // Par incompleto: fecha o que falta (inicio no corte, fim em hoje) e grampeia.
+      return clampar(input.periodoDe ?? corteAtual(), input.periodoAte ?? toIsoDate(hoje));
+    }
+    return clampar(corteAtual(), toIsoDate(hoje));
+  }
+
   switch (input.periodoNome) {
     case "hoje":
-      return { periodoDe: toIsoDate(hoje), periodoAte: toIsoDate(hoje) };
+      return clampar(toIsoDate(hoje), toIsoDate(hoje));
     case "amanha": {
       const amanha = addDays(hoje, 1);
-      return { periodoDe: toIsoDate(amanha), periodoAte: toIsoDate(amanha) };
+      return clampar(toIsoDate(amanha), toIsoDate(amanha));
     }
     case "essa_semana": {
       const seg = startOfWeekISO(hoje);
       const dom = addDays(seg, 6);
-      return { periodoDe: toIsoDate(seg), periodoAte: toIsoDate(dom) };
+      return clampar(toIsoDate(seg), toIsoDate(dom));
     }
     case "semana_passada": {
       const segPassada = addDays(startOfWeekISO(hoje), -7);
       const domPassado = addDays(segPassada, 6);
-      return {
-        periodoDe: toIsoDate(segPassada),
-        periodoAte: toIsoDate(domPassado),
-      };
+      return clampar(toIsoDate(segPassada), toIsoDate(domPassado));
     }
     case "mes_corrente":
-      return {
-        periodoDe: toIsoDate(startOfMonth(hoje)),
-        periodoAte: toIsoDate(hoje),
-      };
+      return clampar(toIsoDate(startOfMonth(hoje)), toIsoDate(hoje));
     case "mes_anterior":
     case "mes_passado": {
       const { y, m } = partsBR(hoje);
       const refAnt =
         m === 1 ? dateFromBR(y - 1, 12, 15) : dateFromBR(y, m - 1, 15);
-      return {
-        periodoDe: toIsoDate(startOfMonth(refAnt)),
-        periodoAte: toIsoDate(endOfMonth(refAnt)),
-      };
+      return clampar(
+        toIsoDate(startOfMonth(refAnt)),
+        toIsoDate(endOfMonth(refAnt)),
+      );
     }
     case "ano_corrente": {
       const { y } = partsBR(hoje);
-      return {
-        periodoDe: `${y}-01-01`,
-        periodoAte: toIsoDate(hoje),
-      };
+      // 01/01 pode ser meses antes da data de inicio das analises: o clamp resolve e a
+      // flag `cortado` deixa a tool avisar o usuario do periodo realmente coberto.
+      return clampar(`${y}-01-01`, toIsoDate(hoje));
     }
     default:
+      // periodoNome informado mas desconhecido continua sendo erro de programacao/agente.
       throw new Error(
-        `resolverPeriodo: periodoNome ausente ou desconhecido (${String(input.periodoNome)}). Passe periodoDe+periodoAte ou um periodoNome valido.`,
+        `resolverPeriodo: periodoNome desconhecido (${String(input.periodoNome)}). Passe periodoDe+periodoAte ou um periodoNome valido.`,
       );
   }
 }

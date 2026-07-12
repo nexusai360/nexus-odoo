@@ -10,6 +10,7 @@ import {
   resolverPaginacao,
   montarPaginacaoMeta,
 } from "../../lib/paginacao.js";
+import { resolverPeriodoFiscal } from "./_periodo-padrao.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional().describe("Início, AAAA-MM-DD"),
@@ -34,6 +35,8 @@ const dados = z.object({
   total: z.number().int(),
   truncado: z.boolean(),
   aviso: z.string(),
+  /** Periodo EFETIVAMENTE coberto (ja grampeado a data de inicio das analises). */
+  periodoCoberto: z.string().optional(),
   // Contrato de lista (Fase B): a query ordena por dataEvento desc com
   // desempate por odooId; aqui apenas declaramos ao LLM.
   ordenadoPor: z.string().optional(),
@@ -74,10 +77,28 @@ export const fiscalReinfEventos: ToolEntry<Input, Output> = {
   outputSchema,
   handler: async (input, ctx) => {
     const { limit, offset } = resolverPaginacao(input);
+    // fatoReinfCount é proposital SEM filtro: detecta "módulo não operado".
     const total = await fatoReinfCount(ctx.prisma);
+    // Evento REINF é transmissão datada (histórico): início grampeado ao corte e piso do
+    // corte quando o período não vem.
+    const per = resolverPeriodoFiscal(input.periodoDe, input.periodoAte);
     const envelope = await withFreshness(ctx.prisma, ["fato_reinf_evento"], async () => {
-      const r = await queryReinfEventos(ctx.prisma, { ...input, limit, offset });
-      return { linhas: r.linhas, total: r.total, truncado: r.truncado, aviso: "", ordenadoPor: "data desc" };
+      const r = await queryReinfEventos(ctx.prisma, {
+        periodoDe: per.periodoDe,
+        periodoAte: per.periodoAte,
+        tipo: input.tipo,
+        situacao: input.situacao,
+        limit,
+        offset,
+      });
+      return {
+        linhas: r.linhas,
+        total: r.total,
+        truncado: r.truncado,
+        periodoCoberto: per.label,
+        aviso: `Período coberto: ${per.label}.${per.aviso ? ` ${per.aviso}` : ""}`,
+        ordenadoPor: "data desc",
+      };
     });
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
@@ -89,10 +110,11 @@ export const fiscalReinfEventos: ToolEntry<Input, Output> = {
         _RESPOSTA:
           total === 0
             ? NAO_OPERADO
-            : d.total > 0
-              ? `${d.total} eventos REINF no período.`
-              : "Sem eventos REINF nesse recorte (período/tipo/situação).",
-        _DESTAQUE: { totalEventos: d.total },
+            : (d.total > 0
+                ? `${d.total} eventos REINF no período ${per.label}.`
+                : `Sem eventos REINF nesse recorte (período ${per.label}/tipo/situação).`) +
+              (per.aviso ? ` ${per.aviso}` : ""),
+        _DESTAQUE: { totalEventos: d.total, periodoCoberto: per.label },
         _agregado: { contagem: d.total },
         _listaTruncada: paginacao.temMais,
         _PAGINACAO: paginacao,

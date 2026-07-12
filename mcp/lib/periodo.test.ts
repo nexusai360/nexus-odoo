@@ -1,8 +1,11 @@
 import { describe, it, expect } from "@jest/globals";
 import { resolverPeriodo } from "./periodo";
+import { CORTE_DADOS_PADRAO } from "@/lib/corte-dados";
 
 // Ancora: quarta-feira 27/05/2026 ao meio-dia BR.
 const HOJE = new Date("2026-05-27T12:00:00-03:00");
+// Data de inicio das analises vigente nos testes (ninguem chama getCorteDados aqui).
+const CORTE = CORTE_DADOS_PADRAO; // 2026-03-16
 
 describe("resolverPeriodo", () => {
   it("hoje retorna periodoDe=periodoAte=27/05/2026", () => {
@@ -47,20 +50,57 @@ describe("resolverPeriodo", () => {
     expect(a).toEqual(b);
   });
 
-  it("ano_corrente retorna 01/01 a 27/05", () => {
+  // Data de inicio das analises: ano_corrente pediria 01/01, anterior ao corte. O helper
+  // grampeia o inicio (a resposta cobre do corte ate hoje) e marca `cortado`.
+  it("ano_corrente e grampeado na data de inicio das analises (nao volta a 01/01)", () => {
     const p = resolverPeriodo({ periodoNome: "ano_corrente", hoje: HOJE });
-    expect(p.periodoDe).toBe("2026-01-01");
+    expect(p.periodoDe).toBe(CORTE);
     expect(p.periodoAte).toBe("2026-05-27");
+    expect(p.cortado).toBe(true);
   });
 
-  it("aceita periodoDe/periodoAte literais e bypassa periodoNome", () => {
+  it("aceita periodoDe/periodoAte literais e bypassa periodoNome, grampeando o inicio", () => {
     const p = resolverPeriodo({
       periodoDe: "2025-12-15",
       periodoAte: "2026-01-31",
       hoje: HOJE,
     });
-    expect(p.periodoDe).toBe("2025-12-15");
+    expect(p.periodoDe).toBe(CORTE);
     expect(p.periodoAte).toBe("2026-01-31");
+    expect(p.cortado).toBe(true);
+  });
+
+  it("periodo literal posterior ao corte passa intacto e sem flag de corte", () => {
+    const p = resolverPeriodo({
+      periodoDe: "2026-04-01",
+      periodoAte: "2026-04-30",
+      hoje: HOJE,
+    });
+    expect(p.periodoDe).toBe("2026-04-01");
+    expect(p.periodoAte).toBe("2026-04-30");
+    expect(p.cortado).toBe(false);
+  });
+
+  // O furo original: sem nada informado o helper ESTOURAVA, e o chamador tendia a consultar
+  // sem filtro. Agora devolve o piso do corte ate hoje.
+  it("sem periodoNome e sem datas, devolve o piso do corte ate hoje (nao estoura)", () => {
+    const p = resolverPeriodo({ hoje: HOJE });
+    expect(p.periodoDe).toBe(CORTE);
+    expect(p.periodoAte).toBe("2026-05-27");
+    expect(p.cortado).toBe(false);
+  });
+
+  it("par incompleto (so periodoDe, anterior ao corte) fecha em hoje e grampeia o inicio", () => {
+    const p = resolverPeriodo({ periodoDe: "2024-08-01", hoje: HOJE });
+    expect(p.periodoDe).toBe(CORTE);
+    expect(p.periodoAte).toBe("2026-05-27");
+    expect(p.cortado).toBe(true);
+  });
+
+  it("periodoNome desconhecido continua sendo erro", () => {
+    expect(() =>
+      resolverPeriodo({ periodoNome: "seculo_passado" as never, hoje: HOJE }),
+    ).toThrow(/desconhecido/);
   });
 
   it("virada de mes: hoje=30/04 + mes_corrente = 01/04 a 30/04", () => {

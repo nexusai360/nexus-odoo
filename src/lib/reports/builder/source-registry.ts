@@ -32,6 +32,13 @@ import { queryContarParceiros, queryParceirosPorUf } from "@/lib/reports/queries
 import { queryPlanoDeContas } from "@/lib/reports/queries/contabil";
 import { queryPrecoProduto } from "@/lib/reports/queries/precos";
 import { queryServicoListar } from "@/lib/reports/queries/servicos";
+import {
+  clampIsoAoCorte,
+  clampMesAoCorte,
+  corteAtual,
+  getCorteDados,
+  janelaClampada,
+} from "@/lib/corte-dados";
 import { janelaAnterior } from "./janela-anterior";
 import type {
   RawSourceData,
@@ -56,6 +63,91 @@ export type FiltrosFonte = {
 
 type Produtor = (filtros: FiltrosFonte) => Promise<RawSourceData>;
 
+// ===========================================================================
+// DATA DE INICIO DAS ANALISES (AppSetting sync.corte_dados) , piso obrigatorio.
+//
+// Este registry e o ponto por onde TODA leitura do construtor passa (relatorio salvo,
+// preview do construtor e a amostra que o motor de geracao mostra ao critico). Por isso
+// o piso mora AQUI, dentro do produtor: nenhum chamador consegue escapar, nem quem
+// chama `produtor({})` sem filtro nenhum.
+//
+// Duas familias de fonte, dois formatos de periodo:
+//   - fontes com coluna de DATA (financeiro, comercial, fiscal) -> "AAAA-MM-DD";
+//   - fontes cujo eixo e o MES (fato_estoque_movimento.mes) -> "AAAA-MM".
+// O construtor aceita o periodo nos dois formatos, entao a normalizacao acontece aqui.
+//
+// Nao se aplica a: saldo de estoque (foto de hoje), cadastros (parceiro/UF), plano de
+// contas, tabela de preco e catalogo de servico , nenhum e historico com data.
+// ===========================================================================
+
+/** Teto aberto: a regra impoe PISO (inicio das analises), nunca teto. */
+const DIA_ABERTO = "2100-01-01";
+const MES_ABERTO = "9999-12";
+
+/**
+ * Le a data configurada e mantem quente o cache do processo. Barato (TTL de 60s no
+ * corte-dados) e garante que o registry nao dependa do entrypoint ter hidratado.
+ */
+async function corteVigente(): Promise<string> {
+  return getCorteDados(prisma);
+}
+
+/** "AAAA-MM" -> primeiro dia do mes. "AAAA-MM-DD" passa direto. */
+function primeiroDia(p?: string): string | undefined {
+  if (!p) return undefined;
+  return /^\d{4}-\d{2}$/.test(p) ? `${p}-01` : p;
+}
+
+/** "AAAA-MM" -> ultimo dia do mes. "AAAA-MM-DD" passa direto. */
+function ultimoDia(p?: string): string | undefined {
+  if (!p) return undefined;
+  const m = /^(\d{4})-(\d{2})$/.exec(p);
+  if (!m) return p;
+  const ultimo = new Date(Date.UTC(Number(m[1]), Number(m[2]), 0)).getUTCDate();
+  return `${p}-${String(ultimo).padStart(2, "0")}`;
+}
+
+/**
+ * Periodo em DIAS ("AAAA-MM-DD") para as fontes que filtram por coluna de data.
+ * Sem periodo, o piso e o corte (a fonte nunca varre o cache inteiro); pedindo antes
+ * do corte, comeca no corte.
+ */
+async function periodoEmDias(f: FiltrosFonte): Promise<{ periodoDe: string; periodoAte: string }> {
+  const corte = await corteVigente();
+  const j = janelaClampada(primeiroDia(f.periodoDe), ultimoDia(f.periodoAte), corte);
+  return { periodoDe: j.deIso, periodoAte: j.ateIso ?? DIA_ABERTO };
+}
+
+/**
+ * Periodo em MESES ("AAAA-MM") para as fontes cujo eixo e o mes (movimento de estoque).
+ * O mes do corte entra inteiro (ver clampMesAoCorte): com corte em 16/03, o balde de
+ * marco ainda soma os movimentos de 1 a 15/03.
+ */
+async function periodoEmMeses(f: FiltrosFonte): Promise<{ periodoDe: string; periodoAte: string }> {
+  const corte = await corteVigente();
+  return {
+    periodoDe: clampMesAoCorte((f.periodoDe ?? corte).slice(0, 7), corte),
+    periodoAte: (f.periodoAte ?? MES_ABERTO).slice(0, 7),
+  };
+}
+
+/**
+ * Grampeia o inicio do periodo PEDIDO ao corte, no formato em que ele veio (mes ou dia).
+ * Usado pelas server actions, que recebem o periodo cru do browser. Periodo ausente
+ * segue ausente de proposito: o PISO e aplicado no produtor, que conhece o formato da
+ * sua propria fonte.
+ */
+export function clamparPeriodoPedido<T extends { periodoDe?: string; periodoAte?: string }>(
+  filtros: T,
+  corte: string = corteAtual(),
+): T {
+  if (!filtros.periodoDe) return filtros;
+  const periodoDe = /^\d{4}-\d{2}$/.test(filtros.periodoDe)
+    ? clampMesAoCorte(filtros.periodoDe, corte)
+    : clampIsoAoCorte(filtros.periodoDe, corte);
+  return { ...filtros, periodoDe };
+}
+
 /**
  * Encurta o nome longo de uma conta bancaria para o eixo do grafico. O formato vem
  * como "Itau / Corrente / 1584 / 36410-1 / Nome da Empresa 34.461.908/0001-14": tira
@@ -73,6 +165,9 @@ interface FonteDef {
   produtores: Partial<Record<ShapeDerivado, Produtor>>;
 }
 
+// SALDO de estoque: foto de HOJE, nao historico. A data de inicio das analises nao se
+// aplica (nao ha documento com data a filtrar) , o mesmo vale para as dimensoes armazem,
+// marca, familia e local, que sao recortes desse mesmo saldo.
 const fatoEstoqueSaldo: FonteDef = {
   contract: {
     fato: "fato_estoque_saldo",
@@ -301,19 +396,19 @@ const fatoEstoqueMovimento: FonteDef = {
     },
   },
   produtores: {
+    // Movimento de estoque e HISTORICO (documento com data): piso na data de inicio
+    // das analises. Sem periodo, a serie comeca no mes do corte, nunca no cache inteiro.
     serieTemporal: async (filtros) => {
       const d = await queryEntradasSaidas(prisma, {
         armazemId: filtros.armazemId,
-        periodoDe: filtros.periodoDe,
-        periodoAte: filtros.periodoAte,
+        ...(await periodoEmMeses(filtros)),
       });
       return { linhas: d.serie as unknown as Record<string, unknown>[], freshness: null };
     },
     tabela: async (filtros) => {
       const d = await queryEntradasSaidas(prisma, {
         armazemId: filtros.armazemId,
-        periodoDe: filtros.periodoDe,
-        periodoAte: filtros.periodoAte,
+        ...(await periodoEmMeses(filtros)),
       });
       return { linhas: d.detalhe as unknown as Record<string, unknown>[], freshness: null };
     },
@@ -321,6 +416,9 @@ const fatoEstoqueMovimento: FonteDef = {
 };
 
 // --- PRODUTOS PARADOS: kpis + tabela (queryProdutosParados). ---
+// Estado derivado ("ha quantos dias este item nao se mexe"), montado pelo worker sobre o
+// historico INGERIDO, nao um documento com data que de para filtrar aqui. Sem periodo a
+// clampar neste ponto: quem decide a semantica de "dias parado" e o builder do fato.
 const fatoEstoqueParados: FonteDef = {
   contract: {
     fato: "fato_estoque_parados",
@@ -372,12 +470,20 @@ const fatoEstoqueTopMovimentados: FonteDef = {
     },
   },
   produtores: {
+    // Ranking sobre o movimento (historico): o periodo nem chegava a ser repassado,
+    // entao somava o cache inteiro. Agora vai clampado ao inicio das analises.
     agregacaoCategorica: async (filtros) => {
-      const d = await queryTopMovimentados(prisma, { sentido: filtros.sentido });
+      const d = await queryTopMovimentados(prisma, {
+        sentido: filtros.sentido,
+        ...(await periodoEmMeses(filtros)),
+      });
       return { linhas: d.linhas, freshness: null };
     },
     kpis: async (filtros) => {
-      const d = await queryTopMovimentados(prisma, { sentido: filtros.sentido });
+      const d = await queryTopMovimentados(prisma, {
+        sentido: filtros.sentido,
+        ...(await periodoEmMeses(filtros)),
+      });
       return { linhas: [], kpis: { totalProdutos: d.kpis.totalProdutos, totalUnidades: d.kpis.totalUnidades }, freshness: null };
     },
   },
@@ -388,6 +494,8 @@ const fatoEstoqueTopMovimentados: FonteDef = {
 // Reusa as queries auditadas de queries/financeiro*.ts , so wrap em FonteDef.
 // ===========================================================================
 
+// SALDO bancario: foto das contas hoje, nao historico de lancamento. A data de inicio
+// das analises nao se aplica (nao ha documento com data a filtrar).
 const fatoFinanceiroSaldo: FonteDef = {
   contract: {
     fato: "fato_financeiro_saldo",
@@ -446,18 +554,21 @@ const fatoFinanceiroMovimento: FonteDef = {
     },
   },
   produtores: {
+    // Lancamento financeiro e historico: piso no corte. O delta so sai quando existe
+    // uma janela anterior DENTRO da janela analisada (janelaAnterior devolve null caso
+    // contrario) , nada de comparar com um periodo que a plataforma nem le.
     kpis: async (filtros) => {
-      const d = await queryCaixaPeriodo(prisma, { periodoDe: filtros.periodoDe, periodoAte: filtros.periodoAte });
-      const ja = janelaAnterior(filtros.periodoDe, filtros.periodoAte);
+      const d = await queryCaixaPeriodo(prisma, await periodoEmDias(filtros));
+      const ja = janelaAnterior(filtros.periodoDe, filtros.periodoAte, await corteVigente());
       let kpisAnterior: Record<string, number> | undefined;
       if (ja) {
-        const a = await queryCaixaPeriodo(prisma, { periodoDe: ja.de, periodoAte: ja.ate });
+        const a = await queryCaixaPeriodo(prisma, await periodoEmDias({ periodoDe: ja.de, periodoAte: ja.ate }));
         kpisAnterior = { entrada: a.entrada, saida: a.saida, saldo: a.saldo };
       }
       return { linhas: [], kpis: { entrada: d.entrada, saida: d.saida, saldo: d.saldo }, kpisAnterior, freshness: null };
     },
     serieTemporal: async (filtros) => {
-      const d = await queryFluxoCaixa(prisma, { periodoDe: filtros.periodoDe, periodoAte: filtros.periodoAte });
+      const d = await queryFluxoCaixa(prisma, await periodoEmDias(filtros));
       return {
         linhas: d.serie.map((s) => ({ mes: s.periodo, realizado: s.realizado, previsto: s.previsto })),
         freshness: null,
@@ -490,8 +601,10 @@ const fatoFinanceiroResultado: FonteDef = {
     },
   },
   produtores: {
+    // Lancamento contabil e historico (dataDocumento): piso no corte nos tres shapes,
+    // senao a DRE gerencial soma documentos fora da janela de analise.
     kpis: async (filtros) => {
-      const d = await queryResultadoPorConta(prisma, { periodoDe: filtros.periodoDe, periodoAte: filtros.periodoAte });
+      const d = await queryResultadoPorConta(prisma, await periodoEmDias(filtros));
       return {
         linhas: [],
         kpis: { totalReceita: d.totalReceita, totalDespesa: d.totalDespesa, resultado: d.resultado },
@@ -499,7 +612,7 @@ const fatoFinanceiroResultado: FonteDef = {
       };
     },
     agregacaoCategorica: async (filtros) => {
-      const d = await queryResultadoPorConta(prisma, { periodoDe: filtros.periodoDe, periodoAte: filtros.periodoAte });
+      const d = await queryResultadoPorConta(prisma, await periodoEmDias(filtros));
       return {
         linhas: d.linhas.map((l) => ({ rotulo: l.contaNome ?? "(sem conta)", valor: l.total })),
         freshness: null,
@@ -508,7 +621,7 @@ const fatoFinanceiroResultado: FonteDef = {
     // DRE em cascata: Receitas (sobe) -> top despesas por conta (descem) ->
     // Outras despesas (resto) -> Resultado (barra total reancorada no zero).
     cascata: async (filtros) => {
-      const d = await queryResultadoPorConta(prisma, { periodoDe: filtros.periodoDe, periodoAte: filtros.periodoAte });
+      const d = await queryResultadoPorConta(prisma, await periodoEmDias(filtros));
       if (d.totalReceita === 0 && d.totalDespesa === 0 && d.linhas.length === 0) {
         return { linhas: [], freshness: null };
       }
@@ -554,16 +667,21 @@ const fatoComercialPedido: FonteDef = {
     },
   },
   produtores: {
+    // Pedido e documento com data (dataOrcamento): piso no corte, e delta so com base
+    // dentro da janela analisada.
     kpis: async (filtros) => {
-      const d = await queryPedidosPeriodo(prisma, { periodoDe: filtros.periodoDe, periodoAte: filtros.periodoAte });
-      const ja = janelaAnterior(filtros.periodoDe, filtros.periodoAte);
+      const d = await queryPedidosPeriodo(prisma, await periodoEmDias(filtros));
+      const ja = janelaAnterior(filtros.periodoDe, filtros.periodoAte, await corteVigente());
       let kpisAnterior: Record<string, number> | undefined;
       if (ja) {
-        const a = await queryPedidosPeriodo(prisma, { periodoDe: ja.de, periodoAte: ja.ate });
+        const a = await queryPedidosPeriodo(prisma, await periodoEmDias({ periodoDe: ja.de, periodoAte: ja.ate }));
         kpisAnterior = { totalPedidos: a.totalPedidos, valorTotal: a.valorTotal };
       }
       return { linhas: [], kpis: { totalPedidos: d.totalPedidos, valorTotal: d.valorTotal }, kpisAnterior, freshness: null };
     },
+    // Parcelas atrasadas: o piso vem do PEDIDO PAI dentro da propria query
+    // (queryPedidosAtrasados so olha pedido com dataOrcamento >= corte), porque a
+    // parcela nao carrega a data do documento. Nao ha periodo a passar aqui.
     tabela: async () => {
       const d = await queryPedidosAtrasados(prisma, new Date(), { limit: 200 });
       return { linhas: d.linhas as unknown as Record<string, unknown>[], freshness: null };
@@ -585,8 +703,10 @@ const fatoComercialEtapa: FonteDef = {
     },
   },
   produtores: {
-    agregacaoCategorica: async () => {
-      const d = await queryPedidosPorEtapa(prisma);
+    // Funil por etapa: agregado sobre pedidos (documentos com data), entao vai com o
+    // periodo clampado , um pedido de 2024 parado numa etapa nao pode inflar a etapa.
+    agregacaoCategorica: async (filtros) => {
+      const d = await queryPedidosPorEtapa(prisma, await periodoEmDias(filtros));
       return {
         linhas: d.linhas.map((l) => ({ rotulo: l.etapaNome ?? "(sem etapa)", valor: l.valorTotal })),
         freshness: null,
@@ -609,8 +729,9 @@ const fatoComercialVendedor: FonteDef = {
     },
   },
   produtores: {
+    // Ranking de vendedores sobre pedidos (historico): piso no corte.
     agregacaoCategorica: async (filtros) => {
-      const d = await queryPedidosPorVendedor(prisma, { periodoDe: filtros.periodoDe, periodoAte: filtros.periodoAte });
+      const d = await queryPedidosPorVendedor(prisma, await periodoEmDias(filtros));
       return {
         linhas: d.linhas.map((l) => ({ rotulo: l.vendedorNome ?? "(sem vendedor)", valor: l.valorTotal })),
         freshness: null,
@@ -637,12 +758,14 @@ const fatoFiscalFaturamento: FonteDef = {
     },
   },
   produtores: {
+    // Nota fiscal e o historico mais visivel (a diretoria olha esse numero): piso no
+    // corte e, sem base anterior dentro da janela, NENHUM delta.
     kpis: async (filtros) => {
-      const d = await queryFaturamentoPeriodo(prisma, { periodoDe: filtros.periodoDe, periodoAte: filtros.periodoAte });
-      const ja = janelaAnterior(filtros.periodoDe, filtros.periodoAte);
+      const d = await queryFaturamentoPeriodo(prisma, await periodoEmDias(filtros));
+      const ja = janelaAnterior(filtros.periodoDe, filtros.periodoAte, await corteVigente());
       let kpisAnterior: Record<string, number> | undefined;
       if (ja) {
-        const a = await queryFaturamentoPeriodo(prisma, { periodoDe: ja.de, periodoAte: ja.ate });
+        const a = await queryFaturamentoPeriodo(prisma, await periodoEmDias({ periodoDe: ja.de, periodoAte: ja.ate }));
         kpisAnterior = { totalNotas: a.totalNotas, valorFaturado: a.valorFaturado };
       }
       return { linhas: [], kpis: { totalNotas: d.totalNotas, valorFaturado: d.valorFaturado }, kpisAnterior, freshness: null };
@@ -664,8 +787,9 @@ const fatoFiscalCliente: FonteDef = {
     },
   },
   produtores: {
+    // Faturamento por cliente: notas emitidas (historico), piso no corte.
     agregacaoCategorica: async (filtros) => {
-      const d = await queryFaturamentoPorCliente(prisma, { periodoDe: filtros.periodoDe, periodoAte: filtros.periodoAte });
+      const d = await queryFaturamentoPorCliente(prisma, await periodoEmDias(filtros));
       return {
         linhas: d.linhas.map((l) => ({ rotulo: l.participanteNome ?? "(sem cliente)", valor: l.valorTotal })),
         freshness: null,
@@ -688,8 +812,9 @@ const fatoFiscalProduto: FonteDef = {
     },
   },
   produtores: {
+    // Produtos faturados: itens de nota (historico), piso no corte.
     agregacaoCategorica: async (filtros) => {
-      const d = await queryProdutosFaturados(prisma, { periodoDe: filtros.periodoDe, periodoAte: filtros.periodoAte });
+      const d = await queryProdutosFaturados(prisma, await periodoEmDias(filtros));
       return {
         linhas: d.linhas.map((l) => ({ rotulo: l.produtoNome ?? "(sem produto)", valor: l.valorTotal })),
         freshness: null,
@@ -700,6 +825,8 @@ const fatoFiscalProduto: FonteDef = {
 
 // ===========================================================================
 // CADASTROS (onda 5): parceiros , KPIs (clientes/fornecedores/ativos) e por UF.
+// Cadastro nao e historico: a data de inicio das analises nao se aplica (um cliente
+// cadastrado em 2019 continua sendo cliente hoje).
 // ===========================================================================
 
 const fatoCadastrosParceiro: FonteDef = {
@@ -754,6 +881,8 @@ const fatoCadastrosUf: FonteDef = {
 
 // ===========================================================================
 // CONTABIL (plano de contas) + FISCAL ref (precos, servicos) , listagens (TAB).
+// Tres catalogos/metadados (plano de contas, tabela de preco, lista de servicos): nenhum
+// e documento com data, entao a data de inicio das analises tambem nao se aplica.
 // ===========================================================================
 
 const fatoContabilPlano: FonteDef = {

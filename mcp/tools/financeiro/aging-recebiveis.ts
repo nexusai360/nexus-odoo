@@ -8,6 +8,7 @@ import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
+import { corteAtual, corteLabel } from "@/lib/corte-dados.js";
 import type { PrismaClient } from "@/generated/prisma/client.js";
 
 const inputSchema = z.object({
@@ -28,6 +29,8 @@ const dados = z.object({
   titulosTotal: z.number().int(),
   topDevedorMaisVelho: z.string().nullable(),
   aviso: z.string(),
+  /** Janela de analise coberta (titulos com documento a partir da data de inicio das analises). */
+  periodoCoberto: z.string().optional(),
   ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
@@ -47,6 +50,11 @@ type Output = z.infer<typeof outputSchema>;
 const BUCKETS = ["a vencer", "0-30 dias", "31-60 dias", "61-90 dias", "90+ dias"] as const;
 
 async function queryAging(prisma: PrismaClient, tipo: string) {
+  // Data de inicio das analises: o titulo e documento com data (data_documento). O bucket
+  // "90+ dias" e justamente onde a divida velha do Odoo se acumulava , sem este piso o aging
+  // contava titulo que a plataforma nao deveria nem enxergar, divergindo das tools
+  // financeiro_contas_a_receber / _a_pagar (que ja grampeiam). O corte entra como PARAMETRO.
+  const corte = corteAtual();
   const rows = await prisma.$queryRawUnsafe<
     { bucket: string; valor: string; titulos: bigint }[]
   >(
@@ -61,8 +69,10 @@ async function queryAging(prisma: PrismaClient, tipo: string) {
             COUNT(*)::bigint AS titulos
      FROM fato_financeiro_titulo
      WHERE tipo = $1 AND vr_saldo > 0 AND situacao_simples IN ('aberto','provisorio')
+       AND data_documento >= $2::date
      GROUP BY 1`,
     tipo,
+    corte,
   );
   const porBucket = new Map(rows.map((r) => [r.bucket, r]));
   const linhas = BUCKETS.map((b) => ({
@@ -73,9 +83,11 @@ async function queryAging(prisma: PrismaClient, tipo: string) {
   const maisVelho = await prisma.$queryRawUnsafe<{ nome: string | null }[]>(
     `SELECT participante_nome AS nome FROM fato_financeiro_titulo
      WHERE tipo = $1 AND vr_saldo > 0 AND situacao_simples IN ('aberto','provisorio')
+       AND data_documento >= $2::date
        AND data_vencimento IS NOT NULL AND now()::date - data_vencimento::date > 90
      ORDER BY vr_saldo DESC LIMIT 1`,
     tipo,
+    corte,
   );
   return {
     linhas,
@@ -102,9 +114,11 @@ export const financeiroAgingRecebiveis: ToolEntry<Input, Output> = {
       tipo,
       ...(await queryAging(ctx.prisma, tipo)),
       ordenadoPor: "bucket (a vencer -> 90+)",
+      periodoCoberto: `titulos com documento a partir de ${corteLabel()}`,
       aviso:
         "Aging sobre titulos vivos (aberto + provisorio) com saldo > 0; 'a vencer' " +
-        "inclui vencimento futuro ou sem data. Valores de saldo, nao de documento.",
+        "inclui vencimento futuro ou sem data. Valores de saldo, nao de documento. " +
+        `Considera apenas titulos emitidos a partir de ${corteLabel()} (data de inicio das analises).`,
     }));
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
@@ -117,6 +131,7 @@ export const financeiroAgingRecebiveis: ToolEntry<Input, Output> = {
         valor90mais: venc90?.valor ?? 0,
         titulos90mais: venc90?.titulos ?? 0,
         topDevedorMaisVelho: d.topDevedorMaisVelho ?? "",
+        periodoCoberto: d.periodoCoberto ?? "",
         agingResumo: d.linhas
           .map((l) => `${l.bucket}: R$ ${l.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (${l.titulos})`)
           .join("; "),

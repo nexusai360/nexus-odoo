@@ -9,6 +9,7 @@ import {
   resolverPaginacao,
   montarPaginacaoMeta,
 } from "../../lib/paginacao.js";
+import { resolverPeriodoFiscal } from "./_periodo-padrao.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional().describe("Início do período, AAAA-MM-DD."),
@@ -32,6 +33,8 @@ const dados = z.object({
   totalNotas: z.number().int(),
   valorTotal: z.number(),
   aviso: z.string(),
+  /** Periodo EFETIVAMENTE coberto (ja grampeado a data de inicio das analises). */
+  periodoCoberto: z.string().optional(),
   // Contrato de lista (Fase B): a query ordena por dataEmissao desc com
   // desempate por odooId; aqui apenas declaramos ao LLM.
   ordenadoPor: z.string().optional(),
@@ -58,17 +61,23 @@ const outputSchema = z.union([
 type Input = z.infer<typeof inputSchema>;
 type Output = z.infer<typeof outputSchema>;
 
-function shape(d: Awaited<ReturnType<typeof queryDfeImportadosPeriodo>>) {
+function shape(
+  d: Awaited<ReturnType<typeof queryDfeImportadosPeriodo>>,
+  periodoLabel: string,
+  avisoPeriodo?: string,
+) {
   return {
     linhas: d.linhas,
     totalNotas: d.totalNotas,
     valorTotal: d.valorTotal,
     ordenadoPor: "data desc",
+    periodoCoberto: periodoLabel,
     aviso:
       "DF-e (notas de fornecedores capturadas eletronicamente / manifestação do " +
       "destinatário). Diferente de 'notas recebidas' (documentos próprios de " +
       "entrada). O valor (vrNf) pode vir 0 nesta base; o valor confiável de compra " +
-      "vem do financeiro.",
+      `vem do financeiro. Período coberto: ${periodoLabel}.` +
+      (avisoPeriodo ? ` ${avisoPeriodo}` : ""),
   };
 }
 
@@ -85,8 +94,20 @@ export const fiscalDfeImportadosPeriodo: ToolEntry<Input, Output> = {
   outputSchema,
   handler: async (input, ctx) => {
     const { limit, offset } = resolverPaginacao(input);
+    // DF-e e documento com data: o inicio do periodo e grampeado a data de inicio das
+    // analises e, sem periodo informado, o piso e o corte (nunca varrer o fato inteiro).
+    const per = resolverPeriodoFiscal(input.periodoDe, input.periodoAte);
     const envelope = await withFreshness(ctx.prisma, ["fato_dfe"], async () =>
-      shape(await queryDfeImportadosPeriodo(ctx.prisma, { ...input, limit, offset })),
+      shape(
+        await queryDfeImportadosPeriodo(ctx.prisma, {
+          periodoDe: per.periodoDe,
+          periodoAte: per.periodoAte,
+          limit,
+          offset,
+        }),
+        per.label,
+        per.aviso,
+      ),
     );
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
@@ -97,10 +118,15 @@ export const fiscalDfeImportadosPeriodo: ToolEntry<Input, Output> = {
       dados: {
         ...d,
         _RESPOSTA:
-          d.totalNotas > 0
-            ? `DF-e importados no período: ${d.totalNotas} notas (valor declarado ${fmt(d.valorTotal)}, pode estar 0 nesta base).`
-            : "Nenhum DF-e importado no período.",
-        _DESTAQUE: { totalDfe: d.totalNotas, valorTotal: d.valorTotal },
+          (d.totalNotas > 0
+            ? `DF-e importados no período ${per.label}: ${d.totalNotas} notas (valor declarado ${fmt(d.valorTotal)}, pode estar 0 nesta base).`
+            : `Nenhum DF-e importado no período ${per.label}.`) +
+          (per.aviso ? ` ${per.aviso}` : ""),
+        _DESTAQUE: {
+          totalDfe: d.totalNotas,
+          valorTotal: d.valorTotal,
+          periodoCoberto: per.label,
+        },
         _agregado: { contagem: d.totalNotas, soma: d.valorTotal },
         _listaTruncada: paginacao.temMais,
         _PAGINACAO: paginacao,

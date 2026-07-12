@@ -1,6 +1,8 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { aquecerCorte } from "@/lib/corte-app";
+import { clampMesAoCorte } from "@/lib/corte-dados";
 import { guardDominio } from "@/lib/reports/guard";
 import { reportFreshness } from "@/lib/reports/freshness";
 import { getReport } from "@/lib/reports/catalog";
@@ -67,6 +69,28 @@ function requireReport(id: string): ReportEntry {
 const TOP_N = 10;
 const TOP_CONCENTRACAO = 12;
 
+/** Teto aberto: a regra da plataforma impoe PISO (inicio das analises), nunca teto. */
+const MES_ABERTO = "9999-12";
+
+/**
+ * Janela mensal ("AAAA-MM") dos relatorios que leem HISTORICO de movimento
+ * (fato_estoque_movimento.mes), ja grampeada a data de inicio das analises.
+ *
+ * Sem esse piso, o preset "tudo" (que manda periodo vazio) fazia a query rodar sem where
+ * de mes nenhum e agregar o cache inteiro, inclusive meses anteriores a data configurada
+ * na tela. O par de/ate precisa vir COMPLETO: a query so aplica o recorte quando tem os
+ * dois. O mes do corte entra inteiro (ver clampMesAoCorte).
+ */
+async function janelaMensalDeAnalise(
+  filtros: ReportFilterValues,
+): Promise<{ periodoDe: string; periodoAte: string }> {
+  const corte = await aquecerCorte();
+  return {
+    periodoDe: clampMesAoCorte((filtros.periodoDe ?? corte).slice(0, 7), corte),
+    periodoAte: (filtros.periodoAte ?? MES_ABERTO).slice(0, 7),
+  };
+}
+
 /**
  * Ordena por valor desc, mantém os TOP_CONCENTRACAO maiores e agrupa o
  * restante numa entrada "Outras".
@@ -84,6 +108,9 @@ function agruparTopN(
   }
   return top;
 }
+
+// R1, R2 e R6 leem SALDO de estoque (foto de hoje, fato_estoque_saldo): nao sao historico
+// com data, entao a data de inicio das analises nao se aplica a eles.
 
 /** R1 , Saldo por produto (wrapper). */
 export async function getRelatorioSaldoProduto(
@@ -159,8 +186,7 @@ export async function getRelatorioEntradasSaidas(
       return { estado: "preparando", dados: vazio, freshness };
     }
     const dados = await queryEntradasSaidas(prisma, {
-      periodoDe: filtros.periodoDe,
-      periodoAte: filtros.periodoAte,
+      ...(await janelaMensalDeAnalise(filtros)),
       armazemId: filtros.armazemId,
     });
     const estado: ReportState = dados.serie.length === 0 ? "vazio" : "ok";
@@ -170,7 +196,14 @@ export async function getRelatorioEntradasSaidas(
   }
 }
 
-/** R4 , Produtos parados (wrapper). */
+/**
+ * R4 , Produtos parados (wrapper).
+ *
+ * Sem filtro de data de proposito: "dias parado" e um ESTADO derivado (fato_produto_parado),
+ * calculado pelo worker sobre o historico ingerido, nao um documento com data que de para
+ * recortar aqui. Mudar a data de inicio das analises nao muda esse numero , se um dia a
+ * semantica tiver que acompanhar a janela, a mudanca e no builder do fato, nao neste wrapper.
+ */
 export async function getRelatorioProdutoParado(
   filtros: ReportFilterValues,
 ): Promise<ReportResult<ProdutoParadoData>> {
@@ -216,8 +249,7 @@ export async function getRelatorioTopMovimentados(
       return { estado: "preparando", dados: vazio, freshness };
     }
     const { kpis, linhas } = await queryTopMovimentados(prisma, {
-      periodoDe: filtros.periodoDe,
-      periodoAte: filtros.periodoAte,
+      ...(await janelaMensalDeAnalise(filtros)),
       sentido: filtros.sentido,
     });
     const barras = linhas.slice(0, TOP_N);

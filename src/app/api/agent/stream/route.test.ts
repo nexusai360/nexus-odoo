@@ -13,6 +13,12 @@ jest.mock("next/headers", () => ({
   headers: jest.fn(() => new Map()),
 }));
 
+// A rota hidrata a data de inicio das analises antes de rodar o agente. Aqui so importa que
+// ela seja chamada: mockar evita puxar o client do Prisma (que usa import.meta) para o teste.
+jest.mock("@/lib/corte-app", () => ({
+  aquecerCorte: jest.fn().mockResolvedValue("2026-03-16"),
+}));
+
 jest.mock("@/lib/auth/require", () => ({
   requireAgentAccessOrJson: jest.fn(),
 }));

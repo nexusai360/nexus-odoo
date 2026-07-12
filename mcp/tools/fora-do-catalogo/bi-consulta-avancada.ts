@@ -17,11 +17,24 @@
 //   Os caminhos de recusa (guard) e indisponibilidade (pool null) LANÇAM exceções,
 //   que o pipeline do server.ts captura e mapeia para o outcome correto.
 //   Isso é intencional e diferente das tools de freshness (que retornam { estado }).
+//
+// DATA DE INICIO DAS ANALISES (2026-07-12) , LIMITE CONHECIDO E DECLARADO:
+//   O SQL chega PRONTO do agente. Nao existe forma segura de reescrever um SELECT arbitrario
+//   (CTE, subquery, UNION, join de N fatos) para injetar `WHERE <coluna_de_data> >= corte`
+//   sem risco de alterar a semantica da consulta. Entao esta tool NAO grampeia o SQL: ela
+//   DECLARA o corte, no `aviso` e na descricao, para o agente (a) gerar o SQL ja com o piso e
+//   (b) jamais apresentar como verdade da plataforma um numero que inclui periodo fora da
+//   janela de analise.
+//   A regra dura (obrigar o WHERE de piso) pertence ao PROMPT do BI e ao schema reference
+//   (src/lib/agent/bi-schema-reference.ts + src/lib/agent/prompt/identity-base.ts), que sao
+//   de outro dono. A defesa estrutural definitiva seria expor VIEWs ja filtradas pelo corte
+//   ao role nexus_mcp_bi , decisao de produto/infra, fora do escopo desta tool.
 import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { getBiPool } from "./bi-pool.js";
 import { validarSqlSelect, normalizarSql } from "./sql-guard.js";
 import { SqlGuardError } from "../../lib/failure.js";
+import { avisoCorte, corteAtual, corteLabel } from "@/lib/corte-dados.js";
 // Caminho definitivo (achado R2-M2): de mcp/tools/fora-do-catalogo/ para mcp/lib/ é ../../lib/failure.js
 
 const CAP_LINHAS = 1000;
@@ -41,6 +54,8 @@ const outputSchema = z.object({
   linhasRetornadas: z.number().int(),
   truncado: z.boolean(),
   aviso: z.string(),
+  /** Data de inicio das analises vigente (AAAA-MM-DD), para o agente conferir o SQL gerado. */
+  dataInicioAnalises: z.string().optional(),
 });
 
 type Input = z.infer<typeof inputSchema>;
@@ -55,7 +70,14 @@ export const biConsultaAvancada: ToolEntry<Input, Output> = {
     "Modo BI avançado (Caminho 3c): executa um SQL SELECT pronto sob o role " +
     "read-only nexus_mcp_bi. O SQL deve ser gerado pelo agente (F5); esta tool " +
     "apenas executa. Restrito a admin/super_admin. AVISO: consulta dinâmica, " +
-    "resultados não são filtrados pelo RBAC semântico das tools de domínio.",
+    "resultados não são filtrados pelo RBAC semântico das tools de domínio. " +
+    "IMPORTANTE: a plataforma só considera documentos a partir da data de início das " +
+    "análises. Toda consulta a tabela de histórico (fato_nota_fiscal.data_emissao, " +
+    "fato_pedido.data_orcamento, fato_financeiro_titulo.data_documento, " +
+    "fato_estoque_movimento.data, fato_contabil_lancamento_item.data_lancamento, " +
+    "fato_dfe.data_emissao...) DEVE trazer o piso `WHERE <coluna_de_data> >= '<data de " +
+    "início das análises>'` , sem isso o número contradiz o dashboard e as demais tools. " +
+    "A tool devolve a data vigente em `dataInicioAnalises`.",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
@@ -100,6 +122,9 @@ export const biConsultaAvancada: ToolEntry<Input, Output> = {
     );
 
     // (4) Retornar output validado pelo outputSchema (achado R2-I6).
+    //     O aviso carrega a data de inicio das analises: o SQL nao e reescrito aqui (ver nota
+    //     no topo), entao o agente PRECISA conferir se pos o piso de data , caso contrario o
+    //     numero devolvido inclui periodo que a plataforma declara nao analisar.
     return outputSchema.parse({
       colunas,
       linhas,
@@ -107,10 +132,14 @@ export const biConsultaAvancada: ToolEntry<Input, Output> = {
       ordenadoPor: "definida pelo ORDER BY do SQL da consulta",
       linhasRetornadas: linhas.length,
       truncado,
+      dataInicioAnalises: corteAtual(),
       aviso:
         "Consulta dinâmica não auditada como tool semântica. " +
-        "Resultados não são filtrados pelo RBAC de domínio." +
-        (truncado ? " Resultado truncado em 1000 linhas , total real da query não disponível." : ""),
+        "Resultados não são filtrados pelo RBAC de domínio. " +
+        `${avisoCorte()} Este executor NÃO injeta o filtro no SQL: se a consulta tocou tabela ` +
+        `de histórico sem o piso \`>= '${corteAtual()}'\`, o resultado inclui documentos ` +
+        `anteriores a ${corteLabel()} e NÃO pode ser apresentado como número da plataforma ` +
+        "(refaça a consulta com o piso de data).",
     });
   },
 };

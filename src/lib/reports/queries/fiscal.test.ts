@@ -10,6 +10,10 @@ import {
   queryNotasRecebidasPorFornecedor,
   queryContarNotas,
 } from "./fiscal";
+import { CORTE_DADOS_PADRAO } from "@/lib/corte-dados";
+
+/** Piso vigente nos testes: ninguem chama getCorteDados, entao vale o padrao em memoria. */
+const PISO = new Date(`${CORTE_DADOS_PADRAO}T00:00:00Z`);
 
 // Stub de prisma , substituído por mock real em cada describe
 const fakePrisma = {} as Parameters<typeof queryFaturamentoPeriodo>[0];
@@ -395,6 +399,62 @@ describe("queryContarNotas", () => {
     expect(result.total).toBe(500);
     expect(result.totalEntrada).toBe(287);
     expect(result.totalSaida).toBe(213);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Data de inicio das analises (AppSetting sync.corte_dados)
+//
+// Nota fiscal e documento com data: HISTORICO. As duas funcoes abaixo eram as unicas do
+// arquivo que fugiam do buildPeriodoWhere , contavam/somavam o cache inteiro.
+// ---------------------------------------------------------------------------
+
+describe("fiscal , data de inicio das analises", () => {
+  it("queryContarNotas sem periodo conta so a partir do corte (nao o cache inteiro)", async () => {
+    const count = jest.fn().mockResolvedValue(0);
+    const mockPrisma = { fatoNotaFiscal: { count } } as unknown as Parameters<typeof queryContarNotas>[0];
+
+    await queryContarNotas(mockPrisma);
+    // os tres counts (total, entrada, saida) carregam o mesmo piso
+    for (const call of count.mock.calls) {
+      expect(call[0].where.dataEmissao.gte).toEqual(PISO);
+    }
+    expect(count.mock.calls[1][0].where.entradaSaida).toBe("0");
+    expect(count.mock.calls[2][0].where.entradaSaida).toBe("1");
+  });
+
+  it("queryContarNotas grampeia periodo anterior ao corte", async () => {
+    const count = jest.fn().mockResolvedValue(0);
+    const mockPrisma = { fatoNotaFiscal: { count } } as unknown as Parameters<typeof queryContarNotas>[0];
+
+    await queryContarNotas(mockPrisma, { periodoDe: "2013-01-01", periodoAte: "2026-06-30" });
+    expect(count.mock.calls[0][0].where.dataEmissao).toEqual({
+      gte: PISO,
+      lt: new Date("2026-07-01T00:00:00Z"),
+    });
+  });
+
+  it("queryNotasRecebidasPorFornecedor sem periodo aplica o piso do corte", async () => {
+    const findMany = jest.fn().mockResolvedValue([]);
+    const mockPrisma = { fatoNotaFiscal: { findMany } } as unknown as Parameters<typeof queryNotasRecebidasPorFornecedor>[0];
+
+    await queryNotasRecebidasPorFornecedor(mockPrisma, {});
+    const call = findMany.mock.calls[0][0];
+    expect(call.where.dataEmissao.gte).toEqual(PISO);
+    expect(call.where.entradaSaida).toBe("0");
+  });
+
+  it("queryNotasRecebidasPorFornecedor grampeia periodo anterior ao corte e usa borda exclusiva", async () => {
+    const findMany = jest.fn().mockResolvedValue([]);
+    const mockPrisma = { fatoNotaFiscal: { findMany } } as unknown as Parameters<typeof queryNotasRecebidasPorFornecedor>[0];
+
+    await queryNotasRecebidasPorFornecedor(mockPrisma, { periodoDe: "2020-01-01", periodoAte: "2026-06-30" });
+    expect(findMany.mock.calls[0][0].where.dataEmissao).toEqual({
+      gte: PISO,
+      // borda exclusiva: o dia 30/06 entra inteiro (antes o lte na meia-noite o perdia)
+      lt: new Date("2026-07-01T00:00:00Z"),
+    });
   });
 });
 

@@ -2,6 +2,7 @@
 // B4 , consultas de cotação e comissão. Framework-neutro. Fontes:
 // fato_cotacao, fato_comissao. Estruturais (0 reg ate a Matrix operar).
 import type { PrismaClient } from "@/generated/prisma/client";
+import { idsPedidosNoCorte } from "./comercial";
 
 export interface CotacaoLinha {
   odooId: number;
@@ -13,6 +14,14 @@ export interface CotacaoLinha {
 export async function fatoCotacaoCount(prisma: PrismaClient): Promise<number> {
   return prisma.fatoCotacao.count();
 }
+/**
+ * LIMITE CONHECIDO (data de início das análises): fato_cotacao NÃO tem coluna de data
+ * (nem do documento, nem de validade) , ver prisma/schema.prisma model FatoCotacao.
+ * Sem uma data materializada no fato, não existe piso a aplicar aqui. O fato está
+ * vazio hoje (a Matrix não opera cotação), então não há vazamento de histórico; quando
+ * o módulo entrar em operação, o builder precisa materializar a data da cotação e esta
+ * query passa a grampeá-la ao corte (janelaClampada), como as demais.
+ */
 export async function queryCotacoes(
   prisma: PrismaClient,
   filtros: { status?: string; ehCompra?: boolean; limite?: number },
@@ -47,14 +56,27 @@ export interface ComissaoLinha {
 export async function fatoComissaoCount(prisma: PrismaClient): Promise<number> {
   return prisma.fatoComissao.count();
 }
+/**
+ * Comissões: fato_comissao não tem data própria, mas é um lançamento SEMPRE vinculado a
+ * um pedido (documento com data). O piso da janela de análise vem do pedido pai: só
+ * entram comissões de pedidos com data_orcamento >= corte. Comissão sem pedido não tem
+ * como ser datada e, por isso, fica fora da janela analisada.
+ */
 export async function queryComissoes(
   prisma: PrismaClient,
   filtros: { participanteId?: number; pedidoId?: number; limite?: number },
 ): Promise<{ linhas: ComissaoLinha[]; total: number; truncado: boolean }> {
   const limite = filtros.limite ?? 100;
+  const pedidosNoCorte = await idsPedidosNoCorte(prisma);
+  // Quando o chamador pede um pedido específico, o recorte é a interseção: o pedido só
+  // vale se estiver dentro da janela de análise.
+  const pedidoIdIn =
+    filtros.pedidoId != null
+      ? pedidosNoCorte.filter((id) => id === filtros.pedidoId)
+      : pedidosNoCorte;
   const where = {
     ...(filtros.participanteId != null ? { participanteId: filtros.participanteId } : {}),
-    ...(filtros.pedidoId != null ? { pedidoId: filtros.pedidoId } : {}),
+    pedidoId: { in: pedidoIdIn },
   };
   const [rows, total] = await Promise.all([
     prisma.fatoComissao.findMany({ where, orderBy: { odooId: "desc" }, take: limite }),

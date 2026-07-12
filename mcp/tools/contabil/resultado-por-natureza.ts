@@ -15,6 +15,7 @@ import {
 } from "@/lib/reports/queries/contabil.js";
 import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
+import { resolverPeriodoCorte } from "../../lib/periodo-corte.js";
 
 const inputSchema = z.object({
   dataInicio: z.string().optional(),
@@ -35,6 +36,9 @@ const dados = z.object({
   receitaTotal: z.number(),
   despesaTotal: z.number(),
   resultado: z.number(),
+  /** Periodo EFETIVAMENTE coberto (ja grampeado a data de inicio das analises). */
+  periodoCoberto: z.string().optional(),
+  aviso: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -68,26 +72,38 @@ export const contabilResultadoPorNatureza: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
+    // Lancamento contabil e HISTORICO (dataLancamento). O helper de periodo da query so monta
+    // o range quando recebe data, entao sem periodo a tool varria todo o razao. Aqui o periodo
+    // e SEMPRE resolvido, com o inicio grampeado a data de inicio das analises.
+    const per = resolverPeriodoCorte(input.dataInicio, input.dataFim);
     const envelope = await withFreshness(
       ctx.prisma,
       ["fato_contabil_lancamento_item"],
       async () => {
-        const r = await queryResultadoPorNatureza(ctx.prisma, input);
+        const r = await queryResultadoPorNatureza(ctx.prisma, {
+          ...input,
+          dataInicio: per.periodoDe,
+          dataFim: per.periodoAte,
+        });
         return {
           linhas: r.linhas,
           ordenadoPor: "agregado unico (sem ordenacao)",
           receitaTotal: r.receitaTotal,
           despesaTotal: r.despesaTotal,
           resultado: r.resultado,
+          periodoCoberto: per.label,
+          ...(per.aviso ? { aviso: per.aviso } : {}),
         };
       },
     );
     if (envelope.estado === "preparando") return envelope;
     const out = enriquecerEnvelope(envelope, "contabil_resultado_por_natureza", {
+      periodo: per,
       destaque: {
         receita: envelope.dados.receitaTotal,
         despesa: envelope.dados.despesaTotal,
         resultado: envelope.dados.resultado,
+        periodoCoberto: per.label,
       },
     });
     if (out.estado === "vazio") {

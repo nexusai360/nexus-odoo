@@ -27,6 +27,12 @@ import { FAIXAS, frasesDe } from "./progresso";
 const DEPS_PADRAO: GeracaoDeps = {
   criarCliente: criarClienteConstrutorPadrao,
   logUsage: logUsagePadrao,
+  // A amostra que o critico (LLM) e o revisor (codigo) usam para decidir o formato do
+  // relatorio (escalares, cardinalidade, topN, numero de pontos da serie) sai daqui.
+  // `produtor({})` NAO le o historico inteiro: o piso da data de inicio das analises vive
+  // dentro do produtor (source-registry), entao a amostra ja nasce dentro da janela que a
+  // plataforma analisa , do contrario o critico decidiria com base em meses pre-corte
+  // ("a serie tem pontos suficientes" seria verdade so por causa deles).
   resolver: async (fato, shape) => {
     const produtor = obterProdutor(fato, shape as ShapeDerivado);
     if (!produtor) return { linhas: [] };

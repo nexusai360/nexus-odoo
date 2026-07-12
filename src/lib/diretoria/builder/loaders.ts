@@ -3,6 +3,7 @@
 // resolverBlocos faz dedupe (mesmo id usado em 2 blocos roda 1x) e tolera falha
 // (allSettled: um loader que quebra não derruba o relatório).
 import type { PrismaClient } from "@/generated/prisma/client";
+import { clampIsoAoCorte, getCorteDados } from "@/lib/corte-dados";
 import {
   queryIndicadoresEstoque,
   queryEstoquePorLocal,
@@ -71,7 +72,11 @@ export const LOADERS: Record<string, Loader> = {
   },
   // Demandas , mapa por estado (dado p/ o BrazilMap)
   "B-03": async (prisma, ctx) => {
-    const r = await queryDemandasPorUf(prisma, { ufs: ctx.escopoUfs });
+    const r = await queryDemandasPorUf(prisma, {
+      ufs: ctx.escopoUfs,
+      periodoDe: ctx.periodoDe,
+      periodoAte: ctx.periodoAte,
+    });
     return { data: r.linhas.filter((l) => l.uf !== "??").map((l) => ({ uf: l.uf, valor: l.valorTotal })) };
   },
 };
@@ -86,18 +91,28 @@ export interface ResultadoBloco {
 /**
  * Resolve os dados dos componentes informados. Dedup por id; loaders rodam em
  * paralelo com allSettled. Componente sem loader retorna ok=false (em breve).
+ *
+ * Ponto de entrada de dados do construtor: aqui a data de início das análises é lida do
+ * banco (aquece o cache de processo, senão as queries usariam o valor padrão em memória) e
+ * o contexto sai daqui com o período GRAMPEADO. Um relatório montado sem período não
+ * significa "todo o histórico": significa "do início das análises até hoje".
  */
 export async function resolverBlocos(
   prisma: PrismaClient,
   ids: string[],
   ctx: LoaderCtx = {},
 ): Promise<Map<string, ResultadoBloco>> {
+  const corte = await getCorteDados(prisma);
+  const ctxClampado: LoaderCtx = {
+    ...ctx,
+    periodoDe: clampIsoAoCorte(ctx.periodoDe ?? corte, corte),
+  };
   const unicos = [...new Set(ids)];
   const settled = await Promise.allSettled(
     unicos.map(async (id): Promise<ResultadoBloco> => {
       const loader = LOADERS[id];
       if (!loader) return { id, ok: false, erro: "sem_loader" };
-      const dado = await loader(prisma, ctx);
+      const dado = await loader(prisma, ctxClampado);
       return { id, ok: true, dado };
     }),
   );

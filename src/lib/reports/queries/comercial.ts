@@ -7,6 +7,7 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { diasAtraso } from "../../../../mcp/lib/dias-atraso";
 import { VENDA_FUTURA } from "@/lib/fiscal/regras/venda-futura-policy";
+import { corteAtualDate, janelaClampada } from "@/lib/corte-dados";
 
 // Pedidos COMERCIAIS = só operação de VENDA (categoria_operacao='venda',
 // materializada). Exclui transferência intragrupo, remessa, bonificação e entrada
@@ -14,20 +15,36 @@ import { VENDA_FUTURA } from "@/lib/fiscal/regras/venda-futura-policy";
 // "abertos"). Mesma verdade da demanda/faturamento. Ver perícia 08.
 const SO_PEDIDO_VENDA = { categoriaOperacao: "venda" as const };
 
+// Pedido é DOCUMENTO COM DATA: toda leitura respeita a data de início das análises
+// (AppSetting sync.corte_dados). A data do documento é data_orcamento , é ela que
+// define se o pedido entra na janela analisada, e não o vencimento das parcelas nem
+// a entrada em etapa. Sem período informado, o piso é o corte (uma consulta "sem
+// filtro" nunca varre o histórico inteiro). Nada é apagado: mover a data para trás
+// faz o histórico voltar na hora.
+
+/**
+ * Ids dos pedidos dentro da janela de análise (data do documento >= corte). Serve de
+ * piso para as tabelas-filhas que NÃO têm a data do documento (fato_pedido_parcela,
+ * fato_comissao): o vencimento da parcela não é a data do pedido, então o recorte
+ * precisa vir do pai. O conjunto pós-corte é o lado pequeno da relação.
+ */
+export async function idsPedidosNoCorte(prisma: PrismaClient): Promise<number[]> {
+  const rows = await prisma.fatoPedido.findMany({
+    where: { dataOrcamento: { gte: corteAtualDate() } },
+    select: { odooId: true },
+  });
+  return rows.map((r) => r.odooId);
+}
+
 export async function queryPedidosPeriodo(
   prisma: PrismaClient,
   filtros: { periodoDe?: string; periodoAte?: string },
 ): Promise<{ totalPedidos: number; valorTotal: number }> {
+  // janelaClampada: grampeia o início no corte e, sem período, usa o corte como piso.
+  const j = janelaClampada(filtros.periodoDe, filtros.periodoAte);
   const where = {
     ...SO_PEDIDO_VENDA,
-    ...(filtros.periodoDe && filtros.periodoAte
-      ? {
-          dataOrcamento: {
-            gte: new Date(`${filtros.periodoDe}T00:00:00Z`),
-            lte: new Date(`${filtros.periodoAte}T00:00:00Z`),
-          },
-        }
-      : {}),
+    dataOrcamento: { gte: j.gte, lt: j.lt },
   };
   // Usa vrProdutos (valor do pedido independente de faturamento) , consistente
   // com queryPedidosPorEtapa e queryPedidosPorVendedor. vrNf ≈ 0 para pedidos
@@ -38,24 +55,33 @@ export async function queryPedidosPeriodo(
 }
 
 /** Conta o total de pedidos cadastrados (fato_pedido). Devolve só o número,
- * sem amostra de linhas, para perguntas de contagem-total ("quantos pedidos"). */
+ * sem amostra de linhas, para perguntas de contagem-total ("quantos pedidos").
+ * Conta apenas o que está dentro da janela de análise (piso no corte). */
 export async function queryContarPedidos(
   prisma: PrismaClient,
+  filtros: { periodoDe?: string; periodoAte?: string } = {},
 ): Promise<{ total: number }> {
-  const total = await prisma.fatoPedido.count({ where: SO_PEDIDO_VENDA });
+  const j = janelaClampada(filtros.periodoDe, filtros.periodoAte);
+  const total = await prisma.fatoPedido.count({
+    where: { ...SO_PEDIDO_VENDA, dataOrcamento: { gte: j.gte, lt: j.lt } },
+  });
   return { total };
 }
 
 export async function queryPedidosPorEtapa(
   prisma: PrismaClient,
+  filtros: { periodoDe?: string; periodoAte?: string } = {},
 ): Promise<{ linhas: { etapaNome: string | null; etapaFinaliza: boolean; quantidade: number; valorTotal: number }[] }> {
   // Usa vrProdutos (valor do pedido independente de faturamento) em vez de vrNf.
   // vrNf é 0 para pedidos ainda não faturados (etapas pré-conclusão), o que
   // subnotificaria todo o pipeline em aberto , distorcendo a pergunta-alvo
   // "qual o volume por etapa". vrProdutos reflete o valor comprometido em
   // qualquer etapa. A mesma decisão se aplica a queryPedidosPorVendedor.
+  // O funil é um agregado sobre DOCUMENTOS: piso no corte (pedido de 2024 parado numa
+  // etapa não pode inflar o volume da etapa).
+  const j = janelaClampada(filtros.periodoDe, filtros.periodoAte);
   const rows = await prisma.fatoPedido.findMany({
-    where: SO_PEDIDO_VENDA,
+    where: { ...SO_PEDIDO_VENDA, dataOrcamento: { gte: j.gte, lt: j.lt } },
     select: { etapaNome: true, etapaFinaliza: true, vrProdutos: true },
   });
   // Agrupa em memória por etapaNome (não groupBy , precisa carregar etapaFinaliza)
@@ -127,6 +153,9 @@ export async function queryDemandaEmAberta(
       WHERE h.pedido_id = f.odoo_id AND h.etapa_id = f.etapa_id
     ) h ON true
     WHERE f.bucket_demanda = 'ABERTA'
+      -- Piso da janela de análise: pedido é documento com data. Sem isso, um pedido
+      -- pré-corte preso em "ABERTA" entra no total e lidera o ranking de mais parado.
+      AND f.data_orcamento >= ${corteAtualDate()}
   `;
   // Filtros em memoria (volume pequeno, ~395), evita SQL condicional. Etapa e
   // substring case-insensitive: e a ponte "demanda na etapa X" -> pedidos (com
@@ -185,6 +214,9 @@ export async function queryPedidoSituacao(
   filtros: { numero: string },
 ): Promise<{
   encontrado: boolean;
+  /** true quando existe pedido com esse número, mas ele é anterior à data de início
+   * das análises , a plataforma não o considera, então não devolvemos o conteúdo. */
+  foraDaJanela: boolean;
   pedido: {
     numero: string | null;
     etapaNome: string | null;
@@ -221,7 +253,15 @@ export async function queryPedidoSituacao(
     where: { numero: { contains: alvo, mode: "insensitive" } },
     orderBy: { dataOrcamento: "desc" },
   });
-  if (!pedido) return { encontrado: false, pedido: null, trilha: [], itens: [], pendencia: null };
+  if (!pedido) {
+    return { encontrado: false, foraDaJanela: false, pedido: null, trilha: [], itens: [], pendencia: null };
+  }
+  // Drill nominal, mas continua sendo documento com data: pedido anterior à data de
+  // início das análises não é considerado pela plataforma. O orderBy desc já traz o
+  // match mais recente, então só caímos aqui quando TODOS os candidatos são pré-corte.
+  if (pedido.dataOrcamento && pedido.dataOrcamento < corteAtualDate()) {
+    return { encontrado: false, foraDaJanela: true, pedido: null, trilha: [], itens: [], pendencia: null };
+  }
 
   const historico = await prisma.fatoPedidoHistorico.findMany({
     where: { pedidoId: pedido.odooId },
@@ -284,6 +324,7 @@ export async function queryPedidoSituacao(
 
   return {
     encontrado: true,
+    foraDaJanela: false,
     pedido: {
       numero: pedido.numero,
       etapaNome: pedido.etapaNome,
@@ -344,6 +385,9 @@ export async function queryDemandaPorProduto(
     FROM fato_pedido_item it
     JOIN fato_pedido f ON f.odoo_id = it.pedido_id
     WHERE f.bucket_demanda = 'ABERTA'
+      -- Piso da janela de análise (data do documento pai): item de pedido pré-corte
+      -- não pode somar quantidade no ranking de produto com mais demanda.
+      AND f.data_orcamento >= ${corteAtualDate()}
       AND (${empresaId}::int IS NULL OR f.empresa_id = ${empresaId}::int)
     GROUP BY it.produto_id, it.produto_nome, it.familia_nome
     ORDER BY sum(it.quantidade) DESC
@@ -404,6 +448,10 @@ export async function queryEstoqueDisponivel(
       -- faturamento (venda futura ja faturada, reservada ate a remessa).
       WHERE (f.bucket_demanda = 'ABERTA'
              OR (${VENDA_FUTURA.RESERVA_ESTOQUE_ATE_REMESSA} AND f.categoria_operacao = 'simples_faturamento'))
+        -- Piso da janela de análise no lado da DEMANDA (documento com data). O lado
+        -- do saldo (CTE saldo) é foto do estoque de hoje: não se aplica. Sem o piso,
+        -- pedido pré-corte comprometia estoque e gerava "disponível negativo" falso.
+        AND f.data_orcamento >= ${corteAtualDate()}
       GROUP BY it.produto_id
     )
     SELECT s.produto_id, s.nome AS produto_nome, s.q AS saldo,
@@ -459,6 +507,10 @@ export async function querySeriaisProduto(
            count(*) FILTER (WHERE s.data_saida IS NOT NULL)::int AS sairam
     FROM fato_serial s
     WHERE s.produto_nome ILIKE ${padrao}
+      -- "Parado" é foto de estoque (data_saida IS NULL): não se aplica o corte.
+      -- "Saiu" é MOVIMENTO datado: só conta saída dentro da janela de análise. Assim
+      -- total = parados + sairam continua fechando, sem misturar saída pré-corte.
+      AND (s.data_saida IS NULL OR s.data_saida >= ${corteAtualDate()})
     GROUP BY s.produto_nome
     ORDER BY count(*) DESC
     LIMIT 500
@@ -478,16 +530,10 @@ export async function queryPedidosPorVendedor(
   prisma: PrismaClient,
   filtros: { periodoDe?: string; periodoAte?: string },
 ): Promise<{ linhas: { vendedorNome: string | null; quantidade: number; valorTotal: number }[] }> {
+  const j = janelaClampada(filtros.periodoDe, filtros.periodoAte);
   const where = {
     ...SO_PEDIDO_VENDA,
-    ...(filtros.periodoDe && filtros.periodoAte
-      ? {
-          dataOrcamento: {
-            gte: new Date(`${filtros.periodoDe}T00:00:00Z`),
-            lte: new Date(`${filtros.periodoAte}T00:00:00Z`),
-          },
-        }
-      : {}),
+    dataOrcamento: { gte: j.gte, lt: j.lt },
   };
   // Usa vrProdutos , mesma decisão de queryPedidosPorEtapa: vrNf=0 para
   // pedidos não faturados, o que subnotificaria vendedores com pedidos em aberto.
@@ -527,9 +573,15 @@ export async function queryPedidosAtrasados(
   // devem ser contadas como atrasadas se vencem HOJE. Mesmo padrão de
   // queryTitulosVencidos (financeiro.ts:230).
   const inicioDoDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+  // A parcela não guarda a data do DOCUMENTO: o piso da janela de análise tem que vir
+  // do pedido pai (data_orcamento >= corte). Sem isso, parcela de pedido pré-corte
+  // entra como "atrasada há N dias" e infla totalAtrasado/maxDiasAtraso , mesmo bug
+  // da dívida velha já removida das contas a pagar/receber.
+  const pedidosNoCorte = await idsPedidosNoCorte(prisma);
   const where = {
     dataVencimento: { lt: inicioDoDia },
     parcelaFaturada: false,
+    pedidoId: { in: pedidosNoCorte },
   };
   // Alavanca 2b: paginacao via take/skip no SQL. orderBy por dataVencimento
   // (mais antigo primeiro = maior atraso) + desempate por odooId.
@@ -581,9 +633,14 @@ export async function queryParcelasAVencer(
   const inicioDoDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
   const ateDias = filtros.ateDias ?? 30;
   const limite = new Date(inicioDoDia.getTime() + ateDias * 24 * 60 * 60 * 1000);
+  // O vencimento aqui é futuro (nunca cai antes do corte), mas o DOCUMENTO de origem
+  // precisa estar na janela de análise: parcela de um pedido pré-corte não é receita
+  // a vencer que a plataforma considera. Piso pela data do pedido pai.
+  const pedidosNoCorte = await idsPedidosNoCorte(prisma);
   const where = {
     dataVencimento: { gte: inicioDoDia, lte: limite },
     parcelaFaturada: false,
+    pedidoId: { in: pedidosNoCorte },
   };
   // Alavanca 2b: paginacao via take/skip no SQL. orderBy estavel com desempate
   // por odooId para que "os proximos" nao repitam nem pulem parcela.

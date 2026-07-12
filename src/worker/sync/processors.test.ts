@@ -16,6 +16,10 @@ function makePrisma(tableTotal = 42, options: { syncStateFindUnique?: object } =
             findUnique: jest.fn().mockResolvedValue(options.syncStateFindUnique ?? null),
           };
         }
+        // O fim do ciclo carimba o marcador que a tela observa (registry.ts).
+        if (prop === "fatoBuildState") {
+          return { upsert: jest.fn().mockResolvedValue({}) };
+        }
         return undefined;
       },
     },

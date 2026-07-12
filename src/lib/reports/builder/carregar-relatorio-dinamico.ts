@@ -1,6 +1,11 @@
 // src/lib/reports/builder/carregar-relatorio-dinamico.ts
 // Logica (testavel, sem JSX) de carregar uma ficha salva, validar contra o
 // catalogo atual e resolver as secoes. A page server-component so consome isto.
+//
+// DATA DE INICIO DAS ANALISES: os `filtros` de runtime chegam ja grampeados pela server
+// action (relatorio-filtros.ts) e o PISO propriamente dito e aplicado no produtor de cada
+// fonte (source-registry), inclusive quando nao vem periodo nenhum. Nada aqui precisa
+// filtrar de novo , mas nada aqui pode "burlar" o periodo passando um `de` cru adiante.
 import { obterRascunho } from "./saved-report-repo";
 import { validarReportEntry } from "./report-entry-schema";
 import { resolveSecao, type SecaoResolvida } from "./resolve-source";
