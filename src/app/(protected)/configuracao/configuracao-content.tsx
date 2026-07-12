@@ -16,10 +16,8 @@ import {
 import { toast } from "sonner";
 
 import { updateSyncConfig } from "@/lib/actions/sync-config";
-import {
-  updateDiretoriaConfig,
-  type DiretoriaConfig,
-} from "@/lib/actions/diretoria-config";
+import { updateDiretoriaConfig } from "@/lib/actions/diretoria-config";
+import type { DiretoriaConfig } from "@/lib/validations/diretoria-config";
 import {
   INDICE_ESTOQUE_MIN,
   INDICE_ESTOQUE_MAX,

@@ -4,27 +4,19 @@
 // Hoje tem um parametro: o indice de valorizacao do estoque (o valor a custo e dividido por
 // ele para virar o KPI). Fonte unica do valor: src/lib/indice-estoque.ts.
 
-import { z } from "zod";
-
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import {
   INDICE_ESTOQUE_KEY,
   INDICE_ESTOQUE_PADRAO,
-  INDICE_ESTOQUE_MIN,
-  INDICE_ESTOQUE_MAX,
   indiceValido,
   invalidarCacheIndice,
 } from "@/lib/indice-estoque";
-
-export const diretoriaConfigSchema = z.object({
-  indiceValorEstoque: z
-    .number()
-    .refine(indiceValido, `Use um número entre ${INDICE_ESTOQUE_MIN} e ${INDICE_ESTOQUE_MAX}.`),
-});
-
-export type DiretoriaConfig = z.infer<typeof diretoriaConfigSchema>;
+import {
+  diretoriaConfigSchema,
+  type DiretoriaConfig,
+} from "@/lib/validations/diretoria-config";
 
 export async function getDiretoriaConfig(): Promise<DiretoriaConfig> {
   const me = await getCurrentUser();
