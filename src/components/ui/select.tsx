@@ -64,12 +64,20 @@ function SelectContent({
   align = "center",
   alignOffset = 0,
   alignItemWithTrigger = true,
+  positionerClassName,
   ...props
 }: SelectPrimitive.Popup.Props &
   Pick<
     SelectPrimitive.Positioner.Props,
     "align" | "alignOffset" | "side" | "sideOffset" | "alignItemWithTrigger"
-  >) {
+  > & {
+    /**
+     * Classe do Positioner (a camada que posiciona a lista no portal). Serve para corrigir o
+     * empilhamento quando o select vive DENTRO de outro flutuante: o popover é z-60 e o select
+     * nasce z-50, então a lista abriria ATRÁS dele. Nesses casos, passe uma z maior.
+     */
+    positionerClassName?: string;
+  }) {
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Positioner
@@ -78,7 +86,7 @@ function SelectContent({
         align={align}
         alignOffset={alignOffset}
         alignItemWithTrigger={alignItemWithTrigger}
-        className="isolate z-50"
+        className={cn("isolate z-50", positionerClassName)}
       >
         <SelectPrimitive.Popup
           data-slot="select-content"

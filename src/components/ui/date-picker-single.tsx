@@ -53,10 +53,9 @@ function rotulo(iso: string): string {
   });
 }
 
-/** "1º de janeiro de 2026" , o jeito que se le uma data de inicio em portugues. */
+/** "1 de janeiro de 2026". */
 function rotuloLimite(d: Date): string {
-  const dia = d.getDate() === 1 ? "1º" : String(d.getDate());
-  return `${dia} de ${MESES[d.getMonth()]} de ${d.getFullYear()}`;
+  return `${d.getDate()} de ${MESES[d.getMonth()]} de ${d.getFullYear()}`;
 }
 
 interface DatePickerSingleProps {
@@ -169,6 +168,7 @@ export function DatePickerSingle({
               <ChevronLeft className="size-4" />
             </Button>
 
+            {/* z acima do popover (z-60): sem isso a lista de meses abre ATRAS do calendario. */}
             <Select
               items={mesesDoAno.map((m) => ({ value: String(m.i), label: m.nome }))}
               value={String(mes)}
@@ -177,7 +177,13 @@ export function DatePickerSingle({
               <SelectTrigger aria-label="Mês" className="h-9 flex-1 capitalize">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              {/* alignItemWithTrigger=false: abre ABAIXO do seletor, como dropdown. Com o
+                  padrao (alinhar o item escolhido ao gatilho) a lista cobria o campo de data. */}
+              <SelectContent
+                positionerClassName="z-[70]"
+                className="z-[70] max-h-64"
+                alignItemWithTrigger={false}
+              >
                 {mesesDoAno.map((m) => (
                   <SelectItem key={m.i} value={String(m.i)} className="capitalize">
                     {m.nome}
@@ -194,7 +200,11 @@ export function DatePickerSingle({
               <SelectTrigger aria-label="Ano" className="h-9 w-[5.5rem] tabular-nums">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent
+                positionerClassName="z-[70]"
+                className="z-[70] max-h-64"
+                alignItemWithTrigger={false}
+              >
                 {anos.map((a) => (
                   <SelectItem key={a} value={String(a)}>
                     {a}
@@ -226,10 +236,18 @@ export function DatePickerSingle({
             disabled={{ before: minDate, after: maxDate }}
             startMonth={minDate}
             endMonth={maxDate}
-            // O cabecalho e o nosso (acima): o do react-day-picker sai de cena.
-            classNames={{ nav: "hidden", month_caption: "hidden" }}
-            // Celula maior: o calendario de 28px era pequeno demais para clicar e para ler.
-            className="p-0 [--cell-size:--spacing(10)]"
+            classNames={{
+              // O cabecalho e o nosso (acima): o do react-day-picker sai de cena.
+              nav: "hidden",
+              month_caption: "hidden",
+              // O `day` padrao arredonda so um lado quando a celula e a primeira ou a ultima da
+              // semana (regra de INTERVALO: canto esquerdo do inicio, direito do fim). Aqui e
+              // data UNICA: o dia 16 caia numa segunda-feira e o roxo saia torto, com o lado
+              // esquerdo mais redondo que o direito. Sem essas regras, o realce fica simetrico.
+              day: "group/day relative aspect-square h-full w-full cursor-pointer rounded-(--cell-radius) p-0 text-center select-none",
+            }}
+            // Celula maior (o calendario de 28px era pequeno demais) e raio igual nos 4 cantos.
+            className="p-0 [--cell-size:--spacing(10)] [&_button[data-day]]:rounded-(--cell-radius)"
           />
 
           <p className="px-0.5 text-xs text-muted-foreground">
