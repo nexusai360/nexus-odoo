@@ -171,9 +171,44 @@ function quebraPorSituacao(
 //   - `carteiraAFaturar` = o backlog, devolvido a parte para a tela mostrar como outra coisa.
 // ---------------------------------------------------------------------------
 
+
+// ---------------------------------------------------------------------------
+// Janela de COBRANCA (decisao do dono, 2026-07-12)
+//
+// "A receber" e "a pagar" nao sao a divida inteira do mundo: sao o que ja DEVERIA ter sido
+// pago mais o que vence DENTRO do periodo que a tela esta olhando.
+//
+//   - titulo vencido e ainda em aberto (de qualquer mes anterior) -> ENTRA, sempre. Uma conta
+//     de maio que ninguem pagou continua aparecendo em junho, julho, ate ser paga.
+//   - titulo que vence dentro do periodo selecionado -> ENTRA (ainda nao venceu, mas e do mes).
+//   - titulo que vence DEPOIS do fim do periodo (agosto, setembro...) -> NAO entra: nao faz
+//     sentido cobrar hoje o que so vence daqui a tres meses.
+//
+// Na pratica isso e um teto: `dataVencimento <= fim do periodo`. Sem periodo, o teto e hoje
+// (so o vencido). O piso continua sendo a data de inicio das analises, pela data do DOCUMENTO.
+// ---------------------------------------------------------------------------
+
+export interface FiltrosConta {
+  participanteId?: number;
+  /** Fim do periodo em analise (AAAA-MM-DD). Sem ele, o teto e hoje. */
+  periodoAte?: string;
+}
+
+/** Ultimo instante do dia `ate` (borda exclusiva: < dia seguinte). */
+function tetoDeVencimento(ate: string | undefined, hoje: Date): Date {
+  if (!ate) {
+    const d = new Date(hoje);
+    d.setHours(23, 59, 59, 999);
+    return d;
+  }
+  const d = new Date(`${ate.slice(0, 10)}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d;
+}
+
 export async function queryContasAReceber(
   prisma: PrismaClient,
-  filtros: { participanteId?: number },
+  filtros: FiltrosConta,
   hoje: Date,
 ): Promise<{
   titulos: TituloRow[];
@@ -190,6 +225,9 @@ export async function queryContasAReceber(
       // Marco zero: titulo de documento anterior ao corte nao e da operacao atual. Sem isso
       // o KPI somava divida antiga do Odoo (dezenas de milhoes que nao existem hoje).
       dataDocumento: { gte: corteAtualDate() },
+      // Janela de cobranca: vencido + vencendo ate o fim do periodo. O que vence depois fica
+      // de fora (nao se cobra hoje o que so vence em setembro).
+      dataVencimento: { lt: tetoDeVencimento(filtros.periodoAte, hoje) },
       ...(filtros.participanteId ? { participanteId: filtros.participanteId } : {}),
     },
     select: {
@@ -269,7 +307,7 @@ export async function queryContasAReceber(
 
 export async function queryContasAPagar(
   prisma: PrismaClient,
-  filtros: { participanteId?: number },
+  filtros: FiltrosConta,
   hoje: Date,
 ): Promise<{ titulos: TituloRow[]; totalAPagar: number; quebra: QuebraSituacao }> {
   const rows = await prisma.fatoFinanceiroTitulo.findMany({
@@ -278,6 +316,8 @@ export async function queryContasAPagar(
       vrSaldo: { gt: 0 },
       // Idem a receber: so divida cujo documento e do periodo coberto pela plataforma.
       dataDocumento: { gte: corteAtualDate() },
+      // Mesma janela de cobranca do a receber (ver o bloco acima).
+      dataVencimento: { lt: tetoDeVencimento(filtros.periodoAte, hoje) },
       ...(filtros.participanteId ? { participanteId: filtros.participanteId } : {}),
     },
     select: {

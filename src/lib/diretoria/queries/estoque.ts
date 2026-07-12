@@ -12,30 +12,52 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { clampDateAoCorte, corteAtualDate, janelaClampada } from "@/lib/corte-dados";
 import { diasRestantes, statusPrazo, type StatusPrazo } from "@/lib/diretoria/cores";
 import { VENDA_FUTURA } from "@/lib/fiscal/regras/venda-futura-policy";
+import { getIndiceEstoque, aplicarIndice } from "@/lib/indice-estoque";
 
 export interface IndicadoresEstoque {
-  /** Valor do estoque a CUSTO (quantidade x preco_custo do produto). */
+  /** O número do KPI: valor a custo DIVIDIDO pelo índice configurado (Diretoria > Vendas). */
   valorTotal: number;
+  /** O valor a custo puro, sem o índice (mostrado embaixo, para conferência). */
+  valorACusto: number;
+  /** Índice usado na divisão (padrão 0,95). */
+  indice: number;
   itens: number;
   produtos: number;
   locais: number;
   /** Produtos com saldo mas sem preco de custo cadastrado (gap visivel, nao silencioso). */
   produtosSemCusto: number;
+  /** Linhas com saldo NEGATIVO no Odoo (furo de estoque). Ficam fora do valor, mas à vista. */
+  linhasNegativas: number;
 }
 
 /**
- * A4 , Indicadores do estoque (valor total, itens, produtos e locais distintos).
+ * A4 , Indicadores do estoque (valor, itens, produtos e locais distintos).
  *
- * VALOR = quantidade x PREÇO DE CUSTO do produto (fato_produto.preco_custo). Estoque se
- * mede a custo, não a preço de venda: o `vr_saldo` que vinha do Odoo era valorizado por
- * outro critério e inflava o KPI. Produto sem custo cadastrado entra com valor zero e é
- * devolvido em `produtosSemCusto`, para o gap ficar visível em vez de virar número errado.
+ * TRÊS REGRAS, nesta ordem:
+ *
+ * 1. **Só o que ESTÁ em estoque** (`quantidade > 0`). O `fato_estoque_saldo` guarda também
+ *    linhas zeradas (produto que já saiu) e NEGATIVAS (furo de estoque: saída sem entrada
+ *    registrada no Odoo). As negativas SUBTRAÍAM do KPI , eram R$ 10,5 mi a menos no cache
+ *    real, em 219 linhas. Estoque negativo não é estoque; agora fica fora do valor e é
+ *    devolvido em `linhasNegativas` para o problema ficar visível.
+ * 2. **Valorização a CUSTO**, produto a produto: `quantidade x fato_produto.preco_custo`.
+ *    Produto sem custo cadastrado entra com zero e aparece em `produtosSemCusto`.
+ * 3. **Índice** (Configuração > Diretoria > Vendas, padrão 0,95): o valor a custo é DIVIDIDO
+ *    por ele, e é esse resultado que vira o KPI. O valor a custo puro vai junto, para a tela
+ *    poder mostrar os dois.
  */
 export async function queryIndicadoresEstoque(
   prisma: PrismaClient,
 ): Promise<IndicadoresEstoque> {
+  const indice = await getIndiceEstoque(prisma);
+
+  // Só o saldo POSITIVO: zerado não é estoque, e negativo é furo de inventário.
   const rows = await prisma.fatoEstoqueSaldo.findMany({
+    where: { quantidade: { gt: 0 } },
     select: { quantidade: true, produtoId: true, localId: true },
+  });
+  const linhasNegativas = await prisma.fatoEstoqueSaldo.count({
+    where: { quantidade: { lt: 0 } },
   });
 
   const produtoIds = [
@@ -51,7 +73,7 @@ export async function queryIndicadoresEstoque(
     catalogo.map((p) => [p.odooId, Number(p.precoCusto ?? 0)]),
   );
 
-  let valorTotal = 0;
+  let valorACusto = 0;
   let itens = 0;
   const produtos = new Set<number>();
   const locais = new Set<number>();
@@ -62,17 +84,21 @@ export async function queryIndicadoresEstoque(
     if (r.produtoId != null) {
       produtos.add(r.produtoId);
       const custo = custoPorProduto.get(r.produtoId) ?? 0;
-      if (custo <= 0 && qtd > 0) semCusto.add(r.produtoId);
-      valorTotal += qtd * custo;
+      if (custo <= 0) semCusto.add(r.produtoId);
+      valorACusto += qtd * custo;
     }
     if (r.localId != null) locais.add(r.localId);
   }
+  const arred = (v: number) => Math.round(v * 100) / 100;
   return {
-    valorTotal: Math.round(valorTotal * 100) / 100,
+    valorTotal: arred(aplicarIndice(valorACusto, indice)),
+    valorACusto: arred(valorACusto),
+    indice,
     itens,
     produtos: produtos.size,
     locais: locais.size,
     produtosSemCusto: semCusto.size,
+    linhasNegativas,
   };
 }
 
@@ -99,6 +125,8 @@ async function agrupaSaldo(
   // card da mesma tela contariam o estoque por criterios diferentes.
   const [rows, custos] = await Promise.all([
     prisma.fatoEstoqueSaldo.findMany({
+      // Mesma regra do KPI: so o saldo POSITIVO (zerado nao e estoque, negativo e furo).
+      where: { quantidade: { gt: 0 } },
       select: { [campo]: true, quantidade: true, produtoId: true },
     }),
     custoPorProduto(prisma),
@@ -219,6 +247,7 @@ export async function queryCatalogoEstoque(
   // dois valores diferentes para o mesmo estoque.
   const [rows, custos] = await Promise.all([
     prisma.fatoEstoqueSaldo.findMany({
+      where: { quantidade: { gt: 0 } },
       select: {
         produtoId: true,
         produtoNome: true,
@@ -343,6 +372,7 @@ export async function queryEstoqueGranular(
   // de valor so por causa do filtro.
   const [rows, custos] = await Promise.all([
     prisma.fatoEstoqueSaldo.findMany({
+      where: { quantidade: { gt: 0 } },
       select: { produtoId: true, produtoNome: true, familiaNome: true, marcaNome: true, localNome: true, quantidade: true },
     }),
     custoPorProduto(prisma),
@@ -512,7 +542,7 @@ export async function queryIndicadoresAvancadosEstoque(
   const diasJanela = Math.max(1, Math.round((hoje.getTime() - desde30.getTime()) / MS));
 
   const [saldos, custos, vendidos, seriais] = await Promise.all([
-    prisma.fatoEstoqueSaldo.findMany({ select: { quantidade: true, produtoId: true } }),
+    prisma.fatoEstoqueSaldo.findMany({ where: { quantidade: { gt: 0 } }, select: { quantidade: true, produtoId: true } }),
     // Mesma valorizacao a CUSTO do KPI: o giro e a cobertura sao lidos lado a lado com ele.
     custoPorProduto(prisma),
     prisma.fatoNotaFiscalItem.findMany({

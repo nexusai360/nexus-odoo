@@ -5,6 +5,7 @@
 // sem Prisma (rodam no client). Os blocos de compras não dependem destas
 // dimensões e ficam intactos.
 
+import { INDICE_ESTOQUE_PADRAO } from "@/lib/indice-estoque";
 import type { LinhaAgrupada, CatalogoModelo, IndicadoresEstoque, LinhaEstoqueGranular } from "@/lib/diretoria/queries/estoque";
 
 export type { LinhaEstoqueGranular };
@@ -77,12 +78,18 @@ export function derivarIndicadores(linhas: LinhaEstoqueGranular[]): IndicadoresE
     locais.add(l.local);
   }
   return {
+    // O KPI e o valor a custo dividido pelo indice (Configuracao > Diretoria > Vendas). Aqui
+    // as linhas ja vem valorizadas a custo; o indice e aplicado pelo chamador/servidor, entao
+    // esta derivacao (usada nos filtros cruzados do construtor) devolve os dois iguais.
     valorTotal,
+    valorACusto: valorTotal,
+    indice: INDICE_ESTOQUE_PADRAO,
     itens,
     produtos: produtos.size,
     locais: locais.size,
     // Esta derivacao ja recebe as linhas valorizadas; o gap de custo e apurado na query.
     produtosSemCusto: 0,
+    linhasNegativas: 0,
   };
 }
 

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { Settings } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { getSyncConfig, getSyncState, getFatosState } from "@/lib/actions/sync-config";
+import { getDiretoriaConfig } from "@/lib/actions/diretoria-config";
 import { obterAcessoRelatorios2 } from "@/lib/reports/acesso-relatorios2";
 import { obterMenuAccess } from "@/lib/nav/menu-access";
 import { PageShell } from "@/components/layout/page-shell";
@@ -18,8 +19,9 @@ export default async function ConfiguracaoPage() {
   if (!user) redirect("/login");
   if (user.platformRole !== "super_admin") redirect("/dashboard");
 
-  const [config, estado, fatos, acessoRel2, menuAccess] = await Promise.all([
+  const [config, diretoria, estado, fatos, acessoRel2, menuAccess] = await Promise.all([
     getSyncConfig(),
+    getDiretoriaConfig(),
     getSyncState(),
     getFatosState(),
     obterAcessoRelatorios2(),
@@ -33,7 +35,7 @@ export default async function ConfiguracaoPage() {
         title="Configuração"
         subtitle="Configure os intervalos de sincronização e acompanhe o estado da ingestão"
       />
-      <ConfiguracaoContent config={config} estado={estado} fatos={fatos} />
+      <ConfiguracaoContent config={config} diretoria={diretoria} estado={estado} fatos={fatos} />
 
       {/* Acesso aos menus por perfil (todos os menus do sidebar) */}
       <div className="mt-6">

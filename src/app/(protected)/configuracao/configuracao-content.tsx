@@ -10,11 +10,19 @@ import {
   ChevronDown,
   Clock,
   Database,
+  TrendingUp,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { updateSyncConfig } from "@/lib/actions/sync-config";
+import { updateDiretoriaConfig } from "@/lib/actions/diretoria-config";
+import type { DiretoriaConfig } from "@/lib/validations/diretoria-config";
+import {
+  INDICE_ESTOQUE_MIN,
+  INDICE_ESTOQUE_MAX,
+  INDICE_ESTOQUE_PADRAO,
+} from "@/lib/indice-estoque";
 import { DatePickerSingle } from "@/components/ui/date-picker-single";
 import { CORTE_DADOS_MINIMO } from "@/lib/corte-dados";
 import {
@@ -97,6 +105,7 @@ type ConfigIntervalo = Exclude<keyof Config, "corteDados">;
 
 interface Props {
   config: Config;
+  diretoria: DiretoriaConfig;
   estado: SyncStateRow[];
   fatos: FatoStateRow[];
 }
@@ -677,7 +686,7 @@ function latestDate(estado: SyncStateRow[], field: keyof Pick<SyncStateRow, "las
   return max;
 }
 
-export function ConfiguracaoContent({ config, estado, fatos }: Props) {
+export function ConfiguracaoContent({ config, diretoria, estado, fatos }: Props) {
   const [form, setForm] = useState<Config>(config);
   const [pending, startTransition] = useTransition();
   const [estadoOpen, setEstadoOpen] = useState(false);
@@ -863,6 +872,8 @@ export function ConfiguracaoContent({ config, estado, fatos }: Props) {
         </CardContent>
       </Card>
 
+      <CardDiretoriaVendas inicial={diretoria} />
+
       <EstadoModal
         estado={estado}
         fatos={fatos}
@@ -870,5 +881,78 @@ export function ConfiguracaoContent({ config, estado, fatos }: Props) {
         onOpenChange={setEstadoOpen}
       />
     </motion.div>
+  );
+}
+
+
+// ---------------------------------------------------------------------------
+// Diretoria > Vendas , o índice de valorização do estoque
+//
+// O KPI "Valor em estoque" mostra o valor a custo DIVIDIDO por este índice (padrão 0,95).
+// Fica aqui, e não no bloco de sincronização, porque é regra de NEGÓCIO da diretoria, não
+// de ingestão.
+// ---------------------------------------------------------------------------
+
+function CardDiretoriaVendas({ inicial }: { inicial: DiretoriaConfig }) {
+  const [indice, setIndice] = useState<string>(String(inicial.indiceValorEstoque));
+  const [pendente, startTransition] = useTransition();
+
+  const valor = Number(indice.replace(",", "."));
+  const valido =
+    Number.isFinite(valor) && valor >= INDICE_ESTOQUE_MIN && valor <= INDICE_ESTOQUE_MAX;
+  const mudou = valido && valor !== inicial.indiceValorEstoque;
+
+  function salvarIndice() {
+    if (!mudou || !valido) return;
+    startTransition(async () => {
+      try {
+        await updateDiretoriaConfig({ indiceValorEstoque: valor });
+        toast.success(`Índice salvo. O valor em estoque passa a ser dividido por ${valor}.`);
+      } catch {
+        toast.error("Falha ao salvar o índice");
+      }
+    });
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <TrendingUp className="h-4 w-4 text-muted-foreground" aria-hidden />
+          Diretoria · Vendas
+        </CardTitle>
+        <CardDescription>
+          Regras de negócio dos indicadores da diretoria.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-8">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="indice-estoque">Índice do valor em estoque</Label>
+            <Input
+              id="indice-estoque"
+              inputMode="decimal"
+              value={indice}
+              onChange={(e) => setIndice(e.target.value)}
+              aria-invalid={!valido}
+              className="h-10 w-40 tabular-nums"
+            />
+          </div>
+          <p className="max-w-lg flex-1 text-xs leading-relaxed text-balance text-muted-foreground sm:pt-8">
+            O valor do estoque a custo é dividido por este índice, e é o resultado que aparece
+            no KPI. Padrão {INDICE_ESTOQUE_PADRAO.toLocaleString("pt-BR")}. O valor sem a
+            divisão continua visível no card, embaixo.
+          </p>
+        </div>
+        {!valido && (
+          <p role="alert" className="text-xs text-destructive">
+            Use um número entre {INDICE_ESTOQUE_MIN} e {INDICE_ESTOQUE_MAX}.
+          </p>
+        )}
+        <Button onClick={salvarIndice} disabled={!mudou || pendente}>
+          {pendente ? "Salvando…" : "Salvar"}
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
