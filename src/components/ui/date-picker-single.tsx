@@ -197,7 +197,12 @@ export function DatePickerSingle({
               value={String(ano)}
               onValueChange={(v) => irPara(Number(v), mes)}
             >
-              <SelectTrigger aria-label="Ano" className="h-9 w-[5.5rem] tabular-nums">
+              {/* Caixa enxuta (o ano tem 4 digitos, nao precisava de 5,5rem) e um respiro a
+                  esquerda para o numero nao encostar na borda. */}
+              <SelectTrigger
+                aria-label="Ano"
+                className="h-9 w-[4.5rem] gap-1 pr-1 pl-2.5 tabular-nums"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent
@@ -246,8 +251,15 @@ export function DatePickerSingle({
               // esquerdo mais redondo que o direito. Sem essas regras, o realce fica simetrico.
               day: "group/day relative aspect-square h-full w-full cursor-pointer rounded-(--cell-radius) p-0 text-center select-none",
             }}
-            // Celula maior (o calendario de 28px era pequeno demais) e raio igual nos 4 cantos.
-            className="p-0 [--cell-size:--spacing(10)] [&_button[data-day]]:rounded-(--cell-radius)"
+            className={cn(
+              // Celula maior (o calendario de 28px era pequeno demais) e raio igual nos 4 cantos.
+              "p-0 [--cell-size:--spacing(10)] [&_button[data-day]]:rounded-(--cell-radius)",
+              // O botao do dia e `ghost`, e o hover dele pinta o fundo por cima do roxo da
+              // selecao: passar o mouse no dia escolhido apagava o realce. Aqui o dia
+              // selecionado mantem o roxo (e o texto legivel) tambem no hover.
+              "[&_button[data-selected-single=true]:hover]:bg-primary [&_button[data-selected-single=true]:hover]:text-primary-foreground",
+              "dark:[&_button[data-selected-single=true]:hover]:text-primary-foreground",
+            )}
           />
 
           <p className="px-0.5 text-xs text-muted-foreground">
