@@ -163,8 +163,8 @@ describe("queryContasAReceber", () => {
   it("devolve quebra confirmado/provisório por situacaoSimples", async () => {
     const prisma = makePrisma();
     (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([
-      { participanteNome: "A", numeroDocumento: "1", dataVencimento: null, vrSaldo: "100.00", vrTotal: "100.00", situacaoSimples: "aberto" },
-      { participanteNome: "B", numeroDocumento: "2", dataVencimento: null, vrSaldo: "30.00", vrTotal: "30.00", situacaoSimples: "provisorio" },
+      { participanteNome: "A", numeroDocumento: "1", dataVencimento: null, vrSaldo: "100.00", vrTotal: "100.00", situacaoSimples: "aberto", notaFiscalId: 11, pedidoId: null, pedidoFaturado: false },
+      { participanteNome: "B", numeroDocumento: "2", dataVencimento: null, vrSaldo: "30.00", vrTotal: "30.00", situacaoSimples: "provisorio", notaFiscalId: 12, pedidoId: null, pedidoFaturado: false },
     ]);
     const result = await queryContasAReceber(prisma as never, {}, hoje);
     expect(result.totalAReceber).toBeCloseTo(130);
@@ -193,8 +193,8 @@ describe("queryContasAReceber", () => {
     const prisma = makePrisma();
     // Fixture no formato finan.lancamento: vrSaldo == vrDocumento quando aberto
     (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([
-      { participanteNome: "Empresa A", numeroDocumento: "NF-001", dataVencimento: new Date("2026-05-10"), vrSaldo: "9700.50", vrTotal: "9700.50" },
-      { participanteNome: "Empresa B", numeroDocumento: "NF-002", dataVencimento: null, vrSaldo: "5314.75", vrTotal: "5314.75" },
+      { participanteNome: "Empresa A", numeroDocumento: "NF-001", dataVencimento: new Date("2026-05-10"), vrSaldo: "9700.50", vrTotal: "9700.50", notaFiscalId: 11, pedidoId: null, pedidoFaturado: false },
+      { participanteNome: "Empresa B", numeroDocumento: "NF-002", dataVencimento: null, vrSaldo: "5314.75", vrTotal: "5314.75", notaFiscalId: 12, pedidoId: null, pedidoFaturado: false },
     ]);
     const result = await queryContasAReceber(prisma as never, {}, hoje);
     expect(result.titulos[0].diasAtraso).toBe(8); // 18 - 10 = 8 dias
@@ -203,6 +203,46 @@ describe("queryContasAReceber", () => {
     expect(result.titulos[0].vrTotal).toBeCloseTo(9700.50);
     // totalAReceber usa vrSaldo
     expect(result.totalAReceber).toBeCloseTo(15015.25);
+  });
+
+
+  // ─── Recebível x carteira (perícia de 2026-07-12) ──────────────────────────
+  // O Odoo da Tauga gera o financeiro pelo PEDIDO ou pela NOTA. Somar os dois punha
+  // R$ 30,9 mi de pedidos SEM nota emitida dentro do "A receber".
+
+  it("pedido AINDA SEM nota emitida é carteira, não conta a receber", async () => {
+    const prisma = makePrisma();
+    (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([
+      { participanteNome: "Cliente X", numeroDocumento: "PV-1/26", dataVencimento: null, vrSaldo: "1000.00", vrTotal: "1000.00", situacaoSimples: "aberto", pedidoId: 500, notaFiscalId: null, pedidoFaturado: false },
+    ]);
+    const r = await queryContasAReceber(prisma as never, {}, hoje);
+    expect(r.totalAReceber).toBe(0);
+    expect(r.carteiraAFaturar).toBeCloseTo(1000);
+    expect(r.titulosCarteira).toHaveLength(1);
+    expect(r.titulos).toHaveLength(0);
+  });
+
+  it("título de pedido JÁ faturado é recebível (modo financeiro pelo pedido, sem duplicata)", async () => {
+    const prisma = makePrisma();
+    (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([
+      { participanteNome: "Cliente Y", numeroDocumento: "PV-2/26", dataVencimento: null, vrSaldo: "2000.00", vrTotal: "2000.00", situacaoSimples: "aberto", pedidoId: 600, notaFiscalId: null, pedidoFaturado: true },
+    ]);
+    const r = await queryContasAReceber(prisma as never, {}, hoje);
+    expect(r.totalAReceber).toBeCloseTo(2000);
+    expect(r.carteiraAFaturar).toBe(0);
+  });
+
+  it("pedido com duplicata de NF: conta UMA vez (a duplicata manda, o título do pedido sai)", async () => {
+    const prisma = makePrisma();
+    (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([
+      // Mesmo pedido, os dois títulos abertos: era dupla contagem (R$ 547 mil no cache real).
+      { participanteNome: "Cliente Z", numeroDocumento: "1-99/1", dataVencimento: null, vrSaldo: "5000.00", vrTotal: "5000.00", situacaoSimples: "aberto", pedidoId: 700, notaFiscalId: 90, pedidoFaturado: true },
+      { participanteNome: "Cliente Z", numeroDocumento: "PV-3/26", dataVencimento: null, vrSaldo: "5000.00", vrTotal: "5000.00", situacaoSimples: "aberto", pedidoId: 700, notaFiscalId: null, pedidoFaturado: true },
+    ]);
+    const r = await queryContasAReceber(prisma as never, {}, hoje);
+    expect(r.totalAReceber).toBeCloseTo(5000);
+    expect(r.titulos).toHaveLength(1);
+    expect(r.carteiraAFaturar).toBe(0);
   });
 
   it("título quitado não aparece (banco não devolve , filtro situacaoSimples='aberto')", async () => {
@@ -278,6 +318,46 @@ describe("queryContasAPagar", () => {
     expect(result.titulos[0].vrTotal).toBeCloseTo(5314.75);
     // totalAPagar usa vrSaldo
     expect(result.totalAPagar).toBeCloseTo(5314.75);
+  });
+
+
+  // ─── Recebível x carteira (perícia de 2026-07-12) ──────────────────────────
+  // O Odoo da Tauga gera o financeiro pelo PEDIDO ou pela NOTA. Somar os dois punha
+  // R$ 30,9 mi de pedidos SEM nota emitida dentro do "A receber".
+
+  it("pedido AINDA SEM nota emitida é carteira, não conta a receber", async () => {
+    const prisma = makePrisma();
+    (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([
+      { participanteNome: "Cliente X", numeroDocumento: "PV-1/26", dataVencimento: null, vrSaldo: "1000.00", vrTotal: "1000.00", situacaoSimples: "aberto", pedidoId: 500, notaFiscalId: null, pedidoFaturado: false },
+    ]);
+    const r = await queryContasAReceber(prisma as never, {}, hoje);
+    expect(r.totalAReceber).toBe(0);
+    expect(r.carteiraAFaturar).toBeCloseTo(1000);
+    expect(r.titulosCarteira).toHaveLength(1);
+    expect(r.titulos).toHaveLength(0);
+  });
+
+  it("título de pedido JÁ faturado é recebível (modo financeiro pelo pedido, sem duplicata)", async () => {
+    const prisma = makePrisma();
+    (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([
+      { participanteNome: "Cliente Y", numeroDocumento: "PV-2/26", dataVencimento: null, vrSaldo: "2000.00", vrTotal: "2000.00", situacaoSimples: "aberto", pedidoId: 600, notaFiscalId: null, pedidoFaturado: true },
+    ]);
+    const r = await queryContasAReceber(prisma as never, {}, hoje);
+    expect(r.totalAReceber).toBeCloseTo(2000);
+    expect(r.carteiraAFaturar).toBe(0);
+  });
+
+  it("pedido com duplicata de NF: conta UMA vez (a duplicata manda, o título do pedido sai)", async () => {
+    const prisma = makePrisma();
+    (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([
+      // Mesmo pedido, os dois títulos abertos: era dupla contagem (R$ 547 mil no cache real).
+      { participanteNome: "Cliente Z", numeroDocumento: "1-99/1", dataVencimento: null, vrSaldo: "5000.00", vrTotal: "5000.00", situacaoSimples: "aberto", pedidoId: 700, notaFiscalId: 90, pedidoFaturado: true },
+      { participanteNome: "Cliente Z", numeroDocumento: "PV-3/26", dataVencimento: null, vrSaldo: "5000.00", vrTotal: "5000.00", situacaoSimples: "aberto", pedidoId: 700, notaFiscalId: null, pedidoFaturado: true },
+    ]);
+    const r = await queryContasAReceber(prisma as never, {}, hoje);
+    expect(r.totalAReceber).toBeCloseTo(5000);
+    expect(r.titulos).toHaveLength(1);
+    expect(r.carteiraAFaturar).toBe(0);
   });
 
   it("título quitado não aparece (banco não devolve , filtro situacaoSimples='aberto')", async () => {

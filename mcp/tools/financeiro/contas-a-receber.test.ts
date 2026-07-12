@@ -46,6 +46,10 @@ describe("financeiro_contas_a_receber", () => {
         dataVencimento: new Date("2026-05-10"),
         vrSaldo: "9700.50",
         vrTotal: "9700.50",
+        // Duplicata de NF = ja faturado = recebivel de verdade.
+        notaFiscalId: 11,
+        pedidoId: null,
+        pedidoFaturado: false,
       },
     ]);
     const result = await financeiroContasAReceber.handler({}, ctx);
@@ -68,7 +72,7 @@ describe("financeiro_contas_a_receber", () => {
       { model: "finan.pagamento.divida", lastStatus: "ok", lastSnapshotAt: null, lastIncrementalAt: now },
     ]);
     (ctx.prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([
-      { participanteNome: null, numeroDocumento: null, dataVencimento: null, vrSaldo: "100.00", vrTotal: "100.00" },
+      { participanteNome: null, numeroDocumento: null, dataVencimento: null, vrSaldo: "100.00", vrTotal: "100.00", notaFiscalId: 11, pedidoId: null, pedidoFaturado: false },
     ]);
     const result = await financeiroContasAReceber.handler({}, ctx);
     if (result.estado !== "preparando") {
@@ -90,7 +94,7 @@ describe("financeiro_contas_a_receber", () => {
     ]);
     // Mock simula o banco já tendo filtrado por situacaoSimples='aberto' (finan.lancamento)
     (ctx.prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([
-      { participanteNome: "Empresa A", numeroDocumento: "NF-001", dataVencimento: new Date("2026-05-10"), vrSaldo: "9700.50", vrTotal: "9700.50" },
+      { participanteNome: "Empresa A", numeroDocumento: "NF-001", dataVencimento: new Date("2026-05-10"), vrSaldo: "9700.50", vrTotal: "9700.50", notaFiscalId: 11, pedidoId: null, pedidoFaturado: false },
     ]);
     const result = await financeiroContasAReceber.handler({}, ctx);
     if (result.estado !== "preparando") {

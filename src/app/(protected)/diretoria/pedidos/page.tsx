@@ -44,6 +44,7 @@ export default async function DiretoriaPedidosPage() {
   const data: PedidosData = {
     indicadores,
     aReceber: aReceber.totalAReceber,
+    carteiraAFaturar: aReceber.carteiraAFaturar,
     porUf,
     pendentes,
     porEtapa: porEtapa.linhas,

@@ -89,6 +89,7 @@ export default async function DiretoriaVisaoGeralPage({
     ticketMedio: vendas.ticketMedio,
     numPedidos: vendas.numPedidos,
     aReceber: aReceber.totalAReceber,
+    carteiraAFaturar: aReceber.carteiraAFaturar,
     aPagar: aPagar.totalAPagar,
     valorEstoque: estoque.valorTotal,
     produtos: estoque.produtos,

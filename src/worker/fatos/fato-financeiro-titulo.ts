@@ -24,6 +24,12 @@ export interface FatoFinanceiroTituloRow {
   contaId: number | null;
   contaNome: string | null;
   numeroDocumento: string | null;
+  /** Pedido de origem (o Odoo da Tauga gera financeiro pelo PEDIDO ou pela NOTA). */
+  pedidoId: number | null;
+  /** Nota fiscal de origem, quando o titulo e duplicata de NF. */
+  notaFiscalId: number | null;
+  /** O pedido de origem ja tem NF de venda autorizada (preenchido no rebuild). */
+  pedidoFaturado: boolean;
   dataDocumento: Date | null;
   dataVencimento: Date | null;
   dataPagamento: Date | null;
@@ -42,7 +48,20 @@ export interface FatoFinanceiroTituloRow {
 /** Tipos de finan.lancamento que são títulos da carteira (não lançamentos de caixa). */
 const TIPOS_TITULO = new Set(["a_receber", "a_pagar"]);
 
-export function mapTituloRow(raw: Record<string, unknown>): FatoFinanceiroTituloRow {
+export function mapTituloRow(
+  raw: Record<string, unknown>,
+  /** Pedidos que ja tem NF de venda autorizada. Vazio = ninguem faturado (uso em teste). */
+  pedidosFaturados: ReadonlySet<number> = new Set(),
+  /** Pedido de cada NF (nf_id -> pedido_id), para a duplicata saber de que pedido veio. */
+  pedidoDaNota: ReadonlyMap<number, number> = new Map(),
+): FatoFinanceiroTituloRow {
+  const notaFiscalId = relId(raw.sped_documento_id as OdooM2O);
+  // O titulo aponta para o pedido diretamente (financeiro pelo pedido) ou, quando e duplicata
+  // de NF, herda o pedido da nota , e assim os dois lados falam do MESMO pedido.
+  const pedidoId =
+    relId(raw.pedido_id as OdooM2O) ??
+    (notaFiscalId != null ? pedidoDaNota.get(notaFiscalId) ?? null : null);
+
   return {
     odooId: Number(raw.id),
     // tipo é campo direto da fonte: 'a_receber' | 'a_pagar'
@@ -53,6 +72,9 @@ export function mapTituloRow(raw: Record<string, unknown>): FatoFinanceiroTitulo
     contaNome: relNome(raw.conta_id as OdooM2O),
     // campo real é "numero"
     numeroDocumento: typeof raw.numero === "string" ? raw.numero : null,
+    pedidoId,
+    notaFiscalId,
+    pedidoFaturado: pedidoId != null && pedidosFaturados.has(pedidoId),
     // I2: sufixo T00:00:00 força parsing como hora local, evitando desvio UTC→GMT-3.
     dataDocumento: typeof raw.data_documento === "string" ? new Date(`${raw.data_documento}T00:00:00Z`) : null,
     dataVencimento: typeof raw.data_vencimento === "string" ? new Date(`${raw.data_vencimento}T00:00:00Z`) : null,
@@ -71,14 +93,52 @@ export function mapTituloRow(raw: Record<string, unknown>): FatoFinanceiroTitulo
   };
 }
 
+/** NF de venda autorizada, saida (o que prova que o pedido virou faturamento). */
+interface NotaOrigemRow {
+  odoo_id: number;
+  pedido_id: number | null;
+  faturou: boolean;
+}
+
+/**
+ * Le, do raw das notas, o pedido de cada NF e quais pedidos ja foram faturados de verdade
+ * (NF de SAIDA, AUTORIZADA, com operacao de venda). E o que separa recebivel de carteira.
+ */
+async function origensDeNota(prisma: PrismaClient): Promise<{
+  pedidoDaNota: Map<number, number>;
+  pedidosFaturados: Set<number>;
+}> {
+  const rows = await prisma.$queryRaw<NotaOrigemRow[]>`
+    SELECT
+      odoo_id,
+      CASE WHEN (data->'pedido_id'->>0) ~ '^[0-9]+$' THEN (data->'pedido_id'->>0)::int END AS pedido_id,
+      (
+        data->>'entrada_saida' = '1'
+        AND data->>'situacao_nfe' = 'autorizada'
+        AND coalesce(data->'operacao_id'->>1, '') ILIKE '%venda%'
+      ) AS faturou
+    FROM raw_sped_documento
+    WHERE coalesce(raw_deleted, false) = false`;
+
+  const pedidoDaNota = new Map<number, number>();
+  const pedidosFaturados = new Set<number>();
+  for (const r of rows) {
+    if (r.pedido_id == null) continue;
+    pedidoDaNota.set(r.odoo_id, r.pedido_id);
+    if (r.faturou) pedidosFaturados.add(r.pedido_id);
+  }
+  return { pedidoDaNota, pedidosFaturados };
+}
+
 /** Reconstrói fato_financeiro_titulo a partir de raw_finan_lancamento.
  * Filtra tipo IN ('a_receber','a_pagar') , descarta lançamentos de caixa. */
 export async function rebuildFatoFinanceiroTitulo(
   prisma: PrismaClient,
 ): Promise<number> {
-  const rawRows = await prisma.rawFinanLancamento.findMany({
-    where: { rawDeleted: false },
-  });
+  const [rawRows, origens] = await Promise.all([
+    prisma.rawFinanLancamento.findMany({ where: { rawDeleted: false } }),
+    origensDeNota(prisma),
+  ]);
   // Filtro em memória: tipo deve ser título da carteira
   const tituloRows = rawRows.filter((r) => {
     const data = r.data as Record<string, unknown>;
@@ -86,7 +146,11 @@ export async function rebuildFatoFinanceiroTitulo(
     return TIPOS_TITULO.has(tipo);
   });
   const mapped = tituloRows.map((r) =>
-    mapTituloRow(r.data as Record<string, unknown>),
+    mapTituloRow(
+      r.data as Record<string, unknown>,
+      origens.pedidosFaturados,
+      origens.pedidoDaNota,
+    ),
   );
   await prisma.$transaction(
     async (tx) => {

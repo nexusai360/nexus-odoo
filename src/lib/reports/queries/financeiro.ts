@@ -159,13 +159,30 @@ function quebraPorSituacao(
 //   provisório; alinhado a financeiro_liquidez e à dívida real. A quebra
 //   (confirmado/provisório) é devolvida para transparência.
 // totalAReceber usa vrSaldo (= valor correto a receber em aberto na nova fonte).
+//
+// RECEBIVEL x CARTEIRA (pericia de 2026-07-12): o Odoo da Tauga gera o financeiro de dois
+// jeitos, por pedido ("financeiro pelo pedido") ou por nota (duplicata), e o KPI somava os
+// dois indiscriminadamente. Resultado: R$ 49,2 mi, dos quais R$ 30,9 mi eram PEDIDOS SEM
+// NENHUMA NOTA EMITIDA , receita contratada, parada em etapas pre-faturamento (gera boleto,
+// fracionar, input financeiro). Isso e CARTEIRA, nao dinheiro a receber.
+// Agora:
+//   - `totalAReceber` = so o que ja foi faturado (duplicata de NF, ou titulo de pedido que ja
+//     tem NF de venda autorizada), sem dupla contagem quando o pedido tem os dois;
+//   - `carteiraAFaturar` = o backlog, devolvido a parte para a tela mostrar como outra coisa.
 // ---------------------------------------------------------------------------
 
 export async function queryContasAReceber(
   prisma: PrismaClient,
   filtros: { participanteId?: number },
   hoje: Date,
-): Promise<{ titulos: TituloRow[]; totalAReceber: number; quebra: QuebraSituacao }> {
+): Promise<{
+  titulos: TituloRow[];
+  totalAReceber: number;
+  quebra: QuebraSituacao;
+  /** Pedidos sem NF: receita contratada, ainda NAO faturada. Nao e conta a receber. */
+  carteiraAFaturar: number;
+  titulosCarteira: TituloRow[];
+}> {
   const rows = await prisma.fatoFinanceiroTitulo.findMany({
     where: {
       tipo: "a_receber",
@@ -183,6 +200,9 @@ export async function queryContasAReceber(
       vrSaldo: true,
       vrTotal: true,
       situacaoSimples: true,
+      pedidoId: true,
+      notaFiscalId: true,
+      pedidoFaturado: true,
     },
     // Contrato de lista (Fase B): ordenacao deterministica, maiores primeiro.
     orderBy: [{ vrSaldo: "desc" }, { odooId: "asc" }],
@@ -193,7 +213,14 @@ export async function queryContasAReceber(
   // mi em 192 titulos no cache: inflavam o KPI da diretoria.
   const externos = await filtrarTitulosExternos(prisma, rows);
 
-  const titulos: TituloRow[] = externos.map((r) => ({
+  // Pedido que JA tem duplicata de NF aberta: o titulo do proprio pedido foi substituido por
+  // ela e nao pode somar de novo (dupla contagem , R$ 547 mil no cache em 2026-07-12).
+  const pedidosComDuplicata = new Set<number>();
+  for (const r of externos) {
+    if (r.notaFiscalId != null && r.pedidoId != null) pedidosComDuplicata.add(r.pedidoId);
+  }
+
+  const paraLinha = (r: (typeof externos)[number]): TituloRow => ({
     participanteNome: r.participanteNome,
     numeroDocumento: r.numeroDocumento,
     dataVencimento: r.dataVencimento,
@@ -201,10 +228,33 @@ export async function queryContasAReceber(
     vrTotal: Number(r.vrTotal),
     diasAtraso: calcDiasAtraso(r.dataVencimento, hoje),
     situacaoSimples: r.situacaoSimples,
-  }));
+  });
+
+  const titulos: TituloRow[] = [];
+  const titulosCarteira: TituloRow[] = [];
+  for (const r of externos) {
+    const duplicataDeNota = r.notaFiscalId != null;
+    const doPedido = !duplicataDeNota;
+    // Recebivel de verdade: a duplicata da NF, ou o titulo de um pedido JA faturado (o Odoo
+    // da Tauga tambem opera no modo "financeiro pelo pedido", em que a duplicata nao nasce).
+    const jaFaturado = duplicataDeNota || r.pedidoFaturado;
+    // ...menos o caso em que o pedido tem os DOIS: a duplicata manda, o titulo do pedido sai.
+    const substituidoPelaDuplicata =
+      doPedido && r.pedidoId != null && pedidosComDuplicata.has(r.pedidoId);
+
+    if (jaFaturado && !substituidoPelaDuplicata) titulos.push(paraLinha(r));
+    else if (!jaFaturado) titulosCarteira.push(paraLinha(r));
+  }
 
   const totalAReceber = titulos.reduce((acc, t) => acc + t.vrSaldo, 0);
-  return { titulos, totalAReceber, quebra: quebraPorSituacao(titulos) };
+  const carteiraAFaturar = titulosCarteira.reduce((acc, t) => acc + t.vrSaldo, 0);
+  return {
+    titulos,
+    totalAReceber,
+    quebra: quebraPorSituacao(titulos),
+    carteiraAFaturar,
+    titulosCarteira,
+  };
 }
 
 // ---------------------------------------------------------------------------

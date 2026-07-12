@@ -26,7 +26,10 @@ export interface VisaoGeralData {
   faturamento: number;
   ticketMedio: number;
   numPedidos: number;
+  /** Recebível de verdade: só o que já foi faturado (duplicata de NF ou pedido com NF). */
   aReceber: number;
+  /** Pedidos ainda sem nota: receita contratada, não dinheiro a receber. */
+  carteiraAFaturar: number;
   aPagar: number;
   valorEstoque: number;
   produtos: number;
@@ -53,7 +56,20 @@ export function VisaoGeralScreen({ data }: { data: VisaoGeralData }) {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
         <KpiButton rotulo="Faturamento" valor={brlCompacto(data.faturamento)} valorCompleto={brl.format(data.faturamento)} icone={TrendingUp} hint={daEmpresa("Vendas no período")} />
         <KpiButton rotulo="Ticket médio" valor={brlCompacto(data.ticketMedio)} valorCompleto={brl.format(data.ticketMedio)} icone={Receipt} tone="info" hint={`${num.format(data.numPedidos)} pedidos`} />
-        <KpiButton rotulo="A receber" valor={brlCompacto(data.aReceber)} valorCompleto={brl.format(data.aReceber)} icone={HandCoins} tone="warning" hint={doGrupo("Clientes em aberto")} />
+        {/* Só o faturado. O que ainda não virou nota aparece como carteira, no lugar de inflar
+            o recebível (eram R$ 31 mi de pedidos sem NF somados aqui). */}
+        <KpiButton
+          rotulo="A receber"
+          valor={brlCompacto(data.aReceber)}
+          valorCompleto={brl.format(data.aReceber)}
+          icone={HandCoins}
+          tone="warning"
+          hint={doGrupo(
+            data.carteiraAFaturar > 0
+              ? `Faturado · ${brlCompacto(data.carteiraAFaturar)} em carteira a faturar`
+              : "Clientes em aberto, já faturado",
+          )}
+        />
         <KpiButton rotulo="A pagar" valor={brlCompacto(data.aPagar)} valorCompleto={brl.format(data.aPagar)} icone={Wallet} tone="warning" hint={doGrupo("Fornecedores em aberto")} />
         <KpiButton rotulo="Valor em estoque" valor={brlCompacto(data.valorEstoque)} valorCompleto={brl.format(data.valorEstoque)} icone={Boxes} hint={doGrupo(`${num.format(data.produtos)} produtos`)} />
         <KpiButton rotulo="Demandas a entregar" valor={num.format(data.demandasTotal)} icone={Truck} tone={data.demandasAtrasadas > 0 ? "danger" : "info"} hint={doGrupo(`${num.format(data.demandasAtrasadas)} atrasadas`)} />
