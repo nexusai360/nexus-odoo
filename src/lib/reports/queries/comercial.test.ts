@@ -33,15 +33,15 @@ describe("queryPedidosPeriodo", () => {
     } as unknown as import("@/generated/prisma/client").PrismaClient;
 
     const result = await queryPedidosPeriodo(mockPrisma, {
-      periodoDe: "2024-01-01",
-      periodoAte: "2024-01-31",
+      periodoDe: "2026-04-01",
+      periodoAte: "2026-04-30",
     });
     expect(result.totalPedidos).toBe(1);
     expect(result.valorTotal).toBeCloseTo(200);
 
     const call = (mockPrisma.fatoPedido.findMany as jest.Mock).mock.calls[0][0];
-    expect(call.where?.dataOrcamento?.gte).toEqual(new Date("2024-01-01T00:00:00Z"));
-    expect(call.where?.dataOrcamento?.lte).toEqual(new Date("2024-01-31T00:00:00Z"));
+    expect(call.where?.dataOrcamento?.gte).toEqual(new Date("2026-04-01T00:00:00Z"));
+    expect(call.where?.dataOrcamento?.lte).toEqual(new Date("2026-04-30T00:00:00Z"));
   });
 
   it("retorna zerado quando sem pedidos", async () => {
@@ -120,12 +120,12 @@ describe("queryPedidosPorVendedor", () => {
     } as unknown as import("@/generated/prisma/client").PrismaClient;
 
     await queryPedidosPorVendedor(mockPrisma, {
-      periodoDe: "2024-01-01",
-      periodoAte: "2024-01-31",
+      periodoDe: "2026-04-01",
+      periodoAte: "2026-04-30",
     });
 
     const call = (mockPrisma.fatoPedido.findMany as jest.Mock).mock.calls[0][0];
-    expect(call.where?.dataOrcamento?.gte).toEqual(new Date("2024-01-01T00:00:00Z"));
+    expect(call.where?.dataOrcamento?.gte).toEqual(new Date("2026-04-01T00:00:00Z"));
   });
 });
 

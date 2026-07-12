@@ -1,3 +1,5 @@
+import { corteAtualDate } from "@/lib/corte-dados";
+import { carregarParticipantesGrupo, ehNotaIntragrupo } from "@/lib/fiscal/grupo";
 // src/lib/reports/queries/financeiro.ts
 //
 // Núcleo de agregação de financeiro, framework-neutro. Cada função recebe `prisma`
@@ -160,9 +162,13 @@ export async function queryContasAReceber(
     where: {
       tipo: "a_receber",
       vrSaldo: { gt: 0 },
+      // Marco zero: titulo de documento anterior ao corte nao e da operacao atual. Sem isso
+      // o KPI somava divida antiga do Odoo (dezenas de milhoes que nao existem hoje).
+      dataDocumento: { gte: corteAtualDate() },
       ...(filtros.participanteId ? { participanteId: filtros.participanteId } : {}),
     },
     select: {
+      participanteId: true,
       participanteNome: true,
       numeroDocumento: true,
       dataVencimento: true,
@@ -174,7 +180,12 @@ export async function queryContasAReceber(
     orderBy: [{ vrSaldo: "desc" }, { odooId: "asc" }],
   });
 
-  const titulos: TituloRow[] = rows.map((r) => ({
+  // Conta entre empresas do PROPRIO grupo nao e dinheiro a receber de cliente , e a mesma
+  // regra do faturamento (nao contar duas vezes o que circula dentro de casa). Sao R$ 15,1
+  // mi em 192 titulos no cache: inflavam o KPI da diretoria.
+  const externos = await filtrarTitulosExternos(prisma, rows);
+
+  const titulos: TituloRow[] = externos.map((r) => ({
     participanteNome: r.participanteNome,
     numeroDocumento: r.numeroDocumento,
     dataVencimento: r.dataVencimento,
@@ -207,9 +218,12 @@ export async function queryContasAPagar(
     where: {
       tipo: "a_pagar",
       vrSaldo: { gt: 0 },
+      // Idem a receber: so divida cujo documento e do periodo coberto pela plataforma.
+      dataDocumento: { gte: corteAtualDate() },
       ...(filtros.participanteId ? { participanteId: filtros.participanteId } : {}),
     },
     select: {
+      participanteId: true,
       participanteNome: true,
       numeroDocumento: true,
       dataVencimento: true,
@@ -221,7 +235,10 @@ export async function queryContasAPagar(
     orderBy: [{ vrSaldo: "desc" }, { odooId: "asc" }],
   });
 
-  const titulos: TituloRow[] = rows.map((r) => ({
+  // Idem: divida com empresa do proprio grupo nao e divida com fornecedor.
+  const externos = await filtrarTitulosExternos(prisma, rows);
+
+  const titulos: TituloRow[] = externos.map((r) => ({
     participanteNome: r.participanteNome,
     numeroDocumento: r.numeroDocumento,
     dataVencimento: r.dataVencimento,
@@ -305,4 +322,17 @@ export async function queryTitulosVencidos(
 
   const totalVencido = titulos.reduce((acc, t) => acc + t.vrSaldo, 0);
   return { titulos, totalVencido, quebra: quebraPorSituacao(titulos) };
+}
+
+
+/**
+ * Descarta os titulos cujo participante e do PROPRIO grupo (conta entre empresas da casa).
+ * Mesma regra do faturamento: o que circula dentro do grupo nao e receita nem divida com
+ * terceiro. Reusa a cascata de deteccao (whitelist -> cadastro -> CNPJ no nome).
+ */
+async function filtrarTitulosExternos<
+  T extends { participanteId: number | null; participanteNome: string | null },
+>(prisma: PrismaClient, titulos: T[]): Promise<T[]> {
+  const participantesGrupo = await carregarParticipantesGrupo(prisma);
+  return titulos.filter((t) => !ehNotaIntragrupo(t, participantesGrupo));
 }

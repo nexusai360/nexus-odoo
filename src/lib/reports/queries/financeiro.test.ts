@@ -18,7 +18,8 @@ function makePrisma(overrides: Record<string, unknown> = {}) {
   return {
     fatoFinanceiroSaldo: { findMany: jest.fn() },
     fatoFinanceiroMovimento: { findMany: jest.fn() },
-    fatoFinanceiroTitulo: { findMany: jest.fn() },
+    fatoParceiro: { findMany: jest.fn().mockResolvedValue([]) },
+      fatoFinanceiroTitulo: { findMany: jest.fn() },
     ...overrides,
   };
 }

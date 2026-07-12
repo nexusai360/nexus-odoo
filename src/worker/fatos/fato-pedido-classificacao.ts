@@ -48,6 +48,106 @@ interface NotaRow {
 
 const CHUNK = 5000;
 
+export interface ClassificacaoPedido {
+  categoriaOperacao: string;
+  bucketDemanda: string;
+  pendenciaEtapa: string | null;
+}
+
+/**
+ * Classifica os pedidos (categoria da operacao, bucket de demanda e pendencia da etapa) a
+ * partir do RAW , sem depender de fato_pedido ja existir. E o mesmo calculo do builder de
+ * pos-passo, extraido para que o rebuild do fato_pedido ja nasca classificado: senao, entre
+ * o truncate+insert do fato e o pos-passo (tres builders depois), categoria_operacao e
+ * bucket_demanda ficam NULL e a tela mostra "0 pedidos" e "0 demandas" a cada ciclo.
+ */
+export async function classificarPedidosDoRaw(
+  prisma: PrismaClient,
+): Promise<Map<number, ClassificacaoPedido>> {
+  const participantesGrupo = await carregarParticipantesGrupo(prisma);
+  const etapas = await prisma.$queryRaw<EtapaRow[]>`
+    select odoo_id,
+           data->>'nome' as nome,
+           coalesce((data->>'finaliza_faturamento')::boolean, false) as fin_fat,
+           coalesce((data->>'finaliza_pedido_confirmando')::boolean, false) as fin_conf,
+           coalesce((data->>'finaliza_pedido_cancelando')::boolean, false) as fin_canc,
+           coalesce((data->>'aprova_pedido')::boolean, false) as apr_ped,
+           coalesce((data->>'aprova_financeiro')::boolean, false) as apr_fin,
+           coalesce((data->>'aprova_estoque')::boolean, false) as apr_est,
+           coalesce((data->>'aprova_faturamento')::boolean, false) as apr_fat,
+           coalesce((data->>'finaliza_financeiro')::boolean, false) as fin_fin,
+           coalesce((data->>'finaliza_estoque')::boolean, false) as fin_est
+    from raw_pedido_etapa
+    where coalesce(raw_deleted, false) = false`;
+  const gatilhoPorEtapa = new Map<number, EtapaRow>(etapas.map((e) => [e.odoo_id, e]));
+  const pendenciaPorEtapa = new Map<number, string | null>(
+    etapas.map((e) => [
+      e.odoo_id,
+      frasePendencia({
+        aprovaPedido: e.apr_ped,
+        aprovaFinanceiro: e.apr_fin,
+        aprovaEstoque: e.apr_est,
+        aprovaFaturamento: e.apr_fat,
+        finalizaFinanceiro: e.fin_fin,
+        finalizaEstoque: e.fin_est,
+        finalizaFaturamento: e.fin_fat,
+        finalizaPedidoConfirmando: e.fin_conf,
+      }),
+    ]),
+  );
+
+  // Pedidos direto do RAW (com o CFOP representativo do item de maior quantidade).
+  const pedidos = await prisma.$queryRaw<PedidoRow[]>`
+    with itens as (
+      select distinct on ((i.data->'pedido_id'->>0)::int)
+             (i.data->'pedido_id'->>0)::int as pedido_id,
+             substring((i.data->'cfop_id'->>1) from '^[0-9]{4}') as cfop
+      from raw_sped_documento_item i
+      where jsonb_typeof(i.data->'pedido_id') = 'array'
+      order by (i.data->'pedido_id'->>0)::int, (i.data->>'quantidade')::numeric desc nulls last
+    )
+    select (p.data->>'id')::int as odoo_id,
+           (p.data->'etapa_id'->>0)::int as etapa_id,
+           (p.data->'participante_id'->>0)::int as participante_id,
+           (p.data->'participante_id'->>1) as participante_nome,
+           it.cfop
+    from raw_pedido_documento p
+    left join itens it on it.pedido_id = (p.data->>'id')::int
+    where coalesce(p.raw_deleted, false) = false`;
+
+  const out = new Map<number, ClassificacaoPedido>();
+  for (const p of pedidos) {
+    const op = classificaOperacao(
+      { cfop: p.cfop, participanteId: p.participante_id, participanteNome: p.participante_nome },
+      participantesGrupo,
+    );
+    let bucket: string;
+    if (!op.entraDemanda) {
+      bucket = "IGNORAR";
+    } else {
+      const g = p.etapa_id !== null ? gatilhoPorEtapa.get(p.etapa_id) : undefined;
+      bucket = g
+        ? classificaEtapaDemanda({
+            nome: g.nome ?? "",
+            finalizaFaturamento: g.fin_fat,
+            finalizaPedidoConfirmando: g.fin_conf,
+            finalizaPedidoCancelando: g.fin_canc,
+          })
+        : "ABERTA";
+    }
+    const pendencia =
+      bucket === "ABERTA" && p.etapa_id !== null
+        ? pendenciaPorEtapa.get(p.etapa_id) ?? null
+        : null;
+    out.set(p.odoo_id, {
+      categoriaOperacao: op.categoria,
+      bucketDemanda: bucket,
+      pendenciaEtapa: pendencia,
+    });
+  }
+  return out;
+}
+
 export async function rebuildFatoPedidoClassificacao(prisma: PrismaClient): Promise<number> {
   const participantesGrupo = await carregarParticipantesGrupo(prisma);
 

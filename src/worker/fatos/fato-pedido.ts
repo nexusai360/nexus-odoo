@@ -12,6 +12,7 @@
 import type { PrismaClient } from "../../generated/prisma/client";
 import { relId, relNome, type OdooM2O } from "./odoo-relational";
 import { markFatoBuilt } from "./fato-build-state";
+import { classificarPedidosDoRaw } from "./fato-pedido-classificacao";
 
 // Constantes da discovery O.1
 const CAMPO_ETAPA_FINAL = "finaliza_pedido_confirmando";
@@ -89,9 +90,20 @@ export async function rebuildFatoPedido(prisma: PrismaClient): Promise<number> {
   const rawDocs = await prisma.rawPedidoDocumento.findMany({
     where: { rawDeleted: false },
   });
-  const mapped = rawDocs.map((r) =>
-    mapPedidoRow(r.data as Record<string, unknown>, etapaFinalizaMap),
-  );
+  // Classificacao (categoria da operacao, bucket de demanda, pendencia) gravada JUNTO com o
+  // pedido, na mesma transacao. Antes ela vinha de um pos-passo tres builders depois, e
+  // nessa janela a tela mostrava "0 pedidos" e "0 demandas" a cada ciclo do worker.
+  const classificacao = await classificarPedidosDoRaw(prisma);
+  const mapped = rawDocs.map((r) => {
+    const row = mapPedidoRow(r.data as Record<string, unknown>, etapaFinalizaMap);
+    const c = classificacao.get(row.odooId);
+    return {
+      ...row,
+      categoriaOperacao: c?.categoriaOperacao ?? null,
+      bucketDemanda: c?.bucketDemanda ?? null,
+      pendenciaEtapa: c?.pendenciaEtapa ?? null,
+    };
+  });
 
   await prisma.$transaction(
     async (tx) => {

@@ -15,6 +15,7 @@ import {
 import { toast } from "sonner";
 
 import { updateSyncConfig } from "@/lib/actions/sync-config";
+import { DatePickerSingle } from "@/components/ui/date-picker-single";
 import {
   Card,
   CardContent,
@@ -86,7 +87,12 @@ interface Config {
   incrementalIntervalMin: number;
   snapshotIntervalMin: number;
   reconcileIntervalMin: number;
+  /** Marco zero: a plataforma só considera documentos a partir desta data (AAAA-MM-DD). */
+  corteDados: string;
 }
+
+/** Só os campos numéricos (os intervalos), que viram inputs de minutos. */
+type ConfigIntervalo = Exclude<keyof Config, "corteDados">;
 
 interface Props {
   config: Config;
@@ -94,7 +100,7 @@ interface Props {
   fatos: FatoStateRow[];
 }
 
-const FIELD_LABELS: [keyof Config, string, string, string][] = [
+const FIELD_LABELS: [ConfigIntervalo, string, string, string][] = [
   ["incrementalIntervalMin", "incremental", "Incremental", "Frequência da sincronização incremental (write_date)"],
   ["snapshotIntervalMin", "snapshot", "Completa", "Frequência do snapshot completo (full refresh)"],
   ["reconcileIntervalMin", "reconcile", "Reconciliação", "Frequência da reconciliação (marca registros deletados)"],
@@ -684,7 +690,8 @@ export function ConfiguracaoContent({ config, estado, fatos }: Props) {
   const dirty =
     form.incrementalIntervalMin !== config.incrementalIntervalMin ||
     form.snapshotIntervalMin !== config.snapshotIntervalMin ||
-    form.reconcileIntervalMin !== config.reconcileIntervalMin;
+    form.reconcileIntervalMin !== config.reconcileIntervalMin ||
+    form.corteDados !== config.corteDados;
 
   const valid =
     isFieldValid(form.incrementalIntervalMin) &&
@@ -696,7 +703,12 @@ export function ConfiguracaoContent({ config, estado, fatos }: Props) {
     startTransition(async () => {
       try {
         await updateSyncConfig(form);
-        toast.success("Intervalos de sincronização atualizados");
+        toast.success(
+          form.corteDados !== config.corteDados
+            ? "Configuração salva. A plataforma passa a considerar dados a partir de " +
+                new Date(`${form.corteDados}T00:00:00Z`).toLocaleDateString("pt-BR", { timeZone: "UTC" })
+            : "Intervalos de sincronização atualizados",
+        );
       } catch {
         toast.error("Falha ao salvar a configuração");
       }
@@ -820,6 +832,25 @@ export function ConfiguracaoContent({ config, estado, fatos }: Props) {
               }
               return [editableCard];
             })}
+          </div>
+
+          {/* Marco zero da plataforma: a data manda em tudo (faturamento, estoque, contas,
+              entregas, relatórios e agente Nex). Fica junto do Salvar, no mesmo card. */}
+          <div className="border-t border-border/60 pt-5">
+            <div className="flex flex-col gap-1.5 sm:max-w-sm">
+              <Label htmlFor="corte-dados">Considerar dados a partir de</Label>
+              <DatePickerSingle
+                id="corte-dados"
+                value={form.corteDados}
+                onChange={(iso) => setForm((f) => ({ ...f, corteDados: iso }))}
+                anoInicial={2020}
+              />
+              <p className="text-xs text-muted-foreground">
+                A plataforma só considera documentos emitidos a partir desta data. Vale para
+                tudo: faturamento, estoque, contas, entregas, relatórios e o agente Nex. O
+                worker passa a puxar do Odoo apenas o que for desta data em diante.
+              </p>
+            </div>
           </div>
 
           <Button onClick={salvar} disabled={!dirty || !valid || pending}>

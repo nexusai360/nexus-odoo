@@ -19,7 +19,7 @@ const getCurrentUserMock = getCurrentUser as jest.Mock;
 
 describe("syncConfigSchema", () => {
   it("aceita intervalos inteiros positivos", () => {
-    const r = syncConfigSchema.safeParse({
+    const r = syncConfigSchema.safeParse({ corteDados: "2026-03-16",
       incrementalIntervalMin: 3,
       snapshotIntervalMin: 1440,
       reconcileIntervalMin: 1440,
@@ -28,7 +28,7 @@ describe("syncConfigSchema", () => {
   });
 
   it("rejeita intervalo menor que 1", () => {
-    const r = syncConfigSchema.safeParse({
+    const r = syncConfigSchema.safeParse({ corteDados: "2026-03-16",
       incrementalIntervalMin: 0,
       snapshotIntervalMin: 1440,
       reconcileIntervalMin: 1440,

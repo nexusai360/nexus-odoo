@@ -6,30 +6,66 @@ import { diasRestantes, statusPrazo, type StatusPrazo } from "@/lib/diretoria/co
 import { VENDA_FUTURA } from "@/lib/fiscal/regras/venda-futura-policy";
 
 export interface IndicadoresEstoque {
+  /** Valor do estoque a CUSTO (quantidade x preco_custo do produto). */
   valorTotal: number;
   itens: number;
   produtos: number;
   locais: number;
+  /** Produtos com saldo mas sem preco de custo cadastrado (gap visivel, nao silencioso). */
+  produtosSemCusto: number;
 }
 
-/** A4 , Indicadores do estoque (valor total, itens, produtos e locais distintos). */
+/**
+ * A4 , Indicadores do estoque (valor total, itens, produtos e locais distintos).
+ *
+ * VALOR = quantidade x PREÇO DE CUSTO do produto (fato_produto.preco_custo). Estoque se
+ * mede a custo, não a preço de venda: o `vr_saldo` que vinha do Odoo era valorizado por
+ * outro critério e inflava o KPI. Produto sem custo cadastrado entra com valor zero e é
+ * devolvido em `produtosSemCusto`, para o gap ficar visível em vez de virar número errado.
+ */
 export async function queryIndicadoresEstoque(
   prisma: PrismaClient,
 ): Promise<IndicadoresEstoque> {
   const rows = await prisma.fatoEstoqueSaldo.findMany({
-    select: { quantidade: true, vrSaldo: true, produtoId: true, localId: true },
+    select: { quantidade: true, produtoId: true, localId: true },
   });
+
+  const produtoIds = [
+    ...new Set(rows.map((r) => r.produtoId).filter((x): x is number => x != null)),
+  ];
+  const catalogo = produtoIds.length
+    ? await prisma.fatoProduto.findMany({
+        where: { odooId: { in: produtoIds } },
+        select: { odooId: true, precoCusto: true },
+      })
+    : [];
+  const custoPorProduto = new Map(
+    catalogo.map((p) => [p.odooId, Number(p.precoCusto ?? 0)]),
+  );
+
   let valorTotal = 0;
   let itens = 0;
   const produtos = new Set<number>();
   const locais = new Set<number>();
+  const semCusto = new Set<number>();
   for (const r of rows) {
-    valorTotal += Number(r.vrSaldo ?? 0);
-    itens += Number(r.quantidade ?? 0);
-    if (r.produtoId != null) produtos.add(r.produtoId);
+    const qtd = Number(r.quantidade ?? 0);
+    itens += qtd;
+    if (r.produtoId != null) {
+      produtos.add(r.produtoId);
+      const custo = custoPorProduto.get(r.produtoId) ?? 0;
+      if (custo <= 0 && qtd > 0) semCusto.add(r.produtoId);
+      valorTotal += qtd * custo;
+    }
     if (r.localId != null) locais.add(r.localId);
   }
-  return { valorTotal, itens, produtos: produtos.size, locais: locais.size };
+  return {
+    valorTotal: Math.round(valorTotal * 100) / 100,
+    itens,
+    produtos: produtos.size,
+    locais: locais.size,
+    produtosSemCusto: semCusto.size,
+  };
 }
 
 export interface LinhaAgrupada {
@@ -38,26 +74,40 @@ export interface LinhaAgrupada {
   valorTotal: number;
 }
 
+/** Custo por produto (fato_produto.preco_custo), base da valorizacao do estoque. */
+async function custoPorProduto(prisma: PrismaClient): Promise<Map<number, number>> {
+  const catalogo = await prisma.fatoProduto.findMany({
+    select: { odooId: true, precoCusto: true },
+  });
+  return new Map(catalogo.map((p) => [p.odooId, Number(p.precoCusto ?? 0)]));
+}
+
 async function agrupaSaldo(
   prisma: PrismaClient,
   campo: "localNome" | "familiaNome" | "marcaNome",
   semNome: string,
 ): Promise<{ linhas: LinhaAgrupada[]; valorGeral: number }> {
-  const rows = await prisma.fatoEstoqueSaldo.findMany({
-    select: { [campo]: true, quantidade: true, vrSaldo: true },
-  });
+  // Valorizacao a CUSTO (quantidade x preco_custo), a mesma do KPI , senao o donut e o
+  // card da mesma tela contariam o estoque por criterios diferentes.
+  const [rows, custos] = await Promise.all([
+    prisma.fatoEstoqueSaldo.findMany({
+      select: { [campo]: true, quantidade: true, produtoId: true },
+    }),
+    custoPorProduto(prisma),
+  ]);
   const map = new Map<string, { quantidade: number; valorTotal: number }>();
   let valorGeral = 0;
   for (const r of rows) {
     const chave = (r as Record<string, unknown>)[campo] as string | null;
     const k = chave ?? semNome;
-    const v = Number(r.vrSaldo ?? 0);
+    const qtd = Number(r.quantidade ?? 0);
+    const v = qtd * (r.produtoId != null ? custos.get(r.produtoId) ?? 0 : 0);
     const cur = map.get(k);
     if (cur) {
-      cur.quantidade += Number(r.quantidade ?? 0);
+      cur.quantidade += qtd;
       cur.valorTotal += v;
     } else {
-      map.set(k, { quantidade: Number(r.quantidade ?? 0), valorTotal: v });
+      map.set(k, { quantidade: qtd, valorTotal: v });
     }
     valorGeral += v;
   }

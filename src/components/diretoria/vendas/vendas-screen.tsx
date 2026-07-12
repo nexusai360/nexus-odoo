@@ -22,7 +22,7 @@ import type {
   LinhaFormaPagamento, LinhaModalidade, MaiorPedido,
 } from "@/lib/diretoria/queries/vendas";
 
-const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const num = new Intl.NumberFormat("pt-BR");
 const pct1 = (v: number) => `${v.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
 function brlCompacto(v: number): string {

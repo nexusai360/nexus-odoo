@@ -3,17 +3,22 @@
 // (2013..hoje) e o numero fica enganoso. Decisao do usuario (2026-06-09): assumir o
 // ANO CORRENTE como default, e a resposta SEMPRE explicita o periodo coberto.
 
-import { CORTE_DADOS_ISO } from "@/worker/sync/corte.js";
+import { corteAtual, corteLabel, clampIsoAoCorte, avisoCorte } from "@/lib/corte-dados.js";
 
 /**
  * Texto honesto padrao quando o periodo pedido e inteiramente anterior ao
  * corte de dados (Limpa 2026+, spec §5). O cache nao guarda pre-2026; dizer
  * "nao ha registros" seria mentira , os dados existem, mas so no Odoo.
  */
-export const TEXTO_HONESTO_PRE_CORTE =
-  "O cache guarda apenas dados de 2026 em diante. Para esse periodo nao ha " +
-  "registros aqui: dados de 2025 e anteriores permanecem no Odoo, mas nao " +
-  "sao consultaveis pelo Nex.";
+export function textoHonestoPreCorte(): string {
+  return (
+    `${avisoCorte()} Documentos anteriores a ${corteLabel()} continuam no Odoo, mas nao ` +
+    "sao consultaveis pelo Nex."
+  );
+}
+
+/** @deprecated use textoHonestoPreCorte() , o corte agora e configuravel. */
+export const TEXTO_HONESTO_PRE_CORTE = textoHonestoPreCorte();
 
 export interface PeriodoResolvido {
   periodoDe: string;
@@ -35,22 +40,30 @@ export function resolverPeriodoFiscal(
   ate: string | undefined,
   hoje: Date = new Date(),
 ): PeriodoResolvido {
+  const corte = corteAtual();
   if (de && ate) {
+    // O inicio e grampeado ao corte: perguntar "desde 2024" devolve o que a plataforma tem,
+    // a partir do marco zero, e a resposta diz isso (nunca finge cobrir o que nao cobre).
+    const deClamped = clampIsoAoCorte(de.slice(0, 10), corte);
+    const cortado = deClamped !== de.slice(0, 10);
     return {
-      periodoDe: de,
+      periodoDe: deClamped,
       periodoAte: ate,
       assumido: false,
-      label: `${de} a ${ate}`,
-      preCorte: ate.slice(0, 10) < CORTE_DADOS_ISO,
+      label: cortado
+        ? `${deClamped} a ${ate} (a plataforma so tem dados a partir de ${corteLabel(corte)})`
+        : `${de} a ${ate}`,
+      preCorte: ate.slice(0, 10) < corte,
     };
   }
-  const ano = hoje.getUTCFullYear();
   const hojeStr = hoje.toISOString().slice(0, 10);
+  // Sem periodo informado: do corte ate hoje (antes assumia 1o de janeiro, o que passava a
+  // impressao de cobrir um intervalo que a plataforma nao tem).
   return {
-    periodoDe: `${ano}-01-01`,
+    periodoDe: corte,
     periodoAte: hojeStr,
     assumido: true,
-    label: `${ano} (ano corrente, ate ${hojeStr})`,
+    label: `${corteLabel(corte)} a ${hojeStr} (todo o periodo disponivel)`,
     preCorte: false,
   };
 }

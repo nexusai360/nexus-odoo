@@ -1,23 +1,13 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { getCorteDados } from "@/lib/corte-dados";
 
 /**
- * Data mais antiga com dado no cache (primeira nota fiscal emitida). Trava o
- * calendário do período personalizado da Diretoria: nada antes disso pode ser
- * selecionado, porque não existe dado. Retorna `yyyy-mm-dd` (dia local) ou null
- * quando o cache ainda está vazio. Buscada de forma lazy, só ao abrir o picker.
+ * Data mínima do calendário da Diretoria: o CORTE DE DADOS configurado em Configuração
+ * (marco zero da plataforma). Antes era a primeira nota do cache, o que deixava escolher
+ * períodos que a plataforma não cobre de verdade. Retorna `yyyy-mm-dd`.
  */
 export async function getDiretoriaMinDate(): Promise<string | null> {
-  const row = await prisma.fatoNotaFiscal.findFirst({
-    where: { dataEmissao: { not: null } },
-    orderBy: { dataEmissao: "asc" },
-    select: { dataEmissao: true },
-  });
-  const d = row?.dataEmissao;
-  if (!d) return null;
-  const yyyy = String(d.getUTCFullYear()).padStart(4, "0");
-  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
-  const dd = String(d.getUTCDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
+  return getCorteDados(prisma);
 }

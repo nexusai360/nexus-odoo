@@ -1,3 +1,5 @@
+import { clampDateAoCorte, corteAtualDate } from "@/lib/corte-dados";
+
 /**
  * Resolução de período da Diretoria com os presets do painel HTML do cliente.
  * Próprio (não reusa o `periodo.ts` dos relatórios) para não regredir aquele
@@ -63,7 +65,21 @@ const PRESETS_VALIDOS = new Set<DiretoriaPeriodoPreset>([
   ...PRESETS_OCULTOS,
 ]);
 
+/**
+ * Resolve o periodo e GRAMPEIA o inicio ao corte de dados (marco zero configurado na tela):
+ * "Este ano" e "Tudo" nunca vao antes dele, e um intervalo personalizado anterior ao corte
+ * e puxado para o corte. A plataforma nao tem dado antes dessa data , mostrar periodo maior
+ * daria a impressao de que o numero cobre um intervalo que ele nao cobre.
+ */
 export function resolverPeriodoDir(
+  params: PeriodoDirParams,
+  hoje: Date,
+): PeriodoDirResolvido {
+  const bruto = resolverPeriodoDirBruto(params, hoje);
+  return { ...bruto, de: clampDateAoCorte(bruto.de) };
+}
+
+function resolverPeriodoDirBruto(
   params: PeriodoDirParams,
   hoje: Date,
 ): PeriodoDirResolvido {
@@ -107,7 +123,8 @@ export function resolverPeriodoDir(
     case "ultimos_90":
       return { de: addDias(h, -90), ate: h, preset };
     case "tudo":
-      return { de: new Date(Date.UTC(2000, 0, 1)), ate: h, preset };
+      // "Tudo" = tudo o que a plataforma tem, ou seja, do corte ate hoje.
+      return { de: corteAtualDate(), ate: h, preset };
     case "custom": {
       const de = params.de ? diaUTC(new Date(params.de)) : h;
       const ate = params.ate ? diaUTC(new Date(params.ate)) : h;

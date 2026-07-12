@@ -32,7 +32,8 @@ export interface BrazilMapProps {
 const brl = new Intl.NumberFormat("pt-BR", {
   style: "currency",
   currency: "BRL",
-  maximumFractionDigits: 0,
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
 });
 
 // Cor de estado SEM dado: cinza calibrado por tema (mais presente que o --muted

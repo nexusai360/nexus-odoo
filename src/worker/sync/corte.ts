@@ -10,9 +10,13 @@
 
 import { MODEL_CATALOG } from "../catalog/model-catalog";
 
-/** Data de corte ISO (inicio do regime 2026+). AppSetting `sync.corte_dados`
- *  pode sobrepor no futuro; constante basta nesta fase (decisao plan v3). */
-export const CORTE_DADOS_ISO = "2026-01-01";
+// A data do corte vive em src/lib/corte-dados.ts (fonte unica: sync, purge, consultas, UI
+// e agente leem de la) e e CONFIGURAVEL na tela de Configuracao. Aqui so se le o valor
+// vigente , o ciclo do worker chama getCorteDados(prisma) antes de sincronizar.
+import { corteAtual } from "../../lib/corte-dados";
+
+/** @deprecated use corteAtual() , o corte agora e configuravel. Mantido para os testes. */
+export const CORTE_DADOS_ISO = corteAtual();
 
 const POR_MODELO = new Map(MODEL_CATALOG.map((e) => [e.odooModel, e]));
 
@@ -20,5 +24,5 @@ const POR_MODELO = new Map(MODEL_CATALOG.map((e) => [e.odooModel, e]));
 export function corteDomain(odooModel: string): Array<[string, string, string]> {
   const entry = POR_MODELO.get(odooModel);
   if (!entry?.corte) return [];
-  return [[entry.corte.odoo, ">=", CORTE_DADOS_ISO]];
+  return [[entry.corte.odoo, ">=", corteAtual()]];
 }

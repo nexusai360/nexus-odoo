@@ -37,7 +37,7 @@ import type { StatusPrazo } from "@/lib/diretoria/cores";
 // ---------------------------------------------------------------------------
 // Formatação
 // ---------------------------------------------------------------------------
-const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const num = new Intl.NumberFormat("pt-BR");
 const pct1 = (v: number) => `${v.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
 /** Moeda compacta para KPIs estreitos (R$ 1,2 mi / R$ 340 mil). */

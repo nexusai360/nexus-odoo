@@ -76,7 +76,14 @@ export function derivarIndicadores(linhas: LinhaEstoqueGranular[]): IndicadoresE
     produtos.add(l.produtoId != null ? `id:${l.produtoId}` : `nome:${l.produto}`);
     locais.add(l.local);
   }
-  return { valorTotal, itens, produtos: produtos.size, locais: locais.size };
+  return {
+    valorTotal,
+    itens,
+    produtos: produtos.size,
+    locais: locais.size,
+    // Esta derivacao ja recebe as linhas valorizadas; o gap de custo e apurado na query.
+    produtosSemCusto: 0,
+  };
 }
 
 export function derivarCatalogo(linhas: LinhaEstoqueGranular[], limit = 500): { linhas: CatalogoModelo[]; total: number; valorGeral: number } {
