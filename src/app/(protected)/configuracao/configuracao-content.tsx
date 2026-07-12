@@ -838,7 +838,7 @@ export function ConfiguracaoContent({ config, estado, fatos }: Props) {
               entregas, relatórios e agente Nex). Fica junto do Salvar, no mesmo card. */}
           <div className="border-t border-border/60 pt-5">
             <div className="flex flex-col gap-1.5 sm:max-w-sm">
-              <Label htmlFor="corte-dados">Considerar dados a partir de</Label>
+              <Label htmlFor="corte-dados">Analisar dados a partir de</Label>
               <DatePickerSingle
                 id="corte-dados"
                 value={form.corteDados}
@@ -846,9 +846,10 @@ export function ConfiguracaoContent({ config, estado, fatos }: Props) {
                 anoInicial={2020}
               />
               <p className="text-xs text-muted-foreground">
-                A plataforma só considera documentos emitidos a partir desta data. Vale para
-                tudo: faturamento, estoque, contas, entregas, relatórios e o agente Nex. O
-                worker passa a puxar do Odoo apenas o que for desta data em diante.
+                Define o início de tudo o que a plataforma analisa: faturamento, estoque,
+                contas, entregas, relatórios e o agente Nex. Nada é apagado , o histórico
+                fica no cache, então mover a data para trás traz os dados de volta na hora,
+                sem precisar sincronizar de novo.
               </p>
             </div>
           </div>
