@@ -49,16 +49,42 @@ Medições que descartaram os atalhos:
 6. **E2E** , `src/lib/reports/__tests__/e2e/faturamento-venda-operacao.e2e.ts` crava
    7.242.504,80 / 136 notas nas três camadas e a quebra por empresa fechando o total.
 
+## Achados das reviews adversariais (aplicados)
+
+Duas reviews independentes rodaram contra o cache real e acharam três problemas que o E2E de
+julho não pegava:
+
+1. **Faturamento poderia aparecer como R$ 0,00 em produção.** O rebuild de `fato_nota_fiscal`
+   faz truncate+insert a cada ciclo do worker (3 min) e não gravava `is_venda_externa`: quem
+   repopulava era o builder de classificação, três builders depois. Nessa janela a coluna
+   ficava NULL na tabela inteira, e o dashboard/relatórios/métricas leem essa coluna. Pior:
+   `runBuilders` engole exceção, então uma falha da classificação deixaria zero silencioso.
+   **Correção:** `is_venda_externa` é calculada e gravada dentro da MESMA transação que
+   reconstrói a nota. Nunca fica nula.
+2. **O agente Nex continuava com outro número.** As tools do MCP leem `receitaConsolidada`
+   (base de itens + CFOP), não a coluna materializada: jan/2026 dava R$ 16,57 mi no dashboard
+   e R$ 21,05 mi no agente. **Correção:** `carregarItensVendaComGrupo` recorta pelas notas de
+   venda (mesma regra da operação) e a receita soma o `vrNf` da NOTA. Conferido em
+   jan/mar/mai/jul: agente = métrica = dashboard, ao centavo.
+3. **"Venda de bens do ativo imobilizado 5551/6551" entrava como faturamento** (tem "venda" no
+   nome): 4 notas, R$ 611 mil no histórico, fora de julho. **Correção:** a regra nega
+   "imobilizado", alinhando com o `cfop-mapa`.
+
+Extra: `contarNotasSemOperacao` expõe o gap de cadastro (59 notas de saída autorizada sem
+operação no cache em 2026, R$ 10,25 mi). Não entram no faturamento (o Odoo também não as
+classifica), mas deixam de ser perda silenciosa.
+
 ## Status
 
 - [x] Schema + migration
-- [x] Builders do worker (nota, item, classificação)
-- [x] Regra pura pela operação + testes
-- [x] Métricas e relatórios lendo a coluna materializada
+- [x] Builders do worker (nota materializa is_venda_externa, item, classificação)
+- [x] Regra pura pela operação (+ ativo imobilizado fora) + testes
+- [x] Métricas, relatórios E agente Nex/MCP na mesma verdade
 - [x] Filtro por empresa no dashboard (UI + queries)
+- [x] Rebuild do cache local + E2E cravando 7.242.504,80 / 136 notas
 - [x] tsc + eslint + jest (3.897 testes) verdes
-- [ ] Rebuild do cache local + E2E cravando o número (dependia do Docker local)
-- [ ] Merge para `main` , **human-gated: dispara auto-deploy em produção**
+- [x] PR #166 aberto e revisado
+- [ ] Merge para `main` (dispara auto-deploy) + validação em produção
 
 ## Nota sobre o projeto irmão (ERP Nexus)
 
