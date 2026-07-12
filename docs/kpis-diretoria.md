@@ -69,6 +69,23 @@ Este era o número mais errado da tela: mostrava **R$ 49,2 milhões**.
 quitado e baixado), `data_documento >= data de início das análises`, **excluindo títulos de
 empresas do próprio grupo** (conta entre irmãs não é dinheiro a receber de cliente).
 
+### Janela de cobrança (decisão do dono, 2026-07-12)
+
+"A receber" e "a pagar" **não são a dívida inteira do mundo**: são o que já **deveria ter sido
+pago** mais o que **vence dentro do período** que a tela está olhando.
+
+| Situação do título | Entra? |
+|---|---|
+| Venceu e continua em aberto (de qualquer mês anterior) | **Sim, sempre.** Uma conta de maio que ninguém pagou segue aparecendo em junho, julho... até ser paga |
+| Vence DENTRO do período selecionado | **Sim** (ainda não venceu, mas é do período) |
+| Vence DEPOIS do fim do período (agosto, setembro...) | **Não.** Não se cobra hoje o que só vence daqui a três meses |
+
+Na prática é um teto: `data_vencimento <= fim do período`. Sem período, o teto é hoje (só o
+vencido). O piso continua sendo a data de início das análises, pela data do **documento**.
+
+Isso vale igual para o **a pagar**, e responde ao filtro de período da barra (dia, semana, mês,
+ano, personalizado).
+
 **O que estava inflando:** o Odoo da Tauga gera o financeiro de **dois jeitos** , pelo
 **PEDIDO** ("financeiro pelo pedido") ou pela **NOTA** (duplicata) , e o cache não guardava a
 origem do título. Resultado: pedidos que **nunca emitiram nota** entravam como dinheiro a
@@ -112,8 +129,19 @@ Inclui o **provisório** (lançado, não efetivado), que no a_pagar é a maior p
 
 ## 5. Valor em estoque , R$ 37.211.689 (1.959 produtos)
 
-**Fórmula:** `soma(quantidade x preco_custo do produto)` sobre `fato_estoque_saldo`, cruzando
-com `fato_produto.preco_custo`.
+**Fórmula:** `soma(quantidade x preco_custo do produto) ÷ índice`, sobre `fato_estoque_saldo`,
+cruzando produto a produto com `fato_produto.preco_custo`.
+
+**Só o que ESTÁ em estoque** (`quantidade > 0`). O `fato_estoque_saldo` também guarda linhas
+zeradas (produto que já saiu) e **NEGATIVAS** (furo de estoque: saída sem entrada registrada no
+Odoo). As negativas **subtraíam** do KPI , eram **R$ 10,5 mi a menos, em 219 linhas**. Estoque
+negativo não é estoque: agora fica fora do valor e aparece como gap (`linhasNegativas`).
+
+**O índice** (Configuração > **Diretoria · Vendas**, padrão **0,95**): o valor a custo é
+**dividido** por ele, e é esse resultado que vira o KPI. O valor a custo puro continua visível
+no rodapé do card, para conferir a conta sem sair da tela.
+
+No cache real: **R$ 47.697.919 a custo ÷ 0,95 = R$ 50.208.336** (o KPI).
 
 - É **foto do agora**, não histórico: a data de início das análises **não se aplica** (não
   existe "saldo de estoque em março").

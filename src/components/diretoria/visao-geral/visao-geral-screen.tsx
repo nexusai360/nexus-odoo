@@ -31,7 +31,12 @@ export interface VisaoGeralData {
   /** Pedidos ainda sem nota: receita contratada, não dinheiro a receber. */
   carteiraAFaturar: number;
   aPagar: number;
+  /** O KPI: valor a custo dividido pelo índice configurado (Diretoria > Vendas). */
   valorEstoque: number;
+  /** O valor a custo puro, sem a divisão (mostrado embaixo). */
+  valorEstoqueACusto: number;
+  /** Índice usado na divisão (padrão 0,95). */
+  indiceEstoque: number;
   produtos: number;
   demandasTotal: number;
   demandasAtrasadas: number;
@@ -71,7 +76,17 @@ export function VisaoGeralScreen({ data }: { data: VisaoGeralData }) {
           )}
         />
         <KpiButton rotulo="A pagar" valor={brlCompacto(data.aPagar)} valorCompleto={brl.format(data.aPagar)} icone={Wallet} tone="warning" hint={doGrupo("Fornecedores em aberto")} />
-        <KpiButton rotulo="Valor em estoque" valor={brlCompacto(data.valorEstoque)} valorCompleto={brl.format(data.valorEstoque)} icone={Boxes} hint={doGrupo(`${num.format(data.produtos)} produtos`)} />
+        {/* O valor a custo aparece no rodapé: o KPI é ele dividido pelo índice, e o usuário
+            precisa conseguir conferir a conta sem sair da tela. */}
+        <KpiButton
+          rotulo="Valor em estoque"
+          valor={brlCompacto(data.valorEstoque)}
+          valorCompleto={brl.format(data.valorEstoque)}
+          icone={Boxes}
+          hint={doGrupo(
+            `${brlCompacto(data.valorEstoqueACusto)} a custo ÷ ${data.indiceEstoque.toLocaleString("pt-BR")}`,
+          )}
+        />
         <KpiButton rotulo="Demandas a entregar" valor={num.format(data.demandasTotal)} icone={Truck} tone={data.demandasAtrasadas > 0 ? "danger" : "info"} hint={doGrupo(`${num.format(data.demandasAtrasadas)} atrasadas`)} />
       </div>
 

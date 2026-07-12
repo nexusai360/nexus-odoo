@@ -18,14 +18,17 @@ const CORTE = corteAtualDate();
 
 describe("queryIndicadoresEstoque (A4)", () => {
   // Estoque vale a CUSTO: quantidade x preco_custo do produto (nao o vr_saldo do Odoo).
-  it("valoriza o saldo pelo preço de custo do produto", async () => {
+  it("valoriza a custo, divide pelo índice e só conta o saldo POSITIVO", async () => {
     const prisma = {
       fatoEstoqueSaldo: {
+        // O `where: { quantidade: { gt: 0 } }` fica no código: o mock devolve só o positivo.
         findMany: jest.fn().mockResolvedValue([
           { quantidade: 10, produtoId: 1, localId: 1 }, // 10 x 100 = 1.000
           { quantidade: 5, produtoId: 2, localId: 1 }, //   5 x  40 =   200
           { quantidade: 3, produtoId: 1, localId: 2 }, //   3 x 100 =   300
         ]),
+        // Linhas com saldo negativo (furo de estoque): ficam FORA do valor, mas contadas.
+        count: jest.fn().mockResolvedValue(2),
       },
       fatoProduto: {
         findMany: jest.fn().mockResolvedValue([
@@ -33,13 +36,22 @@ describe("queryIndicadoresEstoque (A4)", () => {
           { odooId: 2, precoCusto: 40 },
         ]),
       },
+      appSetting: { findUnique: jest.fn().mockResolvedValue({ value: 0.95 }) },
     } as unknown as Parameters<typeof queryIndicadoresEstoque>[0];
     const r = await queryIndicadoresEstoque(prisma);
-    expect(r.valorTotal).toBe(1500);
+    // A custo: 1.500. O KPI é 1.500 / 0,95 = 1.578,95.
+    expect(r.valorACusto).toBe(1500);
+    expect(r.indice).toBe(0.95);
+    expect(r.valorTotal).toBeCloseTo(1578.95, 2);
+    expect(r.linhasNegativas).toBe(2);
     expect(r.itens).toBe(18);
     expect(r.produtos).toBe(2);
     expect(r.locais).toBe(2);
     expect(r.produtosSemCusto).toBe(0);
+
+    // O saldo lido é só o positivo: zerado não é estoque, negativo é furo.
+    const call = (prisma.fatoEstoqueSaldo.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where).toEqual({ quantidade: { gt: 0 } });
   });
 
   it("produto com saldo e sem custo cadastrado nao inventa valor, e vira gap visivel", async () => {
@@ -48,6 +60,7 @@ describe("queryIndicadoresEstoque (A4)", () => {
         findMany: jest.fn().mockResolvedValue([
           { quantidade: 4, produtoId: 7, localId: 1 },
         ]),
+        count: jest.fn().mockResolvedValue(0),
       },
       fatoProduto: { findMany: jest.fn().mockResolvedValue([{ odooId: 7, precoCusto: null }]) },
     } as unknown as Parameters<typeof queryIndicadoresEstoque>[0];
@@ -322,7 +335,8 @@ describe("queryIndicadoresAvancadosEstoque (A4)", () => {
     await queryIndicadoresAvancadosEstoque(prisma, hoje);
     const saldoCall = (prisma.fatoEstoqueSaldo.findMany as jest.Mock).mock.calls[0][0];
     const serialCall = (prisma.fatoSerial.findMany as jest.Mock).mock.calls[0][0];
-    expect(saldoCall.where).toBeUndefined();
+    // O saldo não leva piso de DATA (é foto do agora); o único recorte é o saldo positivo.
+    expect(saldoCall.where ?? {}).not.toHaveProperty("data");
     expect(serialCall.where).toEqual({ dataSaida: null, dataCompra: { not: null } });
   });
 });

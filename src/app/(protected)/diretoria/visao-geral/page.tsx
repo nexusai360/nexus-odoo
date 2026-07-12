@@ -73,8 +73,9 @@ export default async function DiretoriaVisaoGeralPage({
       queryIndicadoresDemandas(prisma, hoje, { ufs }),
       queryIndicadoresEstoque(prisma),
       queryEstoquePorFamilia(prisma),
-      queryContasAReceber(prisma, {}, hoje),
-      queryContasAPagar(prisma, {}, hoje),
+      // Janela de cobranca: vencido + vencendo ate o fim do periodo em analise.
+      queryContasAReceber(prisma, { periodoAte: isoDia(periodo.ate) }, hoje),
+      queryContasAPagar(prisma, { periodoAte: isoDia(periodo.ate) }, hoje),
     ]);
 
   const atalhos = [];
@@ -92,6 +93,8 @@ export default async function DiretoriaVisaoGeralPage({
     carteiraAFaturar: aReceber.carteiraAFaturar,
     aPagar: aPagar.totalAPagar,
     valorEstoque: estoque.valorTotal,
+    valorEstoqueACusto: estoque.valorACusto,
+    indiceEstoque: estoque.indice,
     produtos: estoque.produtos,
     demandasTotal: demandas.totalPendentes,
     demandasAtrasadas: demandas.atrasadas,
