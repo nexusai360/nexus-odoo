@@ -101,16 +101,24 @@ describe("rebuildFatoParceiro", () => {
       fatoParceiro: { deleteMany, createMany },
       fatoBuildState: { upsert },
     };
-    const findMany = jest.fn().mockResolvedValue([{ data: PARTICIPANTE }]);
+    // A leitura extrai as COLUNAS do jsonb no Postgres (trazer o `data` inteiro derrubava o
+    // worker de producao por falta de memoria), entao o mock e do $queryRaw.
+    const $queryRaw = jest.fn().mockResolvedValue([
+      { id: 445, nome: "Academia Esporte e Saude Ltda", razao_social: "Academia Esporte e Saude Ltda",
+        cnpj_cpf: "26.304.554/0001-76", estado: "SE", cidade: "Aracaju", municipio: "Aracaju - SE",
+        cep: "49025-090", email: null, fone: null, fone_comercial: null,
+        eh_cliente: true, eh_fornecedor: true, eh_empresa: false, partner_id: 452,
+        create_date: "2026-02-10 12:00:00" },
+    ]);
     const prisma = {
-      rawSpedParticipante: { findMany },
+      $queryRaw,
       $transaction: jest.fn(async (fn: (t: typeof tx) => unknown) => fn(tx)),
     } as unknown as PrismaClient;
 
     const n = await rebuildFatoParceiro(prisma);
 
     expect(n).toBe(1);
-    expect(findMany).toHaveBeenCalledWith({ where: { rawDeleted: false } });
+    expect($queryRaw).toHaveBeenCalled();
     expect(deleteMany).toHaveBeenCalled();
     const linhas = createMany.mock.calls[0][0].data as { odooId: number; uf: string }[];
     expect(linhas[0].odooId).toBe(445);
