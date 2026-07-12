@@ -99,13 +99,33 @@ amarrada à data de análise e o worker **nunca repunha janeiro a março**. Agor
 reagem, que o saldo de estoque (foto) NÃO muda, e que a contagem das tabelas é idêntica no fim
 (nada é apagado).
 
+### O histórico voltou (e a regra de ouro ficou provada de verdade)
+
+O purge não voltava sozinho: o incremental filtra por `write_date > marca d'água`, e registro
+antigo não "mudou". Zerando `sync_state.last_incremental_at` dos 15 modelos transacionais, o
+backfill repuxou desde o corte técnico de ingestão:
+
+**fato_nota_fiscal: 9.586 notas (a partir de 16/03) -> 13.198 notas (a partir de 01/01).**
+
+Com o histórico de volta, o E2E prova a regra de ouro no sentido que importa , mover a data
+para TRÁS traz o dado de volta **na hora**, sem re-sync e sem perda:
+
+```
+                                 16/03/2026       01/05/2026       01/01/2026
+Faturamento                   R$ 61.698.111    R$ 41.483.978    R$ 91.607.087
+Contas a receber              R$ 17.786.659    R$ 13.611.980    R$ 17.815.637
+Contas a pagar                R$ 27.517.240     R$ 9.699.641    R$ 43.162.247
+Demandas abertas                        331              234              393
+Saldo de estoque (FOTO)       R$ 37.211.689    R$ 37.211.689    R$ 37.211.689
+```
+
+O saldo de estoque (foto do agora) não se mexe, e a contagem das tabelas do cache é idêntica no
+fim: **nada é apagado**.
+
 ## O que falta
 
 1. **Replicar no ERP Nexus** (projeto local, `Projetos Internos/ERP Nexus`): ele já tem o
    faturamento por operação; falta a data configurável, os centavos e as correções de KPI.
-2. **Reposição do histórico no cache local**: o incremental usa marca d'água por `write_date`, e
-   registro antigo não "mudou", então o purge não voltava sozinho. Zerado
-   `sync_state.last_incremental_at` dos 15 modelos transacionais para forçar o backfill desde
-   01/01/2026. Conferir que as notas de jan a mar voltaram.
-3. Ver `docs/RADAR.md` para os pontos que os agentes deixaram como decisão de produto (dias
+   Em andamento na branch local `feat/data-inicio-analises`.
+2. Ver `docs/RADAR.md` (seção R-corte) para os pontos que ficaram como decisão de produto (dias
    parado, DRE com lançamento sem data, comparativo de estoque pré-corte).
