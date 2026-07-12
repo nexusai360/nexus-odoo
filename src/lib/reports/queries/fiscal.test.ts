@@ -29,12 +29,12 @@ describe("queryFaturamentoPeriodo", () => {
     expect(result.totalNotas).toBe(2);
     expect(result.valorFaturado).toBeCloseTo(1500);
 
-    // F1: queryFaturamentoPeriodo chama idsNaoVenda (1o findMany) antes da query
-    // principal; a query de faturamento e a ULTIMA chamada.
+    // A regra "so venda" vive materializada em is_venda_externa (saida + autorizada +
+    // operacao de venda, nao interna + fora do grupo): a query so le a coluna.
     const calls = (mockPrisma.fatoNotaFiscal.findMany as jest.Mock).mock.calls;
     const call = calls[calls.length - 1][0];
-    expect(call.where?.entradaSaida).toBe("1");
-    expect(call.where?.situacaoNfe).toBe("autorizada");
+    expect(call.where?.isVendaExterna).toBe(true);
+    expect(call.where?.naturezaOperacaoId).toBeUndefined();
   });
 
   it("aplica filtro de período quando informado", async () => {
@@ -226,11 +226,11 @@ describe("queryFaturamentoPorCliente", () => {
     expect(result.linhas[1]?.quantidade).toBe(2);
     expect(result.linhas[1]?.valorTotal).toBeCloseTo(1500);
 
-    // F1: idsNaoVenda roda primeiro; a query de faturamento e a ULTIMA chamada.
+    // Mesma base do faturamento do periodo: a coluna materializada is_venda_externa.
     const calls = (mockPrisma.fatoNotaFiscal.findMany as jest.Mock).mock.calls;
     const call = calls[calls.length - 1][0];
-    expect(call.where?.entradaSaida).toBe("1");
-    expect(call.where?.situacaoNfe).toBe("autorizada");
+    expect(call.where?.isVendaExterna).toBe(true);
+    expect(call.where?.naturezaOperacaoId).toBeUndefined();
   });
 
   it("aplica filtro de período quando informado", async () => {

@@ -13,8 +13,8 @@ function mockPrisma() {
     { cfopId: 2, cfopNome: "6152 - Transferencia" },
   ]);
   const notaFindMany = jest.fn().mockResolvedValue([
-    { odooId: 100, empresaId: 1, empresaNome: "Emp A", participanteId: 11, participanteNome: "Grupo X 34.161.829/0001-00" },
-    { odooId: 200, empresaId: 1, empresaNome: "Emp A", participanteId: 99, participanteNome: "Cliente Externo" },
+    { odooId: 100, empresaId: 1, empresaNome: "Emp A", participanteId: 11, participanteNome: "Grupo X 34.161.829/0001-00" , vrNf: 1000 },
+    { odooId: 200, empresaId: 1, empresaNome: "Emp A", participanteId: 99, participanteNome: "Cliente Externo" , vrNf: 3500 },
   ]);
   const parceiroFindMany = jest.fn().mockResolvedValue([{ odooId: 11, documentoDigits: "34161829000100" }]);
   const prisma = {
@@ -28,9 +28,10 @@ function mockPrisma() {
 describe("receitaConsolidada", () => {
   it("separa receita externa de intragrupo eliminavel e fecha o invariante", async () => {
     const r = await receitaConsolidada(mockPrisma(), {});
-    expect(r.receitaExterna).toBe(3000); // venda externa
-    expect(r.receitaIntragrupoEliminavel).toBe(1000); // venda intragrupo
-    expect(r.receitaIndividualTotal).toBe(4000);
+    // A base do valor e o vrNf da NOTA , a mesma do dashboard e do faturamento canonico.
+    expect(r.receitaExterna).toBe(3500); // nota externa
+    expect(r.receitaIntragrupoEliminavel).toBe(1000); // nota intragrupo
+    expect(r.receitaIndividualTotal).toBe(4500);
     expect(r.receitaExterna + r.receitaIntragrupoEliminavel).toBe(r.receitaIndividualTotal);
     expect(r.intercompanyBrutoVrProdutos).toBe(1000); // todas operacoes da nota 100
     expect(r.notasIntragrupo).toBe(1);

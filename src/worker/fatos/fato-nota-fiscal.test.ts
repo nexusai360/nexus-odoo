@@ -141,9 +141,23 @@ describe("rebuildFatoNotaFiscal", () => {
     const mockPrisma = {
       rawSpedDocumento: {
         findMany: jest.fn().mockResolvedValue([
-          { data: { id: 1, entrada_saida: "1", numero: "001", vr_nf: "100.00" } },
+          {
+            data: {
+              id: 1,
+              entrada_saida: "1",
+              situacao_nfe: "autorizada",
+              modelo: "55",
+              operacao_id: [3, "AOP1 - Venda LR"],
+              finalidade_nfe: "1",
+              numero: "001",
+              vr_nf: "100.00",
+            },
+          },
         ]),
       },
+      // O builder materializa is_venda_externa junto com a nota, e para isso carrega os
+      // participantes do grupo (defesa intragrupo).
+      fatoParceiro: { findMany: jest.fn().mockResolvedValue([]) },
       $transaction: jest.fn().mockImplementation(async (fn: (tx: typeof mockTx) => Promise<unknown>) => fn(mockTx)),
     } as unknown as Parameters<typeof rebuildFatoNotaFiscal>[0];
 
@@ -152,6 +166,10 @@ describe("rebuildFatoNotaFiscal", () => {
     expect(mockTx.fatoNotaFiscal.deleteMany).toHaveBeenCalledWith({});
     expect(mockTx.fatoNotaFiscal.createMany).toHaveBeenCalledTimes(1);
     expect(mockTx.fatoBuildState.upsert).toHaveBeenCalled();
+
+    // A venda externa ja nasce marcada: a coluna nunca fica NULL entre builders.
+    const linhas = (mockTx.fatoNotaFiscal.createMany as jest.Mock).mock.calls[0][0].data;
+    expect(linhas[0].isVendaExterna).toBe(true);
   });
 
   it("não chama createMany quando não há dados (guard mapped.length)", async () => {
@@ -169,6 +187,7 @@ describe("rebuildFatoNotaFiscal", () => {
       rawSpedDocumento: {
         findMany: jest.fn().mockResolvedValue([]),
       },
+      fatoParceiro: { findMany: jest.fn().mockResolvedValue([]) },
       $transaction: jest.fn().mockImplementation(async (fn: (tx: typeof mockTx) => Promise<unknown>) => fn(mockTx)),
     } as unknown as Parameters<typeof rebuildFatoNotaFiscal>[0];
 

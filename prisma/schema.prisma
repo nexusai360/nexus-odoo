@@ -2383,6 +2383,11 @@ model FatoNotaFiscal {
   participanteNome     String?   @map("participante_nome")
   naturezaOperacaoId   Int?      @map("natureza_operacao_id")
   naturezaOperacaoNome String?   @map("natureza_operacao_nome")
+  // Operacao fiscal da nota (sped.documento.operacao_id, ex.: [3, "AOP1 - Venda LR"]).
+  // Distinta da natureza: "venda" e "venda interna" tem a MESMA natureza, so a operacao
+  // separa as duas. E o criterio primario de "venda externa" (ver lib/fiscal/regras).
+  operacaoId           Int?      @map("operacao_id")
+  operacaoNome         String?   @map("operacao_nome")
   empresaId            Int?      @map("empresa_id")
   empresaNome          String?   @map("empresa_nome")
   dataEmissao          DateTime? @map("data_emissao")
@@ -2403,6 +2408,7 @@ model FatoNotaFiscal {
   @@index([situacaoNfe])
   @@index([chave])
   @@index([isVendaExterna])
+  @@index([operacaoId])
   @@map("fato_nota_fiscal")
 }
 
@@ -2426,11 +2432,17 @@ model FatoNotaFiscalItem {
   // Desnormalizados da nota-mãe (F1: corte por empresa e operação no nível do item).
   empresaId       Int?      @map("empresa_id")
   situacaoNfe     String?   @map("situacao_nfe")
+  // Operacao e finalidade da nota-mae, desnormalizadas: permitem aplicar a regra "so venda"
+  // (venda, nao interna, sem devolucao) no grao de item, sem join com fato_nota_fiscal.
+  operacaoId      Int?      @map("operacao_id")
+  operacaoNome    String?   @map("operacao_nome")
+  finalidadeNfe   String?   @map("finalidade_nfe")
   atualizadoEm    DateTime  @default(now()) @map("atualizado_em")
 
   @@index([documentoId])
   @@index([produtoId])
   @@index([dataEmissao])
+  @@index([operacaoId])
   @@index([empresaId])
   @@map("fato_nota_fiscal_item")
 }

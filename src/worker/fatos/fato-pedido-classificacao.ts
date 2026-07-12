@@ -12,7 +12,6 @@ import {
   classificaOperacao,
   classificaEtapaDemanda,
   notaEhVendaExterna,
-  classificarCfop,
 } from "../../lib/fiscal/regras";
 import { frasePendencia } from "../../lib/comercial/pendencia-etapa";
 
@@ -41,9 +40,10 @@ interface NotaRow {
   entrada_saida: string | null;
   situacao_nfe: string | null;
   modelo: string | null;
+  operacao_nome: string | null;
+  finalidade_nfe: string | null;
   participante_id: number | null;
   participante_nome: string | null;
-  cfop: string | null;
 }
 
 const CHUNK = 5000;
@@ -141,23 +141,18 @@ export async function rebuildFatoPedidoClassificacao(prisma: PrismaClient): Prom
     }
   }
 
-  // Notas: is_venda_externa (CFOP representativo do item de maior valor). Uma passada.
+  // Notas: is_venda_externa. O criterio de venda passou a ser a OPERACAO FISCAL da propria
+  // nota (operacao_nome), que e o que o Odoo usa. O CFOP representativo do item saiu da
+  // regra: ele nao separava venda de venda interna (as duas tem CFOP de venda) e derrubava a
+  // venda sem item no cache. Sem o CFOP, esta consulta nao precisa mais visitar os itens.
   const notas = await prisma.$queryRaw<NotaRow[]>`
-    with itens as (
-      select distinct on (ii.documento_id)
-             ii.documento_id,
-             substring(ii.cfop_nome from '^[0-9]{4}') as cfop
-      from fato_nota_fiscal_item ii
-      order by ii.documento_id, ii.vr_produtos desc nulls last
-    )
     select n.odoo_id, n.entrada_saida, n.situacao_nfe, n.modelo,
-           n.participante_id, n.participante_nome, it.cfop
-    from fato_nota_fiscal n
-    left join itens it on it.documento_id = n.odoo_id`;
+           n.operacao_nome, n.finalidade_nfe,
+           n.participante_id, n.participante_nome
+    from fato_nota_fiscal n`;
 
   const notasExternas: number[] = [];
   for (const n of notas) {
-    const ehReceita = classificarCfop(n.cfop).ehReceita;
     const intragrupo = ehNotaIntragrupo(
       { participanteId: n.participante_id, participanteNome: n.participante_nome },
       participantesGrupo,
@@ -167,7 +162,8 @@ export async function rebuildFatoPedidoClassificacao(prisma: PrismaClient): Prom
         entradaSaida: n.entrada_saida,
         situacaoNfe: n.situacao_nfe,
         modelo: n.modelo,
-        ehReceita,
+        operacaoNome: n.operacao_nome,
+        finalidadeNfe: n.finalidade_nfe,
         intragrupo,
       })
     ) {

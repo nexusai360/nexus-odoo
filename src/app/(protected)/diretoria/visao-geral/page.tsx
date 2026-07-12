@@ -15,6 +15,8 @@ import { queryIndicadoresDemandas } from "@/lib/diretoria/queries/pedidos";
 import { queryIndicadoresEstoque, queryEstoquePorFamilia } from "@/lib/diretoria/queries/estoque";
 import { queryContasAReceber, queryContasAPagar } from "@/lib/reports/queries/financeiro";
 import { DiretoriaPeriodBar } from "@/components/diretoria/diretoria-period-bar";
+import { DiretoriaEmpresaSelect } from "@/components/diretoria/diretoria-empresa-select";
+import { listarEmpresasDoFato } from "@/lib/metrics/_shared/empresa";
 import { FreshnessBadge } from "@/components/diretoria/freshness-badge";
 import { ultimaSyncIso } from "@/lib/diretoria/freshness";
 import { VisaoGeralScreen, type VisaoGeralData } from "@/components/diretoria/visao-geral/visao-geral-screen";
@@ -45,7 +47,21 @@ export default async function DiretoriaVisaoGeralPage({
   );
   const ufs = await userUfs(user);
   const hoje = new Date();
-  const filtros = { periodoDe: isoDia(periodo.de), periodoAte: isoDia(periodo.ate), ufs };
+
+  // Recorte por empresa do grupo (searchParam `empresa`). Só aceita um empresaId que exista
+  // no fato; qualquer outro valor cai no grupo inteiro, então URL adulterada não quebra a tela.
+  const empresas = await listarEmpresasDoFato(prisma);
+  const empresaParam = Number(param("empresa"));
+  const empresaSel = Number.isFinite(empresaParam)
+    ? empresas.find((e) => e.empresaId === empresaParam)
+    : undefined;
+
+  const filtros = {
+    periodoDe: isoDia(periodo.de),
+    periodoAte: isoDia(periodo.ate),
+    ufs,
+    empresaId: empresaSel?.empresaId,
+  };
 
   const [vendas, vendasUf, vendasMarca, demandas, estoque, estoqueFamilia, aReceber, aPagar] =
     await Promise.all([
@@ -82,7 +98,18 @@ export default async function DiretoriaVisaoGeralPage({
     vendasMarca: vendasMarca.linhas.map((m) => ({ label: m.marca, valor: m.valorTotal })),
     estoqueFamilia: estoqueFamilia.linhas.map((f) => ({ label: f.chave, valor: f.valorTotal })),
     atalhos,
+    empresaNome: empresaSel?.nome ?? null,
   };
+
+  const opcoesEmpresa = empresas.map((e) => ({
+    empresaId: e.empresaId,
+    nome: e.nome,
+    // Desambigua as homônimas (matriz e filial com o mesmo nome base).
+    detalhe:
+      e.tipo === "desconhecido"
+        ? null
+        : `${e.tipo === "matriz" ? "Matriz" : "Filial"}${e.uf ? ` ${e.uf}` : ""}`,
+  }));
 
   return (
     <PageShell variant="wide">
@@ -93,7 +120,10 @@ export default async function DiretoriaVisaoGeralPage({
         actions={<FreshnessBadge iso={freshIso} />}
       />
       <div className="flex flex-col gap-5">
-        <DiretoriaPeriodBar />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <DiretoriaPeriodBar />
+          <DiretoriaEmpresaSelect empresas={opcoesEmpresa} />
+        </div>
         <VisaoGeralScreen data={data} />
       </div>
     </PageShell>

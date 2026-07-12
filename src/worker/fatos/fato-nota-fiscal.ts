@@ -11,6 +11,8 @@
 import type { PrismaClient } from "../../generated/prisma/client";
 import { relId, relNome, type OdooM2O } from "./odoo-relational";
 import { markFatoBuilt } from "./fato-build-state";
+import { carregarParticipantesGrupo, ehNotaIntragrupo } from "../../lib/fiscal/grupo";
+import { notaEhVendaExterna } from "../../lib/fiscal/regras";
 
 export interface FatoNotaFiscalRow {
   odooId: number;
@@ -26,6 +28,10 @@ export interface FatoNotaFiscalRow {
   participanteNome: string | null;
   naturezaOperacaoId: number | null;
   naturezaOperacaoNome: string | null;
+  // Operação fiscal (sped.documento.operacao_id, ex.: [3, "AOP1 - Venda LR"]). É o único
+  // campo que separa venda de venda interna , as duas compartilham a mesma natureza.
+  operacaoId: number | null;
+  operacaoNome: string | null;
   empresaId: number | null;
   empresaNome: string | null;
   dataEmissao: Date | null;
@@ -68,6 +74,8 @@ export function mapNotaFiscalRow(raw: Record<string, unknown>): FatoNotaFiscalRo
     participanteNome: relNome(raw.participante_id as OdooM2O),
     naturezaOperacaoId: relId(raw.natureza_operacao_id as OdooM2O),
     naturezaOperacaoNome: relNome(raw.natureza_operacao_id as OdooM2O),
+    operacaoId: relId(raw.operacao_id as OdooM2O),
+    operacaoNome: relNome(raw.operacao_id as OdooM2O),
     empresaId: relId(raw.empresa_id as OdooM2O),
     empresaNome: relNome(raw.empresa_id as OdooM2O),
     dataEmissao: typeof raw.data_emissao === "string" ? new Date(`${raw.data_emissao}T00:00:00Z`) : null,
@@ -90,7 +98,30 @@ export async function rebuildFatoNotaFiscal(prisma: PrismaClient): Promise<numbe
   const rawRows = await prisma.rawSpedDocumento.findMany({
     where: { rawDeleted: false },
   });
-  const mapped = rawRows.map((r) => mapNotaFiscalRow(r.data as Record<string, unknown>));
+
+  // is_venda_externa é gravado JUNTO com a nota, na mesma transação. Antes ele era
+  // materializado só no builder de classificação, que roda três builders depois: entre o
+  // truncate+insert daqui e o passo de lá, a coluna ficava NULL na tabela inteira , e como
+  // o dashboard, os relatórios e o agente Nex leem essa coluna, o faturamento aparecia como
+  // R$ 0,00 nessa janela, a cada ciclo do worker (3 min). Calculado aqui, ela nunca é nula.
+  const participantesGrupo = await carregarParticipantesGrupo(prisma);
+  const mapped = rawRows.map((r) => {
+    const row = mapNotaFiscalRow(r.data as Record<string, unknown>);
+    return {
+      ...row,
+      isVendaExterna: notaEhVendaExterna({
+        entradaSaida: row.entradaSaida,
+        situacaoNfe: row.situacaoNfe,
+        modelo: row.modelo,
+        operacaoNome: row.operacaoNome,
+        finalidadeNfe: row.finalidadeNfe,
+        intragrupo: ehNotaIntragrupo(
+          { participanteId: row.participanteId, participanteNome: row.participanteNome },
+          participantesGrupo,
+        ),
+      }),
+    };
+  });
 
   await prisma.$transaction(
     async (tx) => {

@@ -26,23 +26,30 @@ export async function receitaConsolidada(
 ): Promise<ReceitaConsolidadaResultado> {
   const { itens, marcacaoPorNota } = await carregarItensVendaComGrupo(prisma, input);
 
+  // Base do valor: o vrNf da NOTA , a mesma do faturamento canonico (is_venda_externa) e do
+  // dashboard. Somar vrProdutos do item dava outro numero para a mesma pergunta.
   let receitaExterna = 0;
   let receitaIntragrupoEliminavel = 0;
-  let intercompanyBrutoVrProdutos = 0;
-  for (const it of itens) {
-    if (it.intragrupo) intercompanyBrutoVrProdutos += it.valorProdutos;
-    if (it.ehReceita) {
-      if (it.intragrupo) receitaIntragrupoEliminavel += it.valorProdutos;
-      else receitaExterna += it.valorProdutos;
-    }
-  }
-  const receitaIndividualTotal = receitaExterna + receitaIntragrupoEliminavel;
-
   let notasIntragrupo = 0;
   let notasExternas = 0;
   for (const m of marcacaoPorNota.values()) {
-    if (m.intragrupo) notasIntragrupo++;
-    else notasExternas++;
+    if (m.intragrupo) {
+      receitaIntragrupoEliminavel += m.vrNf;
+      notasIntragrupo++;
+    } else {
+      receitaExterna += m.vrNf;
+      notasExternas++;
+    }
+  }
+  receitaExterna = Math.round(receitaExterna * 100) / 100;
+  receitaIntragrupoEliminavel = Math.round(receitaIntragrupoEliminavel * 100) / 100;
+  const receitaIndividualTotal =
+    Math.round((receitaExterna + receitaIntragrupoEliminavel) * 100) / 100;
+
+  // Bruto de produtos das notas intragrupo (grao de item), so para o comparativo.
+  let intercompanyBrutoVrProdutos = 0;
+  for (const it of itens) {
+    if (it.intragrupo) intercompanyBrutoVrProdutos += it.valorProdutos;
   }
 
   const percentualEliminado =

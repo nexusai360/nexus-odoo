@@ -2,6 +2,7 @@ import type { Prisma, PrismaClient } from "../../../generated/prisma/client";
 import type { FaturamentoInput } from "../_shared/types";
 import { buildPeriodoWhere } from "../_shared/periodo";
 import { buildEmpresaWhere } from "../_shared/empresa";
+import { buildVendaOperacaoWhereNota } from "../_shared/venda";
 import { classificarCfop, extrairCfop } from "../../fiscal/regras";
 import { carregarParticipantesGrupo, ehNotaIntragrupo } from "../../fiscal/grupo";
 
@@ -32,6 +33,8 @@ export interface ItemVendaGrupo {
 
 export interface MarcacaoNota {
   intragrupo: boolean;
+  /** Valor da NOTA , a base canonica do faturamento (a mesma do dashboard e do dono). */
+  vrNf: number;
   participanteId: number | null;
   participanteNome: string | null;
   empresaId: number | null;
@@ -48,22 +51,42 @@ export async function carregarItensVendaComGrupo(
   prisma: PrismaClient,
   input: FaturamentoInput,
 ): Promise<ItensVendaGrupoResultado> {
-  const whereCommon = {
-    entradaSaida: "1" as const,
-    situacaoNfe: "autorizada" as const,
+  // O universo e o MESMO do dashboard e da metrica canonica: notas de VENDA pela regra da
+  // operacao (a venda intragrupo entra aqui e e SEPARADA em memoria, porque a receita
+  // consolidada precisa da eliminacao). Antes o universo era "toda saida autorizada" e a
+  // venda era inferida do CFOP no item , o agente Nex respondia um numero e o dashboard,
+  // outro, para a mesma pergunta.
+  const recorte = {
     ...buildPeriodoWhere(input.periodoDe, input.periodoAte),
     ...buildEmpresaWhere(input.empresaId),
   };
 
-  // (a) groupBy item por documentoId+cfopId
-  const grupos = await prisma.fatoNotaFiscalItem.groupBy({
-    by: ["documentoId", "cfopId"],
-    _sum: { vrProdutos: true },
-    _count: true,
-    where: whereCommon as Prisma.FatoNotaFiscalItemWhereInput,
+  // (a) notas de venda do recorte -> marcacao intragrupo + data + vrNf (base do valor)
+  const notas = await prisma.fatoNotaFiscal.findMany({
+    where: { ...buildVendaOperacaoWhereNota(), ...recorte },
+    select: {
+      odooId: true,
+      participanteId: true,
+      participanteNome: true,
+      empresaId: true,
+      empresaNome: true,
+      dataEmissao: true,
+      vrNf: true,
+    },
   });
+  const notaIds = notas.map((n) => n.odooId);
 
-  // (b) nome representante por cfopId (igual F1) -> ehReceita
+  // (b) itens DESSAS notas (mesmo conjunto, entao as quebras fecham com o KPI)
+  const grupos = notaIds.length
+    ? await prisma.fatoNotaFiscalItem.groupBy({
+        by: ["documentoId", "cfopId"],
+        _sum: { vrProdutos: true },
+        _count: true,
+        where: { documentoId: { in: notaIds } },
+      })
+    : [];
+
+  // (c) nome representante por cfopId (igual F1) -> ehReceita
   const ids = [...new Set(grupos.map((g) => g.cfopId).filter((x): x is number => x !== null))];
   const nomeRows = ids.length
     ? await prisma.fatoNotaFiscalItem.findMany({
@@ -78,24 +101,14 @@ export async function carregarItensVendaComGrupo(
     ehReceitaPorCfop.set(r.cfopId, classificarCfop(extrairCfop(r.cfopNome)).ehReceita);
   }
 
-  // (c) notas do mesmo recorte -> marcacao intragrupo + data (Map, sem O(n*m))
-  const notas = await prisma.fatoNotaFiscal.findMany({
-    where: whereCommon as Prisma.FatoNotaFiscalWhereInput,
-    select: {
-      odooId: true,
-      participanteId: true,
-      participanteNome: true,
-      empresaId: true,
-      empresaNome: true,
-      dataEmissao: true,
-    },
-  });
+  // (d) marcacao por nota (Map, sem O(n*m))
   const participantesGrupo = await carregarParticipantesGrupo(prisma);
   const marcacaoPorNota = new Map<number, MarcacaoNota>();
   const dataPorNota = new Map<number, Date | null>();
   for (const n of notas) {
     marcacaoPorNota.set(n.odooId, {
       intragrupo: ehNotaIntragrupo(n, participantesGrupo),
+      vrNf: Number(n.vrNf),
       participanteId: n.participanteId,
       participanteNome: n.participanteNome,
       empresaId: n.empresaId,
@@ -104,7 +117,7 @@ export async function carregarItensVendaComGrupo(
     dataPorNota.set(n.odooId, n.dataEmissao ?? null);
   }
 
-  // (d) montar itens com flag/data resolvidas via Map
+  // (e) montar itens com flag/data resolvidas via Map
   const itens: ItemVendaGrupo[] = grupos.map((g) => {
     const m = g.documentoId !== null ? marcacaoPorNota.get(g.documentoId) : undefined;
     const data = g.documentoId !== null ? dataPorNota.get(g.documentoId) ?? null : null;

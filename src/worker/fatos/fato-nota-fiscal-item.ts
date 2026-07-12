@@ -45,6 +45,11 @@ export interface FatoNotaFiscalItemRow {
   // Desnormalizados da nota-mãe (F1: corte por empresa e operação no nível do item)
   empresaId: number | null;
   situacaoNfe: string | null;
+  // Desnormalizados da nota-mãe: aplicam a regra "só venda" (operação venda, não interna,
+  // sem devolução) no grão de item, sem join com fato_nota_fiscal.
+  operacaoId: number | null;
+  operacaoNome: string | null;
+  finalidadeNfe: string | null;
   // NÃO inclui atualizadoEm , @default(now()) no schema
 }
 
@@ -53,6 +58,9 @@ export interface NotaInfo {
   entradaSaida: string | null;
   empresaId: number | null;
   situacaoNfe: string | null;
+  operacaoId: number | null;
+  operacaoNome: string | null;
+  finalidadeNfe: string | null;
 }
 
 /**
@@ -98,6 +106,9 @@ export function mapNotaFiscalItemRow(
     entradaSaida: notaInfo?.entradaSaida ?? null,
     empresaId: notaInfo?.empresaId ?? null,
     situacaoNfe: notaInfo?.situacaoNfe ?? null,
+    operacaoId: notaInfo?.operacaoId ?? null,
+    operacaoNome: notaInfo?.operacaoNome ?? null,
+    finalidadeNfe: notaInfo?.finalidadeNfe ?? null,
   };
 }
 
@@ -136,6 +147,9 @@ export async function rebuildFatoNotaFiscalItem(prisma: PrismaClient): Promise<n
       entradaSaida: typeof data.entrada_saida === "string" ? data.entrada_saida : null,
       empresaId: relId(data.empresa_id as OdooM2O),
       situacaoNfe: typeof data.situacao_nfe === "string" ? data.situacao_nfe : null,
+      operacaoId: relId(data.operacao_id as OdooM2O),
+      operacaoNome: relNome(data.operacao_id as OdooM2O),
+      finalidadeNfe: typeof data.finalidade_nfe === "string" ? data.finalidade_nfe : null,
     });
   }
 
