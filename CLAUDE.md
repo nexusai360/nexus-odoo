@@ -1,5 +1,26 @@
 # nexus-odoo — Workflow e Contexto do Projeto
 
+> ## 🔒 REGRA DURÁVEL , DATA DE INÍCIO DAS ANÁLISES É **FILTRO**, NUNCA FAXINA (dono, 2026-07-12)
+>
+> A data configurada em **Configuração > "Analisar dados a partir de"** (AppSetting
+> `sync.corte_dados`, fonte única em `src/lib/corte-dados.ts`) é o **parâmetro global de
+> início das análises**. Ela **filtra a LEITURA** , dashboard da diretoria, Relatórios,
+> Relatórios 2.0, agente Nex (MCP), KPIs e o calendário.
+>
+> **NADA É APAGADO por causa dela.** O cache guarda o histórico ingerido. Mover a data para
+> trás faz o histórico **reaparecer na hora**, sem re-sync e sem perda; mover para frente
+> apenas estreita a janela analisada.
+>
+> A **ingestão tem corte técnico próprio e FIXO** (`src/worker/sync/corte.ts`). Nunca amarrar
+> o domínio do Odoo (sync/reconcile) à data da tela: o worker pararia de puxar o que ficasse
+> fora dela e a **reconciliação marcaria o histórico como removido** (erro cometido e
+> corrigido no PR #168).
+>
+> Ao criar QUALQUER consulta nova que leia histórico, ela **tem que** respeitar essa data
+> (use os helpers de `corte-dados.ts`: `getCorteDados`, `corteAtual`, `clampIsoAoCorte`).
+
+
+
 > Carregado automaticamente em toda sessão. Define como conduzir o trabalho.
 > Sobrescreve regras globais quando houver conflito específico.
 
