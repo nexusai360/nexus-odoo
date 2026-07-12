@@ -1,6 +1,37 @@
 # STATUS — nexus-odoo
 
-> **2026-07-12 (FATURAMENTO POR OPERAÇÃO + DATA DE INÍCIO DAS ANÁLISES , EM PRODUÇÃO).**
+> **2026-07-12 (REVISÃO COMPLETA DAS REGRAS DE CONSULTA , PR #169, aguardando merge).**
+>
+> A data de início das análises (Configuração > "Analisar dados a partir de") agora vale em
+> **TODA** leitura de histórico. A auditoria varreu 7 camadas (metrics, diretoria, relatórios
+> 1.0 e 2.0, tools do MCP, agente, pontos de entrada) e achou **148 pontos** que não
+> respeitavam. Corrigidos, com teste, e provados contra o cache real.
+>
+> - **A raiz era arquitetural**: `corteAtual()` lê um cache em memória do PROCESSO, e só o app
+>   o preenchia. O MCP é outro processo: **nunca lia o AppSetting**, então todas as tools do Nex
+>   grampeavam pela data padrão e mudar a data na tela não mudava nada no agente. Agora o
+>   pipeline de tools hidrata o corte, e `aquecerCorte()` faz o mesmo nos entrypoints do app.
+> - **O corte da ingestão não era fixo** (bug do #168): a constante era o `corteAtual()`
+>   avaliado no import, ou seja, a data da tela. O worker nunca repunha janeiro a março.
+> - **Os KPIs zeravam a cada sync**: o reset global de `is_venda_externa` rodava fora de
+>   transação. Agora a troca é atômica e a tela só se atualiza no FIM do ciclo (troca suave).
+> - **"A receber": R$ 49,2 mi -> R$ 17,8 mi.** O KPI somava recebível com **carteira a faturar**
+>   (R$ 31,3 mi de pedidos sem nota emitida). Separados, com dupla contagem eliminada.
+> - **Estoque a custo** também no catálogo, nas linhas granulares e no giro (45,7 -> 37,2 mi).
+> - **Calendário da Configuração** no padrão do sistema, travado em 01/01/2026.
+>
+> tsc limpo, **4114 testes verdes**, E2E contra `nexus_odoo_l1` provando que mover a data muda
+> a plataforma inteira e que **nada é apagado**.
+>
+> **Plano e continuação:** `docs/superpowers/plans/2026-07-12-data-inicio-analises.md`
+> **Armadilhas e decisões pendentes:** `docs/RADAR.md` (seção R-corte).
+> **Próximo passo:** merge do #169 + deploy; replicar no ERP Nexus (em andamento, branch local
+> `feat/data-inicio-analises`).
+
+---
+
+## 2026-07-12 (anterior) , faturamento por operação + data configurável (EM PRODUÇÃO)
+
 > Três PRs mergeados e deployados em `agentenex.nexusai360.com`:
 >
 > - **#166** , o faturamento passa a ser definido pela **OPERAÇÃO FISCAL** da nota (natureza

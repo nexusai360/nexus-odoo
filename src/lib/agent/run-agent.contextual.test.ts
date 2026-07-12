@@ -48,7 +48,10 @@ jest.mock("./conversation", () => ({
   updateMessageToolResults: jest.fn().mockResolvedValue(undefined),
 }));
 jest.mock("./prompt/compose", () => ({ composeSystemPrompt: jest.fn(() => "System prompt.") }));
-jest.mock("./bi-schema-reference", () => ({ BI_SCHEMA_REFERENCE: "DDL..." }));
+jest.mock("./bi-schema-reference", () => ({
+  BI_SCHEMA_REFERENCE: "DDL...",
+  biSchemaReference: jest.fn(() => "REGRA DO CORTE + DDL..."),
+}));
 jest.mock("./rag/search", () => ({ searchKb: jest.fn().mockResolvedValue([]) }));
 jest.mock("./rag/embed", () => ({
   EmbeddingUnavailable: class EmbeddingUnavailable extends Error {},

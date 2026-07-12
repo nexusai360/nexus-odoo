@@ -18,12 +18,29 @@ describe("capturarSnapshotEstoqueDiario", () => {
     const deleteMany = jest.fn().mockResolvedValue({ count: 0 });
     const findMany = jest.fn().mockResolvedValue(saldos);
     const createMany = jest.fn().mockResolvedValue({ count: saldos.length });
-    const prisma = {
+    // O apagar e o inserir tem que acontecer DENTRO da transacao: fora dela, a foto do dia
+    // some por alguns segundos e a comparacao de estoque na tela zera.
+    const tx = {
       fatoEstoqueSaldoSnapshot: { deleteMany, createMany },
       fatoEstoqueSaldo: { findMany },
+    };
+    const $transaction = jest.fn(async (fn: (t: typeof tx) => Promise<unknown>) => fn(tx));
+    const prisma = {
+      ...tx,
+      $transaction,
     } as unknown as PrismaClient;
-    return { prisma, deleteMany, findMany, createMany };
+    return { prisma, deleteMany, findMany, createMany, $transaction };
   }
+
+  it("apaga e regrava a foto do dia na MESMA transacao (a tela nunca ve o dia vazio)", async () => {
+    const { prisma, $transaction, deleteMany, createMany } = mockPrisma([
+      { produtoId: 1, produtoNome: "A", localId: 10, localNome: "L1", quantidade: 5, vrSaldo: 100, familiaId: null, familiaNome: null, marcaId: null, marcaNome: null },
+    ]);
+    await capturarSnapshotEstoqueDiario(prisma, new Date("2026-06-19T12:00:00Z"));
+    expect($transaction).toHaveBeenCalledTimes(1);
+    expect(deleteMany).toHaveBeenCalledTimes(1);
+    expect(createMany).toHaveBeenCalledTimes(1);
+  });
 
   it("regrava o dia (deleteMany) e insere uma linha por saldo com a mesma dataRef", async () => {
     const { prisma, deleteMany, createMany } = mockPrisma([

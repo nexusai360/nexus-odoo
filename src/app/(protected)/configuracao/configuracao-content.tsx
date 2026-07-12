@@ -16,6 +16,7 @@ import { toast } from "sonner";
 
 import { updateSyncConfig } from "@/lib/actions/sync-config";
 import { DatePickerSingle } from "@/components/ui/date-picker-single";
+import { CORTE_DADOS_MINIMO } from "@/lib/corte-dados";
 import {
   Card,
   CardContent,
@@ -837,19 +838,20 @@ export function ConfiguracaoContent({ config, estado, fatos }: Props) {
           {/* Marco zero da plataforma: a data manda em tudo (faturamento, estoque, contas,
               entregas, relatórios e agente Nex). Fica junto do Salvar, no mesmo card. */}
           <div className="border-t border-border/60 pt-5">
-            <div className="flex flex-col gap-1.5 sm:max-w-sm">
-              <Label htmlFor="corte-dados">Analisar dados a partir de</Label>
-              <DatePickerSingle
-                id="corte-dados"
-                value={form.corteDados}
-                onChange={(iso) => setForm((f) => ({ ...f, corteDados: iso }))}
-                anoInicial={2020}
-              />
-              <p className="text-xs text-muted-foreground">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-8">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="corte-dados">Analisar dados a partir de</Label>
+                <DatePickerSingle
+                  id="corte-dados"
+                  value={form.corteDados}
+                  onChange={(iso) => setForm((f) => ({ ...f, corteDados: iso }))}
+                  minIso={CORTE_DADOS_MINIMO}
+                />
+              </div>
+              <p className="max-w-md text-xs leading-relaxed text-muted-foreground sm:pt-8">
                 Define o início de tudo o que a plataforma analisa: faturamento, estoque,
-                contas, entregas, relatórios e o agente Nex. Nada é apagado , o histórico
-                fica no cache, então mover a data para trás traz os dados de volta na hora,
-                sem precisar sincronizar de novo.
+                contas, entregas, relatórios e o agente Nex. Nada é apagado: o histórico
+                fica no cache.
               </p>
             </div>
           </div>

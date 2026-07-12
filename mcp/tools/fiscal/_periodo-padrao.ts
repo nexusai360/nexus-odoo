@@ -29,6 +29,10 @@ export interface PeriodoResolvido {
   label: string;
   /** true quando o periodo pedido termina ANTES do corte de dados (cache vazio por regra). */
   preCorte: boolean;
+  /** true quando o inicio pedido era anterior ao corte e foi grampeado nele. */
+  cortado: boolean;
+  /** Frase pronta de aviso quando o periodo coberto difere do pedido (undefined quando nao ha o que avisar). */
+  aviso?: string;
 }
 
 /**
@@ -46,6 +50,7 @@ export function resolverPeriodoFiscal(
     // a partir do marco zero, e a resposta diz isso (nunca finge cobrir o que nao cobre).
     const deClamped = clampIsoAoCorte(de.slice(0, 10), corte);
     const cortado = deClamped !== de.slice(0, 10);
+    const preCorte = ate.slice(0, 10) < corte;
     return {
       periodoDe: deClamped,
       periodoAte: ate,
@@ -53,17 +58,22 @@ export function resolverPeriodoFiscal(
       label: cortado
         ? `${deClamped} a ${ate} (a plataforma so tem dados a partir de ${corteLabel(corte)})`
         : `${de} a ${ate}`,
-      preCorte: ate.slice(0, 10) < corte,
+      preCorte,
+      cortado,
+      aviso: cortado || preCorte ? avisoCorte(corte) : undefined,
     };
   }
   const hojeStr = hoje.toISOString().slice(0, 10);
-  // Sem periodo informado: do corte ate hoje (antes assumia 1o de janeiro, o que passava a
-  // impressao de cobrir um intervalo que a plataforma nao tem).
+  // Sem periodo informado (ou par incompleto): do corte ate hoje (antes assumia 1o de
+  // janeiro, o que passava a impressao de cobrir um intervalo que a plataforma nao tem).
+  // O piso do corte entra SEMPRE , consulta "sem periodo" nunca varre o historico inteiro.
   return {
     periodoDe: corte,
     periodoAte: hojeStr,
     assumido: true,
     label: `${corteLabel(corte)} a ${hojeStr} (todo o periodo disponivel)`,
     preCorte: false,
+    cortado: !!de && de.slice(0, 10) < corte,
+    aviso: `Sem periodo completo informado: considerei de ${corteLabel(corte)} (data de inicio das analises) ate hoje.`,
   };
 }

@@ -2219,6 +2219,15 @@ model FatoFinanceiroTitulo {
   contaId          Int?      @map("conta_id")
   contaNome        String?   @map("conta_nome")
   numeroDocumento  String?   @map("numero_documento")
+  /// Pedido de origem do título. No Odoo da Tauga o financeiro pode nascer do PEDIDO
+  /// ("financeiro pelo pedido") ou da NOTA (duplicata). Sem esta coluna era impossível
+  /// distinguir recebível de carteira a faturar, e o KPI somava os dois.
+  pedidoId         Int?      @map("pedido_id")
+  /// Nota fiscal de origem (quando o título é duplicata de NF).
+  notaFiscalId     Int?      @map("nota_fiscal_id")
+  /// O pedido de origem já tem nota fiscal de venda autorizada. Um título de pedido AINDA
+  /// NÃO faturado é previsão de receita (carteira), não conta a receber.
+  pedidoFaturado   Boolean   @default(false) @map("pedido_faturado")
   dataDocumento    DateTime? @map("data_documento")
   dataVencimento   DateTime? @map("data_vencimento")
   dataPagamento    DateTime? @map("data_pagamento")
@@ -2234,6 +2243,7 @@ model FatoFinanceiroTitulo {
 
   @@index([dataVencimento])
   @@index([tipo])
+  @@index([pedidoId])
   @@map("fato_financeiro_titulo")
 }
 

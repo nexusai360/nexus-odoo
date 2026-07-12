@@ -7,6 +7,9 @@ function makePrisma() {
   return {
     fatoBuildState: { findMany: jest.fn() },
     syncState: { findMany: jest.fn() },
+    // Piso da data de inicio das analises: a query busca no PAI (fato_pedido) os ids dentro
+    // da janela, porque a parcela nao tem a data do documento (idsPedidosNoCorte).
+    fatoPedido: { findMany: jest.fn(async () => []) },
     fatoPedidoParcela: {
       findMany: jest.fn(),
       count: jest.fn(),

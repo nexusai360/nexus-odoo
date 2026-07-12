@@ -43,6 +43,7 @@ import { pipelineGeracao } from "@/lib/reports/builder/agent/geracao/pipeline";
 import type { EntradaGeracao } from "@/lib/reports/builder/agent/geracao/types";
 import { verificarQuota } from "@/lib/reports/builder/agent/quota";
 import type { BuilderReportEntry } from "@/lib/reports/builder/types";
+import { aquecerCorte } from "@/lib/corte-app";
 
 // O pipeline do Gerar faz ate 2 chamadas LLM (blueprint medio + revisao alta) +
 // build/validacao. maxDuration generoso para nao cortar a funcao no meio.
@@ -62,6 +63,8 @@ function jsonError(error: string, status: number): Response {
 }
 
 export async function POST(req: Request): Promise<Response> {
+  // A data de inicio das analises precisa estar hidratada ANTES de qualquer consulta.
+  await aquecerCorte();
   // Gate admin/super_admin (construtor e restrito).
   const user = await getCurrentUser();
   if (!user) return jsonError("Nao autenticado", 401);

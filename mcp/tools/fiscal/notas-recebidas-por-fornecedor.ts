@@ -6,6 +6,7 @@ import { queryNotasRecebidasPorFornecedor } from "@/lib/reports/queries/fiscal.j
 import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
 import { paginacaoInputShape, resolverPaginacao, montarPaginacaoMeta } from "../../lib/paginacao.js";
+import { resolverPeriodoFiscal } from "./_periodo-padrao.js";
 
 const inputSchema = z.object({
   /** Filtra por nome do fornecedor (busca parcial). Use para perguntas
@@ -45,6 +46,8 @@ const dados = z.object({
   }),
   totalFornecedoresDistintos: z.number().int(),
   aviso: z.string(),
+  /** Periodo EFETIVAMENTE coberto (ja grampeado a data de inicio das analises). */
+  periodoCoberto: z.string().optional(),
   // Contrato de lista (Fase B): fornecedores por valor total recebido desc.
   ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
@@ -74,17 +77,23 @@ const outputSchema = z.union([
 type Input = z.infer<typeof inputSchema>;
 type Output = z.infer<typeof outputSchema>;
 
-function shape(d: Awaited<ReturnType<typeof queryNotasRecebidasPorFornecedor>>) {
+function shape(
+  d: Awaited<ReturnType<typeof queryNotasRecebidasPorFornecedor>>,
+  periodoLabel: string,
+  avisoPeriodo?: string,
+) {
   return {
     linhas: d.linhas,
     totalAgregado: d.totalAgregado,
     totalFornecedoresDistintos: d.totalFornecedoresDistintos,
     ordenadoPor: "valor desc",
+    periodoCoberto: periodoLabel,
     aviso:
       "Agrupa notas fiscais de entrada (DF-e de fornecedores) por fornecedor, " +
       "ordenado por valor recebido decrescente. `totalAgregado` soma todas as " +
       "notas que casaram o filtro (use-o para 'quantas notas do fornecedor X'); " +
-      "`linhas` é o detalhamento por participante.",
+      `\`linhas\` é o detalhamento por participante. Período coberto: ${periodoLabel}.` +
+      (avisoPeriodo ? ` ${avisoPeriodo}` : ""),
   };
 }
 
@@ -104,8 +113,22 @@ export const fiscalNotasRecebidasPorFornecedor: ToolEntry<Input, Output> = {
   outputSchema,
   handler: async (input, ctx) => {
     const { limit, offset } = resolverPaginacao(input);
+    // Ranking de fornecedores sobre notas de entrada (documento com data): sem piso, somava
+    // notas anteriores a data de inicio das analises. Periodo sempre resolvido e grampeado.
+    const per = resolverPeriodoFiscal(input.periodoDe, input.periodoAte);
     const envelope = await withFreshness(ctx.prisma, ["fato_nota_fiscal"], async () =>
-      shape(await queryNotasRecebidasPorFornecedor(ctx.prisma, { ...input, limit, offset })),
+      shape(
+        await queryNotasRecebidasPorFornecedor(ctx.prisma, {
+          fornecedor: input.fornecedor,
+          documento: input.documento,
+          periodoDe: per.periodoDe,
+          periodoAte: per.periodoAte,
+          limit,
+          offset,
+        }),
+        per.label,
+        per.aviso,
+      ),
     );
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
@@ -117,15 +140,18 @@ export const fiscalNotasRecebidasPorFornecedor: ToolEntry<Input, Output> = {
       ...envelope,
       dados: {
         ...d,
-        _RESPOSTA: top
-          ? `Notas recebidas por fornecedor: ${d.totalAgregado.quantidade} notas, ${fmt(d.totalAgregado.valorTotal)} em ${d.totalFornecedoresDistintos} fornecedores. Top: ${top.participanteNome ?? "(sem nome)"} ${fmt(top.valorTotal)}.`
-          : "Nao ha notas recebidas no periodo.",
+        _RESPOSTA:
+          (top
+            ? `Notas recebidas por fornecedor (${per.label}): ${d.totalAgregado.quantidade} notas, ${fmt(d.totalAgregado.valorTotal)} em ${d.totalFornecedoresDistintos} fornecedores. Top: ${top.participanteNome ?? "(sem nome)"} ${fmt(top.valorTotal)}.`
+            : `Nao ha notas recebidas no periodo ${per.label}.`) +
+          (per.aviso ? ` ${per.aviso}` : ""),
         _DESTAQUE: {
           totalNotas: d.totalAgregado.quantidade,
           valorTotal: d.totalAgregado.valorTotal,
           totalFornecedores: d.totalFornecedoresDistintos,
           topFornecedor: top?.participanteNome ?? "",
           valorTopFornecedor: top?.valorTotal ?? 0,
+          periodoCoberto: per.label,
         },
         _agregado: { contagem: d.totalAgregado.quantidade, soma: d.totalAgregado.valorTotal },
         _listaTruncada: paginacao.temMais,

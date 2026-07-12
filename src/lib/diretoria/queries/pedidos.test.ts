@@ -1,3 +1,5 @@
+import { corteAtualDate } from "@/lib/corte-dados";
+
 import {
   queryDemandasPorUf,
   queryIndicadoresDemandas,
@@ -5,6 +7,9 @@ import {
   queryDemandaPorEtapa,
   queryDemandasMaisParadas,
 } from "./pedidos";
+
+/** Data de início das análises vigente nos testes (padrão da plataforma). */
+const CORTE = corteAtualDate();
 
 type PedidoMock = {
   odooId: number;
@@ -130,5 +135,38 @@ describe("queryDemandasMaisParadas (B7)", () => {
     const r = await queryDemandasMaisParadas(makePrisma(pedidos, parceiros, historico), hoje, { ufs: ["SP"], limite: 1 });
     expect(r.linhas).toHaveLength(1);
     expect(r.linhas[0].numero).toBe("P1");
+  });
+});
+
+// Pedido é documento com data: TUDO no módulo sai de carregarAbertas, então o piso da data
+// de início das análises é verificado ali, uma vez, para as 5 queries.
+describe("data de início das análises na demanda em aberta", () => {
+  const whereDe = (p: ReturnType<typeof makePrisma>) =>
+    (p.fatoPedido.findMany as jest.Mock).mock.calls[0][0].where;
+
+  it("sem período, a demanda em aberta parte do corte (antes varria todo o histórico)", async () => {
+    const p = makePrisma([], []);
+    await queryDemandasPorUf(p, {});
+    expect(whereDe(p).bucketDemanda).toBe("ABERTA");
+    expect(whereDe(p).dataOrcamento.gte).toEqual(CORTE);
+  });
+
+  it("período informado antes do corte é grampeado", async () => {
+    const p = makePrisma([], []);
+    await queryIndicadoresDemandas(p, hoje, { periodoDe: "2024-05-01", periodoAte: "2026-06-30" });
+    expect(whereDe(p).dataOrcamento.gte).toEqual(CORTE);
+    expect(whereDe(p).dataOrcamento.lt).toEqual(new Date("2026-07-01T00:00:00Z"));
+  });
+
+  it("o piso vale para as demais leituras do módulo (B2, B6b, B7)", async () => {
+    for (const roda of [
+      (p: ReturnType<typeof makePrisma>) => queryDemandasPendentes(p, hoje, {}),
+      (p: ReturnType<typeof makePrisma>) => queryDemandaPorEtapa(p, {}),
+      (p: ReturnType<typeof makePrisma>) => queryDemandasMaisParadas(p, hoje, {}),
+    ]) {
+      const p = makePrisma([], []);
+      await roda(p);
+      expect(whereDe(p).dataOrcamento.gte).toEqual(CORTE);
+    }
   });
 });

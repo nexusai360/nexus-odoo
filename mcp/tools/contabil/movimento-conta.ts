@@ -14,6 +14,7 @@ import {
 } from "@/lib/reports/queries/contabil.js";
 import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
+import { resolverPeriodoCorte } from "../../lib/periodo-corte.js";
 import {
   paginacaoInputShape,
   resolverPaginacao,
@@ -50,6 +51,9 @@ const dados = z.object({
   linhas: z.array(linhaSchema),
   total: z.number().int(),
   truncado: z.boolean(),
+  /** Periodo EFETIVAMENTE coberto (ja grampeado a data de inicio das analises). */
+  periodoCoberto: z.string().optional(),
+  aviso: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _PAGINACAO: z.any().optional(),
@@ -85,11 +89,21 @@ export const contabilMovimentoConta: ToolEntry<Input, Output> = {
   outputSchema,
   handler: async (input, ctx) => {
     const { limit, offset } = resolverPaginacao(input);
+    // Lancamento contabil e HISTORICO (dataLancamento). O helper de periodo da query so monta
+    // o range quando recebe data, entao sem periodo a tool varria todo o razao. Aqui o periodo
+    // e SEMPRE resolvido, com o inicio grampeado a data de inicio das analises.
+    const per = resolverPeriodoCorte(input.dataInicio, input.dataFim);
     const envelope = await withFreshness(
       ctx.prisma,
       ["fato_contabil_lancamento_item"],
       async () => {
-        const result = await queryMovimentoConta(ctx.prisma, { ...input, limit, offset });
+        const result = await queryMovimentoConta(ctx.prisma, {
+          ...input,
+          dataInicio: per.periodoDe,
+          dataFim: per.periodoAte,
+          limit,
+          offset,
+        });
         return {
           ordenadoPor: "data do lancamento asc",
           linhas: result.linhas.map((l) => ({
@@ -98,6 +112,8 @@ export const contabilMovimentoConta: ToolEntry<Input, Output> = {
           })),
           total: result.total,
           truncado: result.truncado,
+          periodoCoberto: per.label,
+          ...(per.aviso ? { aviso: per.aviso } : {}),
         };
       },
     );

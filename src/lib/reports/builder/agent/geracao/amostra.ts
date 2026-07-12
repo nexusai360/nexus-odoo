@@ -3,6 +3,10 @@
 // precisam para julgar/decidir, sem materializar o relatorio inteiro. Por metrica:
 // escalar (do campoKpi certo), cardinalidade + topN (categorica) e nPontosSerie (serie).
 // O dado pesado fica para a resolucao final no render.
+//
+// A amostra herda a janela de analise do resolver injetado: o piso da data de inicio das
+// analises e aplicado no produtor do source-registry, entao mesmo um resolver que chama
+// `produtor({})` (o DEPS_PADRAO do pipeline) so enxerga dado dentro da janela.
 import type { Metrica } from "./metric-catalog";
 
 export interface AmostraMetrica {

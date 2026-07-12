@@ -10,6 +10,7 @@ import {
   resolverPaginacao,
   montarPaginacaoMeta,
 } from "../../lib/paginacao.js";
+import { resolverPeriodoFiscal } from "./_periodo-padrao.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional().describe("Início, AAAA-MM-DD"),
@@ -35,6 +36,8 @@ const dados = z.object({
   total: z.number().int(),
   truncado: z.boolean(),
   aviso: z.string(),
+  /** Periodo EFETIVAMENTE coberto (ja grampeado a data de inicio das analises). */
+  periodoCoberto: z.string().optional(),
   // Contrato de lista (Fase B): a query ordena por dataEmissao desc com
   // desempate por odooId; aqui apenas declaramos ao LLM.
   ordenadoPor: z.string().optional(),
@@ -75,10 +78,27 @@ export const fiscalMdfeManifestos: ToolEntry<Input, Output> = {
   outputSchema,
   handler: async (input, ctx) => {
     const { limit, offset } = resolverPaginacao(input);
+    // fatoMdfeCount é proposital SEM filtro: serve só para detectar "módulo não operado".
     const total = await fatoMdfeCount(ctx.prisma);
+    // MDF-e é documento fiscal com data: início grampeado à data de início das análises e
+    // piso do corte quando o período não vem (a query só filtra com o par completo).
+    const per = resolverPeriodoFiscal(input.periodoDe, input.periodoAte);
     const envelope = await withFreshness(ctx.prisma, ["fato_mdfe"], async () => {
-      const r = await queryMdfeManifestos(ctx.prisma, { ...input, limit, offset });
-      return { linhas: r.linhas, total: r.total, truncado: r.truncado, aviso: "", ordenadoPor: "data desc" };
+      const r = await queryMdfeManifestos(ctx.prisma, {
+        periodoDe: per.periodoDe,
+        periodoAte: per.periodoAte,
+        situacao: input.situacao,
+        limit,
+        offset,
+      });
+      return {
+        linhas: r.linhas,
+        total: r.total,
+        truncado: r.truncado,
+        periodoCoberto: per.label,
+        aviso: `Período coberto: ${per.label}.${per.aviso ? ` ${per.aviso}` : ""}`,
+        ordenadoPor: "data desc",
+      };
     });
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
@@ -91,10 +111,11 @@ export const fiscalMdfeManifestos: ToolEntry<Input, Output> = {
         _RESPOSTA:
           total === 0
             ? NAO_OPERADO
-            : d.total > 0
-              ? `${d.total} MDF-e no período.`
-              : "Sem MDF-e nesse recorte (período/situação).",
-        _DESTAQUE: { totalMdfe: d.total, valorNotas: valorTotal },
+            : (d.total > 0
+                ? `${d.total} MDF-e no período ${per.label}.`
+                : `Sem MDF-e nesse recorte (período ${per.label}/situação).`) +
+              (per.aviso ? ` ${per.aviso}` : ""),
+        _DESTAQUE: { totalMdfe: d.total, valorNotas: valorTotal, periodoCoberto: per.label },
         _agregado: { contagem: d.total, soma: valorTotal },
         _listaTruncada: paginacao.temMais,
         _PAGINACAO: paginacao,

@@ -1,5 +1,10 @@
 // src/lib/reports/queries/estoque-minimo-maximo.ts
 // B6 , parâmetros de mín/máx de estoque. Fonte: fato_estoque_min_max.
+//
+// A data de inicio das analises (AppSetting sync.corte_dados) NAO se aplica aqui: as regras
+// de reposicao (quantidade minima/maxima por produto x local) sao CADASTRO/parametro, nao
+// documento com data. Nao ha historico sendo lido e o fato nem tem coluna de data , filtrar
+// esconderia parametro que esta valendo hoje.
 import type { PrismaClient } from "@/generated/prisma/client";
 
 export interface MinMaxLinha {

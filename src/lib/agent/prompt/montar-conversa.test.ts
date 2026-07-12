@@ -117,6 +117,45 @@ describe("montarConversa", () => {
     expect(conversation.some((m) => m.content.includes("[Preferências deste usuário]"))).toBe(false);
   });
 
+  // Data de inicio das analises: o aviso e VOLATIL (o dono muda a data na tela),
+  // entao vive no item de [Contexto], nunca no prefixo estavel do system.
+  test("corte: o aviso entra no item de [Contexto], junto da data atual", () => {
+    const { conversation } = montarConversa({
+      systemPromptBase: "REGRAS FIXAS",
+      historyMessages: [],
+      userMessage: "quanto faturei em 2025?",
+      agoraBrt: "domingo, 12/07/2026",
+      corteAviso:
+        "A plataforma considera apenas documentos a partir de 10/05/2026; não há dados anteriores a essa data.",
+    });
+    const dataItem = conversation[conversation.length - 2];
+    expect(dataItem.content).toContain("[Contexto] Data atual");
+    expect(dataItem.content).toContain("[Inicio das analises]");
+    expect(dataItem.content).toContain("10/05/2026");
+  });
+
+  test("corte: cache-safe , o systemPromptBase nao carrega a data do corte", () => {
+    const { conversation } = montarConversa({
+      systemPromptBase: "REGRAS FIXAS",
+      historyMessages: [],
+      userMessage: "oi",
+      agoraBrt: "domingo, 12/07/2026",
+      corteAviso: "A plataforma considera apenas documentos a partir de 10/05/2026.",
+    });
+    expect(conversation[0].content).toBe("REGRAS FIXAS");
+    expect(conversation[0].content).not.toContain("10/05/2026");
+  });
+
+  test("corte ausente: nenhum bloco de inicio das analises e injetado", () => {
+    const { conversation } = montarConversa({
+      systemPromptBase: "S",
+      historyMessages: [],
+      userMessage: "oi",
+      agoraBrt: "12/07/2026",
+    });
+    expect(conversation.some((m) => m.content.includes("[Inicio das analises]"))).toBe(false);
+  });
+
   test("M.5: sem resumo, nenhum bloco de resumo e injetado", () => {
     const { conversation } = montarConversa({
       systemPromptBase: "S",

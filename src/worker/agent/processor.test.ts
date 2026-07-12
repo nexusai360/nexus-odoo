@@ -21,6 +21,7 @@ const mockReleaseUserLock = jest.fn();
 const mockEmitAgentReply = jest.fn();
 const mockRedisGet = jest.fn();
 const mockRedisSet = jest.fn();
+const mockAppSettingFindUnique = jest.fn();
 
 jest.mock("./user-lock", () => ({
   acquireUserLock: (...args: unknown[]) => mockAcquireUserLock(...args),
@@ -49,6 +50,9 @@ jest.mock("@/lib/redis", () => ({
 jest.mock("@/lib/prisma", () => ({
   prisma: {
     agentSettings: { findFirst: (...args: unknown[]) => mockAgentSettingsFindFirst(...args) },
+    // Data de inicio das analises: o worker le o AppSetting para hidratar o corte deste
+    // processo (o cache de corteAtual() e por processo).
+    appSetting: { findUnique: (...args: unknown[]) => mockAppSettingFindUnique(...args) },
   },
 }));
 
@@ -59,6 +63,7 @@ global.fetch = mockFetch;
 // ──────────────────────────────────────────────
 
 import { processAgentJob, type AgentJobData } from "./processor";
+import { corteAtual, invalidarCacheCorte } from "@/lib/corte-dados";
 
 // ──────────────────────────────────────────────
 // Fixtures
@@ -106,6 +111,32 @@ beforeEach(() => {
   mockAgentSettingsFindFirst.mockResolvedValue({
     audioCheckpoint: "PRODUCTION",
     imageCheckpoint: "PRODUCTION",
+  });
+  // Data de inicio das analises configurada pelo dono.
+  mockAppSettingFindUnique.mockResolvedValue({ key: "sync.corte_dados", value: "2026-05-10" });
+  invalidarCacheCorte(); // o cache do corte e de processo (TTL 60s): zera entre os testes
+});
+
+// ──────────────────────────────────────────────
+// Data de inicio das analises (worker = processo proprio)
+// ──────────────────────────────────────────────
+
+describe("processAgentJob , data de inicio das analises", () => {
+  it("hidrata o corte deste processo antes de rodar o agente", async () => {
+    await processAgentJob(BASE_JOB);
+
+    expect(mockAppSettingFindUnique).toHaveBeenCalledWith({
+      where: { key: "sync.corte_dados" },
+    });
+    // O Nex do WhatsApp roda no WORKER: sem esta hidratacao, corteAtual() ficaria no valor
+    // padrao e mudar a data na tela nao mudaria nada nas respostas do WhatsApp.
+    expect(corteAtual()).toBe("2026-05-10");
+  });
+
+  it("banco fora: nao derruba o job (o corte cai no ultimo valor conhecido)", async () => {
+    mockAppSettingFindUnique.mockRejectedValue(new Error("db down"));
+    await expect(processAgentJob(BASE_JOB)).resolves.toBeUndefined();
+    expect(mockRunAgent).toHaveBeenCalled();
   });
 });
 

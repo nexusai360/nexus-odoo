@@ -1,3 +1,5 @@
+import { CORTE_DADOS_PADRAO, corteAtualDate } from "@/lib/corte-dados";
+
 import {
   queryFormasPagamento,
   queryVendasPorMarca,
@@ -7,8 +9,15 @@ import {
   queryMargemEstimada,
 } from "./vendas";
 
-function makePrisma(parcelas: { formaPagamentoNome: string | null; valor: number }[]) {
+/** Data de início das análises vigente nos testes (nenhum getCorteDados foi chamado). */
+const CORTE = corteAtualDate();
+
+function makePrisma(
+  parcelas: { formaPagamentoNome: string | null; valor: number }[],
+  pedidos: { odooId: number }[] = [{ odooId: 1 }, { odooId: 2 }, { odooId: 3 }],
+) {
   return {
+    fatoPedido: { findMany: jest.fn().mockResolvedValue(pedidos) },
     fatoPedidoParcela: {
       findMany: jest.fn().mockResolvedValue(parcelas),
     },
@@ -34,12 +43,35 @@ describe("queryFormasPagamento (C10)", () => {
     expect(r.linhas[0].formaPagamento).toBe("Não informado");
   });
 
-  it("período filtra por dataVencimento (passa where ao prisma)", async () => {
+  it("período filtra por dataVencimento, com o último dia inteiro (borda exclusiva)", async () => {
     const prisma = makePrisma([]);
     await queryFormasPagamento(prisma, { periodoDe: "2026-06-01", periodoAte: "2026-06-30" });
     const call = (prisma.fatoPedidoParcela.findMany as jest.Mock).mock.calls[0][0];
     expect(call.where.dataVencimento.gte).toEqual(new Date("2026-06-01T00:00:00Z"));
-    expect(call.where.dataVencimento.lte).toEqual(new Date("2026-06-30T23:59:59Z"));
+    expect(call.where.dataVencimento.lt).toEqual(new Date("2026-07-01T00:00:00Z"));
+  });
+
+  it("sem período, o piso é a data de início das análises (não varre o histórico inteiro)", async () => {
+    const prisma = makePrisma([]);
+    await queryFormasPagamento(prisma, {});
+    const call = (prisma.fatoPedidoParcela.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where.dataVencimento.gte).toEqual(CORTE);
+  });
+
+  it("período anterior ao corte é grampeado na data de início das análises", async () => {
+    const prisma = makePrisma([]);
+    await queryFormasPagamento(prisma, { periodoDe: "2024-01-01", periodoAte: "2026-06-30" });
+    const call = (prisma.fatoPedidoParcela.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where.dataVencimento.gte).toEqual(CORTE);
+  });
+
+  it("só conta parcela de pedido posterior ao corte (o piso é do DOCUMENTO, não do vencimento)", async () => {
+    const prisma = makePrisma([{ formaPagamentoNome: "Pix", valor: 10 }], [{ odooId: 7 }]);
+    await queryFormasPagamento(prisma, { periodoDe: "2026-06-01", periodoAte: "2026-06-30" });
+    const pedidoCall = (prisma.fatoPedido.findMany as jest.Mock).mock.calls[0][0];
+    expect(pedidoCall.where.dataOrcamento.gte).toEqual(CORTE);
+    const parcelaCall = (prisma.fatoPedidoParcela.findMany as jest.Mock).mock.calls[0][0];
+    expect(parcelaCall.where.pedidoId).toEqual({ in: [7] });
   });
 });
 
@@ -229,5 +261,47 @@ describe("queryMargemEstimada (margem aproximada)", () => {
     expect(r.custoEstimado).toBe(700);
     expect(r.margem).toBe(800);
     expect(Math.round(r.margemPct)).toBe(53);
+  });
+});
+
+// Nota fiscal e pedido são documentos com data: o piso da data de início das análises vale
+// SEMPRE, inclusive quando o chamador não manda período (o caso do construtor).
+describe("data de início das análises nas queries de vendas", () => {
+  it("queryVendasPorUf sem período: piso no corte, nunca where vazio", async () => {
+    const prisma = makePrismaUf([], []);
+    await queryVendasPorUf(prisma, {});
+    const call = (prisma.fatoNotaFiscal.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where.dataEmissao.gte).toEqual(CORTE);
+  });
+
+  it("queryVendasPorMarca com período pré-corte: dataEmissao grampeada", async () => {
+    const prisma = makePrismaMarca([], []);
+    await queryVendasPorMarca(prisma, { periodoDe: "2020-01-01", periodoAte: "2026-06-30" });
+    const call = (prisma.fatoNotaFiscal.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where.dataEmissao.gte).toEqual(CORTE);
+    expect(call.where.dataEmissao.lt).toEqual(new Date("2026-07-01T00:00:00Z"));
+  });
+
+  it("queryModalidadesEMaiorPedido sem período: piso no corte em dataOrcamento", async () => {
+    const prisma = makePrismaPedidos([]);
+    await queryModalidadesEMaiorPedido(prisma, {});
+    const call = (prisma.fatoPedido.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where.dataOrcamento.gte).toEqual(CORTE);
+  });
+
+  it("queryIndicadoresVendas sem período: nota e pedido com piso no corte", async () => {
+    const prisma = {
+      fatoNotaFiscal: { findMany: jest.fn().mockResolvedValue([]) },
+      fatoPedido: { count: jest.fn().mockResolvedValue(0) },
+    } as unknown as Parameters<typeof queryIndicadoresVendas>[0];
+    await queryIndicadoresVendas(prisma, {});
+    const nota = (prisma.fatoNotaFiscal.findMany as jest.Mock).mock.calls[0][0];
+    const pedido = (prisma.fatoPedido.count as jest.Mock).mock.calls[0][0];
+    expect(nota.where.dataEmissao.gte).toEqual(CORTE);
+    expect(pedido.where.dataOrcamento.gte).toEqual(CORTE);
+  });
+
+  it("o corte usado é o configurado na plataforma (default 2026-03-16)", () => {
+    expect(CORTE).toEqual(new Date(`${CORTE_DADOS_PADRAO}T00:00:00Z`));
   });
 });

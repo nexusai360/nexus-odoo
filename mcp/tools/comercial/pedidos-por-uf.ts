@@ -6,6 +6,7 @@
 import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { withFreshness } from "../../lib/freshness.js";
+import { resolverPeriodoCorte, type PeriodoCorte } from "../../lib/periodo-corte.js";
 import type { PrismaClient } from "@/generated/prisma/client.js";
 
 const inputSchema = z.object({
@@ -32,6 +33,9 @@ const dados = z.object({
   totalGeral: z.number(),
   totalPedidos: z.number().int(),
   totalUfs: z.number().int(),
+  /** Periodo EFETIVAMENTE coberto (ja grampeado a data de inicio das analises). */
+  periodoCoberto: z.string().optional(),
+  aviso: z.string().optional(),
   // Contrato de lista (Fase B): UFs ordenadas por valor total desc na query SQL.
   ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
@@ -64,7 +68,7 @@ interface Row {
   valor: string | number;
 }
 
-async function queryPedidosPorUf(prisma: PrismaClient, input: Input) {
+async function queryPedidosPorUf(prisma: PrismaClient, input: Input, per: PeriodoCorte) {
   const limite = input.limite ?? 30;
   const status = input.status ?? "todos";
 
@@ -77,14 +81,15 @@ async function queryPedidosPorUf(prisma: PrismaClient, input: Input) {
   // B5: sufixo "(venda)" no fim do nome da operacao.
   const filtroOperacao =
     input.operacao === "venda" ? `AND pe.operacao_nome ~* '\\(venda\\)\\s*$'` : ``;
-  const filtroPer =
-    input.periodoDe && input.periodoAte
-      ? `AND pe.data_orcamento >= $1::timestamp AND pe.data_orcamento <= $2::timestamp`
-      : ``;
-  const params: unknown[] = [];
-  if (input.periodoDe && input.periodoAte) {
-    params.push(`${input.periodoDe}T00:00:00`, `${input.periodoAte}T23:59:59`);
-  }
+  // Pedido e documento com data: o recorte de data e SEMPRE emitido. Antes, sem o par
+  // completo, o filtro sumia do SQL e o agrupamento por UF (e os KPIs full-set) somavam o
+  // historico inteiro. `per` ja chega grampeado a data de inicio das analises, e as datas
+  // entram como PARAMETRO (nunca interpoladas).
+  const filtroPer = `AND pe.data_orcamento >= $1::timestamp AND pe.data_orcamento <= $2::timestamp`;
+  const params: unknown[] = [
+    `${per.periodoDe}T00:00:00`,
+    `${per.periodoAte}T23:59:59`,
+  ];
 
   const rows = await prisma.$queryRawUnsafe<Row[]>(
     `SELECT COALESCE(p.uf, '(sem UF)') AS uf,
@@ -123,7 +128,15 @@ async function queryPedidosPorUf(prisma: PrismaClient, input: Input) {
   const totalPedidos = Number(totalRows[0]?.pedidos ?? 0);
   const totalUfs = Number(totalRows[0]?.ufs ?? 0);
   // Contrato de lista (Fase B): SQL ordena por SUM(vr_produtos) DESC, uf ASC.
-  return { linhas, totalGeral, totalPedidos, totalUfs, ordenadoPor: "valor desc" };
+  return {
+    linhas,
+    totalGeral,
+    totalPedidos,
+    totalUfs,
+    ordenadoPor: "valor desc",
+    periodoCoberto: per.label,
+    ...(per.aviso ? { aviso: per.aviso } : {}),
+  };
 }
 
 export const comercialPedidosPorUf: ToolEntry<Input, Output> = {
@@ -139,10 +152,11 @@ export const comercialPedidosPorUf: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
+    const per = resolverPeriodoCorte(input.periodoDe, input.periodoAte);
     const envelope = await withFreshness(
       ctx.prisma,
       ["fato_pedido", "fato_parceiro"],
-      () => queryPedidosPorUf(ctx.prisma, input),
+      () => queryPedidosPorUf(ctx.prisma, input, per),
     );
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
@@ -162,11 +176,13 @@ export const comercialPedidosPorUf: ToolEntry<Input, Output> = {
       ...envelope,
       dados: {
         ...d,
-        _RESPOSTA: topReal
-          ? `${d.totalPedidos} pedidos no total (${fmt(d.totalGeral)})${semUfNota}. Estado que mais compra: ${topReal.uf ?? "(sem UF)"}, ${topReal.quantidade} pedidos (${fmt(topReal.valorTotal)}).`
-          : "Nao ha pedidos no periodo.",
+        _RESPOSTA:
+          (topReal
+            ? `${d.totalPedidos} pedidos no periodo ${per.label} (${fmt(d.totalGeral)})${semUfNota}. Estado que mais compra: ${topReal.uf ?? "(sem UF)"}, ${topReal.quantidade} pedidos (${fmt(topReal.valorTotal)}).`
+            : `Nao ha pedidos no periodo ${per.label}.`) + (per.aviso ? ` ${per.aviso}` : ""),
         _DESTAQUE: {
           totalPedidos: d.totalPedidos,
+          periodoCoberto: per.label,
           pedidosComUf,
           pedidosSemUf,
           totalGeral: d.totalGeral,

@@ -7,6 +7,7 @@ import { carregarRelatorioDinamico } from "@/lib/reports/builder/carregar-relato
 import { ReportViewInteractive } from "@/components/reports/builder/report-view-interactive";
 import { ReportViewHeader } from "@/components/reports/builder/report-view-header";
 import { PageShell } from "@/components/layout/page-shell";
+import { aquecerCorte } from "@/lib/corte-app";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,8 @@ interface PageProps {
 }
 
 export default async function RelatorioDinamicoPage({ params }: PageProps) {
+  // A data de inicio das analises precisa estar hidratada ANTES de qualquer consulta.
+  await aquecerCorte();
   const { savedId } = await params;
   const me = await getCurrentUser();
   if (!me) notFound();

@@ -6,6 +6,7 @@
 // Fontes: fato_apuracao, fato_carta_correcao.
 
 import type { PrismaClient } from "@/generated/prisma/client";
+import { janelaClampada } from "@/lib/corte-dados";
 
 // ---------------------------------------------------------------------------
 // Apuração fiscal
@@ -63,13 +64,23 @@ function toApuracaoLinha(r: ApuracaoRow): ApuracaoLinha {
 }
 
 /** Lista apurações fiscais, opcionalmente filtrando por `tipo`
- * ("ICMS-IPI" ou "PIS-COFINS"). Ordena da mais recente para a mais antiga. */
+ * ("ICMS-IPI" ou "PIS-COFINS"). Ordena da mais recente para a mais antiga.
+ *
+ * Apuração é documento periódico (uma competência fechada), portanto histórico: respeita
+ * a data de início das análises. O piso incide sobre `dataFinal` de propósito, para que a
+ * competência que CRUZA o corte (março/2026, com corte em 16/03) continue aparecendo e as
+ * competências inteiramente anteriores fiquem de fora. Apuração sem `dataFinal` não tem
+ * competência situável no tempo e, por isso, não entra na lista. */
 export async function queryApuracaoFiscal(
   prisma: PrismaClient,
-  filtros: { tipo?: string; limite?: number },
+  filtros: { tipo?: string; periodoDe?: string; periodoAte?: string; limite?: number },
 ): Promise<{ linhas: ApuracaoLinha[]; total: number; truncado: boolean }> {
   const limite = filtros.limite ?? 50;
-  const where = filtros.tipo ? { tipo: filtros.tipo } : {};
+  const j = janelaClampada(filtros.periodoDe, filtros.periodoAte);
+  const where = {
+    ...(filtros.tipo ? { tipo: filtros.tipo } : {}),
+    dataFinal: { gte: j.gte, lt: j.lt },
+  };
   const [rows, total] = await Promise.all([
     prisma.fatoApuracao.findMany({
       where,
@@ -105,12 +116,21 @@ function toCartaLinha(r: CartaRow): CartaCorrecaoLinha {
 }
 
 /** Lista cartas de correção, opcionalmente filtrando por `documentoId` (o
- * documento fiscal corrigido). Ordena da mais recente para a mais antiga. */
+ * documento fiscal corrigido). Ordena da mais recente para a mais antiga.
+ *
+ * A CC-e é um evento fiscal datado (histórico). Sem `documentoId`, a consulta é uma LISTA
+ * histórica e respeita a data de início das análises (piso em `dataAutorizacao`; antes, sem
+ * filtro nenhum, listava toda carta já ingerida). Com `documentoId` é drill-down de um
+ * documento específico: quem define o recorte é o documento pedido, então não se filtra. */
 export async function queryCartaCorrecao(
   prisma: PrismaClient,
-  filtros: { documentoId?: number; limit?: number; offset?: number },
+  filtros: { documentoId?: number; periodoDe?: string; periodoAte?: string; limit?: number; offset?: number },
 ): Promise<{ linhas: CartaCorrecaoLinha[]; total: number; truncado: boolean }> {
-  const where = filtros.documentoId != null ? { documentoId: filtros.documentoId } : {};
+  const j = janelaClampada(filtros.periodoDe, filtros.periodoAte);
+  const where =
+    filtros.documentoId != null
+      ? { documentoId: filtros.documentoId }
+      : { dataAutorizacao: { gte: j.gte, lt: j.lt } };
   // Alavanca 2b: paginação via take/skip + desempate estável por odooId.
   const [rows, total] = await Promise.all([
     prisma.fatoCartaCorrecao.findMany({
@@ -169,7 +189,11 @@ function toCertificadoLinha(r: CertificadoRow): CertificadoLinha {
 
 /** Lista os certificados digitais cadastrados, do que vence primeiro para o
  * que vence por último. Volume baixo (~11), mas paginado por consistência
- * (alavanca 2b): take/skip + desempate estável por odooId. */
+ * (alavanca 2b): take/skip + desempate estável por odooId.
+ *
+ * A data de início das análises NÃO se aplica: certificado é CADASTRO da empresa (uma
+ * credencial vigente, com validade), não documento histórico. Filtrar pelo corte esconderia
+ * justamente o certificado que precisa ser renovado. */
 export async function queryCertificados(
   prisma: PrismaClient,
   filtros: { limit?: number; offset?: number } = {},
@@ -190,12 +214,17 @@ export async function queryCertificados(
 // MDF-e (manifesto de transporte) , B2 estrutural (fato_mdfe)
 // ---------------------------------------------------------------------------
 
-/** Intervalo de datas a partir de "AAAA-MM-DD" (início e fim inclusivos). */
-function rangeData(de?: string, ate?: string): { gte?: Date; lte?: Date } | undefined {
-  const r: { gte?: Date; lte?: Date } = {};
-  if (de) r.gte = new Date(`${de}T00:00:00.000Z`);
-  if (ate) r.lte = new Date(`${ate}T23:59:59.999Z`);
-  return r.gte || r.lte ? r : undefined;
+/**
+ * Intervalo de datas a partir de "AAAA-MM-DD", já grampeado à data de início das análises.
+ *
+ * Usado por MDF-e e REINF, que são documentos/eventos fiscais datados (histórico). O piso
+ * vale sempre, inclusive sem período: antes, o helper devolvia `undefined` quando nada era
+ * informado e o where saía sem nenhum filtro de data. A borda de fim é exclusiva (o dia
+ * `ate` entra inteiro).
+ */
+function rangeData(de?: string, ate?: string): { gte: Date; lt: Date } {
+  const j = janelaClampada(de, ate);
+  return { gte: j.gte, lt: j.lt };
 }
 
 export interface MdfeLinha {
@@ -211,7 +240,11 @@ export interface MdfeLinha {
 }
 
 /** Conta total de MDF-e no fato (independe de filtro). Serve à resposta
- * honesta "não operado" enquanto o módulo não emite manifestos. */
+ * honesta "não operado" enquanto o módulo não emite manifestos.
+ *
+ * Sem piso de propósito: a pergunta aqui não é de negócio ("quantos MDF-e no período"), é
+ * sobre o próprio cache ("existe algum MDF-e ingerido?"). Filtrar pelo corte faria o módulo
+ * operado parecer não operado. */
 export async function fatoMdfeCount(prisma: PrismaClient): Promise<number> {
   return prisma.fatoMdfe.count();
 }
@@ -222,9 +255,8 @@ export async function queryMdfeManifestos(
   prisma: PrismaClient,
   filtros: { periodoDe?: string; periodoAte?: string; situacao?: string; limit?: number; offset?: number },
 ): Promise<{ linhas: MdfeLinha[]; total: number; truncado: boolean }> {
-  const periodo = rangeData(filtros.periodoDe, filtros.periodoAte);
   const where = {
-    ...(periodo ? { dataEmissao: periodo } : {}),
+    dataEmissao: rangeData(filtros.periodoDe, filtros.periodoAte),
     ...(filtros.situacao ? { situacaoMdfe: filtros.situacao } : {}),
   };
   // Alavanca 2b: paginação via take/skip + desempate estável por odooId.
@@ -267,7 +299,10 @@ export interface ReinfLinha {
 }
 
 /** Conta total de eventos REINF no fato (independe de filtro). Serve à
- * resposta honesta "não operado". */
+ * resposta honesta "não operado".
+ *
+ * Sem piso de propósito, pelo mesmo motivo de `fatoMdfeCount`: é uma pergunta sobre o
+ * cache (existe algo ingerido?), não sobre o período de análise. */
 export async function fatoReinfCount(prisma: PrismaClient): Promise<number> {
   return prisma.fatoReinfEvento.count();
 }
@@ -285,9 +320,8 @@ export async function queryReinfEventos(
     offset?: number;
   },
 ): Promise<{ linhas: ReinfLinha[]; total: number; truncado: boolean }> {
-  const periodo = rangeData(filtros.periodoDe, filtros.periodoAte);
   const where = {
-    ...(periodo ? { dataEvento: periodo } : {}),
+    dataEvento: rangeData(filtros.periodoDe, filtros.periodoAte),
     ...(filtros.tipo ? { tipo: filtros.tipo } : {}),
     ...(filtros.situacao ? { situacao: filtros.situacao } : {}),
   };

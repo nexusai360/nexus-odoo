@@ -1,4 +1,4 @@
-import { corteAtualDate } from "@/lib/corte-dados";
+import { corteAtualDate, janelaClampada } from "@/lib/corte-dados";
 import { carregarParticipantesGrupo, ehNotaIntragrupo } from "@/lib/fiscal/grupo";
 // src/lib/reports/queries/financeiro.ts
 //
@@ -19,6 +19,10 @@ import { diasAtraso as calcDiasAtraso } from "../../../../mcp/lib/dias-atraso";
 // querySaldoContas , fato_financeiro_saldo (task 4d.1-q)
 // ---------------------------------------------------------------------------
 
+/**
+ * Saldo das contas bancarias. Corte NAO se aplica: fato_financeiro_saldo e FOTO do saldo
+ * de hoje (sem eixo de tempo), como o saldo de estoque.
+ */
 export async function querySaldoContas(
   prisma: PrismaClient,
 ): Promise<{ contas: { bancoNome: string | null; tipo: string | null; saldo: number }[]; saldoTotal: number }> {
@@ -40,17 +44,19 @@ export async function querySaldoContas(
 // queryCaixaPeriodo , fato_financeiro_movimento (task 4d.2-q)
 // ---------------------------------------------------------------------------
 
+/**
+ * Entradas/saidas de caixa no periodo. Movimento financeiro e HISTORICO: a janela e sempre
+ * grampeada a data de inicio das analises e, sem periodo, o piso e o proprio corte (antes,
+ * um where vazio somava todo o cache). A borda superior e exclusiva (o dia "ate" inteiro).
+ */
 export async function queryCaixaPeriodo(
   prisma: PrismaClient,
   filtros: { periodoDe?: string; periodoAte?: string },
 ): Promise<{ entrada: number; saida: number; saldo: number }> {
-  const where =
-    filtros.periodoDe && filtros.periodoAte
-      ? { data: { gte: new Date(filtros.periodoDe), lte: new Date(filtros.periodoAte) } }
-      : {};
+  const j = janelaClampada(filtros.periodoDe, filtros.periodoAte);
 
   const rows = await prisma.fatoFinanceiroMovimento.findMany({
-    where,
+    where: { data: { gte: j.gte, lt: j.lt } },
     select: { entrada: true, saida: true },
   });
 
@@ -68,17 +74,19 @@ export async function queryCaixaPeriodo(
 // queryFluxoCaixa , fato_financeiro_movimento (task 4d.3-q)
 // ---------------------------------------------------------------------------
 
+/**
+ * Serie mensal de realizado x previsto. Mesma regra do caixa: HISTORICO, janela grampeada
+ * ao corte, piso obrigatorio quando nao vem periodo , senao a serie do grafico nascia em
+ * meses anteriores a data configurada na tela.
+ */
 export async function queryFluxoCaixa(
   prisma: PrismaClient,
   filtros: { periodoDe?: string; periodoAte?: string },
 ): Promise<{ serie: { periodo: string; realizado: number; previsto: number }[] }> {
-  const where =
-    filtros.periodoDe && filtros.periodoAte
-      ? { data: { gte: new Date(filtros.periodoDe), lte: new Date(filtros.periodoAte) } }
-      : {};
+  const j = janelaClampada(filtros.periodoDe, filtros.periodoAte);
 
   const rows = await prisma.fatoFinanceiroMovimento.findMany({
-    where,
+    where: { data: { gte: j.gte, lt: j.lt } },
     select: { data: true, valor: true, valorPrevisto: true },
   });
 
@@ -151,13 +159,30 @@ function quebraPorSituacao(
 //   provisório; alinhado a financeiro_liquidez e à dívida real. A quebra
 //   (confirmado/provisório) é devolvida para transparência.
 // totalAReceber usa vrSaldo (= valor correto a receber em aberto na nova fonte).
+//
+// RECEBIVEL x CARTEIRA (pericia de 2026-07-12): o Odoo da Tauga gera o financeiro de dois
+// jeitos, por pedido ("financeiro pelo pedido") ou por nota (duplicata), e o KPI somava os
+// dois indiscriminadamente. Resultado: R$ 49,2 mi, dos quais R$ 30,9 mi eram PEDIDOS SEM
+// NENHUMA NOTA EMITIDA , receita contratada, parada em etapas pre-faturamento (gera boleto,
+// fracionar, input financeiro). Isso e CARTEIRA, nao dinheiro a receber.
+// Agora:
+//   - `totalAReceber` = so o que ja foi faturado (duplicata de NF, ou titulo de pedido que ja
+//     tem NF de venda autorizada), sem dupla contagem quando o pedido tem os dois;
+//   - `carteiraAFaturar` = o backlog, devolvido a parte para a tela mostrar como outra coisa.
 // ---------------------------------------------------------------------------
 
 export async function queryContasAReceber(
   prisma: PrismaClient,
   filtros: { participanteId?: number },
   hoje: Date,
-): Promise<{ titulos: TituloRow[]; totalAReceber: number; quebra: QuebraSituacao }> {
+): Promise<{
+  titulos: TituloRow[];
+  totalAReceber: number;
+  quebra: QuebraSituacao;
+  /** Pedidos sem NF: receita contratada, ainda NAO faturada. Nao e conta a receber. */
+  carteiraAFaturar: number;
+  titulosCarteira: TituloRow[];
+}> {
   const rows = await prisma.fatoFinanceiroTitulo.findMany({
     where: {
       tipo: "a_receber",
@@ -175,6 +200,9 @@ export async function queryContasAReceber(
       vrSaldo: true,
       vrTotal: true,
       situacaoSimples: true,
+      pedidoId: true,
+      notaFiscalId: true,
+      pedidoFaturado: true,
     },
     // Contrato de lista (Fase B): ordenacao deterministica, maiores primeiro.
     orderBy: [{ vrSaldo: "desc" }, { odooId: "asc" }],
@@ -185,7 +213,14 @@ export async function queryContasAReceber(
   // mi em 192 titulos no cache: inflavam o KPI da diretoria.
   const externos = await filtrarTitulosExternos(prisma, rows);
 
-  const titulos: TituloRow[] = externos.map((r) => ({
+  // Pedido que JA tem duplicata de NF aberta: o titulo do proprio pedido foi substituido por
+  // ela e nao pode somar de novo (dupla contagem , R$ 547 mil no cache em 2026-07-12).
+  const pedidosComDuplicata = new Set<number>();
+  for (const r of externos) {
+    if (r.notaFiscalId != null && r.pedidoId != null) pedidosComDuplicata.add(r.pedidoId);
+  }
+
+  const paraLinha = (r: (typeof externos)[number]): TituloRow => ({
     participanteNome: r.participanteNome,
     numeroDocumento: r.numeroDocumento,
     dataVencimento: r.dataVencimento,
@@ -193,10 +228,33 @@ export async function queryContasAReceber(
     vrTotal: Number(r.vrTotal),
     diasAtraso: calcDiasAtraso(r.dataVencimento, hoje),
     situacaoSimples: r.situacaoSimples,
-  }));
+  });
+
+  const titulos: TituloRow[] = [];
+  const titulosCarteira: TituloRow[] = [];
+  for (const r of externos) {
+    const duplicataDeNota = r.notaFiscalId != null;
+    const doPedido = !duplicataDeNota;
+    // Recebivel de verdade: a duplicata da NF, ou o titulo de um pedido JA faturado (o Odoo
+    // da Tauga tambem opera no modo "financeiro pelo pedido", em que a duplicata nao nasce).
+    const jaFaturado = duplicataDeNota || r.pedidoFaturado;
+    // ...menos o caso em que o pedido tem os DOIS: a duplicata manda, o titulo do pedido sai.
+    const substituidoPelaDuplicata =
+      doPedido && r.pedidoId != null && pedidosComDuplicata.has(r.pedidoId);
+
+    if (jaFaturado && !substituidoPelaDuplicata) titulos.push(paraLinha(r));
+    else if (!jaFaturado) titulosCarteira.push(paraLinha(r));
+  }
 
   const totalAReceber = titulos.reduce((acc, t) => acc + t.vrSaldo, 0);
-  return { titulos, totalAReceber, quebra: quebraPorSituacao(titulos) };
+  const carteiraAFaturar = titulosCarteira.reduce((acc, t) => acc + t.vrSaldo, 0);
+  return {
+    titulos,
+    totalAReceber,
+    quebra: quebraPorSituacao(titulos),
+    carteiraAFaturar,
+    titulosCarteira,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -277,6 +335,13 @@ export interface TituloVencidoRow {
 // Fonte corrigida para finan.lancamento (bug R1 , 2026-05-18).
 // Só títulos em aberto E com dataVencimento < início do dia de hoje estão vencidos.
 // totalVencido usa vrSaldo (= valor correto a receber/pagar na nova fonte).
+//
+// Alinhado a queryContasAReceber/queryContasAPagar (mesma tabela, mesma regra):
+//   - piso `dataDocumento >= corte` (data de inicio das analises). Sem ele, a divida velha
+//     do Odoo que ja tinha sido tirada dos KPIs voltava pelo relatorio/tool de vencidos
+//     (titulo de 2019 com saldo residual aparecia "vencido ha 2000 dias");
+//   - eliminacao intragrupo (filtrarTitulosExternos): conta entre empresas da casa nao e
+//     divida vencida com terceiro.
 // ---------------------------------------------------------------------------
 
 export async function queryTitulosVencidos(
@@ -293,9 +358,12 @@ export async function queryTitulosVencidos(
     where: {
       vrSaldo: { gt: 0 },
       dataVencimento: { lt: inicioDoDia },
+      // Marco zero: so titulo cujo DOCUMENTO e do periodo coberto pela plataforma.
+      dataDocumento: { gte: corteAtualDate() },
     },
     select: {
       tipo: true,
+      participanteId: true,
       participanteNome: true,
       numeroDocumento: true,
       dataVencimento: true,
@@ -309,7 +377,10 @@ export async function queryTitulosVencidos(
     orderBy: [{ vrSaldo: "desc" }, { odooId: "asc" }],
   });
 
-  const titulos: TituloVencidoRow[] = rows.map((r) => ({
+  // Idem contas a receber/pagar: titulo com empresa do proprio grupo nao entra.
+  const externos = await filtrarTitulosExternos(prisma, rows);
+
+  const titulos: TituloVencidoRow[] = externos.map((r) => ({
     tipo: r.tipo,
     participanteNome: r.participanteNome,
     numeroDocumento: r.numeroDocumento,

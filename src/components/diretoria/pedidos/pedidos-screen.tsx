@@ -8,7 +8,7 @@
 import { useMemo, useState } from "react";
 import {
   Truck, PackageCheck, AlertTriangle, HandCoins, Map as MapIcon, TrendingUp,
-  ListChecks, Layers,
+  ListChecks, Layers, FileClock,
 } from "lucide-react";
 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -31,7 +31,10 @@ import type {
 
 export interface PedidosData {
   indicadores: IndicadoresDemandas;
+  /** Recebível de verdade: só o que já virou nota fiscal. */
   aReceber: number;
+  /** Pedidos ainda sem nota emitida: receita contratada, não conta a receber. */
+  carteiraAFaturar: number;
   porUf: { linhas: DemandaUf[]; valorGeral: number };
   pendentes: { linhas: DemandaLinha[] };
   porEtapa: DemandaEtapa[];
@@ -65,13 +68,16 @@ export function PedidosScreen({ data }: { data: PedidosData }) {
 }
 
 function KpisTopo({ data }: { data: PedidosData }) {
-  const { indicadores, aReceber } = data;
+  const { indicadores, aReceber, carteiraAFaturar } = data;
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-5">
       <KpiButton rotulo="Demandas a entregar" valor={num.format(indicadores.totalPendentes)} icone={Truck} tone="info" hint="Pedidos não finalizados" />
       <KpiButton rotulo="Valor a entregar" valor={brlCompacto(indicadores.valorAEntregar)} valorCompleto={brl.format(indicadores.valorAEntregar)} icone={PackageCheck} hint="Total dos produtos pendentes" />
       <KpiButton rotulo="Atrasadas" valor={num.format(indicadores.atrasadas)} icone={AlertTriangle} tone={indicadores.atrasadas > 0 ? "danger" : "success"} hint="Data prevista vencida" />
-      <KpiButton rotulo="A receber de clientes" valor={brlCompacto(aReceber)} valorCompleto={brl.format(aReceber)} icone={HandCoins} tone="warning" hint="Contas a receber em aberto" />
+      {/* Separados de propósito: pedido sem nota emitida é receita contratada, não recebível.
+          Somar os dois inflava o "A receber" em dezenas de milhões. */}
+      <KpiButton rotulo="Carteira a faturar" valor={brlCompacto(carteiraAFaturar)} valorCompleto={brl.format(carteiraAFaturar)} icone={FileClock} tone="info" hint="Pedidos ainda sem nota emitida" />
+      <KpiButton rotulo="A receber de clientes" valor={brlCompacto(aReceber)} valorCompleto={brl.format(aReceber)} icone={HandCoins} tone="warning" hint="Já faturado e em aberto" />
     </div>
   );
 }

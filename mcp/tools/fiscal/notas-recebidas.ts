@@ -7,6 +7,7 @@ import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
 import { paginacaoInputShape, resolverPaginacao, montarPaginacaoMeta } from "../../lib/paginacao.js";
 import { montarEscopoEmpresa, type EscopoEmpresa } from "./_escopo-empresa.js";
+import { resolverPeriodoFiscal } from "./_periodo-padrao.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional(),
@@ -28,6 +29,8 @@ const dados = z.object({
   valorTotal: z.number(),
   escopoEmpresa: z.record(z.string(), z.unknown()),
   aviso: z.string(),
+  /** Periodo EFETIVAMENTE coberto (ja grampeado a data de inicio das analises). */
+  periodoCoberto: z.string().optional(),
   // Contrato de lista (Fase B): a lista vem por dataEmissao desc (desempate por
   // odooId). topMaiores e a visao por valor (top 10 do recorte inteiro) para
   // "as N maiores notas recebidas", que a paginacao por data nao responderia.
@@ -69,7 +72,11 @@ const outputSchema = z.union([
 type Input = z.infer<typeof inputSchema>;
 type Output = z.infer<typeof outputSchema>;
 
-function shape(d: Awaited<ReturnType<typeof queryNotasRecebidas>>, escopo: EscopoEmpresa) {
+function shape(
+  d: Awaited<ReturnType<typeof queryNotasRecebidas>>,
+  escopo: EscopoEmpresa,
+  periodoLabel: string,
+) {
   return {
     linhas: d.linhas.map((l) => ({
       numero: l.numero,
@@ -82,7 +89,11 @@ function shape(d: Awaited<ReturnType<typeof queryNotasRecebidas>>, escopo: Escop
     escopoEmpresa: escopo as unknown as Record<string, unknown>,
     ordenadoPor: "data desc",
     topMaiores: d.topMaiores,
-    aviso: "Notas de entrada (entradaSaida='0') representam compras e devoluções recebidas pela empresa. " + escopo.aviso,
+    periodoCoberto: periodoLabel,
+    aviso:
+      "Notas de entrada (entradaSaida='0') representam compras e devoluções recebidas pela empresa. " +
+      `Período: ${periodoLabel}. ` +
+      escopo.aviso,
   };
 }
 
@@ -96,16 +107,20 @@ export const fiscalNotasRecebidas: ToolEntry<Input, Output> = {
   handler: async (input, ctx) => {
     const escopo = await montarEscopoEmpresa(ctx.prisma, input.empresaRef);
     const { limit, offset } = resolverPaginacao(input);
+    // Nota de entrada e documento com data: periodo grampeado a data de inicio das analises
+    // (sem periodo, piso no corte), igual as demais tools de nota.
+    const per = resolverPeriodoFiscal(input.periodoDe, input.periodoAte);
     const envelope = await withFreshness(ctx.prisma, ["fato_nota_fiscal"], async () =>
       shape(
         await queryNotasRecebidas(ctx.prisma, {
-          periodoDe: input.periodoDe,
-          periodoAte: input.periodoAte,
+          periodoDe: per.periodoDe,
+          periodoAte: per.periodoAte,
           empresaId: escopo.empresaId,
           limit,
           offset,
         }),
         escopo.escopo,
+        per.label,
       ),
     );
     if (envelope.estado === "preparando") return envelope;
@@ -116,11 +131,13 @@ export const fiscalNotasRecebidas: ToolEntry<Input, Output> = {
       envelope,
       "fiscal_notas_recebidas",
       {
+        periodo: per,
         destaque: {
           totalNotas: d.totalNotas,
           valorTotal: d.valorTotal,
           contagem: d.totalNotas,
           linhasExibidas: d.linhas.length,
+          periodoCoberto: per.label,
         },
         agregado: { contagem: d.totalNotas, soma: d.valorTotal },
         paginacao,

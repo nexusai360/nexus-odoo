@@ -5,6 +5,7 @@ import { buildEmpresaWhere } from "../_shared/empresa";
 import { classificarCfop, extrairCfop, ROTULO_CATEGORIA } from "../../fiscal/regras";
 import type { CategoriaGerencial } from "../../fiscal/regras";
 import { carregarItensVendaComGrupo } from "./_itens-venda-grupo";
+import { janelaClampada } from "@/lib/corte-dados";
 
 export interface FaturamentoOperacaoInput extends FaturamentoInput {
   /** 'categoria' (default) agrega por categoria gerencial; 'cfop' lista por CFOP. */
@@ -87,10 +88,14 @@ export async function faturamentoPorCfop(
   input: FaturamentoOperacaoInput,
 ): Promise<FaturamentoPorCfopResultado> {
   const agruparPor = input.agruparPor ?? "categoria";
+  // Fonte UNICA do recorte de data (ja grampeado a data de inicio das analises): o groupBy, o
+  // cabecalho da reconciliacao e os blocos de SQL cru mais abaixo bebem todos daqui. Se cada um
+  // montasse o seu, a resposta se contradiria (balde somando item que o total nao ve).
+  const periodoWhere = buildPeriodoWhere(input.periodoDe, input.periodoAte);
   const where: Prisma.FatoNotaFiscalItemWhereInput = {
     entradaSaida: "1",
     situacaoNfe: "autorizada",
-    ...buildPeriodoWhere(input.periodoDe, input.periodoAte),
+    ...periodoWhere,
     ...buildEmpresaWhere(input.empresaId),
   };
 
@@ -165,12 +170,16 @@ export async function faturamentoPorCfop(
   // recorte do where acima (entrada_saida='1', autorizada, periodo, empresa) reproduzido em SQL
   // parametrizado ($queryRawUnsafe + params, para nao importar o VALUE Prisma neste arquivo
   // jest-testado , o client gerado usa import.meta e quebra o jest).
-  const params: unknown[] = [];
-  let condSql = "i.entrada_saida = '1' AND i.situacao_nfe = 'autorizada'";
-  if (input.periodoDe && input.periodoAte) {
-    params.push(`${input.periodoDe}T00:00:00Z`, `${input.periodoAte}T00:00:00Z`);
-    condSql += ` AND i.data_emissao >= $${params.length - 1}::timestamptz AND i.data_emissao < ($${params.length}::timestamptz + interval '1 day')`;
-  }
+  //
+  // Os limites de data saem do MESMO periodoWhere dos totais (nunca de input.periodoDe cru):
+  // e o que garante que semCfopPorFinalidade e outrasNaoEspecificadas fechem com totalProdutos
+  // e respeitem a data de inicio das analises, inclusive quando o chamador nao manda periodo
+  // (o piso vira o corte). O `??` e so pelo tipo: buildPeriodoWhere sempre devolve o recorte.
+  const janela = periodoWhere.dataEmissao ?? janelaClampada(input.periodoDe, input.periodoAte);
+  const params: unknown[] = [janela.gte.toISOString(), janela.lt.toISOString()];
+  let condSql =
+    "i.entrada_saida = '1' AND i.situacao_nfe = 'autorizada'" +
+    " AND i.data_emissao >= $1::timestamptz AND i.data_emissao < $2::timestamptz";
   if (input.empresaId !== undefined) {
     params.push(input.empresaId);
     condSql += ` AND i.empresa_id = $${params.length}`;
@@ -245,7 +254,7 @@ export async function faturamentoPorCfop(
   const headerWhere: Prisma.FatoNotaFiscalWhereInput = {
     entradaSaida: "1",
     situacaoNfe: "autorizada",
-    ...buildPeriodoWhere(input.periodoDe, input.periodoAte),
+    ...periodoWhere,
     ...buildEmpresaWhere(input.empresaId),
   };
   const headerAgg = await prisma.fatoNotaFiscal.aggregate({ _sum: { vrProdutos: true }, where: headerWhere });

@@ -8,12 +8,14 @@
 //   persistir, para o preview do construtor.
 import { getCurrentUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
+import { aquecerCorte } from "@/lib/corte-app";
 import { runBuilder } from "@/lib/reports/builder/agent/run-builder";
 import {
   criarRascunho,
   atualizarRascunho,
 } from "@/lib/reports/builder/saved-report-repo";
 import { validarReportEntry } from "@/lib/reports/builder/report-entry-schema";
+import { clamparPeriodoPedido } from "@/lib/reports/builder/source-registry";
 import { resolveSecao, type SecaoResolvida } from "@/lib/reports/builder/resolve-source";
 import { freshnessDoEntry } from "@/lib/reports/builder/freshness-builder";
 import type { BuilderReportEntry } from "@/lib/reports/builder/types";
@@ -54,6 +56,10 @@ export async function construirRelatorio(
   if (!gate.ok) {
     return { ok: false, ficha: null, mensagem: gate.error, error: gate.error };
   }
+
+  // Hidrata a data de inicio das analises antes de falar com a IA: o system prompt da
+  // jornada informa essa data para a IA nao prometer historico que a plataforma nao le.
+  await aquecerCorte();
 
   const r = await runBuilder({
     prompt: input.prompt,
@@ -138,9 +144,15 @@ export async function previsualizarSecoes(
   const v = validarReportEntry(ficha);
   if (!v.ok) return { tipo: "invalida", erros: v.erros };
 
+  // O preview e o que o admin aprova: tem que mostrar exatamente o numero que a
+  // plataforma mostra. Periodo cru do cliente grampeado ao inicio das analises; sem
+  // periodo, o piso vem do produtor da fonte.
+  const corte = await aquecerCorte();
+  const filtrosClampados = clamparPeriodoPedido(filtros, corte);
+
   const dados: Record<string, SecaoResolvida> = {};
   for (const secao of v.entry.secoes) {
-    dados[secao.id] = await resolveSecao(secao, filtros);
+    dados[secao.id] = await resolveSecao(secao, filtrosClampados);
   }
   const freshness = await freshnessDoEntry(v.entry).catch(() => null);
   return { tipo: "ok", dados, freshness };

@@ -6,7 +6,26 @@ import {
   queryPedidosAtrasados,
   queryParcelasAVencer,
   queryContarPedidos,
+  queryDemandaEmAberta,
+  queryDemandaPorProduto,
+  queryEstoqueDisponivel,
+  querySeriaisProduto,
+  queryPedidoSituacao,
 } from "./comercial";
+import { corteAtualDate } from "@/lib/corte-dados";
+
+// Data de início das análises vigente no processo de teste (ninguém chamou
+// getCorteDados, então vale o padrão): 2026-03-16.
+const CORTE = corteAtualDate();
+
+/** Valores interpolados num $queryRaw (o mock recebe [strings, ...values]). */
+function valoresDoRaw(mock: jest.Mock, chamada = 0): unknown[] {
+  return mock.mock.calls[chamada]!.slice(1);
+}
+/** Texto do SQL de um $queryRaw. */
+function sqlDoRaw(mock: jest.Mock, chamada = 0): string {
+  return (mock.mock.calls[chamada]![0] as string[]).join("?");
+}
 
 // Mocks são definidos por cada describe conforme necessário
 describe("queryPedidosPeriodo", () => {
@@ -25,7 +44,28 @@ describe("queryPedidosPeriodo", () => {
     expect(result.valorTotal).toBeCloseTo(1500);
   });
 
-  it("aplica filtro de período quando ambos presentes", async () => {
+  it("CORTE: sem período, o piso é a data de início das análises (não varre o histórico)", async () => {
+    const mockPrisma = {
+      fatoPedido: { findMany: jest.fn().mockResolvedValue([]) },
+    } as unknown as import("@/generated/prisma/client").PrismaClient;
+
+    await queryPedidosPeriodo(mockPrisma, {});
+    const call = (mockPrisma.fatoPedido.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where?.dataOrcamento?.gte).toEqual(CORTE);
+  });
+
+  it("CORTE: período que começa antes do corte é grampeado no corte", async () => {
+    const mockPrisma = {
+      fatoPedido: { findMany: jest.fn().mockResolvedValue([]) },
+    } as unknown as import("@/generated/prisma/client").PrismaClient;
+
+    await queryPedidosPeriodo(mockPrisma, { periodoDe: "2024-01-01", periodoAte: "2026-04-30" });
+    const call = (mockPrisma.fatoPedido.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where?.dataOrcamento?.gte).toEqual(CORTE);
+    expect(call.where?.dataOrcamento?.gte).not.toEqual(new Date("2024-01-01T00:00:00Z"));
+  });
+
+  it("aplica filtro de período quando ambos presentes (borda final exclusiva)", async () => {
     const mockPrisma = {
       fatoPedido: {
         findMany: jest.fn().mockResolvedValue([{ vrProdutos: "200.00" }]),
@@ -41,7 +81,8 @@ describe("queryPedidosPeriodo", () => {
 
     const call = (mockPrisma.fatoPedido.findMany as jest.Mock).mock.calls[0][0];
     expect(call.where?.dataOrcamento?.gte).toEqual(new Date("2026-04-01T00:00:00Z"));
-    expect(call.where?.dataOrcamento?.lte).toEqual(new Date("2026-04-30T00:00:00Z"));
+    // lt = ate + 1 dia: o dia 30/04 entra inteiro
+    expect(call.where?.dataOrcamento?.lt).toEqual(new Date("2026-05-01T00:00:00Z"));
   });
 
   it("retorna zerado quando sem pedidos", async () => {
@@ -89,6 +130,16 @@ describe("queryPedidosPorEtapa", () => {
     const result = await queryPedidosPorEtapa(mockPrisma);
     expect(result.linhas).toHaveLength(0);
   });
+
+  it("CORTE: o funil por etapa tem piso na data de início das análises", async () => {
+    const mockPrisma = {
+      fatoPedido: { findMany: jest.fn().mockResolvedValue([]) },
+    } as unknown as import("@/generated/prisma/client").PrismaClient;
+
+    await queryPedidosPorEtapa(mockPrisma);
+    const call = (mockPrisma.fatoPedido.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where?.dataOrcamento?.gte).toEqual(CORTE);
+  });
 });
 
 describe("queryPedidosPorVendedor", () => {
@@ -126,6 +177,27 @@ describe("queryPedidosPorVendedor", () => {
 
     const call = (mockPrisma.fatoPedido.findMany as jest.Mock).mock.calls[0][0];
     expect(call.where?.dataOrcamento?.gte).toEqual(new Date("2026-04-01T00:00:00Z"));
+    expect(call.where?.dataOrcamento?.lt).toEqual(new Date("2026-05-01T00:00:00Z"));
+  });
+
+  it("CORTE: sem período, o ranking de vendedor tem piso no corte", async () => {
+    const mockPrisma = {
+      fatoPedido: { findMany: jest.fn().mockResolvedValue([]) },
+    } as unknown as import("@/generated/prisma/client").PrismaClient;
+
+    await queryPedidosPorVendedor(mockPrisma, {});
+    const call = (mockPrisma.fatoPedido.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where?.dataOrcamento?.gte).toEqual(CORTE);
+  });
+
+  it("CORTE: período pré-corte é grampeado no ranking de vendedor", async () => {
+    const mockPrisma = {
+      fatoPedido: { findMany: jest.fn().mockResolvedValue([]) },
+    } as unknown as import("@/generated/prisma/client").PrismaClient;
+
+    await queryPedidosPorVendedor(mockPrisma, { periodoDe: "2025-01-01", periodoAte: "2026-06-30" });
+    const call = (mockPrisma.fatoPedido.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where?.dataOrcamento?.gte).toEqual(CORTE);
   });
 });
 
@@ -133,6 +205,8 @@ describe("queryPedidosAtrasados", () => {
   it("retorna parcelas vencidas não faturadas com diasAtraso calculado", async () => {
     const hoje = new Date("2024-03-10T00:00:00");
     const mockPrisma = {
+      // Piso do corte: as parcelas so entram se o pedido pai estiver na janela.
+      fatoPedido: { findMany: jest.fn().mockResolvedValue([{ odooId: 1 }, { odooId: 2 }]) },
       fatoPedidoParcela: {
         findMany: jest.fn().mockResolvedValue([
           {
@@ -169,6 +243,8 @@ describe("queryPedidosAtrasados", () => {
     // hoje com hora corrente , o where deve usar o início do dia, não a hora corrente
     const hoje = new Date("2024-03-10T14:35:22.123Z");
     const mockPrisma = {
+      // Piso do corte: as parcelas so entram se o pedido pai estiver na janela.
+      fatoPedido: { findMany: jest.fn().mockResolvedValue([{ odooId: 1 }, { odooId: 2 }]) },
       fatoPedidoParcela: {
         findMany: jest.fn().mockResolvedValue([]),
         count: jest.fn().mockResolvedValue(0),
@@ -192,6 +268,8 @@ describe("queryPedidosAtrasados", () => {
     // hoje com hora corrente , se a query não normalizar, parcela T00:00:00 aparece como lt=hoje
     const hojeComHora = new Date("2024-03-10T09:00:00");
     const mockPrisma = {
+      // Piso do corte: as parcelas so entram se o pedido pai estiver na janela.
+      fatoPedido: { findMany: jest.fn().mockResolvedValue([{ odooId: 1 }, { odooId: 2 }]) },
       fatoPedidoParcela: {
         findMany: jest.fn().mockResolvedValue([]),
         count: jest.fn().mockResolvedValue(0),
@@ -212,6 +290,8 @@ describe("queryParcelasAVencer", () => {
   it("retorna parcelas a vencer nos próximos N dias com totalAVencer", async () => {
     const hoje = new Date("2024-03-10T00:00:00");
     const mockPrisma = {
+      // Piso do corte: as parcelas so entram se o pedido pai estiver na janela.
+      fatoPedido: { findMany: jest.fn().mockResolvedValue([{ odooId: 1 }, { odooId: 2 }]) },
       fatoPedidoParcela: {
         findMany: jest.fn().mockResolvedValue([
           {
@@ -243,6 +323,8 @@ describe("queryParcelasAVencer", () => {
     // hoje com hora corrente , o gte deve ser início do dia para incluir parcelas de hoje
     const hoje = new Date("2024-03-10T09:00:00");
     const mockPrisma = {
+      // Piso do corte: as parcelas so entram se o pedido pai estiver na janela.
+      fatoPedido: { findMany: jest.fn().mockResolvedValue([{ odooId: 1 }, { odooId: 2 }]) },
       fatoPedidoParcela: {
         findMany: jest.fn().mockResolvedValue([]),
         count: jest.fn().mockResolvedValue(0),
@@ -266,6 +348,8 @@ describe("queryParcelasAVencer", () => {
   it("C1 borda: parcela que vence hoje (T00:00:00) É incluída em a vencer", async () => {
     const hojeComHora = new Date("2024-03-10T09:00:00");
     const mockPrisma = {
+      // Piso do corte: as parcelas so entram se o pedido pai estiver na janela.
+      fatoPedido: { findMany: jest.fn().mockResolvedValue([{ odooId: 1 }, { odooId: 2 }]) },
       fatoPedidoParcela: {
         findMany: jest.fn().mockResolvedValue([]),
         count: jest.fn().mockResolvedValue(0),
@@ -284,6 +368,8 @@ describe("queryParcelasAVencer", () => {
   it("usa ateDias=30 como default", async () => {
     const hoje = new Date("2024-03-10T00:00:00");
     const mockPrisma = {
+      // Piso do corte: as parcelas so entram se o pedido pai estiver na janela.
+      fatoPedido: { findMany: jest.fn().mockResolvedValue([{ odooId: 1 }, { odooId: 2 }]) },
       fatoPedidoParcela: {
         findMany: jest.fn().mockResolvedValue([]),
         count: jest.fn().mockResolvedValue(0),
@@ -312,5 +398,158 @@ describe("queryContarPedidos", () => {
     const result = await queryContarPedidos(mockPrisma);
     expect(result.total).toBe(71);
     expect(mockPrisma.fatoPedido.count).toHaveBeenCalledTimes(1);
+  });
+
+  it("CORTE: conta apenas pedidos dentro da janela de análise", async () => {
+    const mockPrisma = {
+      fatoPedido: { count: jest.fn().mockResolvedValue(0) },
+    } as unknown as import("@/generated/prisma/client").PrismaClient;
+
+    await queryContarPedidos(mockPrisma);
+    const call = (mockPrisma.fatoPedido.count as jest.Mock).mock.calls[0][0];
+    expect(call.where?.dataOrcamento?.gte).toEqual(CORTE);
+  });
+
+  it("CORTE: período pré-corte é grampeado na contagem", async () => {
+    const mockPrisma = {
+      fatoPedido: { count: jest.fn().mockResolvedValue(0) },
+    } as unknown as import("@/generated/prisma/client").PrismaClient;
+
+    await queryContarPedidos(mockPrisma, { periodoDe: "2013-01-01", periodoAte: "2026-12-31" });
+    const call = (mockPrisma.fatoPedido.count as jest.Mock).mock.calls[0][0];
+    expect(call.where?.dataOrcamento?.gte).toEqual(CORTE);
+  });
+});
+
+describe("CORTE , piso da data de início das análises nas consultas de pedido", () => {
+  it("queryPedidosAtrasados: restringe as parcelas aos pedidos dentro da janela", async () => {
+    const mockPrisma = {
+      fatoPedido: { findMany: jest.fn().mockResolvedValue([{ odooId: 7 }, { odooId: 9 }]) },
+      fatoPedidoParcela: {
+        findMany: jest.fn().mockResolvedValue([]),
+        count: jest.fn().mockResolvedValue(0),
+        aggregate: jest.fn().mockResolvedValue({ _sum: { valor: null } }),
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
+    } as unknown as import("@/generated/prisma/client").PrismaClient;
+
+    await queryPedidosAtrasados(mockPrisma, new Date("2026-06-10T00:00:00"));
+
+    // O universo de pedidos veio filtrado pelo corte...
+    const pedidoCall = (mockPrisma.fatoPedido.findMany as jest.Mock).mock.calls[0][0];
+    expect(pedidoCall.where?.dataOrcamento?.gte).toEqual(CORTE);
+    // ...e a parcela só entra se o pedido pai estiver nesse universo.
+    const parcelaCall = (mockPrisma.fatoPedidoParcela.findMany as jest.Mock).mock.calls[0][0];
+    expect(parcelaCall.where?.pedidoId).toEqual({ in: [7, 9] });
+  });
+
+  it("queryParcelasAVencer: restringe as parcelas aos pedidos dentro da janela", async () => {
+    const mockPrisma = {
+      fatoPedido: { findMany: jest.fn().mockResolvedValue([{ odooId: 7 }]) },
+      fatoPedidoParcela: {
+        findMany: jest.fn().mockResolvedValue([]),
+        count: jest.fn().mockResolvedValue(0),
+        aggregate: jest.fn().mockResolvedValue({ _sum: { valor: null } }),
+      },
+    } as unknown as import("@/generated/prisma/client").PrismaClient;
+
+    await queryParcelasAVencer(mockPrisma, {}, new Date("2026-06-10T00:00:00"));
+
+    const pedidoCall = (mockPrisma.fatoPedido.findMany as jest.Mock).mock.calls[0][0];
+    expect(pedidoCall.where?.dataOrcamento?.gte).toEqual(CORTE);
+    const parcelaCall = (mockPrisma.fatoPedidoParcela.findMany as jest.Mock).mock.calls[0][0];
+    expect(parcelaCall.where?.pedidoId).toEqual({ in: [7] });
+  });
+
+  it("queryDemandaEmAberta: o SQL tem piso em data_orcamento >= corte", async () => {
+    const raw = jest.fn().mockResolvedValue([]);
+    const mockPrisma = { $queryRaw: raw } as unknown as import("@/generated/prisma/client").PrismaClient;
+
+    await queryDemandaEmAberta(mockPrisma, {});
+    expect(sqlDoRaw(raw)).toContain("f.data_orcamento >=");
+    expect(valoresDoRaw(raw)).toContainEqual(CORTE);
+  });
+
+  it("queryDemandaPorProduto: o JOIN com o pedido tem piso de data", async () => {
+    const raw = jest.fn().mockResolvedValue([]);
+    const mockPrisma = { $queryRaw: raw } as unknown as import("@/generated/prisma/client").PrismaClient;
+
+    await queryDemandaPorProduto(mockPrisma, {});
+    expect(sqlDoRaw(raw)).toContain("f.data_orcamento >=");
+    expect(valoresDoRaw(raw)).toContainEqual(CORTE);
+  });
+
+  it("queryEstoqueDisponivel: piso na CTE de demanda (o saldo, foto, fica sem filtro)", async () => {
+    const raw = jest.fn().mockResolvedValue([]);
+    const mockPrisma = { $queryRaw: raw } as unknown as import("@/generated/prisma/client").PrismaClient;
+
+    await queryEstoqueDisponivel(mockPrisma, {});
+    const sql = sqlDoRaw(raw);
+    expect(sql).toContain("f.data_orcamento >=");
+    expect(valoresDoRaw(raw)).toContainEqual(CORTE);
+    // O lado do saldo (foto do estoque de hoje) continua sem recorte de data.
+    const cteSaldo = sql.slice(sql.indexOf("WITH saldo AS"), sql.indexOf("dem AS"));
+    expect(cteSaldo).not.toContain("data_orcamento");
+  });
+
+  it("querySeriaisProduto: só conta saída dentro da janela (parado é foto, fica)", async () => {
+    const raw = jest.fn().mockResolvedValue([]);
+    const mockPrisma = { $queryRaw: raw } as unknown as import("@/generated/prisma/client").PrismaClient;
+
+    await querySeriaisProduto(mockPrisma, {});
+    expect(sqlDoRaw(raw)).toContain("s.data_saida IS NULL OR s.data_saida >=");
+    expect(valoresDoRaw(raw)).toContainEqual(CORTE);
+  });
+
+  it("queryPedidoSituacao: pedido anterior ao corte não é devolvido (foraDaJanela)", async () => {
+    const mockPrisma = {
+      fatoPedido: {
+        findFirst: jest.fn().mockResolvedValue({
+          odooId: 1,
+          numero: "PV-0001/24",
+          dataOrcamento: new Date("2024-05-10T00:00:00Z"),
+        }),
+      },
+      fatoPedidoHistorico: { findMany: jest.fn() },
+      $queryRaw: jest.fn(),
+    } as unknown as import("@/generated/prisma/client").PrismaClient;
+
+    const r = await queryPedidoSituacao(mockPrisma, { numero: "PV-0001/24" });
+    expect(r.encontrado).toBe(false);
+    expect(r.foraDaJanela).toBe(true);
+    expect(r.pedido).toBeNull();
+    // Nem sequer foi buscar a trilha/itens do pedido fora da janela.
+    expect(mockPrisma.fatoPedidoHistorico.findMany).not.toHaveBeenCalled();
+  });
+
+  it("queryPedidoSituacao: pedido dentro da janela é devolvido normalmente", async () => {
+    const mockPrisma = {
+      fatoPedido: {
+        findFirst: jest.fn().mockResolvedValue({
+          odooId: 1,
+          numero: "PV-2037/26",
+          etapaId: 3,
+          etapaNome: "Separação",
+          bucketDemanda: "ABERTA",
+          categoriaOperacao: "venda",
+          operacaoNome: "Venda",
+          empresaNome: "Matrix",
+          participanteNome: "Cliente A",
+          vendedorNome: "Ana",
+          vrProdutos: "1000.00",
+          dataOrcamento: new Date("2026-04-02T00:00:00Z"),
+          dataAprovacao: new Date("2026-04-03T00:00:00Z"),
+          dataPrevista: null,
+          pendenciaEtapa: null,
+        }),
+      },
+      fatoPedidoHistorico: { findMany: jest.fn().mockResolvedValue([]) },
+      $queryRaw: jest.fn().mockResolvedValue([]),
+    } as unknown as import("@/generated/prisma/client").PrismaClient;
+
+    const r = await queryPedidoSituacao(mockPrisma, { numero: "PV-2037/26" });
+    expect(r.encontrado).toBe(true);
+    expect(r.foraDaJanela).toBe(false);
+    expect(r.pedido?.numero).toBe("PV-2037/26");
   });
 });

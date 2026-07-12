@@ -1,7 +1,15 @@
 // Queries de Estoque & Compras (módulo A do HTML) próprias da Diretoria. Estoque
 // agrega fato_estoque_saldo; compras (A8) agregam fato_dfe (notas de entrada).
+//
+// Data de início das análises (`sync.corte_dados`), fronteira deste arquivo:
+//   - SALDO de estoque (fato_estoque_saldo) e seriais em estoque são FOTO do agora, não
+//     histórico: não levam piso de data (não há data de documento para filtrar; filtrar
+//     esconderia estoque que existe fisicamente hoje);
+//   - COMPRA (fato_compra) e NOTA DE ENTRADA (fato_dfe) são documentos com data, ou seja,
+//     histórico: levam o piso do corte, sempre, mesmo sem período informado.
 
 import type { PrismaClient } from "@/generated/prisma/client";
+import { clampDateAoCorte, corteAtualDate, janelaClampada } from "@/lib/corte-dados";
 import { diasRestantes, statusPrazo, type StatusPrazo } from "@/lib/diretoria/cores";
 import { VENDA_FUTURA } from "@/lib/fiscal/regras/venda-futura-policy";
 
@@ -142,7 +150,12 @@ export interface SerialLinha {
   idadeDias: number | null;
 }
 
-/** A6 , Lista de seriais (em estoque = sem data de saída), com idade em dias. */
+/**
+ * A6 , Lista de seriais (em estoque = sem data de saída), com idade em dias.
+ * Foto do estoque de agora: a data de início das análises não se aplica. `dataCompra` aqui
+ * é a idade de um item que ESTÁ no armazém hoje, não um documento do histórico , grampear
+ * esconderia justamente o item parado há mais tempo, que é o ponto do relatório.
+ */
 export async function querySeriais(
   prisma: PrismaClient,
   hoje: Date,
@@ -201,17 +214,22 @@ export async function queryCatalogoEstoque(
   prisma: PrismaClient,
   limit = 100,
 ): Promise<CatalogoEstoque> {
-  const rows = await prisma.fatoEstoqueSaldo.findMany({
-    select: {
-      produtoId: true,
-      produtoNome: true,
-      familiaNome: true,
-      marcaNome: true,
-      localId: true,
-      quantidade: true,
-      vrSaldo: true,
-    },
-  });
+  // Valorizacao a CUSTO (quantidade x preco_custo), a MESMA do KPI e do donut. O `vr_saldo`
+  // que vem do Odoo e valorizado por outro criterio: usa-lo aqui fazia a mesma tela mostrar
+  // dois valores diferentes para o mesmo estoque.
+  const [rows, custos] = await Promise.all([
+    prisma.fatoEstoqueSaldo.findMany({
+      select: {
+        produtoId: true,
+        produtoNome: true,
+        familiaNome: true,
+        marcaNome: true,
+        localId: true,
+        quantidade: true,
+      },
+    }),
+    custoPorProduto(prisma),
+  ]);
   const map = new Map<
     string,
     {
@@ -226,8 +244,8 @@ export async function queryCatalogoEstoque(
   let valorGeral = 0;
   for (const r of rows) {
     const chave = r.produtoId != null ? `id:${r.produtoId}` : `nome:${r.produtoNome ?? "?"}`;
-    const valor = Number(r.vrSaldo ?? 0);
     const qtd = Number(r.quantidade ?? 0);
+    const valor = qtd * (r.produtoId != null ? custos.get(r.produtoId) ?? 0 : 0);
     valorGeral += valor;
     const cur = map.get(chave);
     if (cur) {
@@ -266,22 +284,20 @@ export interface CompraFornecedor {
   valorTotal: number;
 }
 
-/** A8 , Compras por fornecedor (notas fiscais de entrada do período). */
+/**
+ * A8 , Compras por fornecedor (notas fiscais de entrada do período).
+ *
+ * NF de entrada é documento com data = histórico: o período é grampeado à data de início
+ * das análises e, sem período (é como a página chama hoje), o piso continua sendo o corte.
+ * Antes, sem período o where era `{}` e a matriz somava todo o fato_dfe já ingerido.
+ */
 export async function queryComprasPorFornecedor(
   prisma: PrismaClient,
   filtros: { periodoDe?: string; periodoAte?: string } = {},
 ): Promise<{ linhas: CompraFornecedor[]; valorGeral: number }> {
-  const where =
-    filtros.periodoDe && filtros.periodoAte
-      ? {
-          dataEmissao: {
-            gte: new Date(`${filtros.periodoDe}T00:00:00Z`),
-            lte: new Date(`${filtros.periodoAte}T23:59:59Z`),
-          },
-        }
-      : {};
+  const j = janelaClampada(filtros.periodoDe, filtros.periodoAte);
   const rows = await prisma.fatoDfe.findMany({
-    where,
+    where: { dataEmissao: { gte: j.gte, lt: j.lt } },
     select: { fornecedorNome: true, vrNf: true },
   });
   const map = new Map<string, { notas: number; valorTotal: number }>();
@@ -322,18 +338,27 @@ export interface LinhaEstoqueGranular {
 export async function queryEstoqueGranular(
   prisma: PrismaClient,
 ): Promise<LinhaEstoqueGranular[]> {
-  const rows = await prisma.fatoEstoqueSaldo.findMany({
-    select: { produtoId: true, produtoNome: true, familiaNome: true, marcaNome: true, localNome: true, quantidade: true, vrSaldo: true },
+  // A CUSTO, igual ao KPI e ao catalogo: e sobre estas linhas que o construtor recomputa os
+  // indicadores quando o usuario cruza filtros. Se aqui fosse `vr_saldo`, o mesmo card mudaria
+  // de valor so por causa do filtro.
+  const [rows, custos] = await Promise.all([
+    prisma.fatoEstoqueSaldo.findMany({
+      select: { produtoId: true, produtoNome: true, familiaNome: true, marcaNome: true, localNome: true, quantidade: true },
+    }),
+    custoPorProduto(prisma),
+  ]);
+  return rows.map((r) => {
+    const qtd = Number(r.quantidade ?? 0);
+    return {
+      produtoId: r.produtoId,
+      produto: r.produtoNome ?? "Sem nome",
+      familia: r.familiaNome ?? "Sem família",
+      marca: r.marcaNome ?? "Sem marca",
+      local: r.localNome ?? "Sem local",
+      quantidade: qtd,
+      valor: qtd * (r.produtoId != null ? custos.get(r.produtoId) ?? 0 : 0),
+    };
   });
-  return rows.map((r) => ({
-    produtoId: r.produtoId,
-    produto: r.produtoNome ?? "Sem nome",
-    familia: r.familiaNome ?? "Sem família",
-    marca: r.marcaNome ?? "Sem marca",
-    local: r.localNome ?? "Sem local",
-    quantidade: Number(r.quantidade ?? 0),
-    valor: Number(r.vrSaldo ?? 0),
-  }));
 }
 
 export interface PontoSerie {
@@ -352,12 +377,17 @@ export interface ComprasSerie {
  * A-10 , Série temporal de compras (NF de entrada). Agrega fato_dfe por dia e
  * por mês a partir de dataEmissao + vrNf. A UI fatia janelas (semana/mês) e
  * navega com ‹ ›. Ignora notas sem dataEmissao. Ordenado crescente.
+ *
+ * Série histórica: a janela nunca começa antes da data de início das análises (o `gte` já
+ * descarta as notas sem dataEmissao, que antes eram excluídas pelo `not: null`).
  */
 export async function queryComprasSerie(
   prisma: PrismaClient,
+  filtros: { periodoDe?: string; periodoAte?: string } = {},
 ): Promise<ComprasSerie> {
+  const j = janelaClampada(filtros.periodoDe, filtros.periodoAte);
   const rows = await prisma.fatoDfe.findMany({
-    where: { dataEmissao: { not: null } },
+    where: { dataEmissao: { gte: j.gte, lt: j.lt } },
     select: { dataEmissao: true, vrNf: true },
   });
   const dia = new Map<string, { valor: number; notas: number }>();
@@ -402,13 +432,17 @@ export interface ResumoCompras {
  * A8 , Resumo de compras + matriz por fornecedor. Agrega fato_compra (ordens de
  * compra). "Ativa" = não recebida e não cancelada. A pagar = vrNf - vrPago.
  * Atrasada = ativa com dataPrevista vencida. `hoje` injetado para testabilidade.
+ *
+ * Ordem de compra é documento com data: os acumulados (comprado/pago/a pagar) só contam
+ * ordens a partir da data de início das análises, o mesmo critério já aplicado nos títulos
+ * financeiros. Sem isso, uma OC velha do Odoo inflava o KPI e a matriz por fornecedor.
  */
 export async function queryResumoCompras(
   prisma: PrismaClient,
   hoje: Date,
 ): Promise<ResumoCompras> {
   const rows = await prisma.fatoCompra.findMany({
-    where: { cancelada: false },
+    where: { cancelada: false, dataOrcamento: { gte: corteAtualDate() } },
     select: {
       fornecedorNome: true,
       vrNf: true,
@@ -463,16 +497,24 @@ export interface IndicadoresAvancados {
  * (seriais em estoque, dataCompra→hoje); cobertura = estoque ÷ demanda diária dos
  * últimos 30 dias; giro anualizado = (vendido 30d × 12) ÷ estoque; valor médio por
  * produto. `hoje` injetado. Métricas de demanda dependem de NF de saída do período.
+ *
+ * A janela de demanda (últimos 30 dias) é grampeada à data de início das análises: se o
+ * corte for mais recente que hoje-30, a janela encolhe e a demanda diária passa a ser
+ * dividida pelos dias REALMENTE cobertos (senão a demanda ficaria subestimada e a cobertura
+ * inflada). Saldo e idade média continuam sem piso: são a foto do estoque de agora.
  */
 export async function queryIndicadoresAvancadosEstoque(
   prisma: PrismaClient,
   hoje: Date,
 ): Promise<IndicadoresAvancados> {
   const MS = 86_400_000;
-  const desde30 = new Date(hoje.getTime() - 30 * MS);
+  const desde30 = clampDateAoCorte(new Date(hoje.getTime() - 30 * MS));
+  const diasJanela = Math.max(1, Math.round((hoje.getTime() - desde30.getTime()) / MS));
 
-  const [saldos, vendidos, seriais] = await Promise.all([
-    prisma.fatoEstoqueSaldo.findMany({ select: { quantidade: true, vrSaldo: true, produtoId: true } }),
+  const [saldos, custos, vendidos, seriais] = await Promise.all([
+    prisma.fatoEstoqueSaldo.findMany({ select: { quantidade: true, produtoId: true } }),
+    // Mesma valorizacao a CUSTO do KPI: o giro e a cobertura sao lidos lado a lado com ele.
+    custoPorProduto(prisma),
     prisma.fatoNotaFiscalItem.findMany({
       where: { entradaSaida: "1", dataEmissao: { gte: desde30, lte: hoje } },
       select: { quantidade: true },
@@ -487,12 +529,13 @@ export async function queryIndicadoresAvancadosEstoque(
   let valorEstoque = 0;
   const produtos = new Set<number>();
   for (const s of saldos) {
-    estoqueQtd += Number(s.quantidade ?? 0);
-    valorEstoque += Number(s.vrSaldo ?? 0);
+    const qtd = Number(s.quantidade ?? 0);
+    estoqueQtd += qtd;
+    valorEstoque += qtd * (s.produtoId != null ? custos.get(s.produtoId) ?? 0 : 0);
     if (s.produtoId != null) produtos.add(s.produtoId);
   }
   const vendidoQtd = vendidos.reduce((acc, v) => acc + Number(v.quantidade ?? 0), 0);
-  const demandaDiaria = vendidoQtd / 30;
+  const demandaDiaria = vendidoQtd / diasJanela;
 
   let idadeMediaDias: number | null = null;
   if (seriais.length) {
@@ -506,7 +549,12 @@ export async function queryIndicadoresAvancadosEstoque(
   return {
     idadeMediaDias,
     coberturaDias: demandaDiaria > 0 ? Math.round(estoqueQtd / demandaDiaria) : null,
-    giroAnual: estoqueQtd > 0 ? Number(((vendidoQtd * 12) / estoqueQtd).toFixed(2)) : null,
+    // Anualiza a demanda diária (12 meses de 30 dias). Com a janela cheia dá exatamente o
+    // antigo (vendido30 x 12) / estoque; com a janela encurtada pelo corte, projeta certo.
+    giroAnual:
+      estoqueQtd > 0
+        ? Number(((demandaDiaria * 360) / estoqueQtd).toFixed(2))
+        : null,
     valorMedioProduto: produtos.size > 0 ? valorEstoque / produtos.size : 0,
   };
 }
@@ -534,6 +582,10 @@ export interface ComprasAtivas {
  * A7 , Compras ativas (ordens de compra não recebidas e não canceladas).
  * Contagem regressiva (diasRestantes/statusPrazo) só quando há data prevista;
  * caso contrário fica null ("sem previsão"). `hoje` injetado para testabilidade.
+ *
+ * Ordem de compra em aberto continua sendo um documento com data: entra a partir da data de
+ * início das análises, mesmo critério do título financeiro em aberto (título anterior ao
+ * corte não entra). Uma OC velha e esquecida no Odoo não infla mais o valor em aberto.
  */
 export async function queryComprasAtivas(
   prisma: PrismaClient,
@@ -541,7 +593,11 @@ export async function queryComprasAtivas(
   limit = 50,
 ): Promise<ComprasAtivas> {
   const rows = await prisma.fatoCompra.findMany({
-    where: { recebida: false, cancelada: false },
+    where: {
+      recebida: false,
+      cancelada: false,
+      dataOrcamento: { gte: corteAtualDate() },
+    },
     orderBy: [{ vrNf: "desc" }],
     select: {
       numero: true,
@@ -602,7 +658,9 @@ export async function queryEstoqueDisponivelDiretoria(
 }> {
   const limite = Math.min(Math.max(filtros.limite ?? 50, 1), 300);
 
-  // Saldo físico agregado por produto.
+  // Saldo físico agregado por produto. FOTO do agora (fato_estoque_saldo não tem data de
+  // documento): a data de início das análises não se aplica aqui , o que está no armazém
+  // hoje está no armazém hoje, independente de quando entrou.
   const saldos = await prisma.fatoEstoqueSaldo.findMany({
     select: { produtoId: true, produtoNome: true, quantidade: true },
   });
@@ -622,10 +680,18 @@ export async function queryEstoqueDisponivelDiretoria(
   // Demanda em aberta agregada por produto (itens de pedidos ABERTA). Se a
   // politica de venda futura estiver ligada, inclui tambem o simples faturamento
   // (venda futura ja faturada, reservada ate a remessa) , ENGATILHADO.
+  //
+  // Diferente do saldo, o PEDIDO é documento com data: só compromete estoque se for
+  // posterior à data de início das análises. Sem esse piso, um pedido velho preso em
+  // "ABERTA" subtraía saldo e fabricava "disponível negativo" (e unidades a comprar) que
+  // não existem.
   const abertos = await prisma.fatoPedido.findMany({
-    where: VENDA_FUTURA.RESERVA_ESTOQUE_ATE_REMESSA
-      ? { OR: [{ bucketDemanda: "ABERTA" }, { categoriaOperacao: "simples_faturamento" }] }
-      : { bucketDemanda: "ABERTA" },
+    where: {
+      dataOrcamento: { gte: corteAtualDate() },
+      ...(VENDA_FUTURA.RESERVA_ESTOQUE_ATE_REMESSA
+        ? { OR: [{ bucketDemanda: "ABERTA" }, { categoriaOperacao: "simples_faturamento" }] }
+        : { bucketDemanda: "ABERTA" }),
+    },
     select: { odooId: true },
   });
   const ids = abertos.map((a) => a.odooId);

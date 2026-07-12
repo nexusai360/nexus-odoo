@@ -13,6 +13,14 @@
 // `TOP_CONCENTRACAO` , são shaping de gráfico e permanecem no wrapper.
 
 import type { PrismaClient } from "@/generated/prisma/client";
+import {
+  avisoCorte,
+  clampIsoAoCorte,
+  clampMesAoCorte,
+  corteAtual,
+  corteAtualDate,
+  pedeAntesDoCorte,
+} from "@/lib/corte-dados";
 import { limparNomeLocal } from "@/lib/reports/local-nome";
 // tsconfig raiz usa moduleResolution:"bundler" (Next/Turbopack), mcp/tsconfig
 // usa "nodenext". Em runtime ambos resolvem este caminho corretamente; sem
@@ -20,6 +28,62 @@ import { limparNomeLocal } from "@/lib/reports/local-nome";
 // nao impacta runtime (transpilacao via tsx ignora). @ts-expect-error usado
 // somente no tsc do MCP via build script (ver mcp/Dockerfile).
 import { searchProductByNameWithMetaCanonical } from "./_search-helpers";
+
+// ---------------------------------------------------------------------------
+// Data de inicio das analises (AppSetting sync.corte_dados) neste modulo
+//
+// SALDO, valor por armazem, concentracao e produtos parados sao FOTO do estoque de HOJE
+// (fato_estoque_saldo / fato_produto_parado): nao tem eixo de tempo, entao o piso do corte
+// NAO se aplica , filtrar por data ali esconderia o estoque que existe agora.
+//
+// MOVIMENTO (fato_estoque_movimento) e HISTORICO (documento com data): entradas/saidas,
+// top movimentados e a reconstrucao do comparativo TEM que respeitar o piso.
+// ---------------------------------------------------------------------------
+
+/** Where de periodo do fato de movimento, ja grampeado a data de inicio das analises. */
+interface JanelaMovimento {
+  mes: { gte: string; lte?: string };
+  data: { gte: Date; lt?: Date };
+}
+
+/**
+ * Janela de leitura do movimento de estoque, em duas camadas complementares:
+ *
+ *   - `mes` (AAAA-MM, o eixo da serie): grampeado ao mes do corte via clampMesAoCorte;
+ *   - `data` (coluna real do fato): piso EXATO no corte. E o que impede o balde do mes do
+ *     corte de arrastar os dias anteriores a ele (com corte em 16/03, o mes "2026-03" nao
+ *     pode somar os movimentos de 01 a 15/03).
+ *
+ * Sem periodo, o piso e o proprio corte: a consulta nunca varre o historico inteiro.
+ * Aceita o periodo em AAAA-MM (tela de relatorios) ou AAAA-MM-DD (agente / construtor).
+ */
+function janelaMovimento(periodoDe?: string, periodoAte?: string): JanelaMovimento {
+  const corte = corteAtual();
+  const mesDe = clampMesAoCorte((periodoDe ?? corte).slice(0, 7));
+  const mesAte = periodoAte?.slice(0, 7);
+
+  // Inicio efetivo em dia: usa o dia pedido quando ele veio; senao, o 1o dia do mes ja
+  // clampado. Em ambos os casos passa pelo clamp final (nada antes do corte).
+  const inicioPedido =
+    periodoDe && periodoDe.length >= 10 ? periodoDe.slice(0, 10) : `${mesDe}-01`;
+  const gte = new Date(`${clampIsoAoCorte(inicioPedido)}T00:00:00Z`);
+
+  // Borda superior EXCLUSIVA: dia seguinte ao "ate" (ou 1o dia do mes seguinte ao "ate"),
+  // para o ultimo dia/mes entrar inteiro.
+  let lt: Date | undefined;
+  if (periodoAte && periodoAte.length >= 10) {
+    lt = new Date(`${periodoAte.slice(0, 10)}T00:00:00Z`);
+    lt.setUTCDate(lt.getUTCDate() + 1);
+  } else if (mesAte) {
+    lt = new Date(`${mesAte}-01T00:00:00Z`);
+    lt.setUTCMonth(lt.getUTCMonth() + 1);
+  }
+
+  return {
+    mes: { gte: mesDe, ...(mesAte ? { lte: mesAte } : {}) },
+    data: { gte, ...(lt ? { lt } : {}) },
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Tipos de R1 , Saldo por produto
@@ -73,6 +137,8 @@ export interface SaldoProdutoData {
 /**
  * Agrega saldo de estoque por produto.
  * Fato: fato_estoque_saldo.
+ * Corte NAO se aplica: saldo e FOTO do estoque de hoje (sem eixo de tempo). Filtrar por
+ * data aqui esconderia mercadoria que esta fisicamente no armazem agora.
  * Não captura exceção , deixa propagar para o wrapper.
  */
 export async function querySaldoProduto(
@@ -265,7 +331,7 @@ export interface ValorArmazemData {
 /**
  * Agrega valor de estoque por armazém. Devolve linhasBruto (sem percentual ,
  * percentual é shaping e calculado no wrapper F3 e na tool MCP, regra N8).
- * Fato: fato_estoque_saldo.
+ * Fato: fato_estoque_saldo. Corte NAO se aplica (foto do saldo de hoje).
  */
 export async function queryValorArmazem(
   prisma: PrismaClient,
@@ -350,16 +416,17 @@ export interface EntradasSaidasData {
 // ---------------------------------------------------------------------------
 
 /**
- * Agrega entradas e saídas por mês. Fato: fato_estoque_movimento.
+ * Agrega entradas e saídas por mês. Fato: fato_estoque_movimento (HISTORICO).
+ * A janela e sempre grampeada a data de inicio das analises (ver janelaMovimento).
  */
 export async function queryEntradasSaidas(
   prisma: PrismaClient,
   filtros: { periodoDe?: string; periodoAte?: string; armazemId?: number },
 ): Promise<EntradasSaidasData> {
+  const j = janelaMovimento(filtros.periodoDe, filtros.periodoAte);
   const where = {
-    ...(filtros.periodoDe && filtros.periodoAte
-      ? { mes: { gte: filtros.periodoDe, lte: filtros.periodoAte } }
-      : {}),
+    mes: j.mes,
+    data: j.data,
     ...(filtros.armazemId ? { localId: filtros.armazemId } : {}),
   };
 
@@ -438,6 +505,8 @@ export interface ProdutoParadoFiltros {
 /**
  * Lista produtos parados com filtros de faixa de dias e armazém.
  * Fato: fato_produto_parado.
+ * Corte NAO se aplica: e a foto do saldo de HOJE com o tempo de imobilizacao (derivado de
+ * raw_estoque_saldo_hoje). Nao ha documento historico sendo lido , so o estoque atual.
  */
 export async function queryProdutosParados(
   prisma: PrismaClient,
@@ -532,18 +601,19 @@ export interface TopMovimentadoData {
 /**
  * Agrega movimentações por produto. Devolve a lista completa (sem slice para top-N
  * , o wrapper F3 e a tool MCP fazem o slice independentemente).
- * Fato: fato_estoque_movimento.
+ * Fato: fato_estoque_movimento (HISTORICO) , janela grampeada ao corte, mesmo quando o
+ * chamador nao manda periodo (o produtor do construtor so manda `sentido`).
  */
 export async function queryTopMovimentados(
   prisma: PrismaClient,
   filtros: { periodoDe?: string; periodoAte?: string; sentido?: string },
 ): Promise<{ kpis: { totalProdutos: number; totalUnidades: number }; linhas: { rotulo: string; valor: number }[] }> {
+  const j = janelaMovimento(filtros.periodoDe, filtros.periodoAte);
   const grupos = await prisma.fatoEstoqueMovimento.groupBy({
     by: ["produtoNome"],
     where: {
-      ...(filtros.periodoDe && filtros.periodoAte
-        ? { mes: { gte: filtros.periodoDe, lte: filtros.periodoAte } }
-        : {}),
+      mes: j.mes,
+      data: j.data,
       ...(filtros.sentido ? { sentido: filtros.sentido } : {}),
     },
     _sum: { quantidade: true },
@@ -604,7 +674,7 @@ export interface ConcentracaoData {
  * Agrega vrSaldo por família e marca. Devolve dados brutos (sem percentual ,
  * percentual é shaping calculado no wrapper F3 e na tool MCP, regra N8).
  * Sem agruparTopN , shaping de gráfico fica no wrapper.
- * Fato: fato_estoque_saldo.
+ * Fato: fato_estoque_saldo. Corte NAO se aplica (foto do saldo de hoje).
  */
 export async function queryConcentracao(
   prisma: PrismaClient,
@@ -662,9 +732,12 @@ async function pontoEstoqueNaData(
   dataAlvo: string,
 ): Promise<EstoqueComparativoPonto> {
   const alvo = new Date(`${dataAlvo}T00:00:00.000Z`);
-  // Foto mais recente <= data alvo.
+  // Foto mais recente dentro da janela coberta pela plataforma: entre a data de inicio das
+  // analises e a data alvo. Sem o piso, uma foto anterior ao corte seria usada como se
+  // fosse a "mais proxima disponivel" , justamente o historico que a plataforma declara
+  // nao considerar. Sem foto no intervalo, cai na reconstrucao (com aviso honesto).
   const foto = await prisma.fatoEstoqueSaldoSnapshot.findFirst({
-    where: { dataRef: { lte: alvo } },
+    where: { dataRef: { gte: corteAtualDate(), lte: alvo } },
     orderBy: { dataRef: "desc" },
     select: { dataRef: true },
   });
@@ -725,11 +798,23 @@ export async function queryEstoqueComparativo(
   deltaQuantidade: number;
   comparavelEmValor: boolean;
   primeiraFoto: string | null;
+  /** Presente so quando a data pedida foi puxada para a data de inicio das analises. */
+  avisoCorte?: string;
 }> {
+  // As duas datas sao grampeadas a data de inicio das analises: comparar contra uma data
+  // que a plataforma nao cobre devolveria numero que ela declara nao considerar.
+  const dataInicial = clampIsoAoCorte(filtros.dataInicial.slice(0, 10));
+  const dataFinal = clampIsoAoCorte(filtros.dataFinal.slice(0, 10));
+  const cortou =
+    pedeAntesDoCorte(filtros.dataInicial.slice(0, 10)) ||
+    pedeAntesDoCorte(filtros.dataFinal.slice(0, 10));
+
   const [inicial, final, primeira] = await Promise.all([
-    pontoEstoqueNaData(prisma, filtros.dataInicial),
-    pontoEstoqueNaData(prisma, filtros.dataFinal),
+    pontoEstoqueNaData(prisma, dataInicial),
+    pontoEstoqueNaData(prisma, dataFinal),
     prisma.fatoEstoqueSaldoSnapshot.findFirst({
+      // 1a foto DENTRO da janela coberta (idem pontoEstoqueNaData).
+      where: { dataRef: { gte: corteAtualDate() } },
       orderBy: { dataRef: "asc" },
       select: { dataRef: true },
     }),
@@ -750,5 +835,6 @@ export async function queryEstoqueComparativo(
     deltaQuantidade: final.quantidade - inicial.quantidade,
     comparavelEmValor,
     primeiraFoto: primeira ? isoDate(primeira.dataRef) : null,
+    ...(cortou ? { avisoCorte: avisoCorte() } : {}),
   };
 }

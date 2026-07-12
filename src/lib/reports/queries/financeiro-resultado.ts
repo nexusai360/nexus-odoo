@@ -6,6 +6,7 @@
 // Despesa = tipo a_pagar/pagamento. Framework-neutro (sem freshness/shaping).
 
 import type { PrismaClient } from "@/generated/prisma/client";
+import { janelaClampada } from "@/lib/corte-dados";
 
 const RECEITA = new Set(["a_receber", "recebimento"]);
 const DESPESA = new Set(["a_pagar", "pagamento"]);
@@ -25,18 +26,14 @@ export async function queryResultadoPorConta(
   totalDespesa: number;
   resultado: number;
 }> {
-  const where =
-    filtros.periodoDe && filtros.periodoAte
-      ? {
-          dataDocumento: {
-            gte: new Date(`${filtros.periodoDe}T00:00:00Z`),
-            lte: new Date(`${filtros.periodoAte}T23:59:59Z`),
-          },
-        }
-      : {};
+  // Lancamento e documento com data: HISTORICO. A janela e sempre grampeada a data de
+  // inicio das analises e, sem periodo, o piso e o proprio corte (antes, o where vazio
+  // fazia a DRE somar o cache inteiro). Borda superior exclusiva: o dia "ate" entra
+  // inteiro sem depender da hora gravada (o `lte 23:59:59` perdia lancamento na virada).
+  const j = janelaClampada(filtros.periodoDe, filtros.periodoAte);
 
   const rows = await prisma.fatoFinanceiroLancamentoItem.findMany({
-    where,
+    where: { dataDocumento: { gte: j.gte, lt: j.lt } },
     select: { contaNome: true, tipo: true, vrTotal: true },
   });
 

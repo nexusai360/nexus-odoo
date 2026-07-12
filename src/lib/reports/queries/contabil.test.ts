@@ -10,6 +10,10 @@ import {
   fatoContabilItemCount,
   mensagemContabilGestaoVazia,
 } from "./contabil";
+import { CORTE_DADOS_PADRAO } from "@/lib/corte-dados";
+
+/** Piso vigente nos testes: ninguem chama getCorteDados, entao vale o padrao em memoria. */
+const PISO = new Date(`${CORTE_DADOS_PADRAO}T00:00:00Z`);
 
 // ---------------------------------------------------------------------------
 // queryPlanoDeContas
@@ -170,7 +174,12 @@ describe("querySaldoConta", () => {
     await querySaldoConta(prisma, { termo: "caixa", dataInicio: "2026-01-01", dataFim: "2026-12-31", limite: 10 });
     const call = groupBy.mock.calls[0][0];
     expect(call.where).toHaveProperty("OR");
-    expect(call.where.dataLancamento).toEqual({ gte: new Date("2026-01-01"), lte: new Date("2026-12-31") });
+    // dataInicio (01/01) e anterior a data de inicio das analises: e grampeada nela.
+    // O fim vira borda exclusiva (31/12 entra inteiro).
+    expect(call.where.dataLancamento).toEqual({
+      gte: new Date(`${CORTE_DADOS_PADRAO}T00:00:00Z`),
+      lt: new Date("2027-01-01T00:00:00Z"),
+    });
     expect(call.take).toBe(10);
   });
 
@@ -271,5 +280,72 @@ describe("queryContaReferencial", () => {
     await queryContaReferencial(prisma, { termo: "caixa", limite: 5 });
     expect(findMany.mock.calls[0][0].where).toHaveProperty("OR");
     expect(findMany.mock.calls[0][0].take).toBe(5);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Data de inicio das analises (AppSetting sync.corte_dados)
+//
+// Lancamento contabil e documento com data: HISTORICO. Balancete, razao, resultado e centro
+// de custo agregam esses lancamentos, entao todos respeitam o piso , inclusive quando o
+// chamador nao manda periodo nenhum (era o furo: where vazio varrendo o cache inteiro).
+// Plano de contas, estrutura de conta e conta referencial sao CADASTRO: nao filtram.
+// ---------------------------------------------------------------------------
+
+describe("contabil , data de inicio das analises", () => {
+  it("querySaldoConta sem periodo aplica o piso do corte (nao varre o historico inteiro)", async () => {
+    const groupBy = jest.fn().mockResolvedValue([]);
+    const prisma = { fatoContabilLancamentoItem: { groupBy } } as unknown as Parameters<typeof querySaldoConta>[0];
+    await querySaldoConta(prisma, {});
+    expect(groupBy.mock.calls[0][0].where.dataLancamento.gte).toEqual(PISO);
+  });
+
+  it("querySaldoConta grampeia dataInicio anterior ao corte", async () => {
+    const groupBy = jest.fn().mockResolvedValue([]);
+    const prisma = { fatoContabilLancamentoItem: { groupBy } } as unknown as Parameters<typeof querySaldoConta>[0];
+    await querySaldoConta(prisma, { dataInicio: "2019-01-01", dataFim: "2026-06-30" });
+    expect(groupBy.mock.calls[0][0].where.dataLancamento.gte).toEqual(PISO);
+  });
+
+  it("querySaldoConta preserva dataInicio posterior ao corte", async () => {
+    const groupBy = jest.fn().mockResolvedValue([]);
+    const prisma = { fatoContabilLancamentoItem: { groupBy } } as unknown as Parameters<typeof querySaldoConta>[0];
+    await querySaldoConta(prisma, { dataInicio: "2026-05-01", dataFim: "2026-05-31" });
+    expect(groupBy.mock.calls[0][0].where.dataLancamento).toEqual({
+      gte: new Date("2026-05-01T00:00:00Z"),
+      lt: new Date("2026-06-01T00:00:00Z"), // borda exclusiva: 31/05 entra inteiro
+    });
+  });
+
+  it("queryMovimentoConta (razao) sem periodo aplica o piso do corte", async () => {
+    const findMany = jest.fn().mockResolvedValue([]);
+    const count = jest.fn().mockResolvedValue(0);
+    const prisma = { fatoContabilLancamentoItem: { findMany, count } } as unknown as Parameters<typeof queryMovimentoConta>[0];
+    await queryMovimentoConta(prisma, { contaId: 10, limit: 10, offset: 0 });
+    expect(findMany.mock.calls[0][0].where.dataLancamento.gte).toEqual(PISO);
+    expect(count.mock.calls[0][0].where.dataLancamento.gte).toEqual(PISO);
+  });
+
+  it("queryResultadoPorNatureza sem periodo aplica o piso do corte", async () => {
+    const aggregate = jest.fn().mockResolvedValue({ _sum: { valorCredito: 0, valorDebito: 0 } });
+    const count = jest.fn().mockResolvedValue(0);
+    const prisma = { fatoContabilLancamentoItem: { aggregate, count } } as unknown as Parameters<typeof queryResultadoPorNatureza>[0];
+    await queryResultadoPorNatureza(prisma, {});
+    expect(aggregate.mock.calls[0][0].where.dataLancamento.gte).toEqual(PISO);
+  });
+
+  it("queryCentroCusto sem periodo aplica o piso do corte", async () => {
+    const groupBy = jest.fn().mockResolvedValue([]);
+    const prisma = { fatoContabilLancamentoItem: { groupBy } } as unknown as Parameters<typeof queryCentroCusto>[0];
+    await queryCentroCusto(prisma, {});
+    expect(groupBy.mock.calls[0][0].where.dataLancamento.gte).toEqual(PISO);
+  });
+
+  it("queryPlanoDeContas NAO filtra por data (plano de contas e cadastro)", async () => {
+    const findMany = jest.fn().mockResolvedValue([]);
+    const count = jest.fn().mockResolvedValue(0);
+    const prisma = { fatoContaContabil: { findMany, count } } as unknown as Parameters<typeof queryPlanoDeContas>[0];
+    await queryPlanoDeContas(prisma, { limit: 10, offset: 0 });
+    expect(findMany.mock.calls[0][0].where.dataLancamento).toBeUndefined();
   });
 });

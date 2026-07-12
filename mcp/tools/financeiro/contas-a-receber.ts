@@ -27,6 +27,8 @@ const tituloSchema = z.object({
 const dados = z.object({
   titulos: z.array(tituloSchema),
   totalAReceber: z.number(),
+  /** Pedidos ainda SEM nota emitida: receita contratada, nao conta a receber. */
+  carteiraAFaturar: z.number(),
   quebra: z.object({ confirmado: z.number(), provisorio: z.number() }),
   // Contrato de lista (Fase B): ordenacao declarada da lista `titulos`.
   ordenadoPor: z.string().optional(),
@@ -72,6 +74,9 @@ function shape(d: Awaited<ReturnType<typeof queryContasAReceber>>) {
       situacaoSimples: t.situacaoSimples,
     })),
     totalAReceber: d.totalAReceber,
+    // O agente PRECISA saber a diferenca: perguntado sobre "quanto tenho a receber", ele
+    // responde o faturado, e pode citar a carteira a parte. Somar os dois era o erro antigo.
+    carteiraAFaturar: d.carteiraAFaturar,
     quebra: d.quebra,
     // A query ja devolve ordenado por vrSaldo desc (contrato de lista).
     ordenadoPor: "valor desc",
@@ -81,7 +86,10 @@ function shape(d: Awaited<ReturnType<typeof queryContasAReceber>>) {
 export const financeiroContasAReceber: ToolEntry<Input, Output> = {
   id: "financeiro_contas_a_receber",
   dominio: "financeiro",
-  descricao: "Títulos a receber em aberto, com valor total e dias de atraso.",
+  descricao:
+    "Títulos a receber em aberto (JÁ FATURADOS), com valor total e dias de atraso. " +
+    "Devolve à parte `carteiraAFaturar`: pedidos ainda sem nota emitida, que são receita " +
+    "contratada e NÃO entram no total a receber.",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
@@ -107,6 +115,7 @@ export const financeiroContasAReceber: ToolEntry<Input, Output> = {
     const enriched = enriquecerEnvelope(envelope, "financeiro_contas_a_receber", {
       destaque: {
         totalAReceber: envelope.dados.totalAReceber,
+        carteiraAFaturar: envelope.dados.carteiraAFaturar,
         totalConfirmado: envelope.dados.quebra.confirmado,
         totalProvisorio: envelope.dados.quebra.provisorio,
         contagem: envelope.dados.titulos.length,

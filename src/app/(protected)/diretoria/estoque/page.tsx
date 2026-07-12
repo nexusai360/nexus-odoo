@@ -3,6 +3,7 @@ import { Boxes } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
 import { PageHeader } from "@/components/page-header";
 import { prisma } from "@/lib/prisma";
+import { aquecerCorte } from "@/lib/corte-app";
 import { requireDiretoriaArea, canDiretoria } from "@/lib/diretoria/access";
 import {
   queryIndicadoresEstoque,
@@ -31,6 +32,7 @@ export const dynamic = "force-dynamic";
 
 export default async function DiretoriaEstoquePage() {
   const user = await requireDiretoriaArea("estoque");
+  await aquecerCorte();
   const hoje = new Date();
 
   const [

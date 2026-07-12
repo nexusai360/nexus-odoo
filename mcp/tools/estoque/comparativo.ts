@@ -7,6 +7,7 @@ import type { ToolEntry } from "../../catalog/types.js";
 import { queryEstoqueComparativo } from "@/lib/reports/queries/estoque.js";
 import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
+import { avisoCorte, clampIsoAoCorte, corteAtual, corteLabel, pedeAntesDoCorte } from "@/lib/corte-dados.js";
 
 const inputSchema = z.object({
   // Datas explícitas (YYYY-MM-DD). Têm prioridade sobre `periodo`.
@@ -63,11 +64,29 @@ function iso(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
-/** Resolve dataInicial/dataFinal a partir de datas explícitas ou período. */
-function resolverDatas(input: Input): { dataInicial: string; dataFinal: string; rotulo: string } {
+/**
+ * Resolve dataInicial/dataFinal a partir de datas explícitas ou período.
+ *
+ * A dataInicial e GRAMPEADA a data de inicio das analises: sem isso, o preset `ano_anterior`
+ * (ou uma data solta pedida pelo agente) fazia a tool reconstruir o estoque numa data que a
+ * plataforma declara nao cobrir , pontoEstoqueNaData ia buscar foto/movimento pre-corte. A
+ * data FINAL nao e grampeada (e sempre >= inicial, tipicamente hoje).
+ */
+function resolverDatas(input: Input): {
+  dataInicial: string;
+  dataFinal: string;
+  rotulo: string;
+  cortado: boolean;
+} {
   const hoje = hojeBRT();
+  const corte = corteAtual();
   if (input.dataInicial && input.dataFinal) {
-    return { dataInicial: input.dataInicial, dataFinal: input.dataFinal, rotulo: "intervalo informado" };
+    return {
+      dataInicial: clampIsoAoCorte(input.dataInicial, corte),
+      dataFinal: input.dataFinal,
+      rotulo: "intervalo informado",
+      cortado: pedeAntesDoCorte(input.dataInicial, corte),
+    };
   }
   const dataFinal = input.dataFinal ?? iso(hoje);
   const fim = input.dataFinal ? new Date(`${input.dataFinal}T00:00:00.000Z`) : hoje;
@@ -88,7 +107,13 @@ function resolverDatas(input: Input): { dataInicial: string; dataFinal: string; 
     inicio = new Date(Date.UTC(fim.getUTCFullYear(), fim.getUTCMonth(), 0));
     rotulo = "vs. fim do mês passado";
   }
-  return { dataInicial: input.dataInicial ?? iso(inicio), dataFinal, rotulo };
+  const inicialPedida = input.dataInicial ?? iso(inicio);
+  return {
+    dataInicial: clampIsoAoCorte(inicialPedida, corte),
+    dataFinal,
+    rotulo,
+    cortado: pedeAntesDoCorte(inicialPedida, corte),
+  };
 }
 
 export const estoqueComparativo: ToolEntry<Input, Output> = {
@@ -100,13 +125,18 @@ export const estoqueComparativo: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
-    const { dataInicial, dataFinal, rotulo } = resolverDatas(input);
+    const { dataInicial, dataFinal, rotulo, cortado } = resolverDatas(input);
     const envelope = await withFreshness(
       ctx.prisma,
       ["fato_estoque_saldo", "fato_estoque_saldo_snapshot", "fato_estoque_movimento"],
       async () => {
         const r = await queryEstoqueComparativo(ctx.prisma, { dataInicial, dataFinal });
         const avisos: string[] = [`Comparação: ${dataFinal} ${rotulo} (${dataInicial}).`];
+        if (cortado) {
+          avisos.push(
+            `A data inicial pedida é anterior a ${corteLabel()} e foi ajustada para ${dataInicial}. ${avisoCorte()}`,
+          );
+        }
         if (r.inicial.aviso) avisos.push(r.inicial.aviso);
         if (r.final.aviso) avisos.push(r.final.aviso);
         if (!r.comparavelEmValor) {

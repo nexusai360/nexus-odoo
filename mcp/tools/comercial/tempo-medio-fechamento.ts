@@ -4,6 +4,7 @@
 import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { withFreshness } from "../../lib/freshness.js";
+import { resolverPeriodoCorte, type PeriodoCorte } from "../../lib/periodo-corte.js";
 import type { PrismaClient } from "@/generated/prisma/client.js";
 
 const inputSchema = z.object({
@@ -19,6 +20,9 @@ const dados = z.object({
   diasMaximo: z.number(),
   periodoDe: z.string().nullable(),
   periodoAte: z.string().nullable(),
+  /** Periodo EFETIVAMENTE coberto (ja grampeado a data de inicio das analises). */
+  periodoCoberto: z.string().optional(),
+  aviso: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
@@ -47,15 +51,15 @@ interface Row {
   maximo: string | number | null;
 }
 
-async function query(prisma: PrismaClient, input: Input) {
-  const filtroPer =
-    input.periodoDe && input.periodoAte
-      ? `AND data_orcamento BETWEEN $1::timestamp AND $2::timestamp`
-      : "";
-  const params: unknown[] = [];
-  if (input.periodoDe && input.periodoAte) {
-    params.push(`${input.periodoDe}T00:00:00`, `${input.periodoAte}T23:59:59`);
-  }
+async function query(prisma: PrismaClient, input: Input, per: PeriodoCorte) {
+  // Pedido e documento com data: o BETWEEN e SEMPRE emitido. Antes, sem o par completo de
+  // datas o filtro sumia e a media/mediana/min/max saiam de TODOS os pedidos do cache ,
+  // justamente o min/max e onde o outlier antigo (pre-corte) mais distorce.
+  const filtroPer = `AND data_orcamento BETWEEN $1::timestamp AND $2::timestamp`;
+  const params: unknown[] = [
+    `${per.periodoDe}T00:00:00`,
+    `${per.periodoAte}T23:59:59`,
+  ];
   const rows = await prisma.$queryRawUnsafe<Row[]>(
     `SELECT
        COUNT(*)::bigint AS total,
@@ -75,8 +79,10 @@ async function query(prisma: PrismaClient, input: Input) {
     diasMediano: Number(r?.mediano ?? 0),
     diasMinimo: Number(r?.minimo ?? 0),
     diasMaximo: Number(r?.maximo ?? 0),
-    periodoDe: input.periodoDe ?? null,
-    periodoAte: input.periodoAte ?? null,
+    periodoDe: per.periodoDe,
+    periodoAte: per.periodoAte,
+    periodoCoberto: per.label,
+    ...(per.aviso ? { aviso: per.aviso } : {}),
   };
 }
 
@@ -92,18 +98,24 @@ export const comercialTempoMedioFechamento: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
-    const envelope = await withFreshness(ctx.prisma, ["fato_pedido"], () => query(ctx.prisma, input));
+    const per = resolverPeriodoCorte(input.periodoDe, input.periodoAte);
+    const envelope = await withFreshness(ctx.prisma, ["fato_pedido"], () =>
+      query(ctx.prisma, input, per),
+    );
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
     return {
       ...envelope,
       dados: {
         ...d,
-        _RESPOSTA: d.totalPedidos === 0
-          ? "Nao ha pedidos concluidos com data de aprovacao no periodo."
-          : `Tempo medio de fechamento: ${d.diasMedio.toFixed(1)} dias (mediana ${d.diasMediano.toFixed(1)}, min ${d.diasMinimo.toFixed(1)}, max ${d.diasMaximo.toFixed(1)}). Amostra: ${d.totalPedidos} pedidos concluidos.`,
+        _RESPOSTA:
+          (d.totalPedidos === 0
+            ? `Nao ha pedidos concluidos com data de aprovacao no periodo ${per.label}.`
+            : `Tempo medio de fechamento no periodo ${per.label}: ${d.diasMedio.toFixed(1)} dias (mediana ${d.diasMediano.toFixed(1)}, min ${d.diasMinimo.toFixed(1)}, max ${d.diasMaximo.toFixed(1)}). Amostra: ${d.totalPedidos} pedidos concluidos.`) +
+          (per.aviso ? ` ${per.aviso}` : ""),
         _DESTAQUE: {
           totalPedidos: d.totalPedidos,
+          periodoCoberto: per.label,
           diasMedio: d.diasMedio,
           diasMediano: d.diasMediano,
           diasMinimo: d.diasMinimo,

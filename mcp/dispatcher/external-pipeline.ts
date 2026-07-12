@@ -39,6 +39,7 @@ import { truncateSnapshot } from "../lib/snapshot.js";
 import { getDirectedSyncQueue } from "../sync/queue.js";
 import logger from "../lib/logger.js";
 import { clientFromEnv } from "@/worker/odoo/client.js";
+import { getCorteDados } from "@/lib/corte-dados.js";
 
 // ─── Tipos públicos ──────────────────────────────────────────────────────────
 
@@ -582,6 +583,10 @@ export async function handleExternalReadCall(
 ): Promise<{ status: number; body: JsonRpcResponse }> {
   const { id, tool, rawInput, apiKey, requestId, prisma, serverVersion } = opts;
   const start = Date.now();
+
+  // Data de inicio das analises: mesmo motivo do pipeline interno (mcp/server.ts) , o
+  // processo do MCP precisa hidratar o corte antes de qualquer tool montar where de data.
+  await getCorteDados(prisma);
 
   // Validação Zod
   let parsedInput: unknown;

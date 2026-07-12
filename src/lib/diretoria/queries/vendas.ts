@@ -4,6 +4,7 @@
 
 import type { PrismaClient } from "@/generated/prisma/client";
 
+import { corteAtualDate, janelaClampada } from "@/lib/corte-dados";
 import { siglaDeUf } from "@/lib/diretoria/uf";
 import { buildEmpresaWhere } from "@/lib/metrics/_shared/empresa";
 
@@ -16,18 +17,23 @@ export interface FiltrosVendas {
   empresaId?: number;
 }
 
+/**
+ * Recorte de período de qualquer campo de data destas queries, já grampeado à data de
+ * início das análises (`sync.corte_dados`). Notas e pedidos são documentos com data, ou
+ * seja, histórico: o piso vale sempre.
+ *
+ * Duas garantias: período anterior ao corte é puxado para o corte, e período AUSENTE não
+ * significa "tudo" , significa "do corte em diante". Antes, sem o par completo o filtro
+ * era `{}` e o construtor de relatórios (que chama sem período) varria o cache inteiro.
+ * A borda final é exclusiva (`lt` = dia seguinte), então o último dia entra por completo.
+ */
 function periodoWhere(
   de: string | undefined,
   ate: string | undefined,
   campo: string,
 ): Record<string, unknown> {
-  if (!de || !ate) return {};
-  return {
-    [campo]: {
-      gte: new Date(`${de}T00:00:00Z`),
-      lte: new Date(`${ate}T23:59:59Z`),
-    },
-  };
+  const j = janelaClampada(de, ate);
+  return { [campo]: { gte: j.gte, lt: j.lt } };
 }
 
 // Faturamento REAL = venda a cliente EXTERNO. Usa a coluna materializada
@@ -49,13 +55,26 @@ export interface LinhaFormaPagamento {
  * C10 , Formas de pagamento no período. Agrega o valor das parcelas por forma de
  * pagamento (`formaPagamentoNome`), filtrando por `dataVencimento`. Parcelas sem
  * forma definida entram como "Não informado".
+ *
+ * Dois pisos, porque a parcela é um título de um DOCUMENTO: o vencimento é grampeado à
+ * data de início das análises (janela), e a parcela só conta se o PEDIDO de origem também
+ * for de dentro da janela coberta. Sem o piso pelo documento, uma parcela de pedido antigo
+ * que vence dentro do período entraria no gráfico , o corte é sobre o documento, não sobre
+ * o vencimento. Parcela sem pedido de origem fica de fora (não há documento para datar).
  */
 export async function queryFormasPagamento(
   prisma: PrismaClient,
   filtros: FiltrosVendas,
 ): Promise<{ linhas: LinhaFormaPagamento[]; valorGeral: number }> {
+  const pedidos = await prisma.fatoPedido.findMany({
+    where: { dataOrcamento: { gte: corteAtualDate() } },
+    select: { odooId: true },
+  });
   const rows = await prisma.fatoPedidoParcela.findMany({
-    where: periodoWhere(filtros.periodoDe, filtros.periodoAte, "dataVencimento"),
+    where: {
+      ...periodoWhere(filtros.periodoDe, filtros.periodoAte, "dataVencimento"),
+      pedidoId: { in: pedidos.map((p) => p.odooId) },
+    },
     select: { formaPagamentoNome: true, valor: true },
   });
 

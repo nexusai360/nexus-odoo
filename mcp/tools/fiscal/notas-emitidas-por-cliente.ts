@@ -10,6 +10,8 @@ import {
 } from "../../lib/paginacao.js";
 import type { PrismaClient } from "@/generated/prisma/client.js";
 import { ehNotaIntragrupo } from "@/lib/fiscal/grupo/participantes-grupo.js";
+import { janelaClampada } from "@/lib/corte-dados.js";
+import { resolverPeriodoFiscal, type PeriodoResolvido } from "./_periodo-padrao.js";
 
 const inputSchema = z.object({
   clienteTermo: z.string().min(2).max(120).describe("Filtra notas onde participanteNome contem o termo (insensitive)."),
@@ -36,6 +38,8 @@ const dados = z.object({
   // Contrato de lista (Fase B): a query ordena por dataEmissao desc com
   // desempate por odooId; aqui apenas declaramos ao LLM.
   ordenadoPor: z.string().optional(),
+  /** Periodo EFETIVAMENTE coberto (ja grampeado a data de inicio das analises). */
+  periodoCoberto: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _PAGINACAO: z.any().optional(),
@@ -60,19 +64,19 @@ const outputSchema = z.union([
 type Input = z.infer<typeof inputSchema>;
 type Output = z.infer<typeof outputSchema>;
 
-async function query(prisma: PrismaClient, input: Input) {
+async function query(prisma: PrismaClient, input: Input, per: PeriodoResolvido) {
   const { limit, offset } = resolverPaginacao(input);
+  // Nota fiscal e documento com data (historico): o filtro de data e OBRIGATORIO e o inicio
+  // vem grampeado a data de inicio das analises (`per` ja saiu do resolverPeriodoFiscal).
+  // Antes o where de data so existia se o agente informasse periodo , sem periodo, a tool
+  // somava o historico inteiro do cliente.
+  const j = janelaClampada(per.periodoDe, per.periodoAte);
   const where: Record<string, unknown> = {
     entradaSaida: "1",
     participanteNome: { contains: input.clienteTermo, mode: "insensitive" as const },
+    dataEmissao: { gte: j.gte, lt: j.lt },
   };
   if (input.situacaoNfe) where.situacaoNfe = input.situacaoNfe;
-  if (input.periodoDe || input.periodoAte) {
-    where.dataEmissao = {
-      ...(input.periodoDe ? { gte: new Date(`${input.periodoDe}T00:00:00`) } : {}),
-      ...(input.periodoAte ? { lte: new Date(`${input.periodoAte}T23:59:59`) } : {}),
-    };
-  }
   const [linhas, total, agg] = await Promise.all([
     prisma.fatoNotaFiscal.findMany({
       where,
@@ -109,6 +113,7 @@ async function query(prisma: PrismaClient, input: Input) {
     valorTotal: Number(agg._sum.vrNf ?? 0),
     linhasExibidas: linhas.length,
     ordenadoPor: "data desc",
+    periodoCoberto: per.label,
     clienteEhDoGrupo,
   };
 }
@@ -129,7 +134,10 @@ export const fiscalNotasEmitidasPorCliente: ToolEntry<Input, Output> = {
   outputSchema,
   handler: async (input, ctx) => {
     const { limit, offset } = resolverPaginacao(input);
-    const envelope = await withFreshness(ctx.prisma, ["fato_nota_fiscal"], () => query(ctx.prisma, input));
+    const per = resolverPeriodoFiscal(input.periodoDe, input.periodoAte);
+    const envelope = await withFreshness(ctx.prisma, ["fato_nota_fiscal"], () =>
+      query(ctx.prisma, input, per),
+    );
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
     const paginacao = montarPaginacaoMeta(d.totalNotas, offset, limit, d.linhasExibidas);
@@ -143,14 +151,18 @@ export const fiscalNotasEmitidasPorCliente: ToolEntry<Input, Output> = {
       ...envelope,
       dados: {
         ...d,
-        _RESPOSTA: (d.totalNotas === 0
-          ? `Nao ha notas emitidas para '${input.clienteTermo}' no periodo.`
-          : `${d.totalNotas} notas emitidas para '${input.clienteTermo}', total ${fmt(d.valorTotal)}. Listando ${d.linhasExibidas}.`) + avisoGrupo,
+        _RESPOSTA:
+          (d.totalNotas === 0
+            ? `Nao ha notas emitidas para '${input.clienteTermo}' no periodo ${per.label}.`
+            : `${d.totalNotas} notas emitidas para '${input.clienteTermo}' no periodo ${per.label}, total ${fmt(d.valorTotal)}. Listando ${d.linhasExibidas}.`) +
+          (per.aviso ? ` ${per.aviso}` : "") +
+          avisoGrupo,
         _DESTAQUE: {
           clienteTermo: input.clienteTermo,
           totalNotas: d.totalNotas,
           valorTotal: d.valorTotal,
           linhasExibidas: d.linhasExibidas,
+          periodoCoberto: per.label,
           ...(d.clienteEhDoGrupo ? { avisoEmpresaDoGrupo: 1 } : {}),
         },
         _agregado: { contagem: d.totalNotas, soma: d.valorTotal },

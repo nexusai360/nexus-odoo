@@ -310,3 +310,59 @@ describe("getRelatorioConcentracao (R6)", () => {
     expect(r.estado).toBe("erro");
   });
 });
+
+// ===========================================================================
+// DATA DE INICIO DAS ANALISES (AppSetting sync.corte_dados): os dois relatorios que leem
+// HISTORICO de movimento (R3 e R5) nao podem varrer o cache inteiro. Aqui o prisma esta
+// mockado sem `appSetting`, entao getCorteDados cai no padrao (2026-03-16).
+// ===========================================================================
+describe("report-data , piso da data de inicio das analises", () => {
+  const MES_DO_CORTE = "2026-03";
+  const MES_ABERTO = "9999-12";
+
+  beforeEach(() => {
+    mockPrisma.fatoBuildState.findUnique.mockResolvedValue({ ultimoBuildAt: new Date() });
+    mockQueryEntradasSaidas().mockResolvedValue({ serie: [], detalhe: [] });
+    mockQueryTopMovimentados().mockResolvedValue({ kpis: { totalProdutos: 0, totalUnidades: 0 }, linhas: [] });
+  });
+
+  it("R3 sem periodo (preset 'tudo') comeca no mes do corte, nao no cache inteiro", async () => {
+    await getRelatorioEntradasSaidas({});
+    expect(mockQueryEntradasSaidas()).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ periodoDe: MES_DO_CORTE, periodoAte: MES_ABERTO }),
+    );
+  });
+
+  it("R3 com periodo anterior ao corte e grampeado no mes do corte", async () => {
+    await getRelatorioEntradasSaidas({ periodoDe: "2025-01", periodoAte: "2026-05" });
+    expect(mockQueryEntradasSaidas()).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ periodoDe: MES_DO_CORTE, periodoAte: "2026-05" }),
+    );
+  });
+
+  it("R3 com periodo dentro da janela passa intacto", async () => {
+    await getRelatorioEntradasSaidas({ periodoDe: "2026-04", periodoAte: "2026-06", armazemId: 3 });
+    expect(mockQueryEntradasSaidas()).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ periodoDe: "2026-04", periodoAte: "2026-06", armazemId: 3 }),
+    );
+  });
+
+  it("R5 sem periodo comeca no mes do corte (o ranking nao soma o historico inteiro)", async () => {
+    await getRelatorioTopMovimentados({ sentido: "entrada" });
+    expect(mockQueryTopMovimentados()).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ sentido: "entrada", periodoDe: MES_DO_CORTE, periodoAte: MES_ABERTO }),
+    );
+  });
+
+  it("R5 com periodo anterior ao corte e grampeado", async () => {
+    await getRelatorioTopMovimentados({ periodoDe: "2024-06", periodoAte: "2026-04" });
+    expect(mockQueryTopMovimentados()).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ periodoDe: MES_DO_CORTE, periodoAte: "2026-04" }),
+    );
+  });
+});

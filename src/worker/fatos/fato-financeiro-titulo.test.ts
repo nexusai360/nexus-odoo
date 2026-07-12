@@ -231,6 +231,8 @@ describe("rebuildFatoFinanceiroTitulo", () => {
           { data: RAW_LANCAMENTO_A_PAGAR_ABERTO },
         ]),
       },
+      // origensDeNota(): sem NF no cache, nenhum pedido consta como faturado.
+      $queryRaw: jest.fn().mockResolvedValue([]),
       $transaction: jest.fn(async (fn: (t: typeof tx) => unknown) => fn(tx)),
     } as never;
 
@@ -257,6 +259,8 @@ describe("rebuildFatoFinanceiroTitulo", () => {
           { data: RAW_LANCAMENTO_PAGAMENTO_CAIXA },      // caixa → descarta
         ]),
       },
+      // origensDeNota(): sem NF no cache, nenhum pedido consta como faturado.
+      $queryRaw: jest.fn().mockResolvedValue([]),
       $transaction: jest.fn(async (fn: (t: typeof tx) => unknown) => fn(tx)),
     } as never;
 
@@ -284,6 +288,8 @@ describe("rebuildFatoFinanceiroTitulo", () => {
           { data: RAW_LANCAMENTO_A_RECEBER_ABERTO },
         ]),
       },
+      // origensDeNota(): sem NF no cache, nenhum pedido consta como faturado.
+      $queryRaw: jest.fn().mockResolvedValue([]),
       $transaction: jest.fn(async (fn: (t: typeof tx) => unknown) => fn(tx)),
     } as never;
 
@@ -308,6 +314,8 @@ describe("rebuildFatoFinanceiroTitulo", () => {
           { data: RAW_LANCAMENTO_A_RECEBER_QUITADO },
         ]),
       },
+      // origensDeNota(): sem NF no cache, nenhum pedido consta como faturado.
+      $queryRaw: jest.fn().mockResolvedValue([]),
       $transaction: jest.fn(async (fn: (t: typeof tx) => unknown) => fn(tx)),
     } as never;
 
@@ -330,6 +338,8 @@ describe("rebuildFatoFinanceiroTitulo", () => {
           { data: RAW_LANCAMENTO_PAGAMENTO_CAIXA },
         ]),
       },
+      // origensDeNota(): sem NF no cache, nenhum pedido consta como faturado.
+      $queryRaw: jest.fn().mockResolvedValue([]),
       $transaction: jest.fn(async (fn: (t: typeof tx) => unknown) => fn(tx)),
     } as never;
 

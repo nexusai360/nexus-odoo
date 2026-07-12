@@ -758,3 +758,55 @@ marcado; o resto é dívida aberta.
 - **Runbook mentindo.** O runbook do n8n dizia que a entrada usa HMAC; o código
   exige `Authorization: Bearer`, e os campos são `snake_case`. Corrigido, mas a
   lição fica: conferir o código antes de seguir a documentação.
+
+---
+
+## R-corte , data de início das análises (revisão completa das regras de consulta, 2026-07-12)
+
+### Decisões de produto pendentes (os agentes pararam e relataram, não decidiram sozinhos)
+
+- **"Dias parado" (`fato_produto_parado`, relatório R4)**: é estado derivado do histórico de
+  movimento, calculado pelo worker sob o corte TÉCNICO de ingestão, não sob a data de análise.
+  Mover a data de início NÃO muda esse número. Ficou sem filtro, com comentário. Se o dono quiser
+  que o indicador acompanhe a janela, a mudança é no builder do fato (worker), não na leitura.
+- **DRE (`queryResultadoPorConta`)**: `dataDocumento` é nullable. Com o piso obrigatório, item de
+  lançamento SEM data deixa de entrar na DRE (antes entrava quando não havia período). É a leitura
+  literal da regra (não dá para provar que é pós-corte), mas muda o total se existir lançamento sem
+  data no cache. Conferir: `SELECT count(*) FROM fato_financeiro_lancamento_item WHERE data_documento IS NULL`.
+- **`estoque_comparativo` (tool)**: com o piso no `data_ref` do snapshot, se todas as fotos forem
+  anteriores ao corte a tool cai na reconstrução por movimento (com aviso honesto) em vez de servir
+  foto pré-corte. Coerente com a regra, mas é mudança de comportamento da tool.
+- **Documento SEM data cai fora da janela** (pedido sem `dataOrcamento`, OC sem data, DF-e sem
+  emissão): com o piso `gte`, essas linhas somem das telas. É a leitura literal da regra.
+- **`fiscal_faturamento_recebido`**: "recebido no período" passou a significar "quanto já foi pago
+  dos lançamentos EMITIDOS no período" (o cache não guarda data da BAIXA no item). Se o dono quiser
+  "recebido = pago no período", precisa de data de baixa no fato (campo novo na ingestão).
+- **Prompt do agente salvo no banco**: se `AgentSettings.usesCodeDefaults = false` (o dono editou o
+  prompt pela tela), o `identityBase` do BANCO sobrescreve o do código, e a correção do texto ("2026
+  em diante" cravado) não chega ao Nex. Conferir em produção.
+
+### ARMADILHAS desta frente (não repetir)
+
+- **"Constante fixa" que não era fixa.** O PR #168 trocou `corteAtual()` por `CORTE_DADOS_ISO`
+  achando que estava fixando a ingestão, mas essa constante era o próprio `corteAtual()` avaliado
+  NO IMPORT, ou seja, o padrão da tela. A ingestão continuou amarrada à data de análise e o cache
+  nunca repunha janeiro a março. Constante técnica é LITERAL, e o arquivo não importa a fonte que
+  ele quer evitar.
+- **Cache em memória por PROCESSO.** `corteAtual()` é síncrono e lê um cache que só é preenchido
+  por `getCorteDados(prisma)`. O MCP é outro processo: nunca chamava, então TODAS as tools do Nex
+  usavam a data padrão e a configuração da tela não valia nada para o agente. Toda função síncrona
+  que depende de config de banco precisa de um ponto de hidratação declarado no boundary.
+- **Escrita fora de transação = tela zerada.** `updateMany({ data: { isVendaExterna: false } })`
+  seguido de remarcação, sem transação, deixava o faturamento em ZERO por segundos a cada ciclo.
+  `TRUNCATE` solto é pior (commita sozinho). Rebuild de fato é DELETE + INSERT dentro de UMA
+  transação: em READ COMMITTED, a leitura vê o estado antigo até o commit.
+- **Freshness da INGESTÃO não é freshness do DADO.** `sync_state.last_incremental_at` avança quando
+  o raw chega, antes de os fatos serem reconstruídos. A tela se atualizava no meio da obra. O sinal
+  certo é o marcador de FIM DE CICLO (gravado depois de todos os builders).
+- **Purge não volta sozinho.** O incremental filtra por `write_date > marca d'água`; registro antigo
+  não "mudou", então ele nunca é repuxado. Para repor histórico apagado, zerar
+  `sync_state.last_incremental_at` do modelo (o backfill respeita o corte técnico de ingestão).
+- **Docker: rebuildar o `app` para atualizar o `worker`.** Rodei o E2E com a imagem velha e o
+  worker reescreveu as colunas novas com os defaults. Ver a regra de raiz no CLAUDE.md.
+- **`docker compose` na worktree não enxerga o `.env` da pasta principal.** O worker subiu sem as
+  credenciais do Odoo. Passar `--env-file <pasta-principal>/.env`.

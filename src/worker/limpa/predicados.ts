@@ -8,12 +8,12 @@
 //  - titulo: somente quitado/baixado E pago antes do corte (divida viva fica);
 //  - DELETE sempre em lotes (ctid LIMIT) , 923MB nao cabem numa transacao.
 
-import { CORTE_DADOS_ISO } from "../sync/corte";
+import { CORTE_INGESTAO_ISO } from "../sync/corte";
 
 export const LOTE_PADRAO = 10_000;
 
 /** WHERE de transacional com data propria no RAW (JSON). NULL preservado. */
-export function wherePre2026Raw(chaveData: string, corte: string = CORTE_DADOS_ISO): string {
+export function wherePre2026Raw(chaveData: string, corte: string = CORTE_INGESTAO_ISO): string {
   // substr(1,10) tolera datetime ("2025-03-31 14:22:00") e date puro.
   return `(data->>'${chaveData}') IS NOT NULL AND substring(data->>'${chaveData}' from 1 for 10) < '${corte}'`;
 }
@@ -28,7 +28,7 @@ export function wherePre2026Filho(
   tabelaRawPai: string,
   fkRaw: string,
   chaveDataPai: string,
-  corte: string = CORTE_DADOS_ISO,
+  corte: string = CORTE_INGESTAO_ISO,
 ): string {
   return (
     `jsonb_typeof(data->'${fkRaw}') = 'array' AND (data->'${fkRaw}'->>0)::int IN ` +
@@ -43,7 +43,7 @@ export function wherePre2026Neto(
   tabelaRawAvo: string,
   fkRawNoPai: string,
   chaveDataAvo: string,
-  corte: string = CORTE_DADOS_ISO,
+  corte: string = CORTE_INGESTAO_ISO,
 ): string {
   return (
     `jsonb_typeof(data->'${fkRawNoNeto}') = 'array' AND (data->'${fkRawNoNeto}'->>0)::int IN ` +
@@ -52,7 +52,7 @@ export function wherePre2026Neto(
 }
 
 /** WHERE do titulo no RAW: somente quitado/baixado E pago antes do corte. */
-export function whereTituloQuitadoPre2026Raw(corte: string = CORTE_DADOS_ISO): string {
+export function whereTituloQuitadoPre2026Raw(corte: string = CORTE_INGESTAO_ISO): string {
   return (
     `(data->>'situacao_divida_simples') IN ('quitado','baixado') ` +
     `AND (data->>'data_pagamento') IS NOT NULL ` +
@@ -61,7 +61,7 @@ export function whereTituloQuitadoPre2026Raw(corte: string = CORTE_DADOS_ISO): s
 }
 
 /** WHERE do titulo no FATO (colunas materializadas). */
-export function whereTituloQuitadoPre2026Fato(corte: string = CORTE_DADOS_ISO): string {
+export function whereTituloQuitadoPre2026Fato(corte: string = CORTE_INGESTAO_ISO): string {
   return (
     `situacao_simples IN ('quitado','baixado') ` +
     `AND data_pagamento IS NOT NULL AND data_pagamento < '${corte}'`

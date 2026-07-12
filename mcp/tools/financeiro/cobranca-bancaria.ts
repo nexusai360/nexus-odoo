@@ -18,6 +18,7 @@ import {
   queryCheques, fatoChequeCount,
   queryPixRecebidos, fatoPixCount,
 } from "@/lib/reports/queries/cobranca-bancaria.js";
+import { resolverPeriodoCorte } from "../../lib/periodo-corte.js";
 import type { PrismaClient } from "@/generated/prisma/client";
 
 const fonteStatus = z.object({ status: z.string(), ultimaSyncEm: z.string().nullable() });
@@ -28,6 +29,9 @@ const dadosSchema = z.object({
   // Contrato de lista (Fase B): ordenacao declarada (as queries de cobranca ja
   // tem orderBy estavel da onda de paginacao; aqui apenas declaramos ao LLM).
   ordenadoPor: z.string().optional(),
+  /** Periodo EFETIVAMENTE coberto (ja grampeado a data de inicio das analises). */
+  periodoCoberto: z.string().optional(),
+  aviso: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _PAGINACAO: z.any().optional(),
@@ -64,6 +68,12 @@ function makeTool<I extends Record<string, unknown>>(opts: {
   resumoOk: (total: number) => string;
   /** Contrato de lista: descricao humana da ordenacao da query (obrigatoria). */
   ordenadoPor: string;
+  /**
+   * true quando o fato e HISTORICO (documento com data: baixa, retorno, remessa, cheque,
+   * pix) e portanto respeita a data de inicio das analises. false para CADASTRO/CONFIG
+   * (carteira de cobranca), onde nao ha documento datado para grampear.
+   */
+  historico: boolean;
 }): ToolEntry<I, Output> {
   const zObject = z.object(opts.inputShape);
   const inputSchema = zObject as unknown as z.ZodType<I>;
@@ -77,25 +87,44 @@ function makeTool<I extends Record<string, unknown>>(opts: {
     handler: async (input: I, ctx: { prisma: PrismaClient }) => {
       // Alavanca 2b: resolve paginacao (limit/offset) e injeta no input da query.
       const { limit, offset } = resolverPaginacao(input as { limit?: number; offset?: number });
+      // O count e proposital SEM filtro: so serve para detectar "modulo nao operado".
       const total = await opts.count(ctx.prisma);
+      // Data de inicio das analises: as queries de cobranca (rangeData) so filtram quando
+      // recebem data, entao sem periodo elas varriam o cache inteiro. Aqui o periodo e
+      // SEMPRE resolvido com o piso do corte e o inicio grampeado.
+      const per = opts.historico
+        ? resolverPeriodoCorte(
+            (input as { periodoDe?: string }).periodoDe,
+            (input as { periodoAte?: string }).periodoAte,
+          )
+        : undefined;
       const envelope = await withFreshness(ctx.prisma, [opts.fato], async () => {
-        const r = await opts.query(ctx.prisma, { ...input, limit, offset });
+        const r = await opts.query(ctx.prisma, {
+          ...input,
+          ...(per ? { periodoDe: per.periodoDe, periodoAte: per.periodoAte } : {}),
+          limit,
+          offset,
+        });
         return { linhas: r.linhas, total: r.total, truncado: r.truncado };
       });
       if (envelope.estado === "preparando") return envelope;
       const d = envelope.dados;
       const paginacao = montarPaginacaoMeta(d.total, offset, limit, d.linhas.length);
+      const sufixoPeriodo = per?.aviso ? ` ${per.aviso}` : "";
       return {
         ...envelope,
         dados: {
           ...d,
           ordenadoPor: opts.ordenadoPor,
+          ...(per ? { periodoCoberto: per.label } : {}),
+          ...(per?.aviso ? { aviso: per.aviso } : {}),
           _RESPOSTA:
             total === 0
               ? opts.naoOperado
-              : d.total > 0
-                ? opts.resumoOk(d.total)
-                : "Sem registros nesse recorte.",
+              : (d.total > 0
+                  ? `${opts.resumoOk(d.total)}${per ? ` Período coberto: ${per.label}.` : ""}`
+                  : `Sem registros nesse recorte.${per ? ` Período coberto: ${per.label}.` : ""}`) +
+                sufixoPeriodo,
           _agregado: { contagem: d.total },
           _listaTruncada: paginacao.temMais,
           _PAGINACAO: paginacao,
@@ -118,6 +147,7 @@ export const financeiroBaixasCobranca = makeTool({
   count: fatoBaixaCount,
   query: (p, i) => queryBaixasCobranca(p, i),
   resumoOk: (n) => `${n} baixas de cobrança no período.`,
+  historico: true,
 });
 
 export const financeiroRetornosProcessados = makeTool({
@@ -132,6 +162,7 @@ export const financeiroRetornosProcessados = makeTool({
   count: fatoRetornoCount,
   query: (p, i) => queryRetornosProcessados(p, i),
   resumoOk: (n) => `${n} retornos bancários no período.`,
+  historico: true,
 });
 
 export const financeiroRemessasGeradas = makeTool({
@@ -146,6 +177,7 @@ export const financeiroRemessasGeradas = makeTool({
   count: fatoRemessaCount,
   query: (p, i) => queryRemessasGeradas(p, i),
   resumoOk: (n) => `${n} remessas bancárias no período.`,
+  historico: true,
 });
 
 export const financeiroCarteirasCobranca = makeTool({
@@ -160,6 +192,8 @@ export const financeiroCarteirasCobranca = makeTool({
   count: fatoCarteiraCount,
   query: (p, i) => queryCarteirasCobranca(p, i),
   resumoOk: (n) => `${n} carteiras de cobrança cadastradas.`,
+  // CADASTRO/CONFIG (nao e documento com data): a data de inicio das analises nao se aplica.
+  historico: false,
 });
 
 export const financeiroCheques = makeTool({
@@ -174,6 +208,7 @@ export const financeiroCheques = makeTool({
   count: fatoChequeCount,
   query: (p, i) => queryCheques(p, i),
   resumoOk: (n) => `${n} cheques no período.`,
+  historico: true,
 });
 
 export const financeiroPixRecebidos = makeTool({
@@ -188,4 +223,5 @@ export const financeiroPixRecebidos = makeTool({
   count: fatoPixCount,
   query: (p, i) => queryPixRecebidos(p, i),
   resumoOk: (n) => `${n} registros de PIX no período.`,
+  historico: true,
 });

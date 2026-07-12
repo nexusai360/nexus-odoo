@@ -5,7 +5,9 @@
 // filtros da UI). Respeita a mesma visibilidade de consumo do carregamento.
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { aquecerCorte } from "@/lib/corte-app";
 import { carregarRelatorioDinamico } from "@/lib/reports/builder/carregar-relatorio-dinamico";
+import { clamparPeriodoPedido } from "@/lib/reports/builder/source-registry";
 import {
   extrairDimensoes,
   type DimensoesFiltro,
@@ -31,6 +33,11 @@ export async function resolverRelatorioComFiltros(
 ): Promise<{ ok: true; dados: Record<string, SecaoResolvida> } | { ok: false; error: string }> {
   const me = await getCurrentUser();
   if (!me) return { ok: false, error: "Nao autenticado" };
+  // O periodo vem CRU do browser: hidrata a data de inicio das analises neste processo e
+  // grampeia o inicio nela. Pedir "desde 2025" devolve o que existe a partir do corte, e
+  // nunca o historico anterior. Quando o periodo nao vem, o piso e aplicado no produtor
+  // da fonte (source-registry), que conhece o formato de periodo dela.
+  const corte = await aquecerCorte();
   const limpos: FiltrosRuntime = {};
   if (filtros.marca && filtros.marca.trim()) limpos.marca = filtros.marca.trim();
   if (typeof filtros.faixaDias === "number" && filtros.faixaDias > 0) limpos.faixaDias = filtros.faixaDias;
@@ -40,7 +47,11 @@ export async function resolverRelatorioComFiltros(
   if (filtros.periodoDe && filtros.periodoDe.trim()) limpos.periodoDe = filtros.periodoDe.trim();
   if (filtros.periodoAte && filtros.periodoAte.trim()) limpos.periodoAte = filtros.periodoAte.trim();
 
-  const r = await carregarRelatorioDinamico(savedId, { userId: me.id, role: me.platformRole }, limpos);
+  const r = await carregarRelatorioDinamico(
+    savedId,
+    { userId: me.id, role: me.platformRole },
+    clamparPeriodoPedido(limpos, corte),
+  );
   if (r.tipo === "notfound") return { ok: false, error: "Relatorio nao encontrado" };
   if (r.tipo === "invalida") return { ok: false, error: "Relatorio invalido" };
   return { ok: true, dados: r.dados };

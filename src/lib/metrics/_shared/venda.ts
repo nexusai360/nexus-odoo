@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from "../../../generated/prisma/client";
+import { corteAtualDate } from "@/lib/corte-dados";
 
 /**
  * A REGRA DE "SO VENDA" DA PLATAFORMA, em forma de where.
@@ -64,11 +65,22 @@ export function buildVendaOperacaoWhereNota(): Prisma.FatoNotaFiscalWhereInput {
  * Gap de cadastro: notas de saida autorizada (modelo de venda) SEM operacao no cache. Elas
  * nao entram no faturamento (a regra exige a operacao), entao o numero precisa ser
  * observavel , se crescer, e cadastro quebrado no Odoo, nao receita que evaporou.
+ *
+ * O piso da data de inicio das analises entra por um AND proprio, e nao por default do
+ * `recorte`: assim ele vale mesmo quando o chamador manda um recorte sem periodo (era a
+ * armadilha , o default {} varria as notas de todo o historico) e nao ha como sobrescreve-lo
+ * sem querer. O `recorte` continua servindo para ESTREITAR (periodo via buildPeriodoWhere,
+ * empresa, etc.), nunca para alargar.
  */
 export async function contarNotasSemOperacao(
   prisma: PrismaClient,
   recorte: Prisma.FatoNotaFiscalWhereInput = {},
 ): Promise<{ totalNotas: number; valor: number }> {
+  const andDoRecorte = recorte.AND
+    ? Array.isArray(recorte.AND)
+      ? recorte.AND
+      : [recorte.AND]
+    : [];
   const notas = await prisma.fatoNotaFiscal.findMany({
     where: {
       entradaSaida: "1",
@@ -76,6 +88,7 @@ export async function contarNotasSemOperacao(
       modelo: { in: ["55", "65"] },
       operacaoNome: null,
       ...recorte,
+      AND: [...andDoRecorte, { dataEmissao: { gte: corteAtualDate() } }],
     },
     select: { vrNf: true },
   });

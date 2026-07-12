@@ -5,6 +5,12 @@
 // Fonte: fato_pedido_historico (1 linha = 1 mudança de etapa).
 
 import type { PrismaClient } from "@/generated/prisma/client";
+import { corteAtualDate } from "@/lib/corte-dados";
+
+// fato_pedido_historico é HISTÓRICO puro (1 linha = 1 transição de etapa, com data):
+// toda leitura respeita a data de início das análises (AppSetting sync.corte_dados).
+// Evento anterior ao corte não é considerado , senão um pedido antigo vira "travado há
+// centenas de dias" e domina o ranking. Nada é apagado: é filtro de leitura.
 
 export interface EventoEtapa {
   etapaId: number | null;
@@ -26,7 +32,8 @@ export async function queryPedidoHistoricoEtapas(
   tempoTotalDias: number;
 }> {
   const rows = await prisma.fatoPedidoHistorico.findMany({
-    where: { pedidoId: filtros.pedidoId },
+    // Piso da janela de análise: a trilha começa na data de início das análises.
+    where: { pedidoId: filtros.pedidoId, dataEntrada: { gte: corteAtualDate() } },
     select: { etapaId: true, etapaNome: true, etapaTipo: true, dataEntrada: true, tempoEtapaDias: true },
     orderBy: [{ dataEntrada: "asc" }, { odooId: "asc" }],
   });
@@ -78,15 +85,19 @@ export async function queryPedidoTravadosPorEtapa(
   const agora = filtros.agora ?? new Date();
   // Só pedidos de VENDA (exclui transferência/remessa/anomalia): "travado" faz
   // sentido para pedido comercial, não para movimento intragrupo. Ver perícia 08.
+  // Piso da janela de análise em DUAS pontas: o pedido (documento com data) e o evento
+  // de etapa (histórico com data). Sem isso, pedido pré-corte encabeça a lista de
+  // travados com centenas de dias parados.
   const vendaIds = new Set(
     (
       await prisma.fatoPedido.findMany({
-        where: { categoriaOperacao: "venda" },
+        where: { categoriaOperacao: "venda", dataOrcamento: { gte: corteAtualDate() } },
         select: { odooId: true },
       })
     ).map((p) => p.odooId),
   );
   const rows = await prisma.fatoPedidoHistorico.findMany({
+    where: { dataEntrada: { gte: corteAtualDate() } },
     select: { pedidoId: true, etapaNome: true, dataEntrada: true },
   });
 

@@ -10,6 +10,7 @@ import {
   resolverPaginacao,
   montarPaginacaoMeta,
 } from "../../lib/paginacao.js";
+import { resolverPeriodoCorte } from "../../lib/periodo-corte.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional(),
@@ -27,6 +28,8 @@ const linhaSchema = z.object({
 const dados = z.object({
   linhas: z.array(linhaSchema),
   aviso: z.string(),
+  /** Periodo EFETIVAMENTE coberto (ja grampeado a data de inicio das analises). */
+  periodoCoberto: z.string().optional(),
   // Contrato de lista (Fase B): ranking ordenado por valor total desc na query.
   ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
@@ -56,10 +59,18 @@ const outputSchema = z.union([
 type Input = z.infer<typeof inputSchema>;
 type Output = z.infer<typeof outputSchema>;
 
-function shape(d: Awaited<ReturnType<typeof queryPedidosPorVendedor>>) {
+function shape(
+  d: Awaited<ReturnType<typeof queryPedidosPorVendedor>>,
+  periodoLabel: string,
+  avisoPeriodo?: string,
+) {
   return {
     linhas: d.linhas,
-    aviso: "Ranking de pedidos por vendedor, ordenado por valor total decrescente. valorTotal usa vrProdutos (valor do pedido, independente de faturamento).",
+    periodoCoberto: periodoLabel,
+    aviso:
+      "Ranking de pedidos por vendedor, ordenado por valor total decrescente. valorTotal usa vrProdutos (valor do pedido, independente de faturamento). " +
+      `Período coberto: ${periodoLabel}.` +
+      (avisoPeriodo ? ` ${avisoPeriodo}` : ""),
     // Contrato de lista (Fase B): query ordena por valorTotal desc (desempate nome).
     ordenadoPor: "valor desc",
   };
@@ -74,8 +85,18 @@ export const comercialPedidosPorVendedor: ToolEntry<Input, Output> = {
   outputSchema,
   handler: async (input, ctx) => {
     const { limit, offset } = resolverPaginacao(input);
+    // Ranking sobre fato_pedido (documento com data): sem piso, somava pedidos anteriores a
+    // data de inicio das analises.
+    const per = resolverPeriodoCorte(input.periodoDe, input.periodoAte);
     const envelope = await withFreshness(ctx.prisma, ["fato_pedido"], async () =>
-      shape(await queryPedidosPorVendedor(ctx.prisma, input)),
+      shape(
+        await queryPedidosPorVendedor(ctx.prisma, {
+          periodoDe: per.periodoDe,
+          periodoAte: per.periodoAte,
+        }),
+        per.label,
+        per.aviso,
+      ),
     );
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
@@ -94,6 +115,7 @@ export const comercialPedidosPorVendedor: ToolEntry<Input, Output> = {
       { ...envelope, dados: { ...d, linhas: pagina } },
       "comercial_pedidos_por_vendedor",
       {
+        periodo: per,
         destaque: {
           totalVendedores: todasLinhas.length,
           totalPedidos,
@@ -101,6 +123,7 @@ export const comercialPedidosPorVendedor: ToolEntry<Input, Output> = {
           ticketMedio,
           topVendedor: top?.vendedorNome ?? "",
           valorTopVendedor: top?.valorTotal ?? 0,
+          periodoCoberto: per.label,
         },
         agregado: { contagem: totalPedidos, soma: valorTotal, media: ticketMedio },
         paginacao,

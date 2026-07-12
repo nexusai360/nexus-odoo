@@ -1,5 +1,10 @@
 // src/lib/reports/queries/producao.ts
 // B5 , consulta de processos de produção. Fonte: fato_producao_processo.
+//
+// A data de início das análises NÃO se aplica aqui: processo de produção é CADASTRO (a
+// etapa em si, com ordem, nome e tempo padrão), não documento com data. O fato não tem
+// nenhuma data de negócio, só `atualizado_em` (metadado da própria sincronização). Filtrar
+// por corte esconderia a estrutura de produção que está vigente hoje.
 import type { PrismaClient } from "@/generated/prisma/client";
 
 export interface ProcessoLinha {

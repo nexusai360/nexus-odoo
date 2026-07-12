@@ -5,15 +5,24 @@
 // Fontes: fato_retorno_item, fato_retorno_bancario, fato_remessa_bancaria,
 // fato_carteira_cobranca, fato_cheque, fato_pix.
 import type { PrismaClient } from "@/generated/prisma/client";
+import { janelaClampada } from "@/lib/corte-dados";
 
 function dia(d: Date | null): string | null {
   return d ? d.toISOString().slice(0, 10) : null;
 }
-function rangeData(de?: string, ate?: string): { gte?: Date; lte?: Date } | undefined {
-  const r: { gte?: Date; lte?: Date } = {};
-  if (de) r.gte = new Date(`${de}T00:00:00.000Z`);
-  if (ate) r.lte = new Date(`${ate}T23:59:59.999Z`);
-  return r.gte || r.lte ? r : undefined;
+
+/**
+ * Recorte de data de TODA fonte deste arquivo (baixa, retorno, remessa, cheque, PIX):
+ * são eventos financeiros datados = HISTÓRICO, então respeitam a data de início das
+ * análises (AppSetting sync.corte_dados). janelaClampada grampeia o início no corte e,
+ * quando nenhum período é informado, usa o corte como PISO , o where nunca fica sem
+ * data (era o furo: sem período, varria o cache inteiro). O `lt` é a borda exclusiva
+ * (ate + 1 dia), então o último dia entra inteiro.
+ * Carteira de cobrança NÃO usa isto: é cadastro/metadado (não tem data de documento).
+ */
+function rangeData(de?: string, ate?: string): { gte: Date; lt: Date } {
+  const j = janelaClampada(de, ate);
+  return { gte: j.gte, lt: j.lt };
 }
 
 // ── Baixas de cobrança (finan.retorno.item) , o grão rico ───────────────────
@@ -39,9 +48,8 @@ export async function queryBaixasCobranca(
   filtros: { periodoDe?: string; periodoAte?: string; situacao?: string; limit: number; offset: number },
 ): Promise<{ linhas: BaixaLinha[]; total: number; truncado: boolean }> {
   const { limit, offset } = filtros;
-  const periodo = rangeData(filtros.periodoDe, filtros.periodoAte);
   const where = {
-    ...(periodo ? { dataPagamento: periodo } : {}),
+    dataPagamento: rangeData(filtros.periodoDe, filtros.periodoAte),
     ...(filtros.situacao ? { situacao: filtros.situacao } : {}),
   };
   const [rows, total] = await Promise.all([
@@ -91,8 +99,7 @@ export async function queryRetornosProcessados(
   filtros: { periodoDe?: string; periodoAte?: string; limit: number; offset: number },
 ): Promise<{ linhas: RetornoLinha[]; total: number; truncado: boolean }> {
   const { limit, offset } = filtros;
-  const periodo = rangeData(filtros.periodoDe, filtros.periodoAte);
-  const where = periodo ? { data: periodo } : {};
+  const where = { data: rangeData(filtros.periodoDe, filtros.periodoAte) };
   const [rows, total] = await Promise.all([
     prisma.fatoRetornoBancario.findMany({
       where,
@@ -132,8 +139,7 @@ export async function queryRemessasGeradas(
   filtros: { periodoDe?: string; periodoAte?: string; limit: number; offset: number },
 ): Promise<{ linhas: RemessaLinha[]; total: number; truncado: boolean }> {
   const { limit, offset } = filtros;
-  const periodo = rangeData(filtros.periodoDe, filtros.periodoAte);
-  const where = periodo ? { data: periodo } : {};
+  const where = { data: rangeData(filtros.periodoDe, filtros.periodoAte) };
   const [rows, total] = await Promise.all([
     prisma.fatoRemessaBancaria.findMany({
       where,
@@ -209,8 +215,7 @@ export async function queryCheques(
   filtros: { periodoDe?: string; periodoAte?: string; limit: number; offset: number },
 ): Promise<{ linhas: ChequeLinha[]; total: number; truncado: boolean }> {
   const { limit, offset } = filtros;
-  const periodo = rangeData(filtros.periodoDe, filtros.periodoAte);
-  const where = periodo ? { data: periodo } : {};
+  const where = { data: rangeData(filtros.periodoDe, filtros.periodoAte) };
   const [rows, total] = await Promise.all([
     prisma.fatoCheque.findMany({
       where,
@@ -248,8 +253,7 @@ export async function queryPixRecebidos(
   filtros: { periodoDe?: string; periodoAte?: string; limit: number; offset: number },
 ): Promise<{ linhas: PixLinha[]; total: number; truncado: boolean }> {
   const { limit, offset } = filtros;
-  const periodo = rangeData(filtros.periodoDe, filtros.periodoAte);
-  const where = periodo ? { data: periodo } : {};
+  const where = { data: rangeData(filtros.periodoDe, filtros.periodoAte) };
   const [rows, total] = await Promise.all([
     prisma.fatoPix.findMany({
       where,

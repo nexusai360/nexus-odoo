@@ -10,7 +10,15 @@
  * Colunas financeiras (Decimal) são armazenadas como NUMERIC(18,2) no Postgres.
  * Colunas de quantidade como NUMERIC(18,4).
  * Timestamps: TIMESTAMPTZ.
+ *
+ * IMPORTANTE: o que vai para o LLM é `biSchemaReference(corte)` (função), não a constante
+ * crua. A função prefixa o DDL com a regra da data de início das análises, com a data
+ * VIGENTE interpolada. Por isso ela é recomputada a cada request: se fosse constante de
+ * módulo, congelaria a data lida no boot do processo e o SQL do Caminho 3c passaria a
+ * divergir do dashboard assim que o dono mudasse a data na tela.
  */
+
+import { corteAtual, corteLabel } from "@/lib/corte-dados";
 
 export const BI_SCHEMA_REFERENCE = `
 -- ─── ESTOQUE ─────────────────────────────────────────────────────────────────
@@ -720,3 +728,38 @@ TABLE fato_serial (
   quantidade   NUMERIC(18,4)
 );
 `.trim();
+
+/**
+ * Regra dura entregue ao LLM ANTES do DDL: todo SQL que toca tabela de histórico precisa do
+ * piso da data de início das análises. Sem ela, o Caminho 3c responde com números que o
+ * dashboard, os relatórios e as demais tools não enxergam (todos já grampeiam no corte).
+ *
+ * O `corte` é parâmetro (default = valor vigente em memória) justamente para ser resolvido
+ * por request, depois do `getCorteDados(prisma)` do runAgent.
+ */
+export function regraCorteBi(corte: string = corteAtual()): string {
+  const mesDoCorte = corte.slice(0, 7);
+  return [
+    "== REGRA OBRIGATORIA: data de inicio das analises ==",
+    `A plataforma so analisa documentos a partir de ${corte} (${corteLabel(corte)}).`,
+    "TODA consulta a tabela que tenha coluna de data de DOCUMENTO (data_emissao, data_orcamento,",
+    "data_documento, data_vencimento, data_pagamento, data_lancamento, data_evento,",
+    "data_autorizacao, data_inicial, data_final, data, mes) e OBRIGADA a trazer o piso:",
+    `    WHERE <coluna_de_data> >= '${corte}'`,
+    `Para coluna de mes (texto 'AAAA-MM'), o piso e:  mes >= '${mesDoCorte}'`,
+    "Sem esse piso o numero diverge do dashboard, dos relatorios e das demais tools, que ja",
+    "aplicam o corte. Nunca escreva um SELECT sobre fato de historico sem essa condicao, mesmo",
+    "quando o usuario nao pediu periodo.",
+    "Se o usuario pedir um periodo que comeca ANTES dessa data, use a data de inicio das",
+    "analises como piso mesmo assim e avise na resposta (o dado existe no Odoo, apenas nao e",
+    "analisado aqui , nunca responda 'nao ha registros').",
+    "NAO se aplica (sao foto/cadastro, consulte sem filtro de data): fato_estoque_saldo,",
+    "tabela de preco e cadastros (produto, parceiro, empresa, plano de contas). Em",
+    "fato_estoque_saldo_snapshot o recorte continua sendo por data_ref, como descrito abaixo.",
+  ].join("\n");
+}
+
+/** DDL entregue ao LLM: regra do corte (com a data vigente) + schema das fact tables. */
+export function biSchemaReference(corte: string = corteAtual()): string {
+  return `${regraCorteBi(corte)}\n\n${BI_SCHEMA_REFERENCE}`;
+}

@@ -14,7 +14,7 @@ describe("predicados do purge", () => {
   it("transacional: NULL preservado + corte por substring(1,10) tolera datetime", () => {
     const w = wherePre2026Raw("data_emissao");
     expect(w).toContain("IS NOT NULL");
-    expect(w).toContain("from 1 for 10) < '2026-03-16'");
+    expect(w).toContain("from 1 for 10) < '2026-01-01'");
   });
 
   it("filho: FK many2one extraida com ->'fk'->>0 (array [id,label])", () => {
@@ -56,7 +56,7 @@ describe("predicados do purge", () => {
   it("titulo FATO: colunas materializadas", () => {
     const w = whereTituloQuitadoPre2026Fato();
     expect(w).toContain("situacao_simples IN ('quitado','baixado')");
-    expect(w).toContain("data_pagamento < '2026-03-16'");
+    expect(w).toContain("data_pagamento < '2026-01-01'");
   });
 
   it("delete em lote por ctid", () => {

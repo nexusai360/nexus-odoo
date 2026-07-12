@@ -1,4 +1,5 @@
-import { runBuilders, FATO_BUILDERS } from "./registry";
+import { runBuilders, FATO_BUILDERS, MARCADOR_CICLO } from "./registry";
+import type { PrismaClient } from "@/generated/prisma/client";
 
 describe("FATO_BUILDERS", () => {
   it("é um array de entradas com nome, cycle e run", () => {
@@ -12,7 +13,25 @@ describe("FATO_BUILDERS", () => {
 });
 
 describe("runBuilders", () => {
-  const prisma = {} as never;
+  // O marcador de fim de ciclo e gravado em fato_build_state, entao o mock precisa dele.
+  const upsert = jest.fn().mockResolvedValue(undefined);
+  const prisma = { fatoBuildState: { upsert } } as unknown as PrismaClient;
+
+  beforeEach(() => upsert.mockClear());
+
+  it("grava o marcador de FIM DE CICLO depois de todos os builders", async () => {
+    const ordem: string[] = [];
+    upsert.mockImplementation(async (args: { where: { fato: string } }) => {
+      ordem.push(`marcador:${args.where.fato}`);
+    });
+    const builders = [
+      { nome: "fato_a", cycle: "incremental" as const, run: jest.fn(async () => { ordem.push("fato_a"); return 1; }) },
+      { nome: "fato_b", cycle: "incremental" as const, run: jest.fn(async () => { ordem.push("fato_b"); return 2; }) },
+    ];
+    await runBuilders(prisma, "incremental", builders);
+    // O carimbo que a tela observa so pode aparecer com o dado ja inteiro.
+    expect(ordem).toEqual(["fato_a", "fato_b", `marcador:${MARCADOR_CICLO}`]);
+  });
 
   it("executa apenas os builders do cycle dado", async () => {
     const snapshotFn = jest.fn().mockResolvedValue(5);

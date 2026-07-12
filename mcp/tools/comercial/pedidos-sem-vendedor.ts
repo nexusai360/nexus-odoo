@@ -13,6 +13,8 @@ import {
   resolverPaginacao,
   montarPaginacaoMeta,
 } from "../../lib/paginacao.js";
+import { resolverPeriodoCorte } from "../../lib/periodo-corte.js";
+import { janelaClampada } from "@/lib/corte-dados.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional(),
@@ -33,6 +35,9 @@ const dados = z.object({
   linhas: z.array(linhaSchema),
   totalPedidos: z.number().int(),
   valorTotal: z.number(),
+  /** Periodo EFETIVAMENTE coberto (ja grampeado a data de inicio das analises). */
+  periodoCoberto: z.string().optional(),
+  aviso: z.string().optional(),
   // Contrato de lista (Fase B): pedidos ordenados por data do orcamento desc.
   ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
@@ -73,17 +78,19 @@ export const comercialPedidosSemVendedor: ToolEntry<Input, Output> = {
   outputSchema,
   handler: async (input, ctx) => {
     const { limit, offset } = resolverPaginacao(input);
+    // Pedido e documento com data: o filtro de dataOrcamento e OBRIGATORIO. Antes o where so
+    // existia se o agente informasse periodo , sem periodo, listava e somava (aggregate) todo
+    // pedido sem vendedor de qualquer epoca, inclusive anterior ao inicio das analises.
+    const per = resolverPeriodoCorte(input.periodoDe, input.periodoAte);
+    const j = janelaClampada(per.periodoDe, per.periodoAte);
     const envelope = await withFreshness(
       ctx.prisma,
       ["fato_pedido"],
       async () => {
-        const where: Record<string, unknown> = { vendedorId: null };
-        if (input.periodoDe || input.periodoAte) {
-          const dataOrcamento: Record<string, Date> = {};
-          if (input.periodoDe) dataOrcamento.gte = new Date(input.periodoDe);
-          if (input.periodoAte) dataOrcamento.lte = new Date(input.periodoAte);
-          where.dataOrcamento = dataOrcamento;
-        }
+        const where: Record<string, unknown> = {
+          vendedorId: null,
+          dataOrcamento: { gte: j.gte, lt: j.lt },
+        };
         // Alavanca 2b: paginacao via take/skip + orderBy estavel (dataOrcamento
         // desc + desempate por odooId). valorTotal e a soma de TODO o recorte
         // (aggregate), nao so da pagina.
@@ -115,7 +122,14 @@ export const comercialPedidosSemVendedor: ToolEntry<Input, Output> = {
         }));
         const valorTotal = Number(somaAgg._sum.vrNf ?? 0);
         // Contrato de lista (Fase B): orderBy dataOrcamento desc (desempate odooId).
-        return { linhas, totalPedidos: total, valorTotal, ordenadoPor: "data desc" };
+        return {
+          linhas,
+          totalPedidos: total,
+          valorTotal,
+          ordenadoPor: "data desc",
+          periodoCoberto: per.label,
+          ...(per.aviso ? { aviso: per.aviso } : {}),
+        };
       },
       (d) => d.totalPedidos === 0,
     );
@@ -127,9 +141,11 @@ export const comercialPedidosSemVendedor: ToolEntry<Input, Output> = {
       envelope.dados.linhas.length,
     );
     return enriquecerEnvelope(envelope, "comercial_pedidos_sem_vendedor", {
+      periodo: per,
       destaque: {
         totalPedidos: envelope.dados.totalPedidos,
         valorTotal: envelope.dados.valorTotal,
+        periodoCoberto: per.label,
       },
       agregado: {
         soma: envelope.dados.valorTotal,

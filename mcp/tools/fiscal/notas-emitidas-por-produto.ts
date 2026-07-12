@@ -9,6 +9,7 @@ import {
   montarPaginacaoMeta,
 } from "../../lib/paginacao.js";
 import type { PrismaClient } from "@/generated/prisma/client.js";
+import { resolverPeriodoFiscal, type PeriodoResolvido } from "./_periodo-padrao.js";
 
 const inputSchema = z.object({
   produtoTermo: z.string().min(2).max(120).describe("Nome ou codigo do produto."),
@@ -34,6 +35,8 @@ const dados = z.object({
   // Contrato de lista (Fase B): a query ordena por dataEmissao desc com
   // desempate por odooId; aqui apenas declaramos ao LLM.
   ordenadoPor: z.string().optional(),
+  /** Periodo EFETIVAMENTE coberto (ja grampeado a data de inicio das analises). */
+  periodoCoberto: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _PAGINACAO: z.any().optional(),
@@ -64,17 +67,21 @@ interface Row {
   valor: string | number;
 }
 
-async function query(prisma: PrismaClient, input: Input) {
+async function query(prisma: PrismaClient, input: Input, per: PeriodoResolvido) {
   const { limit, offset } = resolverPaginacao(input);
-  const filtroPer = input.periodoDe && input.periodoAte
-    ? `AND nf.data_emissao BETWEEN $2::timestamp AND $3::timestamp`
-    : "";
+  // Nota fiscal e documento com data: o recorte de data e SEMPRE emitido. Antes, sem o par
+  // completo de datas o filtro sumia do SQL e a tool agregava o historico inteiro do produto.
+  // `per` ja vem do resolverPeriodoFiscal, com o inicio grampeado a data de inicio das
+  // analises e, na ausencia de periodo, com o piso no corte.
+  const filtroPer = `AND nf.data_emissao BETWEEN $2::timestamp AND $3::timestamp`;
   // Parametros base (produto + periodo), usados pela query de total. A query
-  // paginada acrescenta LIMIT/OFFSET ao final em `params`.
-  const baseParams: unknown[] = [`%${input.produtoTermo}%`];
-  if (input.periodoDe && input.periodoAte) {
-    baseParams.push(`${input.periodoDe}T00:00:00`, `${input.periodoAte}T23:59:59`);
-  }
+  // paginada acrescenta LIMIT/OFFSET ao final em `params`. As datas entram como
+  // PARAMETRO (nunca interpoladas), ja clampadas.
+  const baseParams: unknown[] = [
+    `%${input.produtoTermo}%`,
+    `${per.periodoDe}T00:00:00`,
+    `${per.periodoAte}T23:59:59`,
+  ];
   // Alavanca 2b: LIMIT/OFFSET como parametros (posicoes apos os ja usados).
   const pLimit = baseParams.length + 1;
   const pOffset = baseParams.length + 2;
@@ -127,6 +134,7 @@ async function query(prisma: PrismaClient, input: Input) {
     valorTotal: Number(t?.vtotal ?? 0),
     linhasExibidas: rows.length,
     ordenadoPor: "data desc",
+    periodoCoberto: per.label,
   };
 }
 
@@ -142,7 +150,12 @@ export const fiscalNotasEmitidasPorProduto: ToolEntry<Input, Output> = {
   outputSchema,
   handler: async (input, ctx) => {
     const { limit, offset } = resolverPaginacao(input);
-    const envelope = await withFreshness(ctx.prisma, ["fato_nota_fiscal", "fato_nota_fiscal_item", "fato_produto"], () => query(ctx.prisma, input));
+    const per = resolverPeriodoFiscal(input.periodoDe, input.periodoAte);
+    const envelope = await withFreshness(
+      ctx.prisma,
+      ["fato_nota_fiscal", "fato_nota_fiscal_item", "fato_produto"],
+      () => query(ctx.prisma, input, per),
+    );
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
     const paginacao = montarPaginacaoMeta(d.totalNotas, offset, limit, d.linhasExibidas);
@@ -151,15 +164,18 @@ export const fiscalNotasEmitidasPorProduto: ToolEntry<Input, Output> = {
       ...envelope,
       dados: {
         ...d,
-        _RESPOSTA: d.totalNotas === 0
-          ? `Nao ha notas emitidas com o produto '${input.produtoTermo}' no periodo.`
-          : `${d.totalNotas} notas com '${input.produtoTermo}', ${d.quantidadeTotal} unidades, ${fmt(d.valorTotal)}. Listando ${d.linhasExibidas}.`,
+        _RESPOSTA:
+          (d.totalNotas === 0
+            ? `Nao ha notas emitidas com o produto '${input.produtoTermo}' no periodo ${per.label}.`
+            : `${d.totalNotas} notas com '${input.produtoTermo}' no periodo ${per.label}, ${d.quantidadeTotal} unidades, ${fmt(d.valorTotal)}. Listando ${d.linhasExibidas}.`) +
+          (per.aviso ? ` ${per.aviso}` : ""),
         _DESTAQUE: {
           produtoTermo: input.produtoTermo,
           totalNotas: d.totalNotas,
           quantidadeTotal: d.quantidadeTotal,
           valorTotal: d.valorTotal,
           linhasExibidas: d.linhasExibidas,
+          periodoCoberto: per.label,
         },
         _agregado: { contagem: d.totalNotas, soma: d.valorTotal },
         _listaTruncada: paginacao.temMais,

@@ -67,6 +67,9 @@ jest.mock("./prompt/compose", () => ({
 
 jest.mock("./bi-schema-reference", () => ({
   BI_SCHEMA_REFERENCE: "DDL das fact tables...",
+  // O runAgent passa a chamar a FUNCAO (o DDL vai ao LLM com a regra do corte no topo,
+  // com a data vigente interpolada). Ver run-agent.corte.test.ts.
+  biSchemaReference: jest.fn(() => "REGRA DO CORTE + DDL das fact tables..."),
 }));
 
 jest.mock("./rag/search", () => ({

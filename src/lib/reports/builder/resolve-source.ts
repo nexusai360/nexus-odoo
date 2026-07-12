@@ -1,6 +1,12 @@
 // src/lib/reports/builder/resolve-source.ts
 // Resolve uma secao da ficha: roda o produtor da fonte e aplica o adaptador do
 // shape derivado. O guard de dominio no consumo entra na Task C1.
+//
+// DATA DE INICIO DAS ANALISES: o piso NAO e aplicado aqui, e sim dentro de cada produtor
+// do source-registry (que conhece o formato de periodo da sua fonte: mes ou dia, e le o
+// AppSetting com getCorteDados). Assim vale para todo caminho de leitura do construtor,
+// inclusive quando o periodo chega vazio , que e o caso comum, porque a barra de filtros
+// nao envia periodo.
 import { obterProdutor, obterContrato } from "./source-registry";
 import { guardDominio } from "@/lib/reports/guard";
 import {

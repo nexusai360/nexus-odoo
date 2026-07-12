@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Clock } from "lucide-react";
+import { Clock, RefreshCw } from "lucide-react";
+
+/** De quanto em quanto tempo se pergunta ao servidor se o ciclo terminou. */
+const INTERVALO_CHECAGEM_MS = 20_000;
 
 function tempoRelativo(iso: string, agora: number): string {
   const diffMs = agora - new Date(iso).getTime();
@@ -16,14 +19,23 @@ function tempoRelativo(iso: string, agora: number): string {
 }
 
 /**
- * Indicador "atualizado há X" das telas da Diretoria. Recalcula o relativo a cada
- * 30s e, a cada 60s, consulta o endpoint de freshness: se o ciclo de sync nativo
- * gravou um timestamp novo, faz um soft-refresh (atualiza os dados da tela sem o
- * usuário precisar recarregar e preservando as abas/estado client).
+ * Indicador "atualizado há X" das telas da Diretoria, e o gatilho da atualização automática.
+ *
+ * O endpoint de freshness devolve o carimbo do último ciclo CONCLUÍDO (ingestão mais
+ * reconstrução dos fatos, ver lib/diretoria/freshness.ts). Quando esse carimbo muda, a tela
+ * pede os dados novos ao servidor num soft-refresh: as abas e o estado do cliente ficam de
+ * pé, e o conteúdo só esmaece de leve enquanto o servidor responde (`data-atualizando` no
+ * <html>, estilizado no globals.css). Em um piscar de olhos os números trocam.
+ *
+ * O usuário nunca vê tela zerada: a troca do cache no worker é atômica (cada fato é
+ * reconstruído dentro de uma transação), então até o commit a leitura enxerga o dado antigo.
  */
 export function FreshnessBadge({ iso }: { iso: string | null }) {
   const router = useRouter();
   const [agora, setAgora] = useState<number | null>(null);
+  const [atualizando, startTransition] = useTransition();
+  // O carimbo que já disparou refresh, para não pedir a mesma atualização duas vezes.
+  const jaAtualizado = useRef<string | null>(null);
 
   // Relógio relativo.
   useEffect(() => {
@@ -32,7 +44,17 @@ export function FreshnessBadge({ iso }: { iso: string | null }) {
     return () => clearInterval(t);
   }, []);
 
-  // Polling do sync nativo: refresh só quando há timestamp novo.
+  // Marca o <html> enquanto o servidor recalcula, para o conteúdo esmaecer (globals.css).
+  useEffect(() => {
+    const raiz = document.documentElement;
+    if (atualizando) raiz.dataset.atualizando = "1";
+    else delete raiz.dataset.atualizando;
+    return () => {
+      delete raiz.dataset.atualizando;
+    };
+  }, [atualizando]);
+
+  // Polling do ciclo do worker: refresh só quando um ciclo NOVO terminou.
   useEffect(() => {
     let vivo = true;
     const checar = async () => {
@@ -40,14 +62,16 @@ export function FreshnessBadge({ iso }: { iso: string | null }) {
         const r = await fetch("/api/diretoria/freshness", { cache: "no-store" });
         if (!r.ok) return;
         const { iso: novo } = (await r.json()) as { iso: string | null };
-        if (vivo && novo && novo !== iso) {
+        if (!vivo || !novo || novo === iso || novo === jaAtualizado.current) return;
+        jaAtualizado.current = novo;
+        startTransition(() => {
           router.refresh();
-        }
+        });
       } catch {
         // silencioso: rede instável não deve poluir a UI
       }
     };
-    const t = setInterval(checar, 60000);
+    const t = setInterval(checar, INTERVALO_CHECAGEM_MS);
     return () => {
       vivo = false;
       clearInterval(t);
@@ -56,6 +80,18 @@ export function FreshnessBadge({ iso }: { iso: string | null }) {
 
   if (!iso) return null;
   const titulo = new Date(iso).toLocaleString("pt-BR");
+
+  if (atualizando) {
+    return (
+      <span
+        className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"
+        aria-live="polite"
+      >
+        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+        Atualizando…
+      </span>
+    );
+  }
 
   return (
     <span
