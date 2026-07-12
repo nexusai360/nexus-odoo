@@ -3,6 +3,7 @@ import { TrendingUp } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
 import { PageHeader } from "@/components/page-header";
 import { prisma } from "@/lib/prisma";
+import { aquecerCorte } from "@/lib/corte-app";
 import { requireDiretoriaArea, userUfs, canDiretoria } from "@/lib/diretoria/access";
 import { resolverPeriodoDir } from "@/lib/diretoria/periodo";
 import {
@@ -33,6 +34,7 @@ export default async function DiretoriaVendasPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const user = await requireDiretoriaArea("vendas");
+  await aquecerCorte();
   const sp = await searchParams;
   const param = (k: string) => (Array.isArray(sp[k]) ? sp[k]?.[0] : sp[k]) as string | undefined;
 

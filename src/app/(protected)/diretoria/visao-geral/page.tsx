@@ -3,6 +3,7 @@ import { LayoutDashboard } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
 import { PageHeader } from "@/components/page-header";
 import { prisma } from "@/lib/prisma";
+import { aquecerCorte } from "@/lib/corte-app";
 import { requireDiretoriaArea, userUfs, canDiretoria } from "@/lib/diretoria/access";
 import { SEM_UF } from "@/lib/diretoria/uf";
 import { resolverPeriodoDir } from "@/lib/diretoria/periodo";
@@ -39,6 +40,7 @@ export default async function DiretoriaVisaoGeralPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const user = await requireDiretoriaArea("visao_geral");
+  await aquecerCorte();
   const sp = await searchParams;
   const param = (k: string) => (Array.isArray(sp[k]) ? sp[k]?.[0] : sp[k]) as string | undefined;
   const periodo = resolverPeriodoDir(

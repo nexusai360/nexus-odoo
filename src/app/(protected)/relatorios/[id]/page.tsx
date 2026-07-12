@@ -17,6 +17,7 @@ import { PageShell } from "@/components/layout/page-shell";
 import { PageHeader } from "@/components/page-header";
 import { ReportView, type SecaoComDados } from "./report-view";
 import type { ReportFilterValues } from "@/lib/reports/types";
+import { aquecerCorte } from "@/lib/corte-app";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,8 @@ interface PageProps {
 }
 
 export default async function RelatorioPage({ params, searchParams }: PageProps) {
+  // A data de inicio das analises precisa estar hidratada ANTES de qualquer consulta.
+  await aquecerCorte();
   const { id } = await params;
   const sp = await searchParams;
   const report = getReport(id);

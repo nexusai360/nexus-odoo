@@ -18,6 +18,7 @@ import { runAgent, type AgentEvent } from "@/lib/agent/run-agent";
 import { createConversation } from "@/lib/agent/conversation";
 import { getDecryptedKey } from "@/lib/agent/llm/credentials";
 import type { LlmProvider } from "@/lib/agent/llm/types";
+import { aquecerCorte } from "@/lib/corte-app";
 
 const PLAYGROUND_ROLES = new Set(["admin", "super_admin"]);
 const encoder = new TextEncoder();
@@ -53,6 +54,8 @@ function parseSnapshot(json: unknown): PromptSnapshot {
 }
 
 export async function POST(req: Request): Promise<Response> {
+  // A data de inicio das analises precisa estar hidratada ANTES de qualquer consulta.
+  await aquecerCorte();
   const user = await getCurrentUser();
   if (!user) return jsonError("Não autenticado", 401);
   if (!PLAYGROUND_ROLES.has(user.platformRole)) {

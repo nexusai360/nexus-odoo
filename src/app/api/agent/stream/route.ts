@@ -18,6 +18,7 @@ import { runAgent } from "@/lib/agent/run-agent";
 import { createConversation, assertConversationOwned } from "@/lib/agent/conversation";
 import type { AgentEvent } from "@/lib/agent/run-agent";
 import type { AgentChannel } from "@/generated/prisma/client";
+import { aquecerCorte } from "@/lib/corte-app";
 
 const PLAYGROUND_ROLES = new Set(["admin", "super_admin"]);
 
@@ -28,6 +29,8 @@ function sseEvent(data: Record<string, unknown>): Uint8Array {
 }
 
 export async function POST(req: Request): Promise<Response> {
+  // A data de inicio das analises precisa estar hidratada ANTES de qualquer consulta.
+  await aquecerCorte();
   // RBAC v2: gate de acesso ao agente.
   // 401 sem auth; 403 AgentNotEnabled sem domínio visível (manager/viewer
   // sem nenhum UserDomainAccess concedido). super_admin/admin recebem

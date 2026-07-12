@@ -34,6 +34,7 @@ import { authenticate, type AuthResult } from "./auth/auth-middleware.js";
 import { createApiKeyCache } from "./auth/api-key-cache.js";
 import { handlePreflight } from "./middleware/cors.js";
 import { handleExternalRequest, type ExternalPipelineDeps } from "./dispatcher/external-pipeline.js";
+import { getCorteDados } from "@/lib/corte-dados.js";
 
 // ─── handleToolCall, pipeline de tools/call (4a.17) ────────────────────────
 
@@ -61,6 +62,12 @@ export async function handleToolCall(
   let outcome: AuditOutcome = "error";
 
   try {
+    // Data de inicio das analises: o MCP e um PROCESSO SEPARADO do app, com cache proprio.
+    // Sem esta linha ele nunca le o AppSetting e todas as tools grampeiam pelo valor PADRAO
+    // (16/03) , mudar a data na tela nao mudaria nada nas respostas do Nex. getCorteDados
+    // tem TTL de 60s, entao isto e ~1 SELECT por minuto, nao por chamada.
+    await getCorteDados(prisma);
+
     // Camada 7b (4f-3): rate limit por usuário, antes de qualquer processamento
     const rl = await checkMcpRateLimit(deps.rateLimit, userId);
     if (!rl.allowed) {
