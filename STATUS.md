@@ -1,5 +1,35 @@
 # STATUS — nexus-odoo
 
+> **2026-07-12 (PERÍCIA DOS KPIs , tudo em produção).**
+>
+> **Erro de raiz corrigido:** o destinatário de TODO documento do Odoo da Tauga
+> (`participante_id`) aponta para **`sped.participante`**, não para `res.partner` , e o
+> `fato_parceiro` vinha de `res.partner`. As duas tabelas têm numeração independente, então o
+> join pegava **pessoa diferente**. 116 das 136 notas de julho estavam **no estado errado** no
+> mapa (R$ 6,6 mi), e o balde "Sem UF" era o sósia de número sem estado, não cliente sem
+> endereço. Agora `fato_parceiro` vem de `sped.participante`: os 12 consumidores do join
+> (mapa, faturamento por UF/cliente, intragrupo, relatórios, Agente Nex) ficaram corretos de
+> uma vez. "Sem UF" foi a ZERO. (PR #174; hotfix #175 do OOM que isso causou no worker.)
+>
+> **KPIs (PR #176):**
+> - contas a receber/pagar por **janela de cobrança**: vencido em aberto + vencendo até o fim
+>   do período; o que vence depois fica de fora;
+> - **valor em estoque** conta só o saldo POSITIVO (as 219 linhas negativas subtraíam R$ 10,5
+>   mi) e é **dividido por um índice configurável** (Configuração > Diretoria · Vendas,
+>   padrão 0,95); o valor a custo puro fica no rodapé do card;
+> - **"A receber" x "Carteira a faturar"** separados (eram R$ 49,2 mi somados; o recebível é
+>   R$ 17,8 mi e a carteira, R$ 31,3 mi de pedidos sem nota).
+>
+> **A base de cálculo de TODOS os KPIs está em `docs/kpis-diretoria.md`** , é o documento de
+> consulta para "de onde vem esse número?". Ao mudar a regra de um KPI, atualize-o no mesmo
+> commit.
+>
+> **Armadilhas:** `docs/RADAR.md` (R-participante, R-corte, R-mapa-uf).
+
+---
+
+## 2026-07-12 (anterior) , revisão completa das regras de consulta
+
 > **2026-07-12 (REVISÃO COMPLETA DAS REGRAS DE CONSULTA , PR #169, aguardando merge).**
 >
 > A data de início das análises (Configuração > "Analisar dados a partir de") agora vale em
