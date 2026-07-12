@@ -1,243 +1,119 @@
-// src/worker/fatos/fato-parceiro.test.ts
+// fato_parceiro vem de `sped.participante` , a entidade que TODO documento do Odoo referencia
+// pelo campo `participante_id`. Antes vinha de `res.partner`, e o join pegava PESSOA DIFERENTE
+// (as duas tabelas tem numeracao independente). Ver o cabecalho de fato-parceiro.ts.
 import { mapParceiroRow, rebuildFatoParceiro } from "./fato-parceiro";
+import type { PrismaClient } from "@/generated/prisma/client";
 
-jest.mock("./fato-build-state", () => ({ markFatoBuilt: jest.fn() }));
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { markFatoBuilt } = require("./fato-build-state");
-
-// ---------------------------------------------------------------------------
-// Fixtures , formato real de res.partner
-// Dados confirmados contra o banco real: 6545 parceiros (rawDeleted=false)
-// ---------------------------------------------------------------------------
-
-const RAW_PARCEIRO_EMPRESA_CLIENTE = {
-  id: 1001,
-  name: "Empresa Fitness SA",
-  complete_name: "Empresa Fitness SA",
-  vat: "12.345.678/0001-99",
-  customer: true,
-  supplier: false,
-  is_company: true,
-  city: "Brasília",
-  state_id: [9, "DF"],
-  country_id: [31, "Brasil"],
-  zip: "70000-001",
-  email: "contato@empresafitness.com.br",
-  phone: "(61) 3333-4444",
-  mobile: "(61) 99999-0000",
-  active: true,
-};
-
-const RAW_PARCEIRO_PESSOA_FORNECEDOR = {
-  id: 2002,
-  name: "João Silva",
-  complete_name: "João Silva",
-  vat: "123.456.789-00",
-  customer: false,
-  supplier: true,
-  is_company: false,
-  city: "São Paulo",
-  state_id: [57, "SP"],
-  country_id: [31, "Brasil"],
-  zip: "01310-100",
-  email: null,
-  phone: null,
-  mobile: "(11) 98765-4321",
-  active: true,
-};
-
-const RAW_PARCEIRO_SEM_UF = {
-  id: 3003,
-  name: "Parceiro Sem UF",
-  complete_name: "Parceiro Sem UF",
-  vat: null,
-  customer: true,
-  supplier: true,
-  is_company: false,
-  city: null,
-  state_id: false,
-  country_id: false,
-  zip: null,
+/** Linha real de raw_sped_participante (campos que o builder usa). */
+const PARTICIPANTE: Record<string, unknown> = {
+  id: 445,
+  nome: "Academia Esporte e Saude Ltda",
+  razao_social: "Academia Esporte e Saude Ltda",
+  cnpj_cpf: "26.304.554/0001-76",
+  estado: "SE",
+  cidade: "Aracaju",
+  municipio_id: [295, "Aracaju - SE"],
+  cep: "49025-090",
   email: false,
-  phone: false,
-  mobile: false,
-  active: false,
+  fone: false,
+  eh_cliente: true,
+  eh_fornecedor: true,
+  eh_empresa: false,
+  partner_id: [452, "Academia Esporte e Saude Ltda"],
+  create_date: "2026-02-10 12:00:00",
 };
-
-// C3 (F2): parceiro real com vat no formato "BR-..." (prefixo do Odoo).
-const RAW_PARCEIRO_VAT_BR = {
-  id: 4004,
-  name: "Matrix Fitness Brasil",
-  complete_name: "Matrix Fitness Brasil",
-  vat: "BR-07.390.039/0001-01",
-  customer: true,
-  supplier: false,
-  is_company: true,
-  active: true,
-};
-
-// C3 (F2): vat so com prefixo, sem digitos => documentoDigits null (alinha backfill).
-const RAW_PARCEIRO_VAT_SEM_DIGITOS = {
-  id: 5005,
-  name: "Sem Documento",
-  complete_name: "Sem Documento",
-  vat: "BR-",
-  customer: true,
-  supplier: false,
-  is_company: false,
-  active: true,
-};
-
-// ---------------------------------------------------------------------------
-// mapParceiroRow
-// ---------------------------------------------------------------------------
 
 describe("mapParceiroRow", () => {
-  it("mapeia parceiro empresa-cliente corretamente", () => {
-    const result = mapParceiroRow(RAW_PARCEIRO_EMPRESA_CLIENTE);
-    expect(result.odooId).toBe(1001);
-    expect(result.nome).toBe("Empresa Fitness SA");
-    expect(result.nomeCompleto).toBe("Empresa Fitness SA");
-    expect(result.documento).toBe("12.345.678/0001-99");
-    expect(result.ehCliente).toBe(true);
-    expect(result.ehFornecedor).toBe(false);
-    expect(result.ehEmpresa).toBe(true);
-    expect(result.cidade).toBe("Brasília");
-    expect(result.uf).toBe("DF");
-    expect(result.pais).toBe("Brasil");
-    expect(result.cep).toBe("70000-001");
-    expect(result.email).toBe("contato@empresafitness.com.br");
-    // phone existe, usa phone (não mobile)
-    expect(result.telefone).toBe("(61) 3333-4444");
-    expect(result.ativo).toBe(true);
+  it("usa o id do PARTICIPANTE (a chave que os documentos guardam), não a do res.partner", () => {
+    const r = mapParceiroRow(PARTICIPANTE);
+    expect(r.odooId).toBe(445);
+    // O vinculo com o contato do Odoo fica materializado, mas NAO e a chave.
+    expect(r.partnerId).toBe(452);
   });
 
-  it("fallback phone ?? mobile , usa mobile quando phone é null", () => {
-    const result = mapParceiroRow(RAW_PARCEIRO_PESSOA_FORNECEDOR);
-    expect(result.odooId).toBe(2002);
-    expect(result.ehFornecedor).toBe(true);
-    expect(result.ehCliente).toBe(false);
-    expect(result.ehEmpresa).toBe(false);
-    // phone é null, mobile existe → usa mobile
-    expect(result.telefone).toBe("(11) 98765-4321");
-    expect(result.email).toBeNull();
+  it("mapeia nome, razão social, documento e dígitos", () => {
+    const r = mapParceiroRow(PARTICIPANTE);
+    expect(r.nome).toBe("Academia Esporte e Saude Ltda");
+    expect(r.nomeCompleto).toBe("Academia Esporte e Saude Ltda");
+    expect(r.documento).toBe("26.304.554/0001-76");
+    expect(r.documentoDigits).toBe("26304554000176");
   });
 
-  it("fallback phone ?? mobile , phone=false, mobile=false → null", () => {
-    const result = mapParceiroRow(RAW_PARCEIRO_SEM_UF);
-    expect(result.telefone).toBeNull();
+  it("papéis vêm dos campos do participante fiscal (eh_cliente/eh_fornecedor/eh_empresa)", () => {
+    const r = mapParceiroRow(PARTICIPANTE);
+    expect(r.ehCliente).toBe(true);
+    expect(r.ehFornecedor).toBe(true);
+    expect(r.ehEmpresa).toBe(false);
   });
 
-  it("state_id=false → uf null; country_id=false → pais null", () => {
-    const result = mapParceiroRow(RAW_PARCEIRO_SEM_UF);
-    expect(result.uf).toBeNull();
-    expect(result.pais).toBeNull();
-    expect(result.cidade).toBeNull();
-    expect(result.documento).toBeNull();
-    expect(result.cep).toBeNull();
-    expect(result.ativo).toBe(false);
+  it("UF vem da sigla do campo `estado`", () => {
+    expect(mapParceiroRow(PARTICIPANTE).uf).toBe("SE");
+    expect(mapParceiroRow(PARTICIPANTE).cidade).toBe("Aracaju");
+  });
+
+  it("sem `estado`, extrai a UF do rótulo do município (era o que virava 'Sem UF' na tela)", () => {
+    const r = mapParceiroRow({ ...PARTICIPANTE, estado: false, cidade: false });
+    expect(r.uf).toBe("SE");
+    expect(r.cidade).toBe("Aracaju");
+  });
+
+  it("sem estado E sem município, a UF fica null (não inventa)", () => {
+    const r = mapParceiroRow({ ...PARTICIPANTE, estado: false, municipio_id: false, cidade: false });
+    expect(r.uf).toBeNull();
+    expect(r.cidade).toBeNull();
+  });
+
+  it("o `false` do Odoo (JSON-RPC) vira null, não a string 'false'", () => {
+    const r = mapParceiroRow({ ...PARTICIPANTE, email: false, fone: false, cep: false });
+    expect(r.email).toBeNull();
+    expect(r.telefone).toBeNull();
+    expect(r.cep).toBeNull();
+  });
+
+  it("telefone: `fone` com fallback para `fone_comercial`", () => {
+    expect(mapParceiroRow({ ...PARTICIPANTE, fone: "79999990000" }).telefone).toBe("79999990000");
+    expect(
+      mapParceiroRow({ ...PARTICIPANTE, fone: false, fone_comercial: "7933330000" }).telefone,
+    ).toBe("7933330000");
+  });
+
+  it("documentoDigits = null quando não há CNPJ/CPF", () => {
+    expect(mapParceiroRow({ ...PARTICIPANTE, cnpj_cpf: false }).documentoDigits).toBeNull();
+    expect(mapParceiroRow({ ...PARTICIPANTE, cnpj_cpf: false }).documento).toBeNull();
   });
 
   it("NÃO produz atualizadoEm (campo tem @default(now()) no schema)", () => {
-    const raw = { id: 1, name: "X" };
-    expect(mapParceiroRow(raw)).not.toHaveProperty("atualizadoEm");
+    expect(mapParceiroRow(PARTICIPANTE)).not.toHaveProperty("atualizadoEm");
   });
 
-  // C3 (F2): documentoDigits , so digitos, imune a mascara e prefixo "BR-".
-  it("documentoDigits extrai so digitos de vat com prefixo BR- e mascara", () => {
-    const result = mapParceiroRow(RAW_PARCEIRO_VAT_BR);
-    expect(result.documentoDigits).toBe("07390039000101");
-  });
-
-  it("documentoDigits extrai so digitos de vat com mascara simples", () => {
-    const result = mapParceiroRow(RAW_PARCEIRO_EMPRESA_CLIENTE);
-    expect(result.documentoDigits).toBe("12345678000199");
-  });
-
-  it("documentoDigits = null quando vat nao tem digitos (BR-)", () => {
-    const result = mapParceiroRow(RAW_PARCEIRO_VAT_SEM_DIGITOS);
-    expect(result.documentoDigits).toBeNull();
-  });
-
-  it("documentoDigits = null quando vat ausente", () => {
-    const result = mapParceiroRow(RAW_PARCEIRO_SEM_UF);
-    expect(result.documentoDigits).toBeNull();
+  it("data de criação vira Date; ausente vira null", () => {
+    expect(mapParceiroRow(PARTICIPANTE).dataCriacao).toEqual(new Date("2026-02-10 12:00:00"));
+    expect(mapParceiroRow({ ...PARTICIPANTE, create_date: false }).dataCriacao).toBeNull();
   });
 });
 
-// ---------------------------------------------------------------------------
-// rebuildFatoParceiro
-// ---------------------------------------------------------------------------
-
 describe("rebuildFatoParceiro", () => {
-  it("reconstrói fato_parceiro a partir de rawResPartner (rawDeleted=false)", async () => {
+  it("reconstrói a partir de rawSpedParticipante (NÃO de rawResPartner), numa transação", async () => {
+    const deleteMany = jest.fn().mockResolvedValue({ count: 0 });
+    const createMany = jest.fn().mockResolvedValue({ count: 1 });
+    const upsert = jest.fn().mockResolvedValue({});
     const tx = {
-      fatoParceiro: {
-        deleteMany: jest.fn().mockResolvedValue(undefined),
-        createMany: jest.fn().mockResolvedValue(undefined),
-      },
+      fatoParceiro: { deleteMany, createMany },
+      fatoBuildState: { upsert },
     };
+    const findMany = jest.fn().mockResolvedValue([{ data: PARTICIPANTE }]);
     const prisma = {
-      rawResPartner: {
-        findMany: jest.fn().mockResolvedValue([
-          { data: RAW_PARCEIRO_EMPRESA_CLIENTE },
-          { data: RAW_PARCEIRO_PESSOA_FORNECEDOR },
-        ]),
-      },
+      rawSpedParticipante: { findMany },
       $transaction: jest.fn(async (fn: (t: typeof tx) => unknown) => fn(tx)),
-    } as never;
+    } as unknown as PrismaClient;
 
     const n = await rebuildFatoParceiro(prisma);
-    expect(n).toBe(2);
-    expect(tx.fatoParceiro.deleteMany).toHaveBeenCalled();
-    expect(tx.fatoParceiro.createMany).toHaveBeenCalled();
-    expect(markFatoBuilt).toHaveBeenCalledWith(tx, "fato_parceiro");
-  });
 
-  it("não chama createMany quando não há linhas", async () => {
-    const tx = {
-      fatoParceiro: {
-        deleteMany: jest.fn().mockResolvedValue(undefined),
-        createMany: jest.fn().mockResolvedValue(undefined),
-      },
-    };
-    const prisma = {
-      rawResPartner: {
-        findMany: jest.fn().mockResolvedValue([]),
-      },
-      $transaction: jest.fn(async (fn: (t: typeof tx) => unknown) => fn(tx)),
-    } as never;
-
-    const n = await rebuildFatoParceiro(prisma);
-    expect(n).toBe(0);
-    expect(tx.fatoParceiro.deleteMany).toHaveBeenCalled();
-    expect(tx.fatoParceiro.createMany).not.toHaveBeenCalled();
-    expect(markFatoBuilt).toHaveBeenCalledWith(tx, "fato_parceiro");
-  });
-
-  it("dados do createMany contêm campos corretos (sem atualizadoEm)", async () => {
-    const tx = {
-      fatoParceiro: {
-        deleteMany: jest.fn().mockResolvedValue(undefined),
-        createMany: jest.fn().mockResolvedValue(undefined),
-      },
-    };
-    const prisma = {
-      rawResPartner: {
-        findMany: jest.fn().mockResolvedValue([
-          { data: RAW_PARCEIRO_EMPRESA_CLIENTE },
-        ]),
-      },
-      $transaction: jest.fn(async (fn: (t: typeof tx) => unknown) => fn(tx)),
-    } as never;
-
-    await rebuildFatoParceiro(prisma);
-    const callArg = tx.fatoParceiro.createMany.mock.calls[0][0];
-    const row = callArg.data[0];
-    expect(row.odooId).toBe(1001);
-    expect(row.nome).toBe("Empresa Fitness SA");
-    expect(row.ehCliente).toBe(true);
-    expect(row.uf).toBe("DF");
-    expect(row).not.toHaveProperty("atualizadoEm");
+    expect(n).toBe(1);
+    expect(findMany).toHaveBeenCalledWith({ where: { rawDeleted: false } });
+    expect(deleteMany).toHaveBeenCalled();
+    const linhas = createMany.mock.calls[0][0].data as { odooId: number; uf: string }[];
+    expect(linhas[0].odooId).toBe(445);
+    expect(linhas[0].uf).toBe("SE");
   });
 });

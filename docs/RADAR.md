@@ -829,3 +829,24 @@ Não é bug de cálculo: o dinheiro está certo e entra no faturamento total. É
 cadastro no Odoo**. Duas saídas possíveis (decisão do dono):
 1. corrigir o cadastro desses clientes no Odoo (o mapa se resolve sozinho no próximo sync);
 2. usar a UF do ENDEREÇO DE ENTREGA da nota como segunda fonte, quando o cadastro não tiver.
+## R-participante , o destinatário da nota NÃO é o `res.partner` (perícia 2026-07-12)
+
+**Erro de raiz, corrigido.** No Odoo da Tauga, `participante_id` (em sped.documento,
+pedido.documento, finan.lancamento, DF-e...) aponta para **`sped.participante`**, não para
+`res.partner`. As duas tabelas têm numeração independente. O `fato_parceiro` vinha de
+`res.partner`, então TODO join por `participante_id` pegava **pessoa diferente**.
+
+Estrago medido: **116 das 136 notas de julho/2026 no estado errado** no mapa (R$ 6,6 mi). O
+"Sem UF" (R$ 450 mil) era o sósia de número sem estado preenchido, não cliente sem endereço.
+
+Correção: `fato_parceiro` passou a vir de `sped.participante` (mesma chave dos documentos).
+`partner_id` fica materializado para quem precisar do contato do Odoo.
+
+**Ponto de atenção que ficou:** `src/worker/sync/directed.ts` (sync direcionado após as write
+tools do MCP) ainda sincroniza `res.partner`. Escrita em `res.partner` via API externa **não
+reflete mais no cadastro analítico**, que agora é o participante fiscal. Se as write tools de
+parceiro forem usadas de verdade, o directed sync precisa passar a atualizar
+`sped.participante` também.
+
+**Lição:** ao cruzar dois modelos do Odoo por id, CONFIRA a `relation` do campo com
+`fields_get`. Id igual não quer dizer entidade igual.

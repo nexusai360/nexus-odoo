@@ -140,32 +140,43 @@ prometida de entrega já vencida, com o pedido ainda aberto.
 
 ---
 
-## O mapa por estado , e o balde "Sem UF" (R$ 450 mil)
+## O mapa por estado , e o erro de raiz corrigido em 2026-07-12
 
 **Cada estado** soma o `vr_nf` das mesmas notas do faturamento (venda externa, no período),
-agrupadas pela **UF do CLIENTE**.
+agrupadas pela **UF do cliente**.
 
-**A UF vem do CADASTRO do cliente** (`fato_parceiro.uf`, normalizado de "São Paulo (BR)" para
-"SP"), **não da nota**. É por isso que existe "Sem UF" mesmo que o Odoo não emita nota sem
-destinatário: o problema não é a nota, é o **cadastro do cliente**.
+### O erro (achado ao investigar o balde "Sem UF")
 
-Composição dos R$ 450 mil de julho/2026, em produção:
+No Odoo da Tauga, o destinatário de um documento **não é o `res.partner`** (o cadastro de
+contatos). É o **`sped.participante`**, tabela própria da localização fiscal. **Todo**
+`participante_id` do sistema (nota fiscal, pedido, título financeiro, DF-e) aponta para lá.
 
-| Causa | Notas | Valor |
+O `fato_parceiro` era construído a partir de `res.partner`, e as duas tabelas têm **numeração
+independente**. Cruzar o id de uma com a outra pega **pessoa diferente**:
+
+| id | quem é em `sped.participante` (o destinatário da nota) | quem é em `res.partner` (onde procurávamos) |
 |---|---|---|
-| Cadastro do cliente **sem UF** no Odoo | 5 | R$ 423.818 |
-| Participante da nota **não existe** em `fato_parceiro` | 3 | R$ 26.631 |
+| 16104 | PALMS VILLE VM CONDOMINIO RESORT | GEORGE OLIVEIRA DA SILVA |
+| 16112 | VOG TAPERAPUAN | JOÃO ANNES GUIMARÃES |
+| 1 | Consumidor final não identificado | JHT Brasília , Matriz DF |
 
-Os dois maiores são pessoas físicas: **GEORGE OLIVEIRA DA SILVA** (R$ 291.719) e **JOÃO ANNES
-GUIMARÃES** (R$ 130.499).
+**Estrago medido em julho/2026: 116 das 136 notas estavam no estado ERRADO** (R$ 6,6 mi de
+R$ 7,2 mi). O balde "Sem UF" (R$ 450 mil) era o caso em que o sósia de número não tinha estado
+preenchido , **não** eram clientes sem endereço, como parecia.
 
-**Não é erro de cálculo.** O dinheiro está certo e entra no faturamento total; ele só não sabe
-em que estado se pintar. Duas saídas (decisão do dono):
+### A correção
 
-1. **Corrigir o cadastro** desses clientes no Odoo , o mapa se resolve sozinho no próximo sync.
-2. **Usar a UF do endereço de entrega da nota** como segunda fonte quando o cadastro não tiver.
+`fato_parceiro` passou a ser construído de **`sped.participante`**: sua chave agora é a MESMA
+que os documentos guardam. Isso conserta de uma vez o mapa, o faturamento por cliente e por UF,
+a marcação de intragrupo, os Relatórios (1.0 e 2.0) e o Agente Nex , todos usam esse join.
 
----
+No cache real: **"Sem UF" = 0 notas** (a fonte certa tem cidade/estado de todo mundo) e os
+estados passam a ser os verdadeiros.
+
+> O **faturamento total não mudou** (R$ 7.242.504,80 em julho). A regra de intragrupo tinha uma
+> terceira defesa, pelo CNPJ que vem no nome do participante na própria nota, e era ela que
+> segurava o número. O erro afetava **para onde** o dinheiro era atribuído, não o total. Ainda
+> assim havia 1 nota de R$ 200 exposta a colisão de id , agora impossível.
 
 ## Onde cada coisa mora no código
 
