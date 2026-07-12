@@ -5,8 +5,14 @@ import { getCurrentUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { syncConfigSchema, syncIntervalValueSchema } from "@/lib/validations/sync-config";
 import { FATO_CATALOG, type FatoModo } from "@/lib/fatos-catalog";
+import {
+  CORTE_DADOS_KEY,
+  CORTE_DADOS_PADRAO,
+  invalidarCacheCorte,
+} from "@/lib/corte-dados";
 
 const KEY_OF = {
+  corteDados: CORTE_DADOS_KEY,
   incrementalIntervalMin: "sync.incremental_interval_min",
   snapshotIntervalMin: "sync.snapshot_interval_min",
   reconcileIntervalMin: "sync.reconcile_interval_min",
@@ -43,7 +49,14 @@ export async function getSyncConfig() {
   }
   const rows = await prisma.appSetting.findMany({ where: { category: "sync" } });
   const byKey = new Map(rows.map((r) => [r.key, r.value]));
+  const corteBruto = byKey.get(CORTE_DADOS_KEY);
   return {
+    // Marco zero: so existe dado a partir daqui (faturamento, estoque, contas, entregas,
+    // relatorios e agente Nex). Configuravel na tela.
+    corteDados:
+      typeof corteBruto === "string" && /^\d{4}-\d{2}-\d{2}$/.test(corteBruto)
+        ? corteBruto
+        : CORTE_DADOS_PADRAO,
     incrementalIntervalMin: readInterval(
       byKey.get(KEY_OF.incrementalIntervalMin),
       SYNC_CONFIG_DEFAULTS.incrementalIntervalMin,
@@ -182,6 +195,9 @@ export async function updateSyncConfig(input: unknown) {
       },
     });
   }
+  // O corte manda na plataforma inteira: derruba o cache de processo para o valor novo
+  // valer na proxima consulta (dashboard, relatorios e agente).
+  invalidarCacheCorte();
   await logAudit({
     userId: me.id,
     action: "setting_updated",

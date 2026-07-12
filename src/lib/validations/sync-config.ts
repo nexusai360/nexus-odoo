@@ -1,6 +1,13 @@
 import { z } from "zod";
 
+/** Data (AAAA-MM-DD) a partir da qual a plataforma considera documentos. */
+export const corteDadosSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Use uma data válida (AAAA-MM-DD).")
+  .refine((v) => !Number.isNaN(new Date(`${v}T00:00:00Z`).getTime()), "Data inválida.");
+
 export const syncConfigSchema = z.object({
+  corteDados: corteDadosSchema,
   incrementalIntervalMin: z.number().int().min(1).max(1440),
   snapshotIntervalMin: z.number().int().min(1).max(10080),
   reconcileIntervalMin: z.number().int().min(1).max(10080),

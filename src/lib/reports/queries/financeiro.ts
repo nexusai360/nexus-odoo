@@ -1,3 +1,4 @@
+import { corteAtualDate } from "@/lib/corte-dados";
 // src/lib/reports/queries/financeiro.ts
 //
 // Núcleo de agregação de financeiro, framework-neutro. Cada função recebe `prisma`
@@ -160,6 +161,9 @@ export async function queryContasAReceber(
     where: {
       tipo: "a_receber",
       vrSaldo: { gt: 0 },
+      // Marco zero: titulo de documento anterior ao corte nao e da operacao atual. Sem isso
+      // o KPI somava divida antiga do Odoo (dezenas de milhoes que nao existem hoje).
+      dataDocumento: { gte: corteAtualDate() },
       ...(filtros.participanteId ? { participanteId: filtros.participanteId } : {}),
     },
     select: {
@@ -207,6 +211,8 @@ export async function queryContasAPagar(
     where: {
       tipo: "a_pagar",
       vrSaldo: { gt: 0 },
+      // Idem a receber: so divida cujo documento e do periodo coberto pela plataforma.
+      dataDocumento: { gte: corteAtualDate() },
       ...(filtros.participanteId ? { participanteId: filtros.participanteId } : {}),
     },
     select: {

@@ -5,7 +5,7 @@
 import type { ReactNode } from "react";
 import { BrazilMap } from "@/components/diretoria/brazil-map/brazil-map";
 
-const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const num = new Intl.NumberFormat("pt-BR");
 
 interface Indicadores { valorTotal: number; itens: number; produtos: number; locais: number }

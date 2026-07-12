@@ -1,3 +1,4 @@
+import { getCorteDados } from "../../lib/corte-dados";
 // src/worker/sync/processors.ts
 import type { PrismaClient } from "../../generated/prisma/client";
 import type { OdooClient } from "../odoo/client";
@@ -71,6 +72,11 @@ export async function processIncrementalCycle(
   catalog: readonly CatalogEntry[],
   runCycle: RunCycleFn = runModelCycle,
 ): Promise<void> {
+  // O corte de dados e configuravel na tela (Configuracao > Intervalos de sincronizacao):
+  // le o valor vigente antes de montar o dominio do Odoo, para o worker so puxar o que
+  // esta dentro do periodo que a plataforma cobre.
+  await getCorteDados(ctx.prisma);
+
   const incrementalEntries = catalog.filter((e) => e.mode === "incremental");
   await pool(incrementalEntries, INCREMENTAL_CONCURRENCY, async (entry) => {
     // Garante a linha de SyncState antes do ciclo: o runner pode assumir
@@ -110,6 +116,11 @@ export async function processSnapshotCycle(
   catalog: readonly CatalogEntry[],
   runCycle: RunCycleFn = runModelCycle,
 ): Promise<void> {
+  // O corte de dados e configuravel na tela (Configuracao > Intervalos de sincronizacao):
+  // le o valor vigente antes de montar o dominio do Odoo, para o worker so puxar o que
+  // esta dentro do periodo que a plataforma cobre.
+  await getCorteDados(ctx.prisma);
+
   for (const entry of catalog) {
     if (entry.mode !== "snapshot" && entry.mode !== "estatico") continue;
     await ensureSyncState(ctx.prisma, entry.odooModel, entry.mode);
@@ -143,6 +154,11 @@ export async function processReconcileCycle(
   catalog: readonly CatalogEntry[],
   runCycle: RunCycleFn = runModelCycle,
 ): Promise<void> {
+  // O corte de dados e configuravel na tela (Configuracao > Intervalos de sincronizacao):
+  // le o valor vigente antes de montar o dominio do Odoo, para o worker so puxar o que
+  // esta dentro do periodo que a plataforma cobre.
+  await getCorteDados(ctx.prisma);
+
   for (const entry of catalog) {
     // Reconcile só faz sentido em modelos incrementais: linhas se acumulam e
     // exclusões individuais precisam ser detectadas. Modelos snapshot são

@@ -1,3 +1,5 @@
+import { corteAtualDate, clampDateAoCorte } from "@/lib/corte-dados";
+
 /**
  * Regra canonica de periodo: filtra por dataEmissao com borda exclusiva.
  * O par precisa estar completo (de E ate); par incompleto retorna {} (mesmo
@@ -7,8 +9,11 @@
  * (ambos tem dataEmissao desnormalizado).
  */
 export function buildPeriodoWhere(de?: string, ate?: string): { dataEmissao?: { gte: Date; lt: Date } } {
-  if (!de || !ate) return {};
+  // Sem periodo explicito, o piso ainda vale: a plataforma so tem dado a partir do corte
+  // (16/03/2026). Assim nenhuma metrica "sem filtro" volta a varrer documento antigo.
+  if (!de || !ate) return { dataEmissao: { gte: corteAtualDate(), lt: new Date("2100-01-01T00:00:00Z") } };
   const ateMais1 = new Date(`${ate}T00:00:00Z`);
   ateMais1.setUTCDate(ateMais1.getUTCDate() + 1);
-  return { dataEmissao: { gte: new Date(`${de}T00:00:00Z`), lt: ateMais1 } };
+  // Grampeia o inicio ao corte: pedir "desde 2024" devolve o que existe, a partir do corte.
+  return { dataEmissao: { gte: clampDateAoCorte(new Date(`${de}T00:00:00Z`)), lt: ateMais1 } };
 }

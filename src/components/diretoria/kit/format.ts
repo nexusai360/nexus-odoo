@@ -2,10 +2,14 @@
 // e a abreviação compacta (mi/mil) usada nos KPIs estreitos , o valor cheio fica
 // disponível no hover/title via `brl`.
 
+// Dinheiro SEMPRE com centavos: é faturamento, e R$ 7.242.504,80 não pode virar
+// "R$ 7.242.505". O compacto (brlCompacto) é só para o número grande do card; o valor
+// cheio (hover, tabelas, listas) sai por aqui, ao centavo.
 export const brl = new Intl.NumberFormat("pt-BR", {
   style: "currency",
   currency: "BRL",
-  maximumFractionDigits: 0,
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
 });
 
 export const num = new Intl.NumberFormat("pt-BR");

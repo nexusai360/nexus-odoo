@@ -171,6 +171,8 @@ function PickerPanel({
         disabled={disabledMatcher}
         startMonth={minDate}
         endMonth={today}
+        // Dropdowns de mês e ano no cabeçalho: pular meses sem clicar na setinha um a um.
+        captionLayout="dropdown"
       />
       {error ? (
         <p role="alert" className="px-1 text-xs text-destructive">

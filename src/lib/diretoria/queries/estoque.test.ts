@@ -12,21 +12,43 @@ import {
 } from "./estoque";
 
 describe("queryIndicadoresEstoque (A4)", () => {
-  it("soma valor e itens, conta produtos e locais distintos", async () => {
+  // Estoque vale a CUSTO: quantidade x preco_custo do produto (nao o vr_saldo do Odoo).
+  it("valoriza o saldo pelo preço de custo do produto", async () => {
     const prisma = {
       fatoEstoqueSaldo: {
         findMany: jest.fn().mockResolvedValue([
-          { quantidade: 10, vrSaldo: 1000, produtoId: 1, localId: 1 },
-          { quantidade: 5, vrSaldo: 500, produtoId: 2, localId: 1 },
-          { quantidade: 3, vrSaldo: 300, produtoId: 1, localId: 2 },
+          { quantidade: 10, produtoId: 1, localId: 1 }, // 10 x 100 = 1.000
+          { quantidade: 5, produtoId: 2, localId: 1 }, //   5 x  40 =   200
+          { quantidade: 3, produtoId: 1, localId: 2 }, //   3 x 100 =   300
+        ]),
+      },
+      fatoProduto: {
+        findMany: jest.fn().mockResolvedValue([
+          { odooId: 1, precoCusto: 100 },
+          { odooId: 2, precoCusto: 40 },
         ]),
       },
     } as unknown as Parameters<typeof queryIndicadoresEstoque>[0];
     const r = await queryIndicadoresEstoque(prisma);
-    expect(r.valorTotal).toBe(1800);
+    expect(r.valorTotal).toBe(1500);
     expect(r.itens).toBe(18);
     expect(r.produtos).toBe(2);
     expect(r.locais).toBe(2);
+    expect(r.produtosSemCusto).toBe(0);
+  });
+
+  it("produto com saldo e sem custo cadastrado nao inventa valor, e vira gap visivel", async () => {
+    const prisma = {
+      fatoEstoqueSaldo: {
+        findMany: jest.fn().mockResolvedValue([
+          { quantidade: 4, produtoId: 7, localId: 1 },
+        ]),
+      },
+      fatoProduto: { findMany: jest.fn().mockResolvedValue([{ odooId: 7, precoCusto: null }]) },
+    } as unknown as Parameters<typeof queryIndicadoresEstoque>[0];
+    const r = await queryIndicadoresEstoque(prisma);
+    expect(r.valorTotal).toBe(0);
+    expect(r.produtosSemCusto).toBe(1);
   });
 });
 
@@ -35,17 +57,26 @@ describe("queryEstoquePorFamilia (A5)", () => {
     const prisma = {
       fatoEstoqueSaldo: {
         findMany: jest.fn().mockResolvedValue([
-          { familiaNome: "Cardio", quantidade: 2, vrSaldo: 100 },
-          { familiaNome: "Força", quantidade: 1, vrSaldo: 400 },
-          { familiaNome: "Cardio", quantidade: 3, vrSaldo: 50 },
-          { familiaNome: null, quantidade: 1, vrSaldo: 10 },
+          { familiaNome: "Cardio", quantidade: 2, produtoId: 1 }, // 2 x 50 = 100
+          { familiaNome: "Força", quantidade: 1, produtoId: 2 }, //  1 x 400 = 400
+          { familiaNome: "Cardio", quantidade: 3, produtoId: 3 }, // 3 x 50/3 ~ 50
+          { familiaNome: null, quantidade: 1, produtoId: 4 }, //     1 x 10 = 10
+        ]),
+      },
+      fatoProduto: {
+        findMany: jest.fn().mockResolvedValue([
+          { odooId: 1, precoCusto: 50 },
+          { odooId: 2, precoCusto: 400 },
+          { odooId: 3, precoCusto: 50 / 3 },
+          { odooId: 4, precoCusto: 10 },
         ]),
       },
     } as unknown as Parameters<typeof queryEstoquePorFamilia>[0];
     const r = await queryEstoquePorFamilia(prisma);
-    expect(r.valorGeral).toBe(560);
+    expect(r.valorGeral).toBeCloseTo(560);
     expect(r.linhas[0]).toEqual({ chave: "Força", quantidade: 1, valorTotal: 400 });
-    expect(r.linhas[1]).toEqual({ chave: "Cardio", quantidade: 5, valorTotal: 150 });
+    expect(r.linhas[1].chave).toBe("Cardio");
+    expect(r.linhas[1].valorTotal).toBeCloseTo(150);
     expect(r.linhas.find((l) => l.chave === "Sem família")).toBeDefined();
   });
 });

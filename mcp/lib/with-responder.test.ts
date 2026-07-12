@@ -102,7 +102,7 @@ describe("calcularExtras , periodo pre-corte (Limpa 2026+)", () => {
       destaque: { headlineValor: 0 },
       periodo: { preCorte: true, label: "2025-01-01 a 2025-12-31" },
     });
-    expect(r._RESPOSTA).toContain("2026 em diante");
+    expect(r._RESPOSTA).toContain("16/03/2026");
     expect(r._RESPOSTA).toContain("2025-01-01 a 2025-12-31");
     expect(r._DESTAQUE?.periodoPreCorte).toBe(1);
   });
@@ -112,7 +112,7 @@ describe("calcularExtras , periodo pre-corte (Limpa 2026+)", () => {
       destaque: { headlineValor: 10 },
       periodo: { preCorte: false, label: "2026" },
     });
-    expect(r._RESPOSTA).not.toContain("2026 em diante");
+    expect(r._RESPOSTA).not.toContain("16/03/2026");
     expect(r._DESTAQUE?.periodoPreCorte).toBeUndefined();
   });
 });

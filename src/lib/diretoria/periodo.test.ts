@@ -23,15 +23,18 @@ describe("resolverPeriodoDir", () => {
     expect(iso(r.ate)).toBe("2026-06-30");
   });
 
-  it("ano atual cobre 2026 inteiro", () => {
+  // O inicio de qualquer periodo e grampeado ao CORTE DE DADOS (marco zero configurado na
+  // tela, 16/03/2026 por padrao): a plataforma nao tem documento antes disso, e mostrar um
+  // periodo maior daria a impressao de cobrir um intervalo que ela nao cobre.
+  it("ano atual comeca no corte de dados, nao em 1o de janeiro", () => {
     const r = resolverPeriodoDir({ periodo: "ano_atual" }, hoje);
-    expect(iso(r.de)).toBe("2026-01-01");
+    expect(iso(r.de)).toBe("2026-03-16");
     expect(iso(r.ate)).toBe("2026-12-31");
   });
 
-  it("ano anterior cobre 2025 inteiro", () => {
+  it("ano anterior (todo antes do corte) e puxado para o corte", () => {
     const r = resolverPeriodoDir({ periodo: "ano_anterior" }, hoje);
-    expect(iso(r.de)).toBe("2025-01-01");
+    expect(iso(r.de)).toBe("2026-03-16");
     expect(iso(r.ate)).toBe("2025-12-31");
   });
 
@@ -47,13 +50,13 @@ describe("resolverPeriodoDir", () => {
     expect(iso(r.de)).toBe("2026-03-30");
   });
 
-  it("custom lê de/ate dos params", () => {
+  it("custom lê de/ate dos params (e grampeia o inicio ao corte)", () => {
     const r = resolverPeriodoDir(
-      { periodo: "custom", de: "2026-02-01", ate: "2026-02-15" },
+      { periodo: "custom", de: "2026-04-01", ate: "2026-04-15" },
       hoje,
     );
-    expect(iso(r.de)).toBe("2026-02-01");
-    expect(iso(r.ate)).toBe("2026-02-15");
+    expect(iso(r.de)).toBe("2026-04-01");
+    expect(iso(r.ate)).toBe("2026-04-15");
     expect(r.preset).toBe("custom");
   });
 
