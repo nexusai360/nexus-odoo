@@ -2532,9 +2532,13 @@ model FatoParceiro {
   email        String?
   telefone     String?
   ativo        Boolean   @default(true)
+  /// Id do `res.partner` correspondente (o cadastro de CONTATO do Odoo).
+  /// `odoo_id` aqui é o id de `sped.participante` (o destinatário que TODO documento
+  /// referencia). As duas tabelas têm numeração independente: cruzar uma pela outra pega
+  /// pessoa diferente (perícia 2026-07-12). Guardamos o vínculo para quem precisar do contato.
+  partnerId    Int?      @map("partner_id")
   /// T-42 (Ronda 4): data de criacao do parceiro no Odoo (campo create_date).
-  /// Populada a partir de raw_res_partner.data->>'create_date'. Permite filtrar
-  /// "parceiros novos cadastrados esta semana/mes" via tool dedicada.
+  /// Permite filtrar "parceiros novos cadastrados esta semana/mes" via tool dedicada.
   dataCriacao  DateTime? @map("data_criacao") @db.Timestamp(3)
   atualizadoEm DateTime  @default(now()) @map("atualizado_em")
 
