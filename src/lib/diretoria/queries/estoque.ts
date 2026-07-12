@@ -214,17 +214,22 @@ export async function queryCatalogoEstoque(
   prisma: PrismaClient,
   limit = 100,
 ): Promise<CatalogoEstoque> {
-  const rows = await prisma.fatoEstoqueSaldo.findMany({
-    select: {
-      produtoId: true,
-      produtoNome: true,
-      familiaNome: true,
-      marcaNome: true,
-      localId: true,
-      quantidade: true,
-      vrSaldo: true,
-    },
-  });
+  // Valorizacao a CUSTO (quantidade x preco_custo), a MESMA do KPI e do donut. O `vr_saldo`
+  // que vem do Odoo e valorizado por outro criterio: usa-lo aqui fazia a mesma tela mostrar
+  // dois valores diferentes para o mesmo estoque.
+  const [rows, custos] = await Promise.all([
+    prisma.fatoEstoqueSaldo.findMany({
+      select: {
+        produtoId: true,
+        produtoNome: true,
+        familiaNome: true,
+        marcaNome: true,
+        localId: true,
+        quantidade: true,
+      },
+    }),
+    custoPorProduto(prisma),
+  ]);
   const map = new Map<
     string,
     {
@@ -239,8 +244,8 @@ export async function queryCatalogoEstoque(
   let valorGeral = 0;
   for (const r of rows) {
     const chave = r.produtoId != null ? `id:${r.produtoId}` : `nome:${r.produtoNome ?? "?"}`;
-    const valor = Number(r.vrSaldo ?? 0);
     const qtd = Number(r.quantidade ?? 0);
+    const valor = qtd * (r.produtoId != null ? custos.get(r.produtoId) ?? 0 : 0);
     valorGeral += valor;
     const cur = map.get(chave);
     if (cur) {
@@ -333,18 +338,27 @@ export interface LinhaEstoqueGranular {
 export async function queryEstoqueGranular(
   prisma: PrismaClient,
 ): Promise<LinhaEstoqueGranular[]> {
-  const rows = await prisma.fatoEstoqueSaldo.findMany({
-    select: { produtoId: true, produtoNome: true, familiaNome: true, marcaNome: true, localNome: true, quantidade: true, vrSaldo: true },
+  // A CUSTO, igual ao KPI e ao catalogo: e sobre estas linhas que o construtor recomputa os
+  // indicadores quando o usuario cruza filtros. Se aqui fosse `vr_saldo`, o mesmo card mudaria
+  // de valor so por causa do filtro.
+  const [rows, custos] = await Promise.all([
+    prisma.fatoEstoqueSaldo.findMany({
+      select: { produtoId: true, produtoNome: true, familiaNome: true, marcaNome: true, localNome: true, quantidade: true },
+    }),
+    custoPorProduto(prisma),
+  ]);
+  return rows.map((r) => {
+    const qtd = Number(r.quantidade ?? 0);
+    return {
+      produtoId: r.produtoId,
+      produto: r.produtoNome ?? "Sem nome",
+      familia: r.familiaNome ?? "Sem família",
+      marca: r.marcaNome ?? "Sem marca",
+      local: r.localNome ?? "Sem local",
+      quantidade: qtd,
+      valor: qtd * (r.produtoId != null ? custos.get(r.produtoId) ?? 0 : 0),
+    };
   });
-  return rows.map((r) => ({
-    produtoId: r.produtoId,
-    produto: r.produtoNome ?? "Sem nome",
-    familia: r.familiaNome ?? "Sem família",
-    marca: r.marcaNome ?? "Sem marca",
-    local: r.localNome ?? "Sem local",
-    quantidade: Number(r.quantidade ?? 0),
-    valor: Number(r.vrSaldo ?? 0),
-  }));
 }
 
 export interface PontoSerie {
@@ -497,8 +511,10 @@ export async function queryIndicadoresAvancadosEstoque(
   const desde30 = clampDateAoCorte(new Date(hoje.getTime() - 30 * MS));
   const diasJanela = Math.max(1, Math.round((hoje.getTime() - desde30.getTime()) / MS));
 
-  const [saldos, vendidos, seriais] = await Promise.all([
-    prisma.fatoEstoqueSaldo.findMany({ select: { quantidade: true, vrSaldo: true, produtoId: true } }),
+  const [saldos, custos, vendidos, seriais] = await Promise.all([
+    prisma.fatoEstoqueSaldo.findMany({ select: { quantidade: true, produtoId: true } }),
+    // Mesma valorizacao a CUSTO do KPI: o giro e a cobertura sao lidos lado a lado com ele.
+    custoPorProduto(prisma),
     prisma.fatoNotaFiscalItem.findMany({
       where: { entradaSaida: "1", dataEmissao: { gte: desde30, lte: hoje } },
       select: { quantidade: true },
@@ -513,8 +529,9 @@ export async function queryIndicadoresAvancadosEstoque(
   let valorEstoque = 0;
   const produtos = new Set<number>();
   for (const s of saldos) {
-    estoqueQtd += Number(s.quantidade ?? 0);
-    valorEstoque += Number(s.vrSaldo ?? 0);
+    const qtd = Number(s.quantidade ?? 0);
+    estoqueQtd += qtd;
+    valorEstoque += qtd * (s.produtoId != null ? custos.get(s.produtoId) ?? 0 : 0);
     if (s.produtoId != null) produtos.add(s.produtoId);
   }
   const vendidoQtd = vendidos.reduce((acc, v) => acc + Number(v.quantidade ?? 0), 0);
