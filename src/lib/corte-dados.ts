@@ -1,19 +1,19 @@
 // src/lib/corte-dados.ts
 //
-// MARCO ZERO DA PLATAFORMA , a data a partir da qual existe dado confiavel.
+// DATA DE INICIO DAS ANALISES , de quando a plataforma passa a CONSIDERAR os dados.
+// Configuravel em Configuracao > Intervalos de sincronizacao (AppSetting `sync.corte_dados`).
 //
-// O Odoo tem documentos antigos que nao valem para a operacao atual: eles sujam
-// faturamento, estoque, contas e entregas. A plataforma so considera o que foi emitido a
-// partir do CORTE. A data e CONFIGURAVEL em Configuracao > Intervalos de sincronizacao
-// (AppSetting `sync.corte_dados`), e manda em TODAS as camadas:
+// E um FILTRO, nao uma faxina: o cache continua guardando todo o historico ingerido, e
+// NADA e apagado por causa desta data. Mover a data para tras faz o historico reaparecer na
+// hora, sem re-sync e sem perda; mover para frente estreita a janela de analise. A ingestao
+// tem corte tecnico proprio e fixo (worker/sync/corte.ts).
 //
-//   - sincronizacao: o worker so puxa do Odoo o que e >= ao corte (worker/sync/corte.ts);
-//   - purge: o que ficou no cache antes do corte e apagado (worker/limpa);
-//   - consultas: todo periodo e grampeado ao corte (metricas, diretoria, relatorios);
-//   - UI: o calendario nao deixa escolher data anterior ao corte;
-//   - agente Nex: perguntaram de antes do corte, ele diz que nao tem esse dado.
+// A data parametriza todas as camadas de LEITURA:
+//   - consultas: todo periodo e grampeado a ela (metricas, diretoria, relatorios);
+//   - UI: o calendario nao deixa escolher data anterior a ela;
+//   - agente Nex: pediram periodo anterior, ele responde a partir dela e avisa.
 //
-// Mudar a data na tela muda a plataforma inteira.
+// Mudar a data na tela reparametriza a plataforma inteira, sem deploy e sem tocar no dado.
 
 import type { PrismaClient } from "@/generated/prisma/client";
 

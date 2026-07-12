@@ -24,5 +24,5 @@ const POR_MODELO = new Map(MODEL_CATALOG.map((e) => [e.odooModel, e]));
 export function corteDomain(odooModel: string): Array<[string, string, string]> {
   const entry = POR_MODELO.get(odooModel);
   if (!entry?.corte) return [];
-  return [[entry.corte.odoo, ">=", corteAtual()]];
+  return [[entry.corte.odoo, ">=", CORTE_DADOS_ISO]];
 }
