@@ -1,5 +1,7 @@
 // src/lib/reports/periodo.ts
 
+import { clampMesAoCorte, corteAtual } from "@/lib/corte-dados";
+
 /** Presets escolhíveis na barra de período. */
 export type PeriodoPreset = "mes" | "3meses" | "ano" | "tudo" | "custom";
 
@@ -55,24 +57,39 @@ export function mesCorrente(hoje: Date = new Date()): string {
 /**
  * Resolve searchParams + padrão do catálogo num período concreto.
  * Aplica todas as regras da spec §"Regras de resolverPeriodo".
+ *
+ * O início SEMPRE é grampeado ao mês da data de início das análises (`corte`). Sem isso o
+ * rótulo da barra mentia: o preset "Ano" nascia em janeiro, o calendário deixava escolher
+ * um mês pré-corte, a query grampeava por baixo (o dado saía certo) e a tela continuava
+ * anunciando "jan..jul". A janela mostrada tem que ser a janela lida.
  */
 export function resolverPeriodo(
   params: { periodo?: string; de?: string; ate?: string },
   padrao: PeriodoPresetPadrao,
   hoje: Date = new Date(),
+  corte: string = corteAtual(),
 ): PeriodoResolvido {
   const corrente = mesCorrente(hoje);
   const idxCorrente = mesParaIndice(corrente);
+  // Piso: o mês do corte. O mês entra INTEIRO (o dia é aplicado na query, que também
+  // grampeia por `data`), então uma barra de meses não consegue ser mais fina que isso.
+  const mesDoCorte = corte.slice(0, 7);
+  const idxPiso = mesParaIndice(mesDoCorte);
+  const comPiso = (mes: string): string =>
+    mesParaIndice(mes) < idxPiso ? mesDoCorte : mes;
 
   const resolverPreset = (preset: PeriodoPresetPadrao): PeriodoResolvido => {
-    if (preset === "mes") return { preset, de: corrente, ate: corrente };
+    if (preset === "mes") return { preset, de: comPiso(corrente), ate: corrente };
     if (preset === "3meses") {
-      return { preset, de: indiceParaMes(idxCorrente - 2), ate: corrente };
+      return { preset, de: comPiso(indiceParaMes(idxCorrente - 2)), ate: corrente };
     }
     if (preset === "ano") {
-      return { preset, de: `${hoje.getUTCFullYear()}-01`, ate: corrente };
+      return { preset, de: comPiso(`${hoje.getUTCFullYear()}-01`), ate: corrente };
     }
-    return { preset: "tudo", de: null, ate: null };
+    // "tudo" não é o cache inteiro: é tudo o que a plataforma analisa, ou seja, do corte
+    // para cá. O teto continua ABERTO (`ate: null`) de propósito: documento com data futura
+    // (vencimento, previsão de entrega) tem que continuar entrando.
+    return { preset: "tudo", de: mesDoCorte, ate: null };
   };
 
   const p = params.periodo;
@@ -86,6 +103,8 @@ export function resolverPeriodo(
     if (di > ai) [di, ai] = [ai, di];
     if (di > idxCorrente) di = idxCorrente;
     if (ai > idxCorrente) ai = idxCorrente;
+    if (di < idxPiso) di = idxPiso;
+    if (ai < idxPiso) ai = idxPiso;
     return { preset: "custom", de: indiceParaMes(di), ate: indiceParaMes(ai) };
   }
   if (p === "mes" || p === "3meses" || p === "ano" || p === "tudo") {

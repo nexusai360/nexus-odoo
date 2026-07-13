@@ -189,9 +189,14 @@ export async function querySeriais(
   hoje: Date,
   limit = 50,
 ): Promise<{ linhas: SerialLinha[]; total: number }> {
-  const total = await prisma.fatoSerial.count({ where: { serial: { not: null } } });
+  // "Em estoque" = SEM data de saída. O `where` não tinha esse filtro, embora o título e a
+  // idade em dias dependam dele: em produção, 4.984 dos 8.860 seriais já haviam saído, e a
+  // tela contava todos , o total aparecia com mais que o dobro do real (3.876). É o mesmo
+  // critério que `queryIndicadoresAvancadosEstoque` já usava para a idade média.
+  const emEstoque = { serial: { not: null }, dataSaida: null };
+  const total = await prisma.fatoSerial.count({ where: emEstoque });
   const rows = await prisma.fatoSerial.findMany({
-    where: { serial: { not: null } },
+    where: emEstoque,
     orderBy: [{ dataCompra: "desc" }],
     take: limit,
     select: {

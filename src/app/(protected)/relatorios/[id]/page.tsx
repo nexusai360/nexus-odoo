@@ -41,7 +41,7 @@ interface PageProps {
 
 export default async function RelatorioPage({ params, searchParams }: PageProps) {
   // A data de inicio das analises precisa estar hidratada ANTES de qualquer consulta.
-  await aquecerCorte();
+  const corte = await aquecerCorte();
   const { id } = await params;
   const sp = await searchParams;
   const report = getReport(id);
@@ -57,20 +57,18 @@ export default async function RelatorioPage({ params, searchParams }: PageProps)
 
   const freshness = await reportFreshness(prisma, report);
 
-  // Período resolvido uma vez por relatório (só nos relatórios temporais).
+  // Período resolvido uma vez por relatório (só nos relatórios temporais), já grampeado à
+  // data de início das análises (o `aquecerCorte` acima deixou o valor fresco em memória).
   const periodo: PeriodoResolvido | null = report.temporal
-    ? resolverPeriodo(sp, report.temporal.periodoPadrao)
+    ? resolverPeriodo(sp, report.temporal.periodoPadrao, new Date(), corte)
     : null;
 
-  // Mês mais antigo com dado , trava o calendário personalizado para não
-  // permitir escolher um período sem dado nenhum (ex.: 1990).
-  let periodoMin: string | null = null;
-  if (periodo) {
-    const agg = await prisma.fatoEstoqueMovimento.aggregate({
-      _min: { mes: true },
-    });
-    periodoMin = agg._min.mes ?? null;
-  }
+  // Piso do calendário personalizado: o mês da DATA DE INÍCIO DAS ANÁLISES.
+  // Antes era o mês mais antigo do CACHE (`_min(fatoEstoqueMovimento.mes)`), o que deixava
+  // escolher janeiro quando a plataforma só analisa a partir de março: a query grampeava por
+  // baixo (o dado saía certo) e a barra continuava anunciando "jan..jul". A janela mostrada
+  // tem que ser a janela lida.
+  const periodoMin: string | null = periodo ? corte.slice(0, 7) : null;
 
   // Uma chamada de query por seção; cada seção parseia seus próprios filtros.
   const secoes: SecaoComDados[] = [];
