@@ -33,6 +33,27 @@ function makePrisma(
     fatoPedido: { findMany: jest.fn().mockResolvedValue(pedidos) },
     fatoParceiro: { findMany: jest.fn().mockResolvedValue(parceiros) },
     fatoPedidoHistorico: { findMany: jest.fn().mockResolvedValue(historico) },
+    // Sem o marcador, as consultas caem no valor cheio , e os testes abaixo comparam
+    // justamente contra o vr_produtos do cabecalho, que e a base cheia.
+    fatoBuildState: { findUnique: jest.fn().mockResolvedValue(null) },
+    // Um item por pedido, com custo unitario 1: assim o valor a atender de cada pedido
+    // cai exatamente no `vrProdutos` que os testes abaixo ja esperavam, e eles seguem
+    // medindo o que sempre mediram (agrupamento por UF, etapa, prazo), sem virar teste
+    // de aritmetica de custo , isso e testado a parte.
+    fatoPedidoItem: {
+      findMany: jest.fn().mockResolvedValue(
+        pedidos.map((p) => ({
+          pedidoId: p.odooId,
+          produtoId: 1,
+          quantidade: p.vrProdutos ?? 0,
+          quantidadeAAtender: null,
+          vrProdutos: p.vrProdutos ?? 0,
+        })),
+      ),
+    },
+    fatoProduto: {
+      findMany: jest.fn().mockResolvedValue([{ odooId: 1, precoCusto: 1 }]),
+    },
   } as unknown as Parameters<typeof queryDemandasPorUf>[0];
 }
 

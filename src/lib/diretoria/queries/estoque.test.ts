@@ -20,6 +20,12 @@ describe("queryIndicadoresEstoque (A4)", () => {
   // Estoque vale a CUSTO: quantidade x preco_custo do produto (nao o vr_saldo do Odoo).
   it("valoriza a custo, divide pelo índice e só conta o saldo POSITIVO", async () => {
     const prisma = {
+      fatoEstoqueLocal: {
+        count: jest.fn().mockResolvedValue(389),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ odooId: 1 }, { odooId: 2 }, { odooId: 3 }]),
+      },
       fatoEstoqueSaldo: {
         // O `where: { quantidade: { gt: 0 } }` fica no código: o mock devolve só o positivo.
         findMany: jest.fn().mockResolvedValue([
@@ -51,11 +57,22 @@ describe("queryIndicadoresEstoque (A4)", () => {
 
     // O saldo lido é só o positivo: zerado não é estoque, negativo é furo.
     const call = (prisma.fatoEstoqueSaldo.findMany as jest.Mock).mock.calls[0][0];
-    expect(call.where).toEqual({ quantidade: { gt: 0 } });
+    // So o saldo positivo E so os locais fisicos: o KPI nao soma o estoque Virtual nem
+    // o que esta em poder de terceiros.
+    expect(call.where).toEqual({
+      quantidade: { gt: 0 },
+      localId: { in: [1, 2, 3] },
+    });
   });
 
   it("produto com saldo e sem custo cadastrado nao inventa valor, e vira gap visivel", async () => {
     const prisma = {
+      fatoEstoqueLocal: {
+        count: jest.fn().mockResolvedValue(389),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ odooId: 1 }, { odooId: 2 }, { odooId: 3 }]),
+      },
       fatoEstoqueSaldo: {
         findMany: jest.fn().mockResolvedValue([
           { quantidade: 4, produtoId: 7, localId: 1 },
@@ -73,6 +90,12 @@ describe("queryIndicadoresEstoque (A4)", () => {
 describe("queryEstoquePorFamilia (A5)", () => {
   it("agrupa valor por família, ordenado desc", async () => {
     const prisma = {
+      fatoEstoqueLocal: {
+        count: jest.fn().mockResolvedValue(389),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ odooId: 1 }, { odooId: 2 }, { odooId: 3 }]),
+      },
       fatoEstoqueSaldo: {
         findMany: jest.fn().mockResolvedValue([
           { familiaNome: "Cardio", quantidade: 2, produtoId: 1 }, // 2 x 50 = 100
@@ -102,6 +125,12 @@ describe("queryEstoquePorFamilia (A5)", () => {
 describe("queryComprasPorFornecedor (A8)", () => {
   it("agrupa notas de entrada por fornecedor", async () => {
     const prisma = {
+      fatoEstoqueLocal: {
+        count: jest.fn().mockResolvedValue(389),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ odooId: 1 }, { odooId: 2 }, { odooId: 3 }]),
+      },
       fatoDfe: {
         findMany: jest.fn().mockResolvedValue([
           { fornecedorNome: "Fornecedor X", vrNf: 1000 },
@@ -120,6 +149,12 @@ describe("queryComprasPorFornecedor (A8)", () => {
   // todo o fato_dfe, inclusive notas anteriores à data de início das análises.
   it("sem período, aplica o piso da data de início das análises (nada de where vazio)", async () => {
     const prisma = {
+      fatoEstoqueLocal: {
+        count: jest.fn().mockResolvedValue(389),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ odooId: 1 }, { odooId: 2 }, { odooId: 3 }]),
+      },
       fatoDfe: { findMany: jest.fn().mockResolvedValue([]) },
     } as unknown as Parameters<typeof queryComprasPorFornecedor>[0];
     await queryComprasPorFornecedor(prisma, {});
@@ -129,6 +164,12 @@ describe("queryComprasPorFornecedor (A8)", () => {
 
   it("período anterior ao corte é grampeado, e o último dia entra inteiro", async () => {
     const prisma = {
+      fatoEstoqueLocal: {
+        count: jest.fn().mockResolvedValue(389),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ odooId: 1 }, { odooId: 2 }, { odooId: 3 }]),
+      },
       fatoDfe: { findMany: jest.fn().mockResolvedValue([]) },
     } as unknown as Parameters<typeof queryComprasPorFornecedor>[0];
     await queryComprasPorFornecedor(prisma, { periodoDe: "2023-01-01", periodoAte: "2026-06-30" });
@@ -141,6 +182,12 @@ describe("queryComprasPorFornecedor (A8)", () => {
 describe("queryEstoqueGranular (filtros globais)", () => {
   it("valoriza a CUSTO (quantidade x preco_custo), igual ao KPI, e normaliza os nomes", async () => {
     const prisma = {
+      fatoEstoqueLocal: {
+        count: jest.fn().mockResolvedValue(389),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ odooId: 1 }, { odooId: 2 }, { odooId: 3 }]),
+      },
       fatoEstoqueSaldo: {
         findMany: jest.fn().mockResolvedValue([
           { produtoId: 1, produtoNome: "Esteira X", familiaNome: "Cardio", marcaNome: "Matrix", localNome: "SP", quantidade: 2 },
@@ -160,6 +207,12 @@ describe("queryEstoqueGranular (filtros globais)", () => {
 describe("queryComprasSerie (A-10, série temporal)", () => {
   it("agrega NF de entrada por dia e por mês, ordenado crescente", async () => {
     const prisma = {
+      fatoEstoqueLocal: {
+        count: jest.fn().mockResolvedValue(389),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ odooId: 1 }, { odooId: 2 }, { odooId: 3 }]),
+      },
       fatoDfe: {
         findMany: jest.fn().mockResolvedValue([
           { dataEmissao: new Date("2026-06-22T10:00:00Z"), vrNf: 1000 },
@@ -186,6 +239,12 @@ describe("queryComprasSerie (A-10, série temporal)", () => {
 
   it("retorna séries vazias quando não há notas", async () => {
     const prisma = {
+      fatoEstoqueLocal: {
+        count: jest.fn().mockResolvedValue(389),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ odooId: 1 }, { odooId: 2 }, { odooId: 3 }]),
+      },
       fatoDfe: { findMany: jest.fn().mockResolvedValue([]) },
     } as unknown as Parameters<typeof queryComprasSerie>[0];
     const r = await queryComprasSerie(prisma);
@@ -197,6 +256,12 @@ describe("queryComprasSerie (A-10, série temporal)", () => {
   // começava antes da data configurada na tela.
   it("a série começa na data de início das análises (piso no corte)", async () => {
     const prisma = {
+      fatoEstoqueLocal: {
+        count: jest.fn().mockResolvedValue(389),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ odooId: 1 }, { odooId: 2 }, { odooId: 3 }]),
+      },
       fatoDfe: { findMany: jest.fn().mockResolvedValue([]) },
     } as unknown as Parameters<typeof queryComprasSerie>[0];
     await queryComprasSerie(prisma);
@@ -208,6 +273,12 @@ describe("queryComprasSerie (A-10, série temporal)", () => {
 describe("queryCatalogoEstoque (A3)", () => {
   it("agrega por produto valorizando a CUSTO e conta locais distintos", async () => {
     const prisma = {
+      fatoEstoqueLocal: {
+        count: jest.fn().mockResolvedValue(389),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ odooId: 1 }, { odooId: 2 }, { odooId: 3 }]),
+      },
       fatoEstoqueSaldo: {
         findMany: jest.fn().mockResolvedValue([
           { produtoId: 1, produtoNome: "Esteira X", familiaNome: "Cardio", marcaNome: "Matrix", localId: 10, quantidade: 2 },
@@ -239,6 +310,12 @@ describe("queryCatalogoEstoque (A3)", () => {
 
   it("agrupa por nome quando produtoId é null (sem id, sem custo: valor zero)", async () => {
     const prisma = {
+      fatoEstoqueLocal: {
+        count: jest.fn().mockResolvedValue(389),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ odooId: 1 }, { odooId: 2 }, { odooId: 3 }]),
+      },
       fatoEstoqueSaldo: {
         findMany: jest.fn().mockResolvedValue([
           { produtoId: null, produtoNome: "Avulso", familiaNome: null, marcaNome: null, localId: null, quantidade: 1 },
@@ -259,6 +336,12 @@ describe("queryIndicadoresAvancadosEstoque (A4)", () => {
   const hoje = new Date("2026-06-28T00:00:00Z");
   it("calcula idade média, cobertura e giro", async () => {
     const prisma = {
+      fatoEstoqueLocal: {
+        count: jest.fn().mockResolvedValue(389),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ odooId: 1 }, { odooId: 2 }, { odooId: 3 }]),
+      },
       fatoEstoqueSaldo: { findMany: jest.fn().mockResolvedValue([
         { quantidade: 300, produtoId: 1 },
         { quantidade: 300, produtoId: 2 },
@@ -285,6 +368,12 @@ describe("queryIndicadoresAvancadosEstoque (A4)", () => {
 
   it("cobertura/giro null quando não há demanda/estoque", async () => {
     const prisma = {
+      fatoEstoqueLocal: {
+        count: jest.fn().mockResolvedValue(389),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ odooId: 1 }, { odooId: 2 }, { odooId: 3 }]),
+      },
       fatoEstoqueSaldo: { findMany: jest.fn().mockResolvedValue([]) },
       fatoProduto: { findMany: jest.fn().mockResolvedValue([]) },
       fatoNotaFiscalItem: { findMany: jest.fn().mockResolvedValue([]) },
@@ -299,6 +388,12 @@ describe("queryIndicadoresAvancadosEstoque (A4)", () => {
 
   it("janela de demanda dos 30 dias nunca começa antes da data de início das análises", async () => {
     const prisma = {
+      fatoEstoqueLocal: {
+        count: jest.fn().mockResolvedValue(389),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ odooId: 1 }, { odooId: 2 }, { odooId: 3 }]),
+      },
       fatoEstoqueSaldo: { findMany: jest.fn().mockResolvedValue([]) },
       fatoProduto: { findMany: jest.fn().mockResolvedValue([]) },
       fatoNotaFiscalItem: { findMany: jest.fn().mockResolvedValue([]) },
@@ -312,6 +407,12 @@ describe("queryIndicadoresAvancadosEstoque (A4)", () => {
 
   it("com a janela encurtada pelo corte, a demanda diária usa os dias realmente cobertos", async () => {
     const prisma = {
+      fatoEstoqueLocal: {
+        count: jest.fn().mockResolvedValue(389),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ odooId: 1 }, { odooId: 2 }, { odooId: 3 }]),
+      },
       fatoEstoqueSaldo: { findMany: jest.fn().mockResolvedValue([
         { quantidade: 100, produtoId: 1 },
       ]) },
@@ -327,6 +428,12 @@ describe("queryIndicadoresAvancadosEstoque (A4)", () => {
 
   it("saldo e idade média continuam sem piso de data (foto do estoque de agora)", async () => {
     const prisma = {
+      fatoEstoqueLocal: {
+        count: jest.fn().mockResolvedValue(389),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ odooId: 1 }, { odooId: 2 }, { odooId: 3 }]),
+      },
       fatoEstoqueSaldo: { findMany: jest.fn().mockResolvedValue([]) },
       fatoProduto: { findMany: jest.fn().mockResolvedValue([]) },
       fatoNotaFiscalItem: { findMany: jest.fn().mockResolvedValue([]) },
@@ -345,6 +452,12 @@ describe("queryResumoCompras (A8)", () => {
   const hoje = new Date("2026-06-28T00:00:00Z");
   it("agrega por fornecedor, soma totais e conta ativas/atrasadas", async () => {
     const prisma = {
+      fatoEstoqueLocal: {
+        count: jest.fn().mockResolvedValue(389),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ odooId: 1 }, { odooId: 2 }, { odooId: 3 }]),
+      },
       fatoCompra: {
         findMany: jest.fn().mockResolvedValue([
           { fornecedorNome: "Johnson", vrNf: 1000, vrPago: 400, recebida: false, dataPrevista: null },
@@ -366,6 +479,12 @@ describe("queryResumoCompras (A8)", () => {
   // de início das análises (era o mesmo erro já corrigido nos títulos financeiros).
   it("só soma ordens de compra a partir da data de início das análises", async () => {
     const prisma = {
+      fatoEstoqueLocal: {
+        count: jest.fn().mockResolvedValue(389),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ odooId: 1 }, { odooId: 2 }, { odooId: 3 }]),
+      },
       fatoCompra: { findMany: jest.fn().mockResolvedValue([]) },
     } as unknown as Parameters<typeof queryResumoCompras>[0];
     await queryResumoCompras(prisma, hoje);
@@ -380,6 +499,12 @@ describe("queryComprasAtivas (A7)", () => {
 
   it("soma valor, conta total e calcula contagem regressiva quando há data prevista", async () => {
     const prisma = {
+      fatoEstoqueLocal: {
+        count: jest.fn().mockResolvedValue(389),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ odooId: 1 }, { odooId: 2 }, { odooId: 3 }]),
+      },
       fatoCompra: {
         findMany: jest.fn().mockResolvedValue([
           {
@@ -415,6 +540,12 @@ describe("queryComprasAtivas (A7)", () => {
 
   it("data prevista null → diasRestantes/statusPrazo null (sem previsão)", async () => {
     const prisma = {
+      fatoEstoqueLocal: {
+        count: jest.fn().mockResolvedValue(389),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ odooId: 1 }, { odooId: 2 }, { odooId: 3 }]),
+      },
       fatoCompra: {
         findMany: jest.fn().mockResolvedValue([
           {
@@ -439,6 +570,12 @@ describe("queryComprasAtivas (A7)", () => {
   // OC aberta e antiga (pré-corte) não pode aparecer na tela nem inflar o valor em aberto.
   it("só lista ordens de compra a partir da data de início das análises", async () => {
     const prisma = {
+      fatoEstoqueLocal: {
+        count: jest.fn().mockResolvedValue(389),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ odooId: 1 }, { odooId: 2 }, { odooId: 3 }]),
+      },
       fatoCompra: { findMany: jest.fn().mockResolvedValue([]) },
     } as unknown as Parameters<typeof queryComprasAtivas>[0];
     await queryComprasAtivas(prisma, hoje);
@@ -457,6 +594,12 @@ describe("queryEstoqueDisponivelDiretoria (A12)", () => {
   ) {
     return {
       fatoEstoqueSaldo: { findMany: jest.fn().mockResolvedValue(saldos) },
+      fatoEstoqueLocal: {
+        count: jest.fn().mockResolvedValue(389),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ odooId: 1 }, { odooId: 2 }, { odooId: 3 }]),
+      },
       fatoPedido: { findMany: jest.fn().mockResolvedValue(abertos) },
       fatoPedidoItem: { findMany: jest.fn().mockResolvedValue(itens) },
     } as unknown as Parameters<typeof queryEstoqueDisponivelDiretoria>[0];
@@ -511,6 +654,10 @@ describe("queryEstoqueDisponivelDiretoria (A12)", () => {
     expect(pedidoCall.where.dataOrcamento.gte).toEqual(CORTE);
     expect(pedidoCall.where.bucketDemanda ?? pedidoCall.where.OR).toBeDefined();
     const saldoCall = (prisma.fatoEstoqueSaldo.findMany as jest.Mock).mock.calls[0][0];
-    expect(saldoCall.where).toBeUndefined();
+    // O saldo continua sem piso de data (é foto do agora: o que está no armazém hoje
+    // está no armazém hoje). Mas filtra por LOCAL: só o estoque que é nosso e está em
+    // casa entra no disponível , antes o Virtual e o de terceiros entravam junto.
+    expect(saldoCall.where.dataOrcamento).toBeUndefined();
+    expect(saldoCall.where).toEqual({ localId: { in: [1, 2, 3] } });
   });
 });
