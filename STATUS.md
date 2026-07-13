@@ -1,5 +1,58 @@
 # STATUS — nexus-odoo
 
+> ## 2026-07-13 (DATA DE INÍCIO DAS ANÁLISES + 3 ERROS DE NÚMERO , tudo em produção)
+>
+> Perícia da plataforma inteira contra a configuração **"Analisar dados a partir de"**
+> (`sync.corte_dados`, hoje 16/03/2026), tratando-a como o que ela é: um **parâmetro
+> variável** , muda na tela e a base de cálculo muda junto, sem deploy. Escopo periciado:
+> **128 tools do MCP**, 6 relatórios 1.0 + 22 fontes do 2.0, todos os KPIs da Diretoria, o
+> calendário e o prompt do Nex. Detalhe em `docs/RADAR.md` (**R-corte-pericia**).
+>
+> **Os 3 erros de número achados no caminho (todos corrigidos e medidos em produção):**
+>
+> 1. **O Nex respondia faturamento 65% acima do dashboard** (`R-intragrupo`). Regressão do
+>    PR #166: a tool soma toda saída autorizada, mas a marcação de intragrupo vinha de um
+>    loader que **exclui a operação "venda interna"** , justamente onde mora a venda entre
+>    empresas do grupo. A eliminação caiu para **R$ 0,02**: o agente dizia "receita real
+>    R$ 102,1 mi" e a tela dizia R$ 61,9 mi. Hoje, em produção: intragrupo **R$ 39,3 mi**,
+>    receita real **R$ 62,8 mi**.
+> 2. **"Tudo" mostrava MENOS que "este mês"** em a receber e a pagar (`R-janela-cobranca`,
+>    relatado pelo dono). A janela de cobrança tira o teto do FIM do período, e o preset
+>    "Tudo" resolve o fim como HOJE , virava "só o vencido". **Sem fim de período não há
+>    teto** (carteira inteira em aberto). Validado em prod: mês < ano < tudo.
+> 3. **Dois KPIs de estoque**: o card "Valor em estoque" **mudava de valor** ao aplicar filtro
+>    cruzado (a recomputação ignorava o índice configurado), e a lista "seriais em estoque"
+>    **contava serial que já saiu** (4.984 dos 8.860 , o total era mais que o dobro do real).
+>
+> **Prompt do Nex:** a data é injetada por turno (certo), mas a **seção que ensina o agente a
+> usá-la** morava no texto editável. Em produção o `identity_base` do banco **ainda tem o texto
+> antigo** ("apenas dados de 2026 em diante"); só não vale porque `uses_code_defaults = true`.
+> Bastava um "Salvar" na tela do prompt para o Nex voltar a mentir. A regra saiu do texto
+> editável (`src/lib/agent/prompt/regra-corte.ts`) e agora é **anexada sempre**, por último.
+>
+> **Infra (madrugada):** worker com teto de 3 GB **medido** (pico real do ciclo: 1,9 GB , o
+> dobro do que se supunha); o deploy passou a **reconciliar env/resources/labels do compose**
+> (antes só trocava a imagem, então o compose era papel); lock do ciclo com **dono e
+> heartbeat** (restart não prende mais a sync por 15 min). Lição cara: **em compose, OMITIR é
+> APAGAR** , publicar o compose apagou o label do auto-deploy e o Shepherd parou de atualizar
+> prod, em silêncio (restaurado em ~2 min).
+>
+> **PRs:** #183, #184, #185 , todos mergeados e em produção.
+>
+> ### Pendências (decisão do dono, adiadas por ele)
+> - **R-tempo**: KPI de tempo médio das respostas no topo do Backtest (o tempo por avaliação já
+>   existe). Pequeno; depende de decidir o que mostrar (média? p50/p95?).
+> - **R-ajustes**: gravar o status ANTES de cada ajuste, para o histórico mostrar a transição
+>   em todos (hoje só no mais recente). Pequeno-médio, cosmético, e agora com 2 escritores.
+> - **Aviso de hidratação do React** (`/dashboard`, `/integracoes`): **provável falso
+>   positivo** (extensão de browser no `<body>`). **Reproduzir em janela anônima ANTES** de
+>   tocar em código.
+> - **Decisões de produto em aberto** (em `R-corte-pericia`): "dias parado" vem pronto do Odoo
+>   e ignora a janela; `bi_consulta_avancada` executa SQL do agente sem injetar o piso;
+>   `fato_cotacao` não tem coluna de data (hoje vazio, vira vazamento quando entrar em uso).
+
+---
+
 > **2026-07-12 (PERÍCIA DOS KPIs , tudo em produção).**
 >
 > **Erro de raiz corrigido:** o destinatário de TODO documento do Odoo da Tauga
