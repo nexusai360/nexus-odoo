@@ -48,7 +48,7 @@ export default async function DiretoriaEstoquePage() {
     queryComprasAtivas(prisma, hoje, 200),
     queryResumoCompras(prisma, hoje),
     queryIndicadoresAvancadosEstoque(prisma, hoje),
-    querySeriais(prisma, hoje, 200),
+    querySeriais(prisma, 200),
   ]);
   const [comprasSerie, granular, estoqueDisponivel] = await Promise.all([
     queryComprasSerie(prisma),

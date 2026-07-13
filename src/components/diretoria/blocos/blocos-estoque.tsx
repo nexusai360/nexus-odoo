@@ -190,12 +190,37 @@ function Catalogo({ d }: { d: EstoqueData }) {
 }
 
 function Seriais({ d }: { d: EstoqueData }) {
-  const linhas = d.seriais.linhas.map((s) => ({ serial: s.serial ?? DASH, produto: s.produto ?? DASH }));
+  // Só os seriais que existem em estoque, com o depósito onde estão e o saldo. Antes esta
+  // tabela listava todo serial já cadastrado no Odoo, sem lugar e sem saldo.
+  const linhas = d.seriais.linhas.map((s) => ({
+    serial: s.serial,
+    produto: s.produto ?? DASH,
+    local: s.local ?? DASH,
+    saldo: s.saldo,
+  }));
   const colunas: ColumnDef<(typeof linhas)[number]>[] = [
     { key: "serial", header: "Serial", tipo: "texto" },
     { key: "produto", header: "Produto", tipo: "texto" },
+    { key: "local", header: "Local de estoque", tipo: "texto" },
+    { key: "saldo", header: "Saldo", tipo: "numero" },
   ];
-  return <DataTable columns={colunas} rows={linhas} searchable compactoInicial alturaFluida exportFilename="seriais" estado={linhas.length === 0 ? "vazio" : "ok"} />;
+  return (
+    <div className="flex h-full flex-col gap-2">
+      <p className="text-xs text-[var(--muted-foreground)]">
+        {d.seriais.total.toLocaleString("pt-BR")} seriais em estoque próprio, com saldo.
+        Mostrando os {linhas.length} primeiros.
+      </p>
+      <DataTable
+        columns={colunas}
+        rows={linhas}
+        searchable
+        compactoInicial
+        alturaFluida
+        exportFilename="seriais"
+        estado={linhas.length === 0 ? "vazio" : "ok"}
+      />
+    </div>
+  );
 }
 
 /** Rótulo + cor de tag a partir do status de prazo da compra. */

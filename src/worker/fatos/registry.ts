@@ -45,6 +45,7 @@ import { rebuildFatoCompra } from "./fato-compra";
 import { rebuildFatoPedidoItem } from "./fato-pedido-item";
 import { rebuildFatoPedidoClassificacao } from "./fato-pedido-classificacao";
 import { rebuildFatoEstoqueLocal } from "./fato-estoque-local";
+import { rebuildFatoSerialSaldo } from "./fato-serial-saldo";
 
 export interface FatoBuilderEntry {
   nome: string;
@@ -57,6 +58,9 @@ export const FATO_BUILDERS: FatoBuilderEntry[] = [
   // fato_serial_saldo faz join nele, e as queries de estoque filtram por ele.
   { nome: "fato_estoque_local", cycle: "snapshot", run: rebuildFatoEstoqueLocal },
   { nome: "fato_estoque_saldo", cycle: "snapshot", run: rebuildFatoEstoqueSaldo },
+  // Serial COM local e saldo. Depende da classificacao de locais (acima) e de
+  // fato_produto (custo), entao vem depois deles.
+  { nome: "fato_serial_saldo", cycle: "snapshot", run: rebuildFatoSerialSaldo },
   { nome: "fato_estoque_movimento", cycle: "snapshot", run: rebuildFatoEstoqueMovimento },
   { nome: "fato_produto_parado", cycle: "snapshot", run: rebuildFatoProdutoParado },
   { nome: "fato_financeiro_saldo", cycle: "snapshot", run: rebuildFatoFinanceiroSaldo },

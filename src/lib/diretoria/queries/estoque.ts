@@ -202,56 +202,56 @@ export function queryEstoquePorMarca(prisma: PrismaClient) {
 }
 
 export interface SerialLinha {
-  serial: string | null;
+  serial: string;
   produto: string | null;
   local: string | null;
+  saldo: number;
   valorCusto: number;
-  chegada: string | null;
-  saida: string | null;
-  idadeDias: number | null;
 }
 
 /**
- * A6 , Lista de seriais (em estoque = sem data de saída), com idade em dias.
- * Foto do estoque de agora: a data de início das análises não se aplica. `dataCompra` aqui
- * é a idade de um item que ESTÁ no armazém hoje, não um documento do histórico , grampear
- * esconderia justamente o item parado há mais tempo, que é o ponto do relatório.
+ * A6 , Seriais que estão em estoque, com o local onde estão e o saldo.
+ *
+ * Antes esta tela lia `fato_serial`, o cadastro de lote/série do Odoo: listava todo
+ * serial já registrado e não sabia onde ele estava. Dos 3.828 que aparecia como "em
+ * estoque", **100% tinham local nulo** , a fonte só preenche o local de quem já saiu. Era
+ * uma lista de números, sem saldo e sem lugar.
+ *
+ * Agora lê `fato_serial_saldo`, que nasce da rastreabilidade do saldo de hoje e casa
+ * serial + local + saldo. Só entra quem tem saldo positivo (zerado já saiu, negativo é
+ * furo de inventário), e o padrão é mostrar só o que está em casa.
+ *
+ * Foto do agora: a data de início das análises não se aplica (não há documento com data
+ * para filtrar , o que está no armazém hoje está no armazém hoje).
  */
 export async function querySeriais(
   prisma: PrismaClient,
-  hoje: Date,
-  limit = 50,
+  limit = 200,
+  classificacao: ClassificacaoLocal = "fisico",
 ): Promise<{ linhas: SerialLinha[]; total: number }> {
-  // "Em estoque" = SEM data de saída. O `where` não tinha esse filtro, embora o título e a
-  // idade em dias dependam dele: em produção, 4.984 dos 8.860 seriais já haviam saído, e a
-  // tela contava todos , o total aparecia com mais que o dobro do real (3.876). É o mesmo
-  // critério que `queryIndicadoresAvancadosEstoque` já usava para a idade média.
-  const emEstoque = { serial: { not: null }, dataSaida: null };
-  const total = await prisma.fatoSerial.count({ where: emEstoque });
-  const rows = await prisma.fatoSerial.findMany({
-    where: emEstoque,
-    orderBy: [{ dataCompra: "desc" }],
-    take: limit,
-    select: {
-      serial: true,
-      produtoNome: true,
-      localNome: true,
-      valorCusto: true,
-      dataCompra: true,
-      dataSaida: true,
-    },
-  });
-  const MS = 86_400_000;
+  const where = { classificacao };
+  const [total, rows] = await Promise.all([
+    prisma.fatoSerialSaldo.count({ where }),
+    prisma.fatoSerialSaldo.findMany({
+      where,
+      orderBy: [{ localNome: "asc" }, { produtoNome: "asc" }, { serial: "asc" }],
+      take: limit,
+      select: {
+        serial: true,
+        produtoNome: true,
+        localNome: true,
+        saldo: true,
+        valorCusto: true,
+      },
+    }),
+  ]);
+
   const linhas = rows.map((r) => ({
     serial: r.serial,
     produto: r.produtoNome,
     local: r.localNome,
+    saldo: Number(r.saldo ?? 0),
     valorCusto: Number(r.valorCusto ?? 0),
-    chegada: r.dataCompra ? r.dataCompra.toISOString().slice(0, 10) : null,
-    saida: r.dataSaida ? r.dataSaida.toISOString().slice(0, 10) : null,
-    idadeDias: r.dataCompra
-      ? Math.floor((hoje.getTime() - r.dataCompra.getTime()) / MS)
-      : null,
   }));
   return { linhas, total };
 }
@@ -582,7 +582,7 @@ export async function queryIndicadoresAvancadosEstoque(
   const diasJanela = Math.max(1, Math.round((hoje.getTime() - desde30.getTime()) / MS));
 
   const fisico = await localIdsPorClassificacao(prisma, "fisico");
-  const [saldos, custos, vendidos, seriais] = await Promise.all([
+  const [saldos, custos, vendidos, seriaisSaldo] = await Promise.all([
     prisma.fatoEstoqueSaldo.findMany({ where: { quantidade: { gt: 0 }, ...whereLocal(fisico) }, select: { quantidade: true, produtoId: true } }),
     // Mesma valorizacao a CUSTO do KPI: o giro e a cobertura sao lidos lado a lado com ele.
     custoPorProduto(prisma),
@@ -590,11 +590,22 @@ export async function queryIndicadoresAvancadosEstoque(
       where: { entradaSaida: "1", dataEmissao: { gte: desde30, lte: hoje } },
       select: { quantidade: true },
     }),
-    prisma.fatoSerial.findMany({
-      where: { dataSaida: null, dataCompra: { not: null } },
-      select: { dataCompra: true },
+    // Os seriais que ESTÃO em estoque, pela mesma fonte que a tabela A-06 usa , senão a
+    // idade média seria calculada sobre uma lista de seriais e a tela mostraria outra.
+    // A data de compra só existe no cadastro de lote/série, então cruzamos as duas: a
+    // rastreabilidade diz quem está em casa, o cadastro diz desde quando.
+    prisma.fatoSerialSaldo.findMany({
+      where: { classificacao: "fisico" },
+      select: { serial: true },
     }),
   ]);
+  const seriaisEmCasa = seriaisSaldo.map((s) => s.serial);
+  const seriais = seriaisEmCasa.length
+    ? await prisma.fatoSerial.findMany({
+        where: { serial: { in: seriaisEmCasa }, dataCompra: { not: null } },
+        select: { dataCompra: true },
+      })
+    : [];
 
   let estoqueQtd = 0;
   let valorEstoque = 0;

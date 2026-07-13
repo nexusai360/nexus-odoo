@@ -2095,6 +2095,36 @@ model FatoEstoqueLocal {
   @@map("fato_estoque_local")
 }
 
+/// Seriais que EXISTEM em estoque hoje, com o local onde estão e o saldo.
+///
+/// O `fato_serial` antigo lista todo serial já cadastrado e não sabe onde ele está: dos
+/// 3.828 "em estoque", 100% tinham local nulo (a fonte só preenche o local de quem já
+/// saiu). A tela mostrava uma lista de números sem saldo e sem lugar.
+///
+/// A fonte certa já estava no cache e ninguém lia: `raw_estoque_saldo_rastreabilidade_hoje`,
+/// que casa serial + local + saldo. Aqui ela vira fato, com a classificação do local
+/// junto (físico, demonstração ou fora), para a tela poder mostrar só o que está em casa.
+model FatoSerialSaldo {
+  id            String   @id @default(uuid()) @db.Uuid
+  odooId        Int      @unique @map("odoo_id")
+  serial        String
+  produtoId     Int?     @map("produto_id")
+  produtoNome   String?  @map("produto_nome")
+  localId       Int?     @map("local_id")
+  localNome     String?  @map("local_nome")
+  /// fisico | demonstracao | fora (vem de fato_estoque_local)
+  classificacao String
+  saldo         Decimal  @db.Decimal(18, 4)
+  valorCusto    Decimal? @map("valor_custo") @db.Decimal(18, 2)
+  atualizadoEm  DateTime @default(now()) @map("atualizado_em")
+
+  @@index([classificacao])
+  @@index([localId])
+  @@index([produtoId])
+  @@index([serial])
+  @@map("fato_serial_saldo")
+}
+
 /// Saldo de estoque por produto/local, enriquecido com valor e classificação.
 model FatoEstoqueSaldo {
   id           String   @id @default(uuid()) @db.Uuid
