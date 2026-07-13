@@ -13,6 +13,7 @@ import { clampDateAoCorte, corteAtualDate, janelaClampada } from "@/lib/corte-da
 import { diasRestantes, statusPrazo, type StatusPrazo } from "@/lib/diretoria/cores";
 import { VENDA_FUTURA } from "@/lib/fiscal/regras/venda-futura-policy";
 import { getIndiceEstoque, aplicarIndice } from "@/lib/indice-estoque";
+import { atendimentoSincronizado } from "@/lib/diretoria/atendimento-status";
 import type { ClassificacaoLocal } from "@/lib/estoque/classificacao-local";
 import {
   localIdsPorClassificacao,
@@ -744,8 +745,11 @@ export async function queryEstoqueDisponivelDiretoria(
   // documento): a data de início das análises não se aplica aqui , o que está no armazém
   // hoje está no armazém hoje, independente de quando entrou.
   const fisico = await localIdsPorClassificacao(prisma, "fisico");
+  // Mesma regra do KPI e da necessidade de compra: so o saldo POSITIVO. Antes esta query
+  // somava tambem as linhas negativas (furo de inventario), o que rebaixava o saldo do
+  // produto e fabricava "disponivel negativo" que nao existia.
   const saldos = await prisma.fatoEstoqueSaldo.findMany({
-    where: whereLocal(fisico),
+    where: { quantidade: { gt: 0 }, ...whereLocal(fisico) },
     select: { produtoId: true, produtoNome: true, quantidade: true },
   });
   const saldoMap = new Map<number, { nome: string | null; q: number }>();
@@ -779,22 +783,45 @@ export async function queryEstoqueDisponivelDiretoria(
     select: { odooId: true },
   });
   const ids = abertos.map((a) => a.odooId);
+  const status = await atendimentoSincronizado(prisma);
   const itens = ids.length
     ? await prisma.fatoPedidoItem.findMany({
         where: { pedidoId: { in: ids } },
-        select: { produtoId: true, quantidade: true },
+        select: {
+          produtoId: true,
+          produtoNome: true,
+          quantidade: true,
+          quantidadeAAtender: true,
+        },
       })
     : [];
   const demMap = new Map<number, number>();
+  const nomeDemanda = new Map<number, string | null>();
   for (const it of itens) {
     if (it.produtoId == null) continue;
-    demMap.set(it.produtoId, (demMap.get(it.produtoId) ?? 0) + Number(it.quantidade ?? 0));
+    // O que compromete o estoque é o que falta ENTREGAR, não o que foi pedido. Um pedido
+    // 90% entregue travava 100% do estoque, e o "disponível" ficava negativo à toa.
+    const cheia = Number(it.quantidade ?? 0);
+    // Piso em zero: o Odoo devolve "a atender" NEGATIVO quando entregaram mais do que
+    // foi pedido (o pedido 2305 pediu 2 e recebeu 3). Entregar a mais nao devolve
+    // mercadoria ao estoque, entao isso nao e demanda negativa , sem o piso, o excesso
+    // de um pedido abatia a falta de outro e a necessidade de compra saia menor.
+    const compromete = Math.max(
+      0,
+      status.ok ? Number(it.quantidadeAAtender ?? 0) : cheia,
+    );
+    demMap.set(it.produtoId, (demMap.get(it.produtoId) ?? 0) + compromete);
+    if (!nomeDemanda.has(it.produtoId)) nomeDemanda.set(it.produtoId, it.produtoNome);
   }
 
   const linhas: EstoqueDisponivelLinha[] = [];
   let negativos = 0;
   let unidadesAComprar = 0;
-  for (const [produtoId, { nome, q }] of saldoMap) {
+  const todosProdutos = new Set([...saldoMap.keys(), ...demMap.keys()]);
+  for (const produtoId of todosProdutos) {
+    const saldo = saldoMap.get(produtoId);
+    const q = saldo?.q ?? 0;
+    const nome = saldo?.nome ?? nomeDemanda.get(produtoId) ?? null;
     const demanda = demMap.get(produtoId) ?? 0;
     const disponivel = q - demanda;
     if (disponivel < 0) {
@@ -806,8 +833,176 @@ export async function queryEstoqueDisponivelDiretoria(
   linhas.sort((a, b) => a.disponivel - b.disponivel || (b.demanda - a.demanda));
   return {
     linhas: linhas.slice(0, limite),
-    produtos: saldoMap.size,
+    produtos: todosProdutos.size,
     negativos,
     unidadesAComprar,
+  };
+}
+
+export interface SaldoPorDeposito {
+  local: string;
+  saldo: number;
+}
+
+export interface NecessidadeCompraLinha {
+  produtoId: number;
+  produto: string | null;
+  /** Quanto ainda falta entregar dos pedidos em aberto. */
+  demanda: number;
+  /** Quanto existe nos depósitos próprios. */
+  saldoFisico: number;
+  /** O que falta comprar: demanda menos saldo (nunca negativo). */
+  falta: number;
+  /** Custo estimado da compra (falta x preço de custo). */
+  custoEstimado: number;
+  /** Onde a mercadoria que existe está , para decidir entre transferir e comprar. */
+  porDeposito: SaldoPorDeposito[];
+}
+
+/**
+ * A14 , Necessidade de compra.
+ *
+ * O que os clientes já pediram e ainda não recebemos, menos o que temos em casa:
+ *
+ *     falta(produto) = max(0, demanda_a_atender - saldo_fisico)
+ *
+ * A demanda é a mesma "demanda em aberta" canônica da plataforma (a regra definida com a
+ * Mariane: pedido de venda a cliente externo, aprovado, ainda sem NF ao consumidor final),
+ * mas contando o que **falta entregar**, não o que foi pedido.
+ *
+ * O saldo é só o dos depósitos próprios , o que está em poder de terceiros ou em local
+ * virtual não pode atender pedido nenhum.
+ *
+ * A conta é NACIONAL: a operação transfere mercadoria entre as filiais, então quem decide
+ * a compra olha o grupo inteiro. O drill-down por depósito existe para o time ver ONDE a
+ * mercadoria está e escolher entre transferir e comprar.
+ *
+ * Não há estoque mínimo nesta conta porque o Odoo do cliente não tem esse parâmetro
+ * preenchido (`fato_estoque_min_max` está vazia). Lead time e mercadoria em trânsito
+ * ficaram para uma segunda onda.
+ */
+export async function queryNecessidadeCompra(
+  prisma: PrismaClient,
+  limite = 100,
+): Promise<{
+  linhas: NecessidadeCompraLinha[];
+  produtosEmFalta: number;
+  unidadesAComprar: number;
+  custoTotalEstimado: number;
+  atendimentoSincronizado: boolean;
+}> {
+  const [fisico, status] = await Promise.all([
+    localIdsPorClassificacao(prisma, "fisico"),
+    atendimentoSincronizado(prisma),
+  ]);
+
+  const [saldos, custos, abertos] = await Promise.all([
+    prisma.fatoEstoqueSaldo.findMany({
+      where: { quantidade: { gt: 0 }, ...whereLocal(fisico) },
+      select: {
+        produtoId: true,
+        produtoNome: true,
+        quantidade: true,
+        localNome: true,
+      },
+    }),
+    custoPorProduto(prisma),
+    prisma.fatoPedido.findMany({
+      where: {
+        dataOrcamento: { gte: corteAtualDate() },
+        ...(VENDA_FUTURA.RESERVA_ESTOQUE_ATE_REMESSA
+          ? {
+              OR: [
+                { bucketDemanda: "ABERTA" },
+                { categoriaOperacao: "simples_faturamento" },
+              ],
+            }
+          : { bucketDemanda: "ABERTA" }),
+      },
+      select: { odooId: true },
+    }),
+  ]);
+
+  // Saldo por produto, e onde ele está.
+  const saldoMap = new Map<
+    number,
+    { nome: string | null; total: number; porLocal: Map<string, number> }
+  >();
+  for (const s of saldos) {
+    if (s.produtoId == null) continue;
+    const q = Number(s.quantidade ?? 0);
+    const cur = saldoMap.get(s.produtoId) ?? {
+      nome: s.produtoNome,
+      total: 0,
+      porLocal: new Map<string, number>(),
+    };
+    cur.total += q;
+    const local = s.localNome ?? "Sem local";
+    cur.porLocal.set(local, (cur.porLocal.get(local) ?? 0) + q);
+    if (!cur.nome && s.produtoNome) cur.nome = s.produtoNome;
+    saldoMap.set(s.produtoId, cur);
+  }
+
+  // Demanda por produto: o que falta entregar dos pedidos em aberto.
+  const ids = abertos.map((a) => a.odooId);
+  const itens = ids.length
+    ? await prisma.fatoPedidoItem.findMany({
+        where: { pedidoId: { in: ids } },
+        select: {
+          produtoId: true,
+          produtoNome: true,
+          quantidade: true,
+          quantidadeAAtender: true,
+        },
+      })
+    : [];
+
+  const demanda = new Map<number, { nome: string | null; q: number }>();
+  for (const it of itens) {
+    if (it.produtoId == null) continue;
+    const cheia = Number(it.quantidade ?? 0);
+    const falta = status.ok ? Number(it.quantidadeAAtender ?? 0) : cheia;
+    if (falta <= 0) continue;
+    const cur = demanda.get(it.produtoId);
+    if (cur) cur.q += falta;
+    else demanda.set(it.produtoId, { nome: it.produtoNome, q: falta });
+  }
+
+  const linhas: NecessidadeCompraLinha[] = [];
+  let unidadesAComprar = 0;
+  let custoTotalEstimado = 0;
+
+  for (const [produtoId, dem] of demanda) {
+    const saldo = saldoMap.get(produtoId);
+    const saldoFisico = saldo?.total ?? 0;
+    const falta = dem.q - saldoFisico;
+    if (falta <= 0) continue; // o que já temos em casa não precisa ser comprado
+
+    const custoUnit = custos.get(produtoId) ?? 0;
+    const custoEstimado = falta * custoUnit;
+    unidadesAComprar += falta;
+    custoTotalEstimado += custoEstimado;
+
+    linhas.push({
+      produtoId,
+      produto: dem.nome ?? saldo?.nome ?? null,
+      demanda: dem.q,
+      saldoFisico,
+      falta,
+      custoEstimado,
+      porDeposito: [...(saldo?.porLocal ?? new Map())]
+        .map(([local, s]) => ({ local, saldo: s }))
+        .sort((a, b) => b.saldo - a.saldo),
+    });
+  }
+
+  linhas.sort((a, b) => b.falta - a.falta || b.custoEstimado - a.custoEstimado);
+
+  return {
+    linhas: linhas.slice(0, limite),
+    produtosEmFalta: linhas.length,
+    unidadesAComprar,
+    custoTotalEstimado,
+    atendimentoSincronizado: status.ok,
   };
 }

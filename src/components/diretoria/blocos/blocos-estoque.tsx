@@ -361,6 +361,197 @@ function MatrizFornecedor({ d }: { d: EstoqueData }) {
 
 // A-12 , Estoque disponível (a comprar): saldo físico menos demanda em aberta.
 // Disponível negativo = precisa comprar; o selo "Comprar"/"OK" reforça a cor.
+/**
+ * A-14 , Necessidade de compra.
+ *
+ * O que os clientes já pediram e ainda não recebemos, menos o que temos em casa. Cada
+ * linha abre o saldo por depósito: quem decide a compra precisa saber se a mercadoria já
+ * existe em outra filial (e é caso de transferir) ou se ela não existe em lugar nenhum.
+ */
+function NecessidadeCompra({ d }: { d: EstoqueData }) {
+  const n = d.necessidadeCompra;
+  const [aberto, setAberto] = useState<number | null>(null);
+
+  return (
+    <div className="flex h-full flex-col gap-3">
+      <div className="grid grid-cols-3 gap-2.5">
+        <KpiButton
+          rotulo="Produtos em falta"
+          valor={num.format(n.produtosEmFalta)}
+          icone={ShoppingCart}
+          tone="danger"
+          hint="Não cobrem a demanda"
+        />
+        <KpiButton
+          rotulo="Unidades a comprar"
+          valor={num.format(n.unidadesAComprar)}
+          icone={Package}
+          tone="danger"
+          hint="Somando todos os produtos"
+        />
+        <KpiButton
+          rotulo="Custo estimado"
+          valor={brlCompacto(n.custoTotalEstimado)}
+          valorCompleto={brl.format(n.custoTotalEstimado)}
+          icone={Boxes}
+          hint="Falta x preço de custo"
+        />
+      </div>
+
+      {!n.atendimentoSincronizado ? (
+        <p className="rounded-md bg-amber-500/10 px-3 py-2 text-xs text-amber-400 ring-1 ring-inset ring-amber-500/20">
+          O quanto já foi entregue de cada pedido ainda não sincronizou hoje. Até lá, a
+          demanda aparece pelo pedido cheio, e a necessidade sai maior do que é.
+        </p>
+      ) : null}
+
+      <div className="min-h-0 flex-1 overflow-auto">
+        <table className="w-full text-sm">
+          <thead className="sticky top-0 bg-[var(--card)] text-xs text-[var(--muted-foreground)]">
+            <tr className="border-b border-[var(--border)]">
+              <th className="px-2 py-2 text-left font-medium">Produto</th>
+              <th className="px-2 py-2 text-right font-medium">A entregar</th>
+              <th className="px-2 py-2 text-right font-medium">Em estoque</th>
+              <th className="px-2 py-2 text-right font-medium">Falta comprar</th>
+              <th className="px-2 py-2 text-right font-medium">Custo estimado</th>
+            </tr>
+          </thead>
+          <tbody>
+            {n.linhas.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={5}
+                  className="px-2 py-6 text-center text-[var(--muted-foreground)]"
+                >
+                  Nada a comprar: o estoque cobre toda a demanda em aberto.
+                </td>
+              </tr>
+            ) : (
+              n.linhas.map((l) => {
+                const expandido = aberto === l.produtoId;
+                return (
+                  <FragmentLinha
+                    key={l.produtoId}
+                    expandido={expandido}
+                    onToggle={() => setAberto(expandido ? null : l.produtoId)}
+                    linha={l}
+                  />
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <p className="text-xs text-[var(--muted-foreground)]">
+        A conta é do grupo inteiro, porque a mercadoria é transferida entre as filiais.
+        Clique numa linha para ver em qual depósito está o que já existe.
+      </p>
+    </div>
+  );
+}
+
+function FragmentLinha({
+  linha,
+  expandido,
+  onToggle,
+}: {
+  linha: EstoqueData["necessidadeCompra"]["linhas"][number];
+  expandido: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <>
+      <tr
+        onClick={onToggle}
+        className="cursor-pointer border-b border-[var(--border)] transition-colors hover:bg-[var(--muted)]/40"
+      >
+        <td className="px-2 py-2">{nomeLimpo(linha.produto) || DASH}</td>
+        <td className="px-2 py-2 text-right tabular-nums">{linha.demanda}</td>
+        <td className="px-2 py-2 text-right tabular-nums text-[var(--muted-foreground)]">
+          {linha.saldoFisico}
+        </td>
+        <td className="px-2 py-2 text-right font-medium tabular-nums text-rose-400">
+          {linha.falta}
+        </td>
+        <td className="px-2 py-2 text-right tabular-nums">
+          {brl.format(linha.custoEstimado)}
+        </td>
+      </tr>
+      {expandido ? (
+        <tr className="border-b border-[var(--border)] bg-[var(--muted)]/20">
+          <td colSpan={5} className="px-2 py-2">
+            {linha.porDeposito.length === 0 ? (
+              <p className="text-xs text-[var(--muted-foreground)]">
+                Não há uma unidade sequer em nenhum depósito. É compra, não transferência.
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {linha.porDeposito.map((dep) => (
+                  <span
+                    key={dep.local}
+                    className="rounded-md bg-[var(--card)] px-2 py-1 text-xs ring-1 ring-inset ring-[var(--border)]"
+                  >
+                    {nomeLimpo(dep.local)}:{" "}
+                    <strong className="tabular-nums">{dep.saldo}</strong>
+                  </span>
+                ))}
+              </div>
+            )}
+          </td>
+        </tr>
+      ) : null}
+    </>
+  );
+}
+
+/** A-13 , Estoque em demonstração: o que está na casa do cliente, não vendável. */
+function EstoqueDemonstracao({ d }: { d: EstoqueData }) {
+  const linhas = d.demonstracao.linhas.map((l) => ({
+    local: nomeLimpo(l.chave) || DASH,
+    quantidade: l.quantidade,
+    valorTotal: l.valorTotal,
+  }));
+  const colunas: ColumnDef<(typeof linhas)[number]>[] = [
+    { key: "local", header: "Cliente / local", tipo: "texto" },
+    { key: "quantidade", header: "Unidades", tipo: "numero" },
+    { key: "valorTotal", header: "Valor a custo", tipo: "moeda" },
+  ];
+  return (
+    <div className="flex h-full flex-col gap-3">
+      <div className="grid grid-cols-2 gap-2.5">
+        <KpiButton
+          rotulo="Valor em demonstração"
+          valor={brlCompacto(d.demonstracao.valorGeral)}
+          valorCompleto={brl.format(d.demonstracao.valorGeral)}
+          icone={Boxes}
+          hint="Não entra no estoque"
+        />
+        <KpiButton
+          rotulo="Locais"
+          valor={num.format(linhas.length)}
+          icone={Warehouse}
+          tone="info"
+          hint="Clientes com equipamento"
+        />
+      </div>
+      <p className="text-xs text-[var(--muted-foreground)]">
+        Equipamento posicionado na casa do cliente. Não entra no valor do estoque nem está
+        disponível para venda.
+      </p>
+      <DataTable
+        columns={colunas}
+        rows={linhas}
+        searchable
+        compactoInicial
+        alturaFluida
+        exportFilename="estoque-demonstracao"
+        estado={linhas.length === 0 ? "vazio" : "ok"}
+      />
+    </div>
+  );
+}
+
 function EstoqueDisponivel({ d }: { d: EstoqueData }) {
   const ed = d.estoqueDisponivel;
   const linhas = ed.linhas.map((l) => ({
@@ -413,6 +604,8 @@ export function renderBlocoEstoque(
     case "A-05": return <Catalogo d={d} />;
     case "A-06": return <Seriais d={d} />;
     case "A-12": return <EstoqueDisponivel d={d} />;
+    case "A-13": return <EstoqueDemonstracao d={d} />;
+    case "A-14": return <NecessidadeCompra d={d} />;
     case "A-07": return <ComprasAtivas d={d} />;
     case "A-08": return <MatrizFornecedor d={d} />;
     case "A-10": return <SerieTemporalCompras serie={d.comprasSerie} periodo={periodo} customRange={customRange} />;

@@ -31,6 +31,7 @@ import type {
   SerialLinha, CompraFornecedor, CompraAtivaLinha, ComprasAtivas,
   ResumoCompras, FornecedorResumo, IndicadoresAvancados, ComprasSerie,
   LinhaEstoqueGranular, EstoqueDisponivelLinha,
+  NecessidadeCompraLinha,
 } from "@/lib/diretoria/queries/estoque";
 import type { StatusPrazo } from "@/lib/diretoria/cores";
 
@@ -59,6 +60,14 @@ export interface EstoqueData {
   porMarca: { linhas: LinhaAgrupada[]; valorGeral: number };
   catalogo: CatalogoEstoque;
   seriais: { linhas: SerialLinha[]; total: number };
+  demonstracao: { linhas: LinhaAgrupada[]; valorGeral: number };
+  necessidadeCompra: {
+    linhas: NecessidadeCompraLinha[];
+    produtosEmFalta: number;
+    unidadesAComprar: number;
+    custoTotalEstimado: number;
+    atendimentoSincronizado: boolean;
+  };
   comprasFornecedor: { linhas: CompraFornecedor[]; valorGeral: number };
   comprasAtivas: ComprasAtivas;
   resumoCompras: ResumoCompras;
