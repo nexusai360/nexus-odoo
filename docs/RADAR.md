@@ -143,9 +143,14 @@ reclassificacao (se houver) e decisao do cliente. C5 da conferencia loga a decom
 ---
 
 ### (historico do achado original)
-## R-sem-cfop-historico — Linha "sem CFOP" (R$ 23,3 mi) mistura venda perdida e devolucao
+## ~~R-sem-cfop-historico~~ — DUPLICATA HISTÓRICA de item já resolvido (arquivado 2026-07-13)
 
-**Aberto em:** 2026-06-10 (auditoria da Fase 1). **Prioridade media.**
+> Este bloco é o **histórico do achado original**, e o item **já está fechado**: a seção
+> imediatamente acima (`R-sem-cfop-transparencia`) registra a correção (Fase 2.6, 2026-06-10,
+> `semCfopPorFinalidade` + `outrasNaoEspecificadas`). O título e o "Aberto em / Prioridade
+> media" abaixo faziam quem varre o arquivo ler como pendência aberta. **Não é dívida.**
+
+**Aberto em:** 2026-06-10 (auditoria da Fase 1). ~~**Prioridade media.**~~
 
 **Problema:** os 364 itens sem `cfop_id`/`cfop_nome` na origem (R$ 23,3 mi) sao um balde unico. Decomposicao
 pelo cabecalho: ~R$ 11,68 mi finalidade=1 (normal, candidato a VENDA REAL perdida na origem do Odoo, ICMS
@@ -793,14 +798,20 @@ marcado; o resto é dívida aberta.
   em dev/prod, telas e actions), 2026-07-10.
 - ✅ ~~Fuso do teto diário (meia-noite do servidor = 21h BR)~~ → corte agora é a
   meia-noite de America/Sao_Paulo (`inicioDoDiaEmSaoPaulo`), 2026-07-10.
-- Jobs em voo / payloads no Redis gravados antes do deploy não terão
-  `connectionName` nem `model` (saem `null`; janela transitória, se resolve
-  sozinha em 24h de TTL do replay).
-- Formatação de tabela (SPEC §3.12): a regra assume que a primeira coluna é
-  texto. Se for um código numérico, o título da linha sai como número nu
-  (mudar exige decisão de spec do usuário).
-- Aviso de hidratação do React aparece em `/dashboard` e `/integracoes`
-  (preexistente; frente própria de investigação de UI, fora deste escopo).
+- ✅ ~~Jobs em voo / payloads no Redis sem `connectionName`/`model`~~ → **EXPIROU SOZINHA**.
+  O PR #162 entrou em 2026-07-09 e o TTL do replay é de 24h: a janela fechou em 2026-07-10.
+  Verificado em 2026-07-13; o campo é gravado normalmente no caminho vivo.
+- ✅ ~~Formatação de tabela (SPEC §3.12): título numérico saía como número nu~~ → **FEITO**
+  (2026-07-13). O título só vai sem rótulo quando é um NOME (tem letra); quando é um CÓDIGO
+  ("5102", "12345"), leva o rótulo da coluna junto ("CFOP 5102"). O critério é "tem letra?",
+  e não a classificação de célula , `classificarCelula` só reconhece número no formato pt-BR
+  com separador de milhar, então um CFOP como "5102" caía em "texto" e escapava da regra.
+- Aviso de hidratação do React em `/dashboard` e `/integracoes`: **provável falso positivo**.
+  A perícia (2026-07-13) não achou causa no código , as duas telas são estáticas, o tema vem
+  de cookie e o `<html>` já tem `suppressHydrationWarning`. A causa provável é **extensão de
+  browser** injetando atributo no `<body>` (Grammarly, ColorZilla), que é o gerador clássico
+  desse aviso no Next. **Reproduzir em janela anônima sem extensões antes de tocar em código.**
+  Se persistir, o remédio é uma linha (`suppressHydrationWarning` no `<body>`).
 
 ### ARMADILHAS que custaram tempo (não repetir)
 
@@ -910,6 +921,39 @@ parceiro forem usadas de verdade, o directed sync precisa passar a atualizar
 
 **Lição:** ao cruzar dois modelos do Odoo por id, CONFIRA a `relation` do campo com
 `fields_get`. Id igual não quer dizer entidade igual.
+
+---
+
+## R-janela-cobranca , "Tudo" mostrava MENOS que "este mês" (RESOLVIDO 2026-07-13)
+
+Relatado pelo dono ("se eu filtro por tudo, o a pagar e o a receber ficam MENORES do que no
+filtro mensal, tem alguma coisa errada") e reproduzido em produção.
+
+A janela de cobrança (decisão dele, 2026-07-12) é *vencido em aberto + vencendo até o fim do
+período*, então o teto sai do **fim do período**. Só que o preset **"Tudo"** resolve o fim do
+período como **HOJE** (o que é correto para faturamento, que não tem futuro). Resultado: "Tudo"
+virava "só o vencido".
+
+| período | a receber | a pagar |
+|---|---|---|
+| este mês (teto 31/07) | R$ 18,1 mi | R$ 17,5 mi |
+| este ano (teto 31/12) | R$ 56,8 mi | R$ 45,2 mi |
+| **"Tudo" (antes)** | **R$ 9,6 mi** ⛔ | R$ 15,1 mi ⛔ |
+| **"Tudo" (agora)** | **R$ 68,2 mi** ✅ | R$ 45,2 mi ✅ |
+
+**Regra corrigida:** *sem fim de período NÃO há teto* , é a carteira inteira em aberto
+(vencido + a vencer). Um período maior nunca pode somar menos, e há teste travando isso.
+
+**O mesmo furo fazia o AGENTE divergir do dashboard:** a tool nem aceitava período, então caía
+sempre no teto = hoje e respondia só o vencido (R$ 9,6 mi) enquanto a tela dizia R$ 18,1 mi.
+`financeiro_contas_a_receber` e `_a_pagar` passaram a aceitar `periodoAte` (para o agente
+reproduzir o número da tela) e a **declarar a janela coberta** na resposta (`janelaCobranca`).
+
+**Lição:** um KPI cujo recorte depende do período precisa ser **monotônico** , se ampliar a
+janela diminui o número, a regra está lendo o período errado em algum extremo.
+
+**Não confundir:** o card **"valor em estoque" NÃO varia com o período** (a query nem recebe
+período). O que o dono viu ali era o bug do índice no filtro cruzado, corrigido no mesmo dia.
 
 ---
 

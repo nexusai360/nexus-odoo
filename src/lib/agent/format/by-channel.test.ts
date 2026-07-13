@@ -137,6 +137,28 @@ describe("formatForChannel , tabela compacta (SPEC §3.12)", () => {
     expect(formatForChannel(entrada, "whatsapp")).toBe("- Beta Ltda R$ 5,00");
   });
 
+  // Dívida da SPEC §3.12, fechada em 2026-07-13: quando a primeira coluna é um CÓDIGO
+  // (CFOP, número da nota), o título saía como número nu , "5102 R$ 1.000,00" , e o leitor
+  // no WhatsApp não tinha como saber o que aquele número é. Título numérico leva o rótulo
+  // da coluna junto; título de texto continua sem rótulo (nome de cliente se explica só).
+  test("título numérico leva o rótulo da coluna junto", () => {
+    const entrada = tabela(
+      "| CFOP | Valor      |",
+      "|---|---|",
+      "| 5102 | R$ 1.000,00 |",
+    );
+    expect(formatForChannel(entrada, "whatsapp")).toBe("- CFOP 5102 R$ 1.000,00");
+  });
+
+  test("título de texto continua sem rótulo", () => {
+    const entrada = tabela(
+      "| Cliente | Valor      |",
+      "|---|---|",
+      "| Acme    | R$ 1.000,00 |",
+    );
+    expect(formatForChannel(entrada, "whatsapp")).toBe("- Acme R$ 1.000,00");
+  });
+
   test("linha toda vazia é descartada", () => {
     const entrada = tabela(
       "| A | B |",
