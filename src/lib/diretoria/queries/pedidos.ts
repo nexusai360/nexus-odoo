@@ -20,7 +20,7 @@ export interface FiltrosDemandas {
   periodoAte?: string;
 }
 
-async function ufPorParticipante(
+export async function ufPorParticipante(
   prisma: PrismaClient,
   ids: number[],
 ): Promise<Map<number, string>> {

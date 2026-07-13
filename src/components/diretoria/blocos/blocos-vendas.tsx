@@ -17,6 +17,7 @@ import { getColorByIndex } from "@/components/charts/colors";
 import { brl, brlCompacto, num, pct1, rotuloUf, ufValida } from "@/components/diretoria/kit/format";
 import { SEM_UF } from "@/lib/diretoria/uf";
 import type { VendasData } from "@/components/diretoria/vendas/vendas-screen";
+import type { VisaoPagamento } from "@/lib/diretoria/queries/vendas";
 
 function topComOutros(linhas: { chave: string; valorTotal: number }[], max = 7) {
   if (linhas.length <= max) return linhas.map((l) => ({ name: l.chave, value: l.valorTotal }));
@@ -92,19 +93,96 @@ function ModalidadesVendas({ d }: { d: VendasData }) {
   );
 }
 
-// C-07 , Formas de pagamento: DONUT clássico com LEGENDA LATERAL (bolinha + valor
-// + %) e clique numa fatia para destacar/filtrar.
+// C-07 , Formas de pagamento, em três visões.
+//
+// O gráfico antigo somava tudo num número só, misturando o que já foi pago com o que
+// ainda vai vencer e com o que nem virou nota ainda. São perguntas diferentes, e o
+// seletor separa cada uma:
+//
+//   Pago            a nota saiu e o título foi quitado. A receita que entrou.
+//   A receber       a nota saiu, a parcela ainda vai vencer (boleto, cartão parcelado).
+//   Carteira        o pedido está fechado com o cliente, mas a nota ainda não saiu.
+const VISOES = [
+  {
+    chave: "pago" as const,
+    rotulo: "Pago",
+    descricao: "Nota emitida e título já quitado. É a receita que entrou.",
+  },
+  {
+    chave: "a_receber" as const,
+    rotulo: "A receber",
+    descricao:
+      "Nota emitida, parcela ainda a vencer (boleto ou cartão parcelado). A venda aconteceu; o dinheiro vem depois.",
+  },
+  {
+    chave: "carteira" as const,
+    rotulo: "Carteira em aberto",
+    descricao:
+      "Pedido fechado com o cliente e cobrança programada, mas a nota ainda não saiu. Como a receita só é reconhecida na nota, ainda não é faturamento.",
+  },
+];
+
 function DonutPagamento({ d }: { d: VendasData }) {
+  const [visao, setVisao] = useState<VisaoPagamento>("pago");
   const [sel, setSel] = useState<string | null>(null);
-  const data = d.formasPagamento.linhas.map((l) => ({ label: l.formaPagamento, valor: l.valorTotal }));
+  const atual = d.formasPagamento[visao];
+  const meta = VISOES.find((v) => v.chave === visao)!;
+  const data = atual.linhas.map((l) => ({
+    label: l.formaPagamento,
+    valor: l.valorTotal,
+  }));
+
   return (
-    <DonutChart
-      data={data}
-      formatValor={(v) => brl.format(v)}
-      onSelect={(label) => setSel(label || null)}
-      selecionado={sel}
-      vertical
-    />
+    <div className="flex h-full flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-1.5">
+        {VISOES.map((v) => {
+          const ativo = v.chave === visao;
+          const resumo = d.formasPagamento[v.chave];
+          return (
+            <button
+              key={v.chave}
+              type="button"
+              onClick={() => {
+                setVisao(v.chave);
+                setSel(null);
+              }}
+              className={`rounded-md px-2.5 py-1.5 text-xs transition-colors ${
+                ativo
+                  ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
+                  : "bg-[var(--muted)]/40 text-[var(--muted-foreground)] hover:bg-[var(--muted)]/70"
+              }`}
+            >
+              {v.rotulo}
+              <span className="ml-1.5 tabular-nums opacity-70">
+                {brlCompacto(resumo.valorGeral)}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <p className="text-xs text-[var(--muted-foreground)]">{meta.descricao}</p>
+
+      {atual.provisorios > 0 ? (
+        <p className="text-xs text-amber-400">
+          {atual.provisorios}{" "}
+          {atual.provisorios === 1
+            ? "título ainda é provisório"
+            : "títulos ainda são provisórios"}{" "}
+          no Odoo (lançados, não efetivados).
+        </p>
+      ) : null}
+
+      <div className="min-h-0 flex-1">
+        <DonutChart
+          data={data}
+          formatValor={(v) => brl.format(v)}
+          onSelect={(label) => setSel(label || null)}
+          selecionado={sel}
+          vertical
+        />
+      </div>
+    </div>
   );
 }
 
@@ -115,7 +193,7 @@ function DistribuicaoVendas({ d }: { d: VendasData }) {
       dimensoes={[
         { chave: "marca", rotulo: "Marca", linhas: d.porMarca.linhas.map((l) => ({ chave: l.marca, valorTotal: l.valorTotal })) },
         { chave: "uf", rotulo: "Estado", linhas: d.porUf.linhas.map((l) => ({ chave: rotuloUf(l.uf), valorTotal: l.valorTotal })) },
-        { chave: "pagamento", rotulo: "Pagamento", linhas: d.formasPagamento.linhas.map((l) => ({ chave: l.formaPagamento, valorTotal: l.valorTotal })) },
+        { chave: "pagamento", rotulo: "Pagamento", linhas: d.formasPagamento.pago.linhas.map((l) => ({ chave: l.formaPagamento, valorTotal: l.valorTotal })) },
       ]}
     />
   );

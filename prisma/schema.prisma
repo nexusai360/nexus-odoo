@@ -2290,6 +2290,15 @@ model FatoFinanceiroTitulo {
   dataPagamento    DateTime? @map("data_pagamento")
   situacao         String?
   situacaoSimples  String?   @map("situacao_simples")
+  /// Como a cobrança foi combinada (boleto, PIX, cartão...). Vem do título financeiro, o
+  /// documento de cobrança de verdade , preenchido em 99,98% deles. O painel de formas de
+  /// pagamento lia a PARCELA do pedido, onde o campo é opcional e vinha vazio em 24% dos
+  /// casos: só isso já produzia um balde "Não informado" de R$ 23 mi.
+  formaPagamentoNome String? @map("forma_pagamento_nome")
+  /// Lançamento provisório no Odoo (ainda não efetivado). Hoje são 15 de 5.537.
+  provisorio       Boolean   @default(false)
+  /// Empresa do grupo dona do título , sem ela o painel não respeita o filtro de empresa.
+  empresaId        Int?      @map("empresa_id")
   vrDocumento      Decimal   @default(0) @map("vr_documento") @db.Decimal(18, 2)
   vrSaldo          Decimal   @default(0) @map("vr_saldo") @db.Decimal(18, 2)
   vrTotal          Decimal   @default(0) @map("vr_total") @db.Decimal(18, 2)

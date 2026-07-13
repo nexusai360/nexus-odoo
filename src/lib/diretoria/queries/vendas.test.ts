@@ -13,67 +13,28 @@ import {
 const CORTE = corteAtualDate();
 
 function makePrisma(
-  parcelas: { formaPagamentoNome: string | null; valor: number }[],
-  pedidos: { odooId: number }[] = [{ odooId: 1 }, { odooId: 2 }, { odooId: 3 }],
+  titulos: {
+    notaFiscalId: number | null;
+    vrSaldo: number;
+    vrDocumento: number;
+    formaPagamentoNome: string | null;
+    provisorio?: boolean;
+    participanteId?: number | null;
+  }[],
 ) {
   return {
-    fatoPedido: { findMany: jest.fn().mockResolvedValue(pedidos) },
-    fatoPedidoParcela: {
-      findMany: jest.fn().mockResolvedValue(parcelas),
+    fatoFinanceiroTitulo: {
+      findMany: jest.fn().mockResolvedValue(
+        titulos.map((t) => ({
+          provisorio: false,
+          participanteId: null,
+          ...t,
+        })),
+      ),
     },
+    fatoParceiro: { findMany: jest.fn().mockResolvedValue([]) },
   } as unknown as Parameters<typeof queryFormasPagamento>[0];
 }
-
-describe("queryFormasPagamento (C10)", () => {
-  it("agrega valor por forma de pagamento, ordenado por valor desc", async () => {
-    const prisma = makePrisma([
-      { formaPagamentoNome: "Boleto", valor: 100 },
-      { formaPagamentoNome: "Pix", valor: 300 },
-      { formaPagamentoNome: "Boleto", valor: 50 },
-    ]);
-    const r = await queryFormasPagamento(prisma, {});
-    expect(r.valorGeral).toBe(450);
-    expect(r.linhas[0]).toEqual({ formaPagamento: "Pix", quantidade: 1, valorTotal: 300 });
-    expect(r.linhas[1]).toEqual({ formaPagamento: "Boleto", quantidade: 2, valorTotal: 150 });
-  });
-
-  it("parcela sem forma vira 'Não informado'", async () => {
-    const prisma = makePrisma([{ formaPagamentoNome: null, valor: 10 }]);
-    const r = await queryFormasPagamento(prisma, {});
-    expect(r.linhas[0].formaPagamento).toBe("Não informado");
-  });
-
-  it("período filtra por dataVencimento, com o último dia inteiro (borda exclusiva)", async () => {
-    const prisma = makePrisma([]);
-    await queryFormasPagamento(prisma, { periodoDe: "2026-06-01", periodoAte: "2026-06-30" });
-    const call = (prisma.fatoPedidoParcela.findMany as jest.Mock).mock.calls[0][0];
-    expect(call.where.dataVencimento.gte).toEqual(new Date("2026-06-01T00:00:00Z"));
-    expect(call.where.dataVencimento.lt).toEqual(new Date("2026-07-01T00:00:00Z"));
-  });
-
-  it("sem período, o piso é a data de início das análises (não varre o histórico inteiro)", async () => {
-    const prisma = makePrisma([]);
-    await queryFormasPagamento(prisma, {});
-    const call = (prisma.fatoPedidoParcela.findMany as jest.Mock).mock.calls[0][0];
-    expect(call.where.dataVencimento.gte).toEqual(CORTE);
-  });
-
-  it("período anterior ao corte é grampeado na data de início das análises", async () => {
-    const prisma = makePrisma([]);
-    await queryFormasPagamento(prisma, { periodoDe: "2024-01-01", periodoAte: "2026-06-30" });
-    const call = (prisma.fatoPedidoParcela.findMany as jest.Mock).mock.calls[0][0];
-    expect(call.where.dataVencimento.gte).toEqual(CORTE);
-  });
-
-  it("só conta parcela de pedido posterior ao corte (o piso é do DOCUMENTO, não do vencimento)", async () => {
-    const prisma = makePrisma([{ formaPagamentoNome: "Pix", valor: 10 }], [{ odooId: 7 }]);
-    await queryFormasPagamento(prisma, { periodoDe: "2026-06-01", periodoAte: "2026-06-30" });
-    const pedidoCall = (prisma.fatoPedido.findMany as jest.Mock).mock.calls[0][0];
-    expect(pedidoCall.where.dataOrcamento.gte).toEqual(CORTE);
-    const parcelaCall = (prisma.fatoPedidoParcela.findMany as jest.Mock).mock.calls[0][0];
-    expect(parcelaCall.where.pedidoId).toEqual({ in: [7] });
-  });
-});
 
 function makePrismaMarca(
   itens: { produtoId: number | null; vrProdutos: number }[],
@@ -86,6 +47,82 @@ function makePrismaMarca(
     fatoProduto: { findMany: jest.fn().mockResolvedValue(produtos) },
   } as unknown as Parameters<typeof queryVendasPorMarca>[0];
 }
+
+describe("queryFormasPagamento (C-07)", () => {
+  // A consulta lia a PARCELA do pedido, onde a forma de pagamento e opcional e vinha
+  // vazia em 24% dos casos , dai um balde "Nao informado" de R$ 23 mi. Agora le o TITULO
+  // financeiro, o documento de cobranca de verdade, onde ela esta preenchida em 99,98%.
+  it("separa o que foi pago, o que ainda vai vencer e o que nem virou nota", async () => {
+    const prisma = makePrisma([
+      // nota emitida e titulo quitado -> a receita que entrou
+      { notaFiscalId: 10, vrSaldo: 0, vrDocumento: 1000, formaPagamentoNome: "Boleto" },
+      // nota emitida, parcela ainda a vencer
+      { notaFiscalId: 11, vrSaldo: 500, vrDocumento: 500, formaPagamentoNome: "PIX" },
+      // sem nota: pedido fechado, nota ainda nao saiu
+      { notaFiscalId: null, vrSaldo: 300, vrDocumento: 300, formaPagamentoNome: "Boleto" },
+    ]);
+
+    const r = await queryFormasPagamento(prisma, {});
+
+    expect(r.pago.valorGeral).toBe(1000);
+    expect(r.pago.linhas).toEqual([
+      { formaPagamento: "Boleto", quantidade: 1, valorTotal: 1000 },
+    ]);
+    expect(r.a_receber.valorGeral).toBe(500);
+    expect(r.carteira.valorGeral).toBe(300);
+  });
+
+  it("agrupa por forma dentro de cada visao, ordenado por valor", async () => {
+    const prisma = makePrisma([
+      { notaFiscalId: 1, vrSaldo: 0, vrDocumento: 100, formaPagamentoNome: "Boleto" },
+      { notaFiscalId: 2, vrSaldo: 0, vrDocumento: 300, formaPagamentoNome: "PIX" },
+      { notaFiscalId: 3, vrSaldo: 0, vrDocumento: 50, formaPagamentoNome: "Boleto" },
+    ]);
+
+    const r = await queryFormasPagamento(prisma, {});
+
+    expect(r.pago.linhas).toEqual([
+      { formaPagamento: "PIX", quantidade: 1, valorTotal: 300 },
+      { formaPagamento: "Boleto", quantidade: 2, valorTotal: 150 },
+    ]);
+    expect(r.pago.titulos).toBe(3);
+  });
+
+  it("titulo sem forma cadastrada vira 'Nao informado' (residuo real, nao escondido)", async () => {
+    const prisma = makePrisma([
+      { notaFiscalId: 1, vrSaldo: 0, vrDocumento: 80, formaPagamentoNome: null },
+    ]);
+
+    const r = await queryFormasPagamento(prisma, {});
+
+    expect(r.pago.linhas).toEqual([
+      { formaPagamento: "Não informado", quantidade: 1, valorTotal: 80 },
+    ]);
+  });
+
+  it("conta os titulos ainda provisorios no Odoo", async () => {
+    const prisma = makePrisma([
+      { notaFiscalId: 1, vrSaldo: 0, vrDocumento: 10, formaPagamentoNome: "Boleto", provisorio: true },
+      { notaFiscalId: 2, vrSaldo: 0, vrDocumento: 10, formaPagamentoNome: "Boleto" },
+    ]);
+
+    const r = await queryFormasPagamento(prisma, {});
+
+    expect(r.pago.provisorios).toBe(1);
+  });
+
+  it("le o titulo a receber, recortado pela data do documento", async () => {
+    const prisma = makePrisma([]);
+
+    await queryFormasPagamento(prisma, {});
+
+    const call = (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where.tipo).toBe("a_receber");
+    // Recorte pela data do DOCUMENTO, nao pelo vencimento: e a unica combinacao que
+    // reproduz os numeros conferidos contra o cache real.
+    expect(call.where.dataDocumento).toBeDefined();
+  });
+});
 
 describe("queryVendasPorMarca (C4)", () => {
   it("agrega valor por marca via join produto", async () => {

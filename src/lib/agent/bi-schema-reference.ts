@@ -23,6 +23,29 @@ import { corteAtual, corteLabel } from "@/lib/corte-dados";
 export const BI_SCHEMA_REFERENCE = `
 -- ─── ESTOQUE ─────────────────────────────────────────────────────────────────
 
+-- Locais de estoque, com a classificacao que separa o que e da casa do que nao e.
+-- SEMPRE filtre por classificacao='fisico' ao somar valor de estoque: sem isso a conta
+-- inclui o estoque Virtual e o que esta em poder de terceiros (juntos, R$ 16 mi).
+TABLE fato_estoque_local (
+  odoo_id         INT PRIMARY KEY,
+  nome            TEXT,
+  nome_completo   TEXT,
+  classificacao   TEXT,   -- fisico | demonstracao | fora
+)
+
+-- Seriais que EXISTEM em estoque, com o local onde estao e o saldo.
+TABLE fato_serial_saldo (
+  odoo_id         INT UNIQUE,
+  serial          TEXT,
+  produto_id      INT,
+  produto_nome    TEXT,
+  local_id        INT,
+  local_nome      TEXT,
+  classificacao   TEXT,   -- fisico | demonstracao | fora
+  saldo           NUMERIC,
+  valor_custo     NUMERIC,
+)
+
 -- Saldo atual de estoque por produto/local
 TABLE fato_estoque_saldo (
   id              UUID PRIMARY KEY,
