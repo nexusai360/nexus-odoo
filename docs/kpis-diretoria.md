@@ -20,7 +20,7 @@ por empresa no cache , quando o filtro de empresa está ligado, o card avisa "gr
 
 ---
 
-## 1. Faturamento , R$ 7.242.504,80 (julho/2026, 136 notas)
+## 1. Faturamento , R$ 7.247.814,80 (julho/2026, 142 notas)
 
 **Fonte:** `fato_nota_fiscal`, somando `vr_nf` das notas com `is_venda_externa = true`, no
 período escolhido (por `data_emissao`).
@@ -31,9 +31,10 @@ nota só é faturamento quando:
 
 | Condição | Por quê |
 |---|---|
-| operação contém **"venda"** | é o critério do Odoo, não o CFOP |
+| operação contém **"venda"**, OU é a **remessa de entrega futura** (CFOP 5117/6117) | é o critério do Odoo, não o CFOP do item |
 | operação **não** contém "interna" | "venda interna" é transferência entre empresas do grupo |
 | operação **não** contém "imobilizado" | venda de ativo é baixa de bem, não receita |
+| operação **não** é o simples faturamento futuro (CFOP 5922/6922) | a cobrança antecipada não é receita do mês (ver abaixo) |
 | `finalidade_nfe <> '4'` | 4 = devolução/retorno |
 | modelo **55 ou 65** | NF-e e NFC-e (03, 23 e CT-e ficam fora) |
 | `entrada_saida = '1'` e `situacao_nfe = 'autorizada'` | saída, autorizada pela SEFAZ |
@@ -42,17 +43,34 @@ nota só é faturamento quando:
 Antes (regra por natureza/CFOP) o número inflava ~74%: nem a natureza nem o CFOP separam
 "venda" de "venda interna", porque as duas usam CFOP de venda.
 
+### Venda futura , a receita é a REMESSA, nunca o simples faturamento (dono, 2026-07-13)
+
+A venda futura tem duas notas: a de **simples faturamento** (CFOP 5922/6922), que cobra o
+cliente antes de entregar, e a **remessa** (CFOP 5117/6117), que entrega a mercadoria. A
+receita entra **só na remessa**. A cobrança antecipada não conta no mês em que sai.
+
+Nenhuma das duas operações tem a palavra "venda" no nome ("Simples Faturamento para Entrega
+Futura 5922/6922", "Remessa de Mercadoria Originada de Encomenda 5117/6117"), então até o
+PR #187 **as duas caíam fora** e a receita da venda futura não era contada em ponta nenhuma:
+R$ 538 mil desde 16/03/2026 (mar R$ 28.261, abr R$ 134.796, mai R$ 244.473, jun R$ 127.225,
+jul R$ 3.500). A regra passou a reconhecer a remessa e a excluir o simples faturamento de
+forma explícita, pelo CFOP que a Tauga escreve no nome da operação.
+
+Quem manda nessa escolha é a flag `VENDA_FUTURA.RECONHECE_FATURAMENTO_NA_EMISSAO`
+(`src/lib/fiscal/regras/venda-futura-policy.ts`). Virá-la para `true` inverte as duas pernas
+de uma vez (a 5922 passa a ser a receita e a remessa sai), sem risco de contar duas vezes.
+
 ---
 
-## 2. Ticket médio , R$ 54.049 (134 pedidos)
+## 2. Ticket médio , R$ 49.985 (145 pedidos)
 
 **Fórmula:** `Faturamento do período ÷ número de PEDIDOS de venda do período`.
 
-- Numerador: o mesmo faturamento do card anterior (R$ 7.242.505 em julho).
+- Numerador: o mesmo faturamento do card anterior (R$ 7.247.815 em julho).
 - Denominador: `fato_pedido` com `categoria_operacao = 'venda'`, contando por `data_orcamento`
-  no período (**134** pedidos em julho).
+  no período (**145** pedidos em julho, conferidos em 13/07).
 
-Conferido em produção: 7.242.505 / 134 = **R$ 54.049**.
+Conferido em produção: 7.247.815 / 145 = **R$ 49.985**.
 
 > **Atenção à leitura**: o numerador conta **notas emitidas** e o denominador conta **pedidos
 > abertos** no mesmo período. Não é "valor médio por nota", é o faturamento do mês dividido

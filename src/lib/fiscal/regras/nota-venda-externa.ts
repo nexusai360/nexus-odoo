@@ -3,6 +3,8 @@
 // materializacao (fato_nota_fiscal.is_venda_externa) e por metricas em memoria.
 // Ver SPEC v3 secao 3 e docs/superpowers/plans/2026-07-11-faturamento-venda-operacao.md.
 
+import { VENDA_FUTURA } from "./venda-futura-policy";
+
 /** Operacao de venda: o nome da operacao fiscal contem "venda". */
 export const OPERACAO_VENDA_TERMO = "venda";
 /**
@@ -16,6 +18,32 @@ export const OPERACAO_NAO_VENDA_TERMOS = ["interna", "imobilizado"] as const;
 export const OPERACAO_INTERNA_TERMO = "interna";
 /** finalidade_nfe "4" = devolucao/retorno. Saida que nao e venda. */
 export const FINALIDADE_DEVOLUCAO = "4";
+
+/**
+ * VENDA FUTURA , as duas pernas, identificadas pelo CFOP que a Tauga escreve no NOME da
+ * operacao fiscal ("Simples Faturamento para Entrega Futura 5922/6922 - Lucro Presumido",
+ * "Remessa de Mercadoria Originada de Encomenda 5117/6117 - Presumido"). Nenhuma das duas
+ * tem a palavra "venda" no nome, entao antes desta regra a receita da venda futura nao
+ * entrava em NENHUMA das pernas , sumia do faturamento (R$ 538 mil desde 16/03/2026).
+ *
+ * Qual das duas e receita quem decide e `VENDA_FUTURA.RECONHECE_FATURAMENTO_NA_EMISSAO`
+ * (venda-futura-policy.ts). Padrao (decisao do dono, 2026-07-13): a receita e a REMESSA.
+ * Sao mutuamente exclusivas por construcao, entao a mesma venda nunca conta duas vezes.
+ */
+const CFOPS_SIMPLES_FATURAMENTO_FUTURO = ["5922", "6922"] as const;
+const CFOPS_REMESSA_ENTREGA_FUTURA = ["5117", "6117"] as const;
+
+/** A nota que cobra o cliente antes de entregar (nao movimenta estoque). */
+export function ehOperacaoSimplesFaturamentoFuturo(operacaoNome: string | null): boolean {
+  const op = (operacaoNome ?? "").toLowerCase();
+  return CFOPS_SIMPLES_FATURAMENTO_FUTURO.some((cfop) => op.includes(cfop));
+}
+
+/** A nota que entrega a mercadoria ja faturada (a venda de fato). */
+export function ehOperacaoRemessaEntregaFutura(operacaoNome: string | null): boolean {
+  const op = (operacaoNome ?? "").toLowerCase();
+  return CFOPS_REMESSA_ENTREGA_FUTURA.some((cfop) => op.includes(cfop));
+}
 
 export interface NotaParaVendaExterna {
   /** '1' = saida; '0' = entrada. */
@@ -53,6 +81,17 @@ export function ehOperacaoVenda(n: {
   finalidadeNfe: string | null;
 }): boolean {
   if (n.finalidadeNfe === FINALIDADE_DEVOLUCAO) return false;
+
+  // Venda futura antes do teste de "venda" no nome: as duas pernas (5922 e x117) sao
+  // faturamento em substancia, mas nenhuma traz a palavra "venda" na operacao. A policy
+  // diz qual delas e a receita, e a outra fica fora para nao duplicar.
+  if (ehOperacaoSimplesFaturamentoFuturo(n.operacaoNome)) {
+    return VENDA_FUTURA.RECONHECE_FATURAMENTO_NA_EMISSAO;
+  }
+  if (ehOperacaoRemessaEntregaFutura(n.operacaoNome)) {
+    return !VENDA_FUTURA.RECONHECE_FATURAMENTO_NA_EMISSAO;
+  }
+
   const op = (n.operacaoNome ?? "").toLowerCase();
   if (!op.includes(OPERACAO_VENDA_TERMO)) return false;
   return !OPERACAO_NAO_VENDA_TERMOS.some((t) => op.includes(t));
