@@ -6,7 +6,7 @@
 // Fontes: fato_apuracao, fato_carta_correcao.
 
 import type { PrismaClient } from "@/generated/prisma/client";
-import { janelaClampada } from "@/lib/corte-dados";
+import { corteAtualDate, janelaClampada } from "@/lib/corte-dados";
 
 // ---------------------------------------------------------------------------
 // Apuração fiscal
@@ -118,10 +118,15 @@ function toCartaLinha(r: CartaRow): CartaCorrecaoLinha {
 /** Lista cartas de correção, opcionalmente filtrando por `documentoId` (o
  * documento fiscal corrigido). Ordena da mais recente para a mais antiga.
  *
- * A CC-e é um evento fiscal datado (histórico). Sem `documentoId`, a consulta é uma LISTA
- * histórica e respeita a data de início das análises (piso em `dataAutorizacao`; antes, sem
- * filtro nenhum, listava toda carta já ingerida). Com `documentoId` é drill-down de um
- * documento específico: quem define o recorte é o documento pedido, então não se filtra. */
+ * A CC-e é um evento fiscal datado (histórico), e o piso da data de início das análises vale
+ * nos DOIS caminhos:
+ * - sem `documentoId`, é uma LISTA histórica (antes, sem filtro nenhum, listava toda carta
+ *   já ingerida);
+ * - com `documentoId`, é drill-down de um documento. O drill não é passe livre: o mesmo
+ *   documento pré-corte já é recusado por `fiscal_detalhar_nota` e por `queryPedidoSituacao`.
+ *   Servir a carta dele aqui contradiria as outras telas (o documento não existe em nenhum
+ *   total, mas apareceria neste detalhe). O ternário antigo trocava o where inteiro e
+ *   descartava o clamp. */
 export async function queryCartaCorrecao(
   prisma: PrismaClient,
   filtros: { documentoId?: number; periodoDe?: string; periodoAte?: string; limit?: number; offset?: number },
@@ -129,7 +134,7 @@ export async function queryCartaCorrecao(
   const j = janelaClampada(filtros.periodoDe, filtros.periodoAte);
   const where =
     filtros.documentoId != null
-      ? { documentoId: filtros.documentoId }
+      ? { documentoId: filtros.documentoId, dataAutorizacao: { gte: corteAtualDate() } }
       : { dataAutorizacao: { gte: j.gte, lt: j.lt } };
   // Alavanca 2b: paginação via take/skip + desempate estável por odooId.
   const [rows, total] = await Promise.all([

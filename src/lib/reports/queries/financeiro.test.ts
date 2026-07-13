@@ -147,6 +147,47 @@ describe("queryFluxoCaixa", () => {
 // queryContasAReceber , task 4d.5-q
 // ---------------------------------------------------------------------------
 
+// A JANELA DE COBRANÇA (decisão do dono, 2026-07-12) é: vencido em aberto + vencendo até o
+// FIM DO PERÍODO. Com isso, o teto sai do fim do período , e um período MAIOR nunca pode
+// devolver um valor MENOR.
+//
+// Era exatamente o que acontecia (relatado pelo dono e reproduzido em produção): o preset
+// "Tudo" definia o fim do período como HOJE, então "Tudo" virava "só o vencido" e mostrava
+// MENOS que "este mês". Medido em prod, a receber: mês R$ 18,1 mi, ano R$ 56,8 mi,
+// TUDO R$ 9,6 mi. Sem fim de período, não existe teto: é a carteira inteira em aberto.
+describe("queryContasAReceber , janela de cobrança (o teto vem do fim do período)", () => {
+  const hoje = new Date("2026-05-18");
+
+  it("sem fim de período: NÃO há teto de vencimento (carteira inteira em aberto)", async () => {
+    const prisma = makePrisma();
+    (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([]);
+    await queryContasAReceber(prisma as never, {}, hoje);
+    const where = (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mock.calls[0][0].where;
+    expect(where.dataVencimento).toBeUndefined();
+  });
+
+  it("com fim de período: o teto é o fim do período (borda exclusiva no dia seguinte)", async () => {
+    const prisma = makePrisma();
+    (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([]);
+    await queryContasAReceber(prisma as never, { periodoAte: "2026-07-31" }, hoje);
+    const where = (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mock.calls[0][0].where;
+    expect(where.dataVencimento.lt).toEqual(new Date("2026-08-01T00:00:00Z"));
+  });
+
+  it("período maior nunca soma menos: o teto de julho <= o teto de dezembro <= sem teto", async () => {
+    const prisma = makePrisma();
+    (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([]);
+    await queryContasAReceber(prisma as never, { periodoAte: "2026-07-31" }, hoje);
+    await queryContasAReceber(prisma as never, { periodoAte: "2026-12-31" }, hoje);
+    await queryContasAReceber(prisma as never, {}, hoje);
+    const calls = (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mock.calls;
+    const julho = calls[0][0].where.dataVencimento.lt as Date;
+    const dezembro = calls[1][0].where.dataVencimento.lt as Date;
+    expect(julho.getTime()).toBeLessThan(dezembro.getTime());
+    expect(calls[2][0].where.dataVencimento).toBeUndefined(); // sem teto = o maior de todos
+  });
+});
+
 describe("queryContasAReceber", () => {
   const hoje = new Date("2026-05-18");
 

@@ -4,7 +4,7 @@ import { buildPeriodoWhere } from "../_shared/periodo";
 import { buildEmpresaWhere } from "../_shared/empresa";
 import { classificarCfop, extrairCfop, ROTULO_CATEGORIA } from "../../fiscal/regras";
 import type { CategoriaGerencial } from "../../fiscal/regras";
-import { carregarItensVendaComGrupo } from "./_itens-venda-grupo";
+import { carregarParticipantesGrupo, ehNotaIntragrupo } from "../../fiscal/grupo";
 import { janelaClampada } from "@/lib/corte-dados";
 
 export interface FaturamentoOperacaoInput extends FaturamentoInput {
@@ -116,19 +116,42 @@ export async function faturamentoPorCfop(
     : [];
   const nomePorId = new Map(nomeRows.map((r) => [r.cfopId, r.cfopNome]));
 
-  // REAL (ex-intragrupo): usa o MESMO loader/definicao de intragrupo da
-  // receitaConsolidada (whitelist->cadastro->nome), agregando o valor intragrupo
-  // por cfopId. Assim a quebra por CFOP separa o que e venda PARA FORA (real) do
-  // que e venda entre empresas do grupo (eliminada no consolidado). Mesma base
-  // (item.vrProdutos) e mesmo recorte (saida autorizada, periodo, empresa).
-  const { itens } = await carregarItensVendaComGrupo(prisma, input);
+  // REAL (ex-intragrupo): a marcacao de intragrupo (whitelist -> cadastro -> raiz do CNPJ)
+  // nasce do MESMO universo que o groupBy acima soma , toda saida autorizada do recorte.
+  //
+  // Por que isso importa (regressao do PR #166, medida em producao em 2026-07-13): a marcacao
+  // vinha de `carregarItensVendaComGrupo`, cujo universo e "nota de venda pela operacao", e
+  // essa regra EXCLUI a operacao "venda interna" , que e exatamente onde mora a venda entre
+  // empresas do grupo, com CFOP de receita (5102/6108). O numerador (receita bruta) contava
+  // esses itens e o subtraendo (intragrupo) nao via nenhum: a eliminacao caiu para R$ 0,02 e
+  // a tool passou a responder "receita real R$ 102,1 mi" enquanto o KPI da diretoria dizia
+  // R$ 61,9 mi. Universo da soma e universo da marcacao TEM que ser o mesmo.
+  const notasDoUniverso = await prisma.fatoNotaFiscal.findMany({
+    where: {
+      entradaSaida: "1",
+      situacaoNfe: "autorizada",
+      ...periodoWhere,
+      ...buildEmpresaWhere(input.empresaId),
+    },
+    select: { odooId: true, participanteId: true, participanteNome: true },
+  });
+  const participantesGrupo = await carregarParticipantesGrupo(prisma);
+  const idsIntragrupo = notasDoUniverso
+    .filter((n) => ehNotaIntragrupo(n, participantesGrupo))
+    .map((n) => n.odooId);
+
+  const gruposIntragrupo = idsIntragrupo.length
+    ? await prisma.fatoNotaFiscalItem.groupBy({
+        by: ["cfopId"],
+        _sum: { vrProdutos: true },
+        // Mesmo `where` da soma, estreitado as notas intragrupo: garante que cada real
+        // eliminado esta, de fato, dentro do total que a tool reporta.
+        where: { ...where, documentoId: { in: idsIntragrupo } },
+      })
+    : [];
   const intragrupoPorCfopId = new Map<number | null, number>();
-  for (const it of itens) {
-    if (!it.intragrupo) continue;
-    intragrupoPorCfopId.set(
-      it.cfopId,
-      (intragrupoPorCfopId.get(it.cfopId) ?? 0) + it.valorProdutos,
-    );
+  for (const g of gruposIntragrupo) {
+    intragrupoPorCfopId.set(g.cfopId, Number(g._sum.vrProdutos ?? 0));
   }
 
   // Classifica cada grupo via Tabela de Regras. Number() converte o Decimal do Prisma.

@@ -14,13 +14,17 @@ const baseConfig: AgentPromptConfig = {
 };
 
 describe("composeSystemPrompt", () => {
-  test("advancedOverride preenchido → retorna só o override", () => {
+  test("advancedOverride preenchido → só o override (+ a regra do corte, que é inegociável)", () => {
     const cfg: AgentPromptConfig = {
       ...baseConfig,
       advancedOverride: "Prompt completamente customizado.",
     };
     const result = composeSystemPrompt(cfg, []);
-    expect(result).toBe("Prompt completamente customizado.");
+    expect(result).toContain("Prompt completamente customizado.");
+    expect(result).not.toContain("## Comportamento");
+    // Única exceção ao poder total do override: a data de início das análises manda em
+    // toda leitura, e sem a regra o agente recebe a data no [Contexto] sem saber usá-la.
+    expect(result).toContain("Data de início das análises");
   });
 
   test("sem override → começa com IDENTITY_BASE", () => {
@@ -139,7 +143,7 @@ describe("composeSystemPrompt", () => {
     };
     const biSchema = "CREATE TABLE fato_estoque_saldo (id INT);";
     const result = composeSystemPrompt(cfg, [], undefined, biSchema);
-    expect(result).toBe("Override total.");
+    expect(result).toContain("Override total.");
     expect(result).not.toContain("Schema para consulta avançada");
   });
 });
@@ -259,15 +263,19 @@ describe("composeSystemPrompt , sugestoes de desambiguacao", () => {
     expect(out).toContain("Diretriz de resposta para datasets grandes");
   });
 
-  test("advancedOverride SHORT-CIRCUITA tudo (poder total do admin)", () => {
-    // Decisao de design preexistente: quando admin usa advancedOverride,
-    // ele assume responsabilidade pelo prompt inteiro. Nem a regra de
-    // quantitativo nem o Comportamento sao appendados. Documentar.
+  test("advancedOverride SHORT-CIRCUITA tudo, menos a regra do corte", () => {
+    // Decisao de design preexistente: quando admin usa advancedOverride, ele assume
+    // responsabilidade pelo prompt inteiro. Nem a regra de quantitativo nem o
+    // Comportamento sao appendados. A UNICA excecao (2026-07-13) e a data de inicio das
+    // analises: ela e da plataforma, chega no [Contexto] de todo turno, e sem a regra o
+    // agente nao sabe o que fazer com ela.
     const out = composeSystemPrompt(
       { ...baseConfig, advancedOverride: "Prompt totalmente customizado." },
       [],
     );
-    expect(out).toBe("Prompt totalmente customizado.");
+    expect(out).toContain("Prompt totalmente customizado.");
     expect(out).not.toContain("Resultados grandes");
+    expect(out).not.toContain("## Comportamento");
+    expect(out).toContain("Data de início das análises");
   });
 });

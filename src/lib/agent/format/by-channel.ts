@@ -92,6 +92,9 @@ export function classificarCelula(valor: string): ClasseDeCelula {
   return "texto";
 }
 
+/** Título com letra é NOME (vai sem rótulo); sem letra nenhuma é CÓDIGO (leva o rótulo). */
+const TEM_LETRA_RE = /[A-Za-zÀ-ÿ]/;
+
 const TRUNCAR_TEXTO_EM = 24;
 
 /** Truncamento só incide em TEXTO, nunca em moeda ou número. */
@@ -121,8 +124,19 @@ function linhaCompacta(headers: string[], cells: string[]): string | null {
   if (colunas.length === 0) return null;
 
   const [titulo, ...resto] = colunas;
+  // O título vai SEM rótulo quando é um NOME (cliente, produto): ele se explica sozinho.
+  // Quando é um CÓDIGO , sem nenhuma letra: "5102", "12345", "1.234,00" , não: um número
+  // pelado no começo da linha não diz nada a quem lê no WhatsApp. Aí ele leva o rótulo da
+  // coluna junto ("CFOP 5102", "Nota 12345"). Dívida da SPEC §3.12, fechada em 2026-07-13.
+  //
+  // O critério é "tem letra?", e não a classificação de célula: `classificarCelula` só
+  // reconhece número no formato pt-BR com separador de milhar, então um CFOP como "5102"
+  // cai em "texto" e escaparia da regra.
+  const tituloEhCodigo = !TEM_LETRA_RE.test(titulo.valor);
   const partes: string[] = [
-    classificarCelula(titulo.valor) === "texto" ? truncarTexto(titulo.valor) : titulo.valor,
+    tituloEhCodigo
+      ? `${rotuloDe(titulo.header)} ${titulo.valor}`
+      : truncarTexto(titulo.valor),
   ];
 
   for (const c of resto) {

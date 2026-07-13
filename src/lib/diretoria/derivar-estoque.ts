@@ -5,7 +5,7 @@
 // sem Prisma (rodam no client). Os blocos de compras não dependem destas
 // dimensões e ficam intactos.
 
-import { INDICE_ESTOQUE_PADRAO } from "@/lib/indice-estoque";
+import { INDICE_ESTOQUE_PADRAO, aplicarIndice } from "@/lib/indice-estoque";
 import type { LinhaAgrupada, CatalogoModelo, IndicadoresEstoque, LinhaEstoqueGranular } from "@/lib/diretoria/queries/estoque";
 
 export type { LinhaEstoqueGranular };
@@ -66,7 +66,18 @@ function agrupar(linhas: LinhaEstoqueGranular[], campo: "familia" | "marca" | "l
   return { linhas: out, valorGeral };
 }
 
-export function derivarIndicadores(linhas: LinhaEstoqueGranular[]): IndicadoresEstoque {
+/**
+ * Indicadores a partir das linhas granulares (usado no filtro cruzado do construtor).
+ *
+ * `indice` e o mesmo que o servidor aplicou no card (Configuracao > Diretoria · Vendas):
+ * o KPI "Valor em estoque" e o valor a custo DIVIDIDO por ele. Antes esta derivacao
+ * ignorava o indice e devolvia o custo puro, entao o card mudava de valor quando o usuario
+ * aplicava um filtro , um numero com filtro, outro sem, para quem nao usa o indice padrao.
+ */
+export function derivarIndicadores(
+  linhas: LinhaEstoqueGranular[],
+  indice: number = INDICE_ESTOQUE_PADRAO,
+): IndicadoresEstoque {
   let valorTotal = 0;
   let itens = 0;
   const produtos = new Set<string>();
@@ -77,13 +88,14 @@ export function derivarIndicadores(linhas: LinhaEstoqueGranular[]): IndicadoresE
     produtos.add(l.produtoId != null ? `id:${l.produtoId}` : `nome:${l.produto}`);
     locais.add(l.local);
   }
+  const arred = (v: number) => Math.round(v * 100) / 100;
   return {
-    // O KPI e o valor a custo dividido pelo indice (Configuracao > Diretoria > Vendas). Aqui
-    // as linhas ja vem valorizadas a custo; o indice e aplicado pelo chamador/servidor, entao
-    // esta derivacao (usada nos filtros cruzados do construtor) devolve os dois iguais.
-    valorTotal,
-    valorACusto: valorTotal,
-    indice: INDICE_ESTOQUE_PADRAO,
+    // As linhas ja vem valorizadas A CUSTO; o KPI e esse valor dividido pelo indice vigente,
+    // igual ao que o servidor faz em queryIndicadoresEstoque. Passar o indice e o que mantem
+    // o card estavel entre "com filtro" e "sem filtro".
+    valorTotal: arred(aplicarIndice(valorTotal, indice)),
+    valorACusto: arred(valorTotal),
+    indice,
     itens,
     produtos: produtos.size,
     locais: locais.size,
@@ -118,10 +130,14 @@ export interface EstoqueDerivado {
   catalogo: { linhas: CatalogoModelo[]; total: number; valorGeral: number };
 }
 
-export function derivarEstoque(linhas: LinhaEstoqueGranular[], f: FiltrosEstoque): EstoqueDerivado {
+export function derivarEstoque(
+  linhas: LinhaEstoqueGranular[],
+  f: FiltrosEstoque,
+  indice: number = INDICE_ESTOQUE_PADRAO,
+): EstoqueDerivado {
   const fl = filtrarEstoque(linhas, f);
   return {
-    indicadores: derivarIndicadores(fl),
+    indicadores: derivarIndicadores(fl, indice),
     porLocal: agrupar(fl, "local"),
     porFamilia: agrupar(fl, "familia"),
     porMarca: agrupar(fl, "marca"),

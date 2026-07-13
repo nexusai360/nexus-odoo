@@ -8,6 +8,7 @@ import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
+import { corteAtualDate, corteLabel } from "@/lib/corte-dados.js";
 
 const inputSchema = z.object({
   odooId: z.number().int().positive(),
@@ -15,6 +16,8 @@ const inputSchema = z.object({
 
 const dados = z.object({
   encontrado: z.boolean(),
+  /** true quando o pedido existe no cache mas e anterior a data de inicio das analises. */
+  foraDaJanela: z.boolean().optional(),
   pedido: z
     .object({
       odooId: z.number().int(),
@@ -70,9 +73,16 @@ export const comercialDetalharPedido: ToolEntry<Input, Output> = {
         const row = await ctx.prisma.fatoPedido.findFirst({
           where: { odooId: input.odooId },
         });
-        if (!row) return { encontrado: false, pedido: null };
+        if (!row) return { encontrado: false, foraDaJanela: false, pedido: null };
+        // Drill nominal, mas o pedido continua sendo documento com data: anterior a data de
+        // inicio das analises, ele nao e considerado pela plataforma (nao entra em nenhum
+        // total). Mesmo tratamento de `queryPedidoSituacao` (reports/queries/comercial.ts).
+        if (row.dataOrcamento && row.dataOrcamento < corteAtualDate()) {
+          return { encontrado: false, foraDaJanela: true, pedido: null };
+        }
         return {
           encontrado: true,
+          foraDaJanela: false,
           pedido: {
             odooId: row.odooId,
             numero: row.numero,
@@ -93,6 +103,14 @@ export const comercialDetalharPedido: ToolEntry<Input, Output> = {
     );
     if (envelope.estado === "preparando") return envelope;
     const p = envelope.dados.pedido;
+    // Fora da janela nao e "nao existe": o pedido esta no Odoo, so nao e analisado pela
+    // plataforma. Sem isso o agente responderia "pedido nao encontrado", que e falso.
+    if (envelope.dados.foraDaJanela) {
+      return enriquecerEnvelope(envelope, "comercial_detalhar_pedido", {
+        periodo: { preCorte: true, label: `pedido anterior a ${corteLabel()}` },
+        destaque: { encontrado: "fora da janela de analise" },
+      });
+    }
     return enriquecerEnvelope(envelope, "comercial_detalhar_pedido", {
       destaque: p
         ? {

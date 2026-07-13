@@ -143,9 +143,14 @@ reclassificacao (se houver) e decisao do cliente. C5 da conferencia loga a decom
 ---
 
 ### (historico do achado original)
-## R-sem-cfop-historico — Linha "sem CFOP" (R$ 23,3 mi) mistura venda perdida e devolucao
+## ~~R-sem-cfop-historico~~ — DUPLICATA HISTÓRICA de item já resolvido (arquivado 2026-07-13)
 
-**Aberto em:** 2026-06-10 (auditoria da Fase 1). **Prioridade media.**
+> Este bloco é o **histórico do achado original**, e o item **já está fechado**: a seção
+> imediatamente acima (`R-sem-cfop-transparencia`) registra a correção (Fase 2.6, 2026-06-10,
+> `semCfopPorFinalidade` + `outrasNaoEspecificadas`). O título e o "Aberto em / Prioridade
+> media" abaixo faziam quem varre o arquivo ler como pendência aberta. **Não é dívida.**
+
+**Aberto em:** 2026-06-10 (auditoria da Fase 1). ~~**Prioridade media.**~~
 
 **Problema:** os 364 itens sem `cfop_id`/`cfop_nome` na origem (R$ 23,3 mi) sao um balde unico. Decomposicao
 pelo cabecalho: ~R$ 11,68 mi finalidade=1 (normal, candidato a VENDA REAL perdida na origem do Odoo, ICMS
@@ -175,7 +180,17 @@ Tornar isso um TESTE que roda (o CI nao tem DB, entao avaliar healthcheck agenda
 
 ---
 
-## R-periodo-acumulado — Tools fiscais sem periodo somam 13 ANOS de cache (enganoso)
+## ~~R-periodo-acumulado~~ — OBSOLETO (periciado em 2026-07-13; o texto abaixo é histórico)
+
+> **Não existe mais.** A perícia contra o código provou que o item, como está escrito, está
+> errado em três pontos: (a) o cache **não tem 13 anos** , a ingestão tem corte técnico em
+> `2026-01-01` (`src/worker/sync/corte.ts`); (b) o default das tools fiscais **não é mais "ano
+> corrente"** , `resolverPeriodoFiscal` devolve "do início das análises até hoje"; (c) o
+> "Grupo C" (`dfe_*`, `notas_recebidas`) **tem** default hoje. Somado a isso, a **data de
+> início das análises** (`src/lib/corte-dados.ts`) é um piso global de leitura: nenhuma tool
+> consegue varrer o acumulado inteiro. O item pode ser arquivado.
+>
+> Texto original preservado abaixo apenas como registro.
 
 **Aberto em:** 2026-06-09 (achado pelo usuario ao ver "R$ 897 mi de receita").
 
@@ -199,7 +214,24 @@ nao precisa mais passar periodo nas tools do Grupo B.
 
 ---
 
-## R-base-cfop — Base da tool `fiscal_faturamento_por_cfop` migrou de `vr_nf` para `vr_produtos` (F1 faturamento)
+## ~~R-base-cfop~~ — ENCERRADO como registro histórico (periciado em 2026-07-13)
+
+> **Nada a corrigir aqui.** A troca de base foi deliberada e está consistente: ninguém mais lê
+> `item.vr_nf` (a coluna só é escrita pelo builder). A divergência item x cabeçalho **não é
+> erro de rateio**: são **6 notas de saída autorizada sem nenhum item no cache**, que somam
+> exatamente os R$ 1.048.807,87 da diferença medida hoje (as outras 140 notas sem item são
+> modelo 23, DIFAL/FCP, com valor zero). A própria tool já declara isso na resposta.
+>
+> **Os percentuais do texto abaixo estão desatualizados** (foram medidos sobre 13 anos de
+> histórico; hoje a janela de análise é bem menor, então a mesma divergência absoluta pesa
+> mais em percentual). Medição de 2026-07-13, no recorte da tool: Σ item = R$ 253.251.807,87;
+> Σ cabeçalho = R$ 254.300.615,74; diferença = R$ 1.048.807,87 (0,41%).
+>
+> **Mas a investigação achou outra coisa, e séria:** a eliminação intragrupo da mesma tool
+> estava quebrada , ver **R-intragrupo** no topo deste arquivo.
+>
+> Fica registrado, sem ação: as 6 notas sem item são ignoradas por toda métrica de grão de
+> item e contadas pelas de grão de nota (o KPI). É a fonte permanente da divergência.
 
 **Aberto em:** 2026-06-09 (Fase 1 do Faturamento Real Consolidado).
 
@@ -766,14 +798,20 @@ marcado; o resto é dívida aberta.
   em dev/prod, telas e actions), 2026-07-10.
 - ✅ ~~Fuso do teto diário (meia-noite do servidor = 21h BR)~~ → corte agora é a
   meia-noite de America/Sao_Paulo (`inicioDoDiaEmSaoPaulo`), 2026-07-10.
-- Jobs em voo / payloads no Redis gravados antes do deploy não terão
-  `connectionName` nem `model` (saem `null`; janela transitória, se resolve
-  sozinha em 24h de TTL do replay).
-- Formatação de tabela (SPEC §3.12): a regra assume que a primeira coluna é
-  texto. Se for um código numérico, o título da linha sai como número nu
-  (mudar exige decisão de spec do usuário).
-- Aviso de hidratação do React aparece em `/dashboard` e `/integracoes`
-  (preexistente; frente própria de investigação de UI, fora deste escopo).
+- ✅ ~~Jobs em voo / payloads no Redis sem `connectionName`/`model`~~ → **EXPIROU SOZINHA**.
+  O PR #162 entrou em 2026-07-09 e o TTL do replay é de 24h: a janela fechou em 2026-07-10.
+  Verificado em 2026-07-13; o campo é gravado normalmente no caminho vivo.
+- ✅ ~~Formatação de tabela (SPEC §3.12): título numérico saía como número nu~~ → **FEITO**
+  (2026-07-13). O título só vai sem rótulo quando é um NOME (tem letra); quando é um CÓDIGO
+  ("5102", "12345"), leva o rótulo da coluna junto ("CFOP 5102"). O critério é "tem letra?",
+  e não a classificação de célula , `classificarCelula` só reconhece número no formato pt-BR
+  com separador de milhar, então um CFOP como "5102" caía em "texto" e escapava da regra.
+- Aviso de hidratação do React em `/dashboard` e `/integracoes`: **provável falso positivo**.
+  A perícia (2026-07-13) não achou causa no código , as duas telas são estáticas, o tema vem
+  de cookie e o `<html>` já tem `suppressHydrationWarning`. A causa provável é **extensão de
+  browser** injetando atributo no `<body>` (Grammarly, ColorZilla), que é o gerador clássico
+  desse aviso no Next. **Reproduzir em janela anônima sem extensões antes de tocar em código.**
+  Se persistir, o remédio é uma linha (`suppressHydrationWarning` no `<body>`).
 
 ### ARMADILHAS que custaram tempo (não repetir)
 
@@ -883,6 +921,120 @@ parceiro forem usadas de verdade, o directed sync precisa passar a atualizar
 
 **Lição:** ao cruzar dois modelos do Odoo por id, CONFIRA a `relation` do campo com
 `fields_get`. Id igual não quer dizer entidade igual.
+
+---
+
+## R-janela-cobranca , "Tudo" mostrava MENOS que "este mês" (RESOLVIDO 2026-07-13)
+
+Relatado pelo dono ("se eu filtro por tudo, o a pagar e o a receber ficam MENORES do que no
+filtro mensal, tem alguma coisa errada") e reproduzido em produção.
+
+A janela de cobrança (decisão dele, 2026-07-12) é *vencido em aberto + vencendo até o fim do
+período*, então o teto sai do **fim do período**. Só que o preset **"Tudo"** resolve o fim do
+período como **HOJE** (o que é correto para faturamento, que não tem futuro). Resultado: "Tudo"
+virava "só o vencido".
+
+| período | a receber | a pagar |
+|---|---|---|
+| este mês (teto 31/07) | R$ 18,1 mi | R$ 17,5 mi |
+| este ano (teto 31/12) | R$ 56,8 mi | R$ 45,2 mi |
+| **"Tudo" (antes)** | **R$ 9,6 mi** ⛔ | R$ 15,1 mi ⛔ |
+| **"Tudo" (agora)** | **R$ 68,2 mi** ✅ | R$ 45,2 mi ✅ |
+
+**Regra corrigida:** *sem fim de período NÃO há teto* , é a carteira inteira em aberto
+(vencido + a vencer). Um período maior nunca pode somar menos, e há teste travando isso.
+
+**O mesmo furo fazia o AGENTE divergir do dashboard:** a tool nem aceitava período, então caía
+sempre no teto = hoje e respondia só o vencido (R$ 9,6 mi) enquanto a tela dizia R$ 18,1 mi.
+`financeiro_contas_a_receber` e `_a_pagar` passaram a aceitar `periodoAte` (para o agente
+reproduzir o número da tela) e a **declarar a janela coberta** na resposta (`janelaCobranca`).
+
+**Lição:** um KPI cujo recorte depende do período precisa ser **monotônico** , se ampliar a
+janela diminui o número, a regra está lendo o período errado em algum extremo.
+
+**Não confundir:** o card **"valor em estoque" NÃO varia com o período** (a query nem recebe
+período). O que o dono viu ali era o bug do índice no filtro cruzado, corrigido no mesmo dia.
+
+---
+
+## R-corte-pericia , varredura da plataforma inteira (2026-07-13, a pedido do dono)
+
+Perícia das **128 tools do MCP**, dos **6 relatórios 1.0 + 22 fontes do 2.0**, de **todos os
+KPIs da Diretoria** e do **prompt do Nex**, para garantir que tudo respeita a data de
+"Analisar dados a partir de" (`sync.corte_dados`, hoje 16/03/2026) e que a data é tratada como
+**variável** (muda na tela, sem deploy).
+
+**O que já estava certo:** o boundary de hidratação (o servidor MCP, o pipeline externo, o
+worker e as páginas RSC leem o AppSetting antes de qualquer consulta); todos os KPIs da
+Diretoria; as 22 fontes do construtor; os 6 relatórios 1.0; e a esmagadora maioria das tools.
+
+**Furos corrigidos:**
+
+| Onde | O que acontecia |
+|---|---|
+| `cadastro_parceiros_novos` | Tinha um resolvedor de período **próprio**, que não importava nada de `corte-dados` , a única tool que ignorava a data por completo. `periodoDe: "2020-01-01"` (ou o preset `ano_corrente`) varria o cadastro inteiro abaixo do corte. |
+| `fiscal_faturamento_mensal_serie` | Ano anterior ao corte devolvia **12 meses de R$ 0,00 sem aviso** , o agente leria como "faturamento zero", que é falso. |
+| `fiscal_detalhar_nota` / `comercial_detalhar_pedido` | `findFirst` por `odooId` **sem piso**: serviam documento pré-corte com valor, sendo que o mesmo documento não entra em total nenhum. |
+| `queryCartaCorrecao` | O branch de drill-down (`documentoId`) trocava o `where` inteiro e **descartava o clamp**. |
+| Relatórios 1.0 (barra de período) | O calendário tinha como piso o mês mais antigo do **cache**, e o preset "Ano" nascia em janeiro. A query grampeava por baixo (o dado saía certo), mas a barra **anunciava uma janela que não era a lida**. |
+| Prompt do Nex | A data é injetada por turno (certo), mas a **seção que ensina o agente a usá-la** morava dentro do `identityBase` , sobrescrito pelo banco quando o admin salva o prompt, e descartado inteiro por um `advancedOverride`. Em produção o `identity_base` do banco **ainda tem o texto antigo** ("apenas dados de 2026 em diante"); só não valia porque `uses_code_defaults = true`. Agora a regra vive em `regra-corte.ts` e é anexada SEMPRE, por último. |
+
+**Decisões de produto que ficam com o dono (não inventamos filtro onde não cabe):**
+
+- **Estado não tem janela.** Saldo de estoque, valor por armazém, concentração, saldo bancário,
+  seriais e idade em dias são **foto do agora**: não existe "saldo em março". Filtrar por data
+  esconderia mercadoria que está fisicamente no armazém hoje.
+- **"Dias parado"** vem pronto do Odoo, calculado sobre o histórico **inteiro** do ERP. Um item
+  pode aparecer como "parado há 400 dias" enquanto a plataforma só analisa desde 16/03. Cortar
+  isso viraria um número artificial; se tiver que acompanhar a janela, a mudança é no builder
+  do fato, não na leitura.
+- **Cadastro de parceiros** (quantos clientes/fornecedores) conta todos, inclusive os
+  cadastrados antes do corte , é o certo para um cadastro (o cliente existe hoje). "Clientes
+  novos na janela" é outro KPI, não um filtro neste.
+- **`bi_consulta_avancada` (Caminho 3c)** executa SQL do agente e **não injeta o piso** , só
+  avisa. É furo estrutural conhecido e declarado; fechá-lo exige validar no `sql-guard` que
+  toda tabela de histórico citada tenha o piso no WHERE.
+- **`fato_cotacao` não tem coluna de data** (bomba-relógio). Hoje o fato está vazio (a Matrix
+  não opera cotação), então não vaza nada. Quando entrar em operação, o builder precisa
+  materializar a data antes de a tool ir para o ar.
+
+---
+
+## R-intragrupo , o Nex respondia faturamento 65% acima do dashboard (RESOLVIDO 2026-07-13)
+
+Achado ao investigar o `R-base-cfop` a pedido do dono. **Não era o corte: era uma regressão
+viva**, introduzida pelo PR #166 e medida em produção.
+
+`fiscal_faturamento_por_cfop` soma **toda saída autorizada**, mas a marcação de intragrupo
+vinha do `carregarItensVendaComGrupo`, cujo universo é "nota de venda pela operação" , e essa
+regra **exclui a operação `venda interna`**, que é justamente onde mora a venda entre empresas
+do grupo, com CFOP de receita (5102/6108). O numerador contava esses itens; o subtraendo, não.
+
+Resultado: a eliminação intragrupo caiu para **R$ 0,02** e a tool respondia ao agente *"a
+receita REAL, sem intragrupo, é R$ 102,1 milhões"* enquanto o dashboard dizia **R$ 61,9
+milhões** para a mesma pergunta. **+R$ 40 mi (+65%).**
+
+Medido em produção depois da correção (recorte da tool, CFOPs de venda):
+
+| | |
+|---|---|
+| receita bruta | R$ 99.445.291,21 |
+| intragrupo eliminado | **R$ 39.012.727,53** (era R$ 0,02) |
+| receita real | **R$ 60.432.563,68** |
+
+**Correção:** a marcação de intragrupo passa a nascer do **mesmo universo** que a soma. O
+teste unitário não pegava porque o mock zerava o intragrupo de propósito ("sem grupo no mock");
+agora há um caso com nota de venda interna para empresa do grupo.
+
+**Lição:** quando o numerador e o subtraendo de uma conta vêm de **loaders diferentes**, um
+deles pode ser estreitado sem que o outro perceba. Universo da soma e universo da eliminação
+têm que ser o mesmo objeto.
+
+**Fica aberto (decisão de produto):** no grão da NOTA, "venda interna" **não é venda**
+(`nota-venda-externa.ts`); no grão do ITEM, o CFOP 5102/6108 dessas mesmas notas **é receita**
+(`cfop-mapa.ts`). Enquanto as duas camadas discordarem, a eliminação intragrupo é a única coisa
+que segura a conta. Ver também `fiscal_ponte_faturamento`, que mistura `item.vr_produtos` com
+`nota.vr_nf` e por isso responde `reconciliado: false`.
 
 ---
 

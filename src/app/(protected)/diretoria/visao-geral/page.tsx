@@ -65,6 +65,9 @@ export default async function DiretoriaVisaoGeralPage({
     empresaId: empresaSel?.empresaId,
   };
 
+  // Teto da janela de cobranca. "Tudo" = sem teto (carteira inteira em aberto).
+  const tetoCobranca = periodo.preset === "tudo" ? undefined : isoDia(periodo.ate);
+
   const [vendas, vendasUf, vendasMarca, demandas, estoque, estoqueFamilia, aReceber, aPagar] =
     await Promise.all([
       queryIndicadoresVendas(prisma, filtros),
@@ -74,8 +77,14 @@ export default async function DiretoriaVisaoGeralPage({
       queryIndicadoresEstoque(prisma),
       queryEstoquePorFamilia(prisma),
       // Janela de cobranca: vencido + vencendo ate o fim do periodo em analise.
-      queryContasAReceber(prisma, { periodoAte: isoDia(periodo.ate) }, hoje),
-      queryContasAPagar(prisma, { periodoAte: isoDia(periodo.ate) }, hoje),
+      //
+      // "Tudo" NAO tem fim de periodo: e a carteira inteira em aberto (vencido + a vencer).
+      // O preset "tudo" resolve `ate` como HOJE (o que e certo para faturamento, que nao tem
+      // futuro), e passar esse `ate` como teto de cobranca fazia "Tudo" mostrar MENOS que
+      // "este mes" , so o vencido. Medido em producao (a receber): mes R$ 18,1 mi, ano
+      // R$ 56,8 mi, "tudo" R$ 9,6 mi. Um periodo maior nao pode somar menos.
+      queryContasAReceber(prisma, { periodoAte: tetoCobranca }, hoje),
+      queryContasAPagar(prisma, { periodoAte: tetoCobranca }, hoje),
     ]);
 
   const atalhos = [];

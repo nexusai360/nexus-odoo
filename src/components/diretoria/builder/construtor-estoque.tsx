@@ -39,13 +39,20 @@ export function ConstrutorEstoque({
         { chave: "marca", rotulo: "Marca", opcoes: o.marcas },
         { chave: "local", rotulo: "Local", opcoes: o.locais },
       ],
+      // O índice vem resolvido do servidor (Configuração > Diretoria · Vendas) dentro dos
+      // indicadores. Sem repassá-lo, o filtro cruzado recomputava o card "Valor em estoque"
+      // com o índice padrão e o número mudava só por ter aplicado um filtro.
       derivar: (d, f) => ({
         ...d,
-        ...derivarEstoque(d.granular, {
-          familia: f.familia ?? null,
-          marca: f.marca ?? null,
-          local: f.local ?? null,
-        }),
+        ...derivarEstoque(
+          d.granular,
+          {
+            familia: f.familia ?? null,
+            marca: f.marca ?? null,
+            local: f.local ?? null,
+          },
+          d.indicadores.indice,
+        ),
       }),
       contar: (df, db) => `${numFmt.format(df.catalogo.total)} de ${numFmt.format(db.catalogo.total)} modelos`,
     };

@@ -45,11 +45,22 @@ describe("opcoesEstoque", () => {
 
 describe("derivarIndicadores", () => {
   it("soma valor/itens e conta produtos e locais distintos", () => {
-    const i = derivarIndicadores(LINHAS);
+    const i = derivarIndicadores(LINHAS, 1);
     expect(i.valorTotal).toBe(3800);
     expect(i.itens).toBe(16);
     expect(i.produtos).toBe(3);
     expect(i.locais).toBe(3);
+  });
+
+  // O KPI "Valor em estoque" e o valor a custo DIVIDIDO pelo indice (Configuracao >
+  // Diretoria · Vendas). O servidor aplica; esta derivacao (usada no filtro cruzado do
+  // construtor) ignorava o indice e devolvia o valor a custo puro , entao o mesmo card
+  // mostrava um numero com filtro e outro sem, para quem nao usa o indice padrao.
+  it("aplica o indice configurado (o card nao pode mudar de valor ao filtrar)", () => {
+    const i = derivarIndicadores(LINHAS, 0.8);
+    expect(i.valorACusto).toBe(3800);
+    expect(i.valorTotal).toBe(4750); // 3800 / 0,8
+    expect(i.indice).toBe(0.8);
   });
 });
 
@@ -66,10 +77,17 @@ describe("derivarCatalogo", () => {
 
 describe("derivarEstoque (cruzado)", () => {
   it("filtra por família e recomputa donut de marca consistente", () => {
-    const d = derivarEstoque(LINHAS, { familia: "Cardio", marca: null, local: null });
+    // Índice 1 = sem correção, para a asserção falar do valor a custo puro.
+    const d = derivarEstoque(LINHAS, { familia: "Cardio", marca: null, local: null }, 1);
     // Só Cardio: Matrix (2500) + Johnson (800)
     expect(d.porMarca.linhas.map((l) => l.chave)).toEqual(["Matrix", "Johnson"]);
     expect(d.indicadores.valorTotal).toBe(3300);
     expect(d.catalogo.total).toBe(2);
+  });
+
+  it("o card não muda de valor por causa do filtro: usa o índice que o servidor resolveu", () => {
+    const d = derivarEstoque(LINHAS, { familia: "Cardio", marca: null, local: null }, 0.8);
+    expect(d.indicadores.valorACusto).toBe(3300);
+    expect(d.indicadores.valorTotal).toBe(4125); // 3300 / 0,8
   });
 });

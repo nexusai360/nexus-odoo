@@ -7,6 +7,11 @@ import {
 } from "./periodo";
 
 const HOJE = new Date(Date.UTC(2026, 4, 17)); // 2026-05
+// Data de início das análises usada nos testes. Os casos abaixo passam um corte ANTIGO
+// (2026-01) quando querem exercitar a resolução do período sem interferência do piso, e um
+// corte realista (2026-03-16) nos casos que testam o piso em si.
+const CORTE_ANTIGO = "2026-01-01";
+const CORTE = "2026-03-16";
 
 describe("ehMesValido", () => {
   it("aceita YYYY-MM", () => expect(ehMesValido("2026-05")).toBe(true));
@@ -39,16 +44,18 @@ describe("resolverPeriodo", () => {
     });
   });
   it("preset ano", () => {
-    expect(resolverPeriodo({ periodo: "ano" }, "3meses", HOJE)).toEqual({
+    expect(resolverPeriodo({ periodo: "ano" }, "3meses", HOJE, CORTE_ANTIGO)).toEqual({
       preset: "ano",
       de: "2026-01",
       ate: "2026-05",
     });
   });
-  it("preset tudo zera de/ate", () => {
-    expect(resolverPeriodo({ periodo: "tudo" }, "3meses", HOJE)).toEqual({
+  it("preset tudo = do inicio das analises ate hoje, com teto ABERTO", () => {
+    // "Tudo" nunca foi o cache inteiro: e tudo o que a plataforma analisa. O teto fica
+    // aberto de proposito, para documento com data futura (vencimento, previsao) entrar.
+    expect(resolverPeriodo({ periodo: "tudo" }, "3meses", HOJE, CORTE)).toEqual({
       preset: "tudo",
-      de: null,
+      de: "2026-03",
       ate: null,
     });
   });
@@ -64,6 +71,7 @@ describe("resolverPeriodo", () => {
         { periodo: "custom", de: "2026-01", ate: "2026-03" },
         "mes",
         HOJE,
+        CORTE_ANTIGO,
       ),
     ).toEqual({ preset: "custom", de: "2026-01", ate: "2026-03" });
   });
@@ -73,6 +81,7 @@ describe("resolverPeriodo", () => {
         { periodo: "custom", de: "2026-03", ate: "2026-01" },
         "mes",
         HOJE,
+        CORTE_ANTIGO,
       ),
     ).toEqual({ preset: "custom", de: "2026-01", ate: "2026-03" });
   });
@@ -94,8 +103,38 @@ describe("resolverPeriodo", () => {
         { periodo: "custom", de: "2026-01", ate: "2026-12" },
         "mes",
         HOJE,
+        CORTE_ANTIGO,
       ),
     ).toEqual({ preset: "custom", de: "2026-01", ate: "2026-05" });
+  });
+
+  // O piso da data de inicio das analises: a janela MOSTRADA tem que ser a janela LIDA.
+  // Antes, o preset "Ano" nascia em janeiro e o calendario aceitava mes pre-corte; a query
+  // grampeava por baixo (o dado saia certo) e a barra continuava anunciando "jan..mai".
+  it("preset ano nao nasce antes do inicio das analises", () => {
+    expect(resolverPeriodo({ periodo: "ano" }, "mes", HOJE, CORTE)).toEqual({
+      preset: "ano",
+      de: "2026-03",
+      ate: "2026-05",
+    });
+  });
+  it("custom anterior ao inicio das analises e puxado para ele", () => {
+    expect(
+      resolverPeriodo({ periodo: "custom", de: "2025-01", ate: "2026-04" }, "mes", HOJE, CORTE),
+    ).toEqual({ preset: "custom", de: "2026-03", ate: "2026-04" });
+  });
+  it("custom inteiramente anterior colapsa no mes do corte", () => {
+    expect(
+      resolverPeriodo({ periodo: "custom", de: "2025-01", ate: "2025-06" }, "mes", HOJE, CORTE),
+    ).toEqual({ preset: "custom", de: "2026-03", ate: "2026-03" });
+  });
+  it("3meses nao desce abaixo do corte", () => {
+    // Hoje = maio; 3 meses seria marco..maio, e o corte e marco: nao muda nada.
+    expect(resolverPeriodo({ periodo: "3meses" }, "mes", HOJE, "2026-04-10")).toEqual({
+      preset: "3meses",
+      de: "2026-04",
+      ate: "2026-05",
+    });
   });
 });
 

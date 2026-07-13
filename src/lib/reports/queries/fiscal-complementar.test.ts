@@ -101,7 +101,11 @@ describe("fiscal-complementar , data de inicio das analises", () => {
     expect(findMany.mock.calls[0][0].where.dataAutorizacao.gte).toEqual(PISO);
   });
 
-  it("queryCartaCorrecao com documentoId e drill-down: nao filtra por data", async () => {
+  // Mudanca deliberada (2026-07-13): o drill-down por documentoId TAMBEM leva o piso. O
+  // documento anterior a data de inicio das analises ja e recusado por fiscal_detalhar_nota
+  // e por queryPedidoSituacao , servir a carta dele aqui contradiria as outras telas (o
+  // documento nao existe em nenhum total, mas apareceria neste detalhe).
+  it("queryCartaCorrecao com documentoId: o drill nao e passe livre, o piso continua valendo", async () => {
     const findMany = jest.fn().mockResolvedValue([]);
     const count = jest.fn().mockResolvedValue(0);
     const prisma = { fatoCartaCorrecao: { findMany, count } } as unknown as Parameters<typeof queryCartaCorrecao>[0];
@@ -109,7 +113,7 @@ describe("fiscal-complementar , data de inicio das analises", () => {
     await queryCartaCorrecao(prisma, { documentoId: 77 });
     const where = findMany.mock.calls[0][0].where;
     expect(where.documentoId).toBe(77);
-    expect(where.dataAutorizacao).toBeUndefined();
+    expect(where.dataAutorizacao.gte).toEqual(PISO);
   });
 
   it("queryMdfeManifestos sem periodo aplica o piso do corte", async () => {
