@@ -13,13 +13,13 @@
 | **0** | Classificação de locais (fundação) | ✅ **feito** , gate passou |
 | **A** | Fatos limpos (`raw_deleted`) | ✅ **feito** , gate passou |
 | **B** | Ingestão do atendimento (job diário) | ✅ **feito** , gate passou |
-| **C** | Estoque , **queries** | ✅ feito · **UI (A-13) pendente** |
-| **D** | Seriais | ⬜ pendente |
-| **E** | Demanda , **5 queries** | ✅ feito · **UI (rótulos B-04/B-01) pendente** |
-| **F** | Necessidade de compra + A-12 | ⬜ pendente |
-| **G** | Pagamentos (3 visões) | ⬜ pendente |
-| **H** | MCP / Agente Nex | ⬜ pendente |
-| **I** | E2E + docs + PR + deploy | ⬜ pendente |
+| **C** | Estoque (queries + painel A-13) | ✅ **feito** |
+| **D** | Seriais (fato novo + A-06) | ✅ **feito** , gate passou (2.511) |
+| **E** | Demanda (5 queries) | ✅ **feito** |
+| **F** | Necessidade de compra + A-12 | ✅ **feito** , fecham entre si |
+| **G** | Pagamentos (3 visões) | ✅ **feito** |
+| **H** | MCP / Agente Nex | ✅ **feito** |
+| **I** | E2E + docs + PR | ✅ **PR aberto**, aguardando validação do dono |
 
 ## Números já conquistados (medidos contra o cache real)
 
@@ -45,7 +45,17 @@ d0d043bd  fix(fatos): 1.010 itens que o Odoo ja tinha apagado (Onda A)
 faf65dff  test(diretoria): mocks conhecem os fatos novos
 ```
 
-## PRÓXIMA AÇÃO (retomar exatamente aqui)
+## PRÓXIMA AÇÃO
+
+**Aguardando o dono validar na tela** (localhost:3000, branch da feature). Depois: merge e
+deploy.
+
+### O que foi conferido no fim (worker novo, imagem rebuildada)
+- 389 locais classificados · 4.204 seriais com saldo · 19.336 itens, todos com atendimento
+- o `JOB_ATENDIMENTO` rodou sozinho no boot do worker e gravou o marcador de completude
+- `npx tsc` limpo · **4.209 testes passando**
+
+## (histórico) A onda que estava aberta quando isto foi escrito
 
 **Onda D , Seriais.** O A-06 hoje lista 3.828 seriais **sem local nenhum** (o builder só
 preenche o local de quem já saiu). A fonte certa já está no cache e ninguém usa:
