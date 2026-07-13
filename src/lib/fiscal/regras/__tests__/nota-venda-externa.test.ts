@@ -63,3 +63,37 @@ describe("notaEhVendaExterna , regra canonica de venda a cliente externo", () =>
     expect(notaEhVendaExterna({ ...vendaOk })).toBe(true);
   });
 });
+
+// VENDA FUTURA (decisao do dono, 2026-07-13, confirmando a da Mariane em 08/07):
+// a receita da venda futura so entra no faturamento quando vira REMESSA (x117). A nota de
+// simples faturamento (5922/6922) cobra o cliente antes, mas NAO conta no mes em que sai.
+// Nenhum dos dois nomes de operacao tem a palavra "venda", entao ate aqui a receita da venda
+// futura sumia das DUAS pontas: R$ 538 mil desde 16/03/2026, R$ 3.500 so em julho.
+describe("venda futura , a receita e a remessa (x117), nunca o simples faturamento (5922)", () => {
+  const REMESSA_X117 = "Remessa de Mercadoria Originada de Encomenda 5117/6117 - Presumido";
+  const SIMPLES_FAT = "Simples Faturamento para Entrega Futura 5922/6922 - Lucro Presumido";
+
+  it("remessa de entrega futura (5117/6117) => e faturamento", () => {
+    expect(ehOperacaoVenda({ operacaoNome: REMESSA_X117, finalidadeNfe: "1" })).toBe(true);
+    expect(notaEhVendaExterna({ ...vendaOk, operacaoNome: REMESSA_X117 })).toBe(true);
+  });
+  it("simples faturamento de entrega futura (5922/6922) => NAO e faturamento", () => {
+    expect(ehOperacaoVenda({ operacaoNome: SIMPLES_FAT, finalidadeNfe: "1" })).toBe(false);
+    expect(notaEhVendaExterna({ ...vendaOk, operacaoNome: SIMPLES_FAT })).toBe(false);
+  });
+  it("remessa x117 segue presa as demais travas (intragrupo, devolucao, situacao)", () => {
+    expect(notaEhVendaExterna({ ...vendaOk, operacaoNome: REMESSA_X117, intragrupo: true })).toBe(false);
+    expect(notaEhVendaExterna({ ...vendaOk, operacaoNome: REMESSA_X117, finalidadeNfe: "4" })).toBe(false);
+    expect(notaEhVendaExterna({ ...vendaOk, operacaoNome: REMESSA_X117, situacaoNfe: "cancelada" })).toBe(false);
+  });
+  it("'Lancamento 1922/2922' (a entrada, contrapartida) nao vira faturamento por conter '922'", () => {
+    expect(ehOperacaoVenda({ operacaoNome: "Lançamento 1922/2922", finalidadeNfe: "1" })).toBe(false);
+  });
+  it("outras remessas (demonstracao 5912, garantia 5949) seguem fora", () => {
+    expect(ehOperacaoVenda({
+      operacaoNome: "Remessa de Mercadoria ou bem Para Demonstração 5912/6912 - Real",
+      finalidadeNfe: "1",
+    })).toBe(false);
+    expect(ehOperacaoVenda({ operacaoNome: "5949/6949 - Remessa em garantia LP", finalidadeNfe: "1" })).toBe(false);
+  });
+});

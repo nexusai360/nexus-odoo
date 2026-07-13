@@ -5,6 +5,31 @@
 
 ---
 
+## R-faturamento-nome-operacao — O faturamento depende do NOME que a Tauga digita na operação fiscal
+
+**Aberto em 2026-07-13, no PR #187.** A regra canônica de faturamento
+(`src/lib/fiscal/regras/nota-venda-externa.ts`) decide se uma nota é receita procurando a
+palavra **"venda"** no nome da operação fiscal (`operacao_nome`), mais as exceções por CFOP
+da venda futura (5117/6117 entra, 5922/6922 não).
+
+**O risco é estrutural:** o critério é um texto livre, cadastrado no Odoo por gente de fora
+do time. Uma operação de venda com um nome que não tenha "venda" e nem um CFOP conhecido
+**some do faturamento em silêncio**. Não é hipótese: foi exatamente o que aconteceu com a
+venda futura, e custou **R$ 538 mil não contabilizados** entre 16/03 e 13/07/2026, sem que
+nenhum alerta disparasse. O bug só apareceu porque o dono estranhou o número na tela.
+
+**Para onde ir.** Classificar pelo **CFOP dos itens da nota** (o `cfop-mapa.ts` já existe e
+já trata 5117 como receita e 5922 como simples faturamento), usando o nome da operação só
+como reforço para o caso de nota sem item no cache (o motivo pelo qual o CFOP saiu da regra
+em junho). Exige conferência nota a nota contra o Odoo antes de trocar, porque mexe no
+número da diretoria.
+
+**Rede de proteção enquanto isso não acontece:** um alerta que liste, por mês, as operações
+fiscais de **saída autorizada modelo 55/65 que ficaram FORA do faturamento** e o valor de
+cada uma. Hoje ninguém olha essa lista, e é nela que o dinheiro perdido aparece.
+
+---
+
 ## R-stack-prod-drift — O compose da stack no Portainer NÃO chega no serviço vivo (RESOLVIDO no worker)
 
 **O que aconteceu (2026-07-12).** O worker de produção morria com `JavaScript heap out of

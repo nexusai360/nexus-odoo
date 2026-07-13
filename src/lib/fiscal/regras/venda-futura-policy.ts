@@ -23,17 +23,29 @@
 //     tudo lê a mesma classificação (`classificaOperacao`/`isVendaExterna`) e o
 //     mesmo cálculo de estoque disponível.
 //
-// ATENÇÃO ao virar RECONHECE_FATURAMENTO_NA_EMISSAO para true: é preciso garantir
-// que o x117 (remessa) da MESMA venda não seja contado de novo (senão duplica a
-// receita). O teste `classifica-operacao.test.ts` que trava "5922 não é receita"
-// vai falhar de propósito , é o lembrete para validar a de-para antes de publicar.
+// RECONFIRMADO pelo dono (2026-07-13), agora com todas as letras: "só é para entrar em
+// faturamento quando for 5117/6117. Venda futura não pode contar no mês para entrar no
+// faturamento; só quando virar 5117/6117". É a decisão final para o assunto.
+//
+// O QUE ESTAVA QUEBRADO ATÉ O PR #187: a regra do faturamento (`nota-venda-externa.ts`)
+// procurava a palavra "venda" no NOME da operação fiscal, e nem "Simples Faturamento para
+// Entrega Futura 5922/6922" nem "Remessa de Mercadoria Originada de Encomenda 5117/6117"
+// têm essa palavra. Resultado: a receita da venda futura não entrava em NENHUMA das duas
+// pernas , sumia (R$ 538 mil desde 16/03/2026). A flag abaixo existia, mas só era lida pelo
+// `cfop-mapa.ts`, que não alimenta o `is_venda_externa`: ela era inerte para o faturamento.
+// Agora `nota-venda-externa.ts` lê esta flag, e as duas pernas são mutuamente exclusivas.
+//
+// ATENÇÃO ao virar RECONHECE_FATURAMENTO_NA_EMISSAO para true: as duas pernas viram de uma
+// vez só (a 5922 passa a ser receita e o x117 sai), então a mesma venda não conta duas
+// vezes. O teste `classifica-operacao.test.ts` que trava "5922 não é receita" vai falhar de
+// propósito , é o lembrete para validar a de-para antes de publicar.
 export const VENDA_FUTURA = {
   /**
    * FATURAMENTO: onde a receita da venda futura é reconhecida.
-   * - false (padrão): só na REMESSA (x117). As notas 5922/6922 ficam FORA do
-   *   faturamento (`is_venda_externa=false`).
-   * - true: na EMISSÃO da 5922/6922 (entra no faturamento). Exige de-para para o
-   *   x117 da mesma venda não contar de novo.
+   * - false (padrão, decisão final do dono): só na REMESSA (x117), que entra no
+   *   faturamento (`is_venda_externa=true`). As notas 5922/6922 ficam FORA.
+   * - true: na EMISSÃO da 5922/6922 (entra no faturamento) e a remessa x117 sai,
+   *   automaticamente, para não contar a mesma venda duas vezes.
    */
   RECONHECE_FATURAMENTO_NA_EMISSAO: false as boolean,
 
