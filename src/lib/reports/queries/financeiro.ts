@@ -194,16 +194,29 @@ export interface FiltrosConta {
   periodoAte?: string;
 }
 
-/** Ultimo instante do dia `ate` (borda exclusiva: < dia seguinte). */
-function tetoDeVencimento(ate: string | undefined, hoje: Date): Date {
-  if (!ate) {
-    const d = new Date(hoje);
-    d.setHours(23, 59, 59, 999);
-    return d;
-  }
+/**
+ * Teto da JANELA DE COBRANÇA: vencido em aberto + vencendo até o fim do período.
+ *
+ * SEM fim de período, NÃO HÁ TETO , é a carteira inteira em aberto (vencido + a vencer).
+ *
+ * Antes, sem `ate`, o teto virava HOJE (só o vencido). Isso quebrava a monotonicidade e
+ * produzia o paradoxo que o dono relatou: o preset "Tudo" define o fim do período como hoje,
+ * então "Tudo" mostrava MENOS que "este mês". Medido em produção (a receber): mês
+ * R$ 18,1 mi, ano R$ 56,8 mi, "tudo" R$ 9,6 mi. Um período maior não pode somar menos.
+ *
+ * Devolve `undefined` quando não há teto (o chamador então não filtra por vencimento).
+ */
+function tetoDeVencimento(ate: string | undefined): Date | undefined {
+  if (!ate) return undefined;
   const d = new Date(`${ate.slice(0, 10)}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + 1);
   return d;
+}
+
+/** Where do vencimento: só existe quando há fim de período. */
+function whereVencimento(ate: string | undefined): { dataVencimento?: { lt: Date } } {
+  const teto = tetoDeVencimento(ate);
+  return teto ? { dataVencimento: { lt: teto } } : {};
 }
 
 export async function queryContasAReceber(
@@ -226,8 +239,9 @@ export async function queryContasAReceber(
       // o KPI somava divida antiga do Odoo (dezenas de milhoes que nao existem hoje).
       dataDocumento: { gte: corteAtualDate() },
       // Janela de cobranca: vencido + vencendo ate o fim do periodo. O que vence depois fica
-      // de fora (nao se cobra hoje o que so vence em setembro).
-      dataVencimento: { lt: tetoDeVencimento(filtros.periodoAte, hoje) },
+      // de fora (nao se cobra hoje o que so vence em setembro). SEM fim de periodo, nao ha
+      // teto: e a carteira inteira em aberto.
+      ...whereVencimento(filtros.periodoAte),
       ...(filtros.participanteId ? { participanteId: filtros.participanteId } : {}),
     },
     select: {
@@ -317,7 +331,7 @@ export async function queryContasAPagar(
       // Idem a receber: so divida cujo documento e do periodo coberto pela plataforma.
       dataDocumento: { gte: corteAtualDate() },
       // Mesma janela de cobranca do a receber (ver o bloco acima).
-      dataVencimento: { lt: tetoDeVencimento(filtros.periodoAte, hoje) },
+      ...whereVencimento(filtros.periodoAte),
       ...(filtros.participanteId ? { participanteId: filtros.participanteId } : {}),
     },
     select: {

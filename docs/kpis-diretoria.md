@@ -80,8 +80,25 @@ pago** mais o que **vence dentro do período** que a tela está olhando.
 | Vence DENTRO do período selecionado | **Sim** (ainda não venceu, mas é do período) |
 | Vence DEPOIS do fim do período (agosto, setembro...) | **Não.** Não se cobra hoje o que só vence daqui a três meses |
 
-Na prática é um teto: `data_vencimento <= fim do período`. Sem período, o teto é hoje (só o
-vencido). O piso continua sendo a data de início das análises, pela data do **documento**.
+Na prática é um teto: `data_vencimento <= fim do período`. O piso continua sendo a data de
+início das análises, pela data do **documento**.
+
+> **Corrigido em 2026-07-13 , "Tudo" não é "sem período".** A regra antiga dizia "sem período,
+> o teto é hoje (só o vencido)", e o preset **"Tudo"** resolve o fim do período como **hoje**.
+> Resultado: "Tudo" virava "só o vencido" e mostrava **MENOS** que "este mês" , um período
+> maior somando menos, o que é impossível. Medido em produção:
+>
+> | período | a receber | a pagar |
+> |---|---|---|
+> | este mês (teto 31/07) | R$ 18,1 mi | R$ 17,5 mi |
+> | este ano (teto 31/12) | R$ 56,8 mi | R$ 45,2 mi |
+> | **"Tudo" (antes)** | **R$ 9,6 mi** ⛔ | R$ 15,1 mi ⛔ |
+> | **"Tudo" (agora)** | **R$ 68,2 mi** ✅ | R$ 45,2 mi ✅ |
+>
+> **Sem fim de período NÃO há teto:** é a **carteira inteira em aberto** (vencido + a vencer).
+> A tool do agente (`financeiro_contas_a_receber` / `_a_pagar`) passou a aceitar `periodoAte` e
+> a **declarar a janela coberta** na resposta (`janelaCobranca`) , sem isso, a mesma pergunta
+> dava um número no chat e outro no dashboard.
 
 Isso vale igual para o **a pagar**, e responde ao filtro de período da barra (dia, semana, mês,
 ano, personalizado).

@@ -5,9 +5,20 @@ import type { ToolEntry } from "../../catalog/types.js";
 import { queryContasAPagar } from "@/lib/reports/queries/financeiro.js";
 import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
+import { rotuloJanelaCobranca } from "./contas-a-receber.js";
 
 const inputSchema = z.object({
   participanteId: z.number().int().positive().optional(),
+  // JANELA DE COBRANCA: vencido em aberto + vencendo ate esta data. SEM ela, nao ha teto , a
+  // resposta e a carteira INTEIRA em aberto (vencido + a vencer). E o parametro que permite ao
+  // agente reproduzir o numero do dashboard, que usa o fim do periodo da tela como teto.
+  periodoAte: z
+    .string()
+    .optional()
+    .describe(
+      "Fim da janela de cobranca (AAAA-MM-DD): traz o vencido + o que vence ate essa data. " +
+        "Sem isso, devolve a carteira inteira em aberto.",
+    ),
 });
 
 // vrSaldo: valor correto a pagar em aberto na fonte finan.lancamento
@@ -27,6 +38,8 @@ const tituloSchema = z.object({
 const dados = z.object({
   titulos: z.array(tituloSchema),
   totalAPagar: z.number(),
+  /** A janela que este numero cobre. O agente PRECISA dizer isso junto do valor. */
+  janelaCobranca: z.string().optional(),
   // Quebra honesta do total em aberto: confirmado (efetivo) vs provisorio
   // (lançado, não efetivado). No a_pagar o provisorio é a maior parte.
   quebra: z.object({ confirmado: z.number(), provisorio: z.number() }),
@@ -63,8 +76,9 @@ const outputSchema = z.union([
 type Input = z.infer<typeof inputSchema>;
 type Output = z.infer<typeof outputSchema>;
 
-function shape(d: Awaited<ReturnType<typeof queryContasAPagar>>) {
+function shape(d: Awaited<ReturnType<typeof queryContasAPagar>>, periodoAte?: string) {
   return {
+    janelaCobranca: rotuloJanelaCobranca(periodoAte),
     titulos: d.titulos.map((t) => ({
       participanteNome: t.participanteNome,
       numeroDocumento: t.numeroDocumento,
@@ -92,7 +106,8 @@ export const financeiroContasAPagar: ToolEntry<Input, Output> = {
     const envelope = await withFreshness(
       ctx.prisma,
       ["fato_financeiro_titulo"],
-      async () => shape(await queryContasAPagar(ctx.prisma, input, new Date())),
+      async () =>
+        shape(await queryContasAPagar(ctx.prisma, input, new Date()), input.periodoAte),
     );
     if (envelope.estado === "preparando") return envelope;
     // T-20 (2026-05-27): expor topMaiores lista (top 10 ordenado).
@@ -108,6 +123,9 @@ export const financeiroContasAPagar: ToolEntry<Input, Output> = {
     const enriched = enriquecerEnvelope(envelope, "financeiro_contas_a_pagar", {
       destaque: {
         totalAPagar: envelope.dados.totalAPagar,
+        // Sem isto, o agente da o numero sem dizer o que ele cobre , e a mesma pergunta rende
+        // um valor no chat e outro no dashboard, que usa o fim do periodo da tela.
+        janelaCobranca: envelope.dados.janelaCobranca ?? "",
         totalConfirmado: envelope.dados.quebra.confirmado,
         totalProvisorio: envelope.dados.quebra.provisorio,
         contagem: envelope.dados.titulos.length,
