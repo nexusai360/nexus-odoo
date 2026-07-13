@@ -204,9 +204,33 @@ palavra digitada por terceiros.
 Isto apareceu no meio da perícia e **não tem relação com a decisão acima**. É um bug de
 ingestão, e precisa de conserto próprio.
 
-**O fato.** 8 notas do período têm itens no Odoo que **nunca chegaram ao cache** (152 itens
-perdidos). Entre elas, 4 vendas reais de R$ 493.353,85. Os itens existem no Odoo, conferidos
-ao vivo. No cache, não existem , nem marcados como deletados: **simplesmente não estão lá**.
+**O fato.** Varredura completa das **6.393 notas** modelo 55/65 do período, comparando item a
+item o cache contra o Odoo ao vivo:
+
+| | |
+|---|---|
+| itens no **Odoo** | 39.255 |
+| itens no **cache** | 39.100 |
+| **itens perdidos** | **158** (taxa de 0,40%) |
+| notas com contagem idêntica | 6.377 (99,8%) |
+| notas **sem nenhum item** no cache | **13** |
+| notas com itens **pela metade** | 1 (a nota 59300: 3 itens no Odoo, 2 no cache) |
+| notas com item **a mais** no cache | 2 (item apagado no Odoo, ainda vivo aqui) |
+
+Entre as notas afetadas, **4 são vendas reais somando R$ 493.353,85**. Os itens existem no
+Odoo, conferidos ao vivo. No cache não existem , nem marcados como deletados: **simplesmente
+não estão lá**.
+
+A taxa de 0,40% parece pequena, e é justamente isso que a torna perigosa: ela não aparece em
+nenhum total, não quebra nada, não gera erro. Ela só corrói silenciosamente qualquer número
+calculado por item. E ela **não é aleatória**: pega as notas grandes (ver abaixo).
+
+**A perda parcial (nota 59300, 2 de 3 itens) é a prova mais direta da causa:** não é "a nota
+inteira não veio", é "parte do bloco de itens caiu na janela". Nenhuma explicação de
+"documento sem item" cobre isso.
+
+**As 2 notas com item a MAIS** mostram o outro lado da mesma moeda: a reconciliação de itens
+também não está limpando o que o Odoo apagou. O cache diverge nas duas direções.
 
 **A causa.** O worker sincroniza cada modelo pedindo ao Odoo "tudo que mudou desde o último
 ciclo" (`write_date > último ciclo`) e, ao terminar, **avança a marca d'água** para o instante
@@ -229,7 +253,11 @@ porque são as de transação mais longa , maior a janela, maior a chance de cai
    nada) e fecha a janela de commit. É o conserto da causa.
 2. **Reconciliação nos dois sentidos.** A rotina diária passa a comparar os ids do Odoo com
    os do cache **e a buscar o que está faltando**, não só a marcar o que sumiu. É a rede de
-   segurança que teria pescado essas 8 notas sozinha.
+   segurança que teria pescado essas 13 notas sozinha , e que também resolveria as 2 notas
+   com item a mais, que hoje ninguém limpa.
+
+Feito isso, vale rodar **uma vez** a mesma varredura desta perícia como conferência: ela
+compara o cache com o Odoo item a item e diz, em número, se o buraco fechou.
 
 Enquanto isso não for feito, **os itens de nota fiscal do cache não são confiáveis para
 valor** (margem por produto, faturamento por família, curva ABC). O **cabeçalho** da nota
