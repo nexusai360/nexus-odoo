@@ -2,6 +2,7 @@ import { Queue, Worker, type Job } from "bullmq";
 import IORedis from "ioredis";
 import { prisma } from "./prisma";
 import { clientFromEnv } from "./odoo/client";
+
 import { MODEL_CATALOG } from "./catalog/model-catalog";
 import { readSyncConfig } from "./sync/sync-config";
 import { criarCicloLock } from "./sync/ciclo-lock";
@@ -47,6 +48,11 @@ import { cleanupExpiredIdempotency } from "./cleanup/idempotency";
 import { cleanupAuditLog } from "./cleanup/audit-log";
 import { capturarSnapshotEstoqueDiario } from "./fatos/snapshot-estoque-diario";
 import { rebuildFatoEstoqueLocal } from "./fatos/fato-estoque-local";
+import { rebuildFatoPedidoItem } from "./fatos/fato-pedido-item";
+import { markFatoBuilt } from "./fatos/fato-build-state";
+import { syncAtendimento } from "./sync/atendimento";
+import { CHAVE_BUILD_ATENDIMENTO } from "../lib/diretoria/atendimento-status";
+
 import { rodarProfileAggregate } from "./agent-intelligence/profile-aggregate";
 
 export const MAINTENANCE_QUEUE = "maintenance";
@@ -57,6 +63,13 @@ export const JOB_REFRESH_USD_BRL = "refresh-usd-brl-ptax";
 export const JOB_SNAPSHOT_ESTOQUE = "snapshot-estoque-diario";
 /** Classifica os locais de estoque (fisico | demonstracao | fora). Roda no boot. */
 export const JOB_CLASSIFICACAO_LOCAIS = "classificacao-locais";
+/** Relê do Odoo o quanto de cada pedido ainda falta entregar. Diário. */
+export const JOB_ATENDIMENTO = "atendimento-pedidos";
+
+/** O job de atendimento leva de 4 a 8 min. 15 min é o teto antes de considerá-lo travado. */
+const ATENDIMENTO_TIMEOUT_MS = 15 * 60_000;
+/** Se o ciclo de sync estiver rodando, tenta de novo daqui a pouco (não pula o dia). */
+const ATENDIMENTO_RETRY_MS = 15 * 60_000;
 export const JOB_PROFILE_AGGREGATE = "profile-aggregate";
 /** Cadencia do perfil deterministico por usuario (camada deterministica, roda em prod). */
 const PROFILE_AGGREGATE_EVERY_MS = 60 * 60_000; // 1h
@@ -182,6 +195,50 @@ const maintenanceWorker = new Worker(
       } catch (err) {
         console.error("[maintenance] falha no snapshot de estoque:", err);
         return { ok: false, error: (err as Error).message };
+      }
+    }
+    if (job.name === JOB_ATENDIMENTO) {
+      // Escreve na mesma raw que o ciclo de sync, então pega o lock DELE (o lock é por
+      // nome de job: um lock próprio não protegeria de nada). E se o ciclo estiver
+      // rodando, reagenda , pular significaria mais 24h com a demanda desatualizada.
+      if (!(await adquirirLock(JOB_INCREMENTAL))) {
+        await maintenanceQueue.add(
+          JOB_ATENDIMENTO,
+          {},
+          { delay: ATENDIMENTO_RETRY_MS },
+        );
+        console.log(
+          "[maintenance] atendimento: ciclo de sync em andamento, reagendado para daqui a 15 min",
+        );
+        return { ok: false, reagendado: true };
+      }
+      try {
+        const client = clientFromEnv();
+        await client.authenticate();
+        const r = await Promise.race([
+          syncAtendimento(client, prisma.rawSpedDocumentoItem as never),
+          new Promise<never>((_, reject) =>
+            setTimeout(
+              () => reject(new Error("atendimento excedeu 15 min")),
+              ATENDIMENTO_TIMEOUT_MS,
+            ),
+          ),
+        ]);
+        await rebuildFatoPedidoItem(prisma);
+        // Barreira de completude: o marcador só é gravado quando o job termina INTEIRO.
+        // É ele que as consultas leem para decidir se podem confiar nas colunas de
+        // atendimento. Se o job morre no meio, o marcador não vem, e a plataforma cai
+        // uniformemente no valor cheio (com aviso) em vez de somar metade de cada base.
+        await markFatoBuilt(prisma, CHAVE_BUILD_ATENDIMENTO);
+        console.log(
+          `[maintenance] atendimento: ${r.atualizados} itens em ${(r.duracaoMs / 1000).toFixed(0)}s`,
+        );
+        return { ok: true, ...r };
+      } catch (err) {
+        console.error("[maintenance] falha no atendimento:", err);
+        return { ok: false, error: (err as Error).message };
+      } finally {
+        await liberarLock(JOB_INCREMENTAL);
       }
     }
     if (job.name === JOB_CLASSIFICACAO_LOCAIS) {
@@ -549,6 +606,18 @@ async function bootstrap(): Promise<void> {
   );
   await maintenanceQueue.add(JOB_CLASSIFICACAO_LOCAIS, {});
   console.log("[worker] classificação de locais agendada (6h) + build inicial");
+
+  // Quanto de cada pedido ainda falta entregar. Ciclo próprio de 24h porque o campo é
+  // computado no Odoo e NÃO mexe no write_date da linha , o ciclo incremental (que
+  // filtra por write_date) nunca perceberia uma entrega. Roda de madrugada (04:00 BRT),
+  // quando o Odoo está ocioso, e também no boot para não haver janela sem o dado.
+  await maintenanceQueue.upsertJobScheduler(
+    JOB_ATENDIMENTO,
+    { pattern: "0 7 * * *" },
+    { name: JOB_ATENDIMENTO },
+  );
+  await maintenanceQueue.add(JOB_ATENDIMENTO, {});
+  console.log("[worker] atendimento de pedidos agendado (04:00 BRT) + pull inicial");
   console.log("[worker] cron de PTAX USD/BRL agendado (diário 18:30 BRT) + refresh inicial");
 
   // Perfil de interacao por usuario (camada DETERMINISTICA, SQL puro, sem claude) , roda em

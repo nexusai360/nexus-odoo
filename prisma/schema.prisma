@@ -2353,6 +2353,15 @@ model FatoPedidoItem {
   localReservaId Int?     @map("local_reserva_id")
   vrProdutos     Decimal  @default(0) @map("vr_produtos") @db.Decimal(18, 2)
   vrCusto        Decimal  @default(0) @map("vr_custo") @db.Decimal(18, 2)
+  /// Quanto desta linha ainda falta entregar, e quanto já foi entregue. Vêm de campos
+  /// COMPUTADOS do Odoo, mantidos pelo job de atendimento (src/worker/sync/atendimento.ts).
+  ///
+  /// NULO de propósito enquanto o job não rodou. Zero significaria "nada a entregar" e
+  /// faria todo pedido aparecer com valor R$ 0,00; nulo significa "ainda não sei", e as
+  /// consultas caem no valor cheio com aviso, uniformemente. Ver
+  /// src/lib/diretoria/atendimento-status.ts.
+  quantidadeAAtender Decimal? @map("quantidade_a_atender") @db.Decimal(18, 4)
+  quantidadeAtendida Decimal? @map("quantidade_atendida") @db.Decimal(18, 4)
   atualizadoEm   DateTime @default(now()) @map("atualizado_em")
 
   @@index([pedidoId])

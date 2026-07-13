@@ -34,3 +34,25 @@ describe("SQL_REBUILD_PEDIDO_ITEM", () => {
     expect(sql).not.toMatch(/\$\{/);
   });
 });
+
+describe("colunas de atendimento", () => {
+  const sql = SQL_REBUILD_PEDIDO_ITEM;
+
+  it("traz o quanto falta entregar e o quanto ja foi entregue", () => {
+    expect(sql).toContain("quantidade_a_atender");
+    expect(sql).toContain("(i.data->>'quantidade_a_atender_pedido')::numeric");
+    expect(sql).toContain("(i.data->>'quantidade_atendida_pedido')::numeric");
+  });
+
+  it("NAO usa coalesce nas colunas de atendimento", () => {
+    // Zero significaria "nada a entregar" e faria todo pedido valer R$ 0,00 na tela
+    // ate o job de atendimento rodar pela primeira vez. Nulo significa "ainda nao sei",
+    // e a consulta cai no valor cheio com aviso.
+    expect(sql).not.toMatch(
+      /COALESCE\(\(i\.data->>'quantidade_a_atender_pedido'\)/i,
+    );
+    expect(sql).not.toMatch(
+      /COALESCE\(\(i\.data->>'quantidade_atendida_pedido'\)/i,
+    );
+  });
+});

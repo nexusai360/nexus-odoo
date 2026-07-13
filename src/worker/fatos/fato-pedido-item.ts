@@ -25,7 +25,8 @@ import { markFatoBuilt } from "./fato-build-state";
 export const SQL_REBUILD_PEDIDO_ITEM = `
     INSERT INTO fato_pedido_item (
       odoo_id, pedido_id, produto_id, produto_nome, familia_nome, marca_nome,
-      quantidade, cfop_id, local_reserva_id, vr_produtos, vr_custo, atualizado_em
+      quantidade, cfop_id, local_reserva_id, vr_produtos, vr_custo,
+      quantidade_a_atender, quantidade_atendida, atualizado_em
     )
     SELECT
       i.odoo_id,
@@ -39,6 +40,11 @@ export const SQL_REBUILD_PEDIDO_ITEM = `
       CASE WHEN (i.data->'local_reserva_livre_id'->>0) ~ '^[0-9]+$' THEN (i.data->'local_reserva_livre_id'->>0)::int END,
       COALESCE((i.data->>'vr_produtos')::numeric, 0),
       COALESCE((i.data->>'vr_custo_estoque')::numeric, 0),
+      -- SEM coalesce: item que o job de atendimento ainda nao visitou fica NULO, nao
+      -- zero. Zero significaria "nada a entregar" e faria o pedido inteiro valer
+      -- R$ 0,00 na tela. Nulo significa "ainda nao sei", e a consulta trata isso.
+      (i.data->>'quantidade_a_atender_pedido')::numeric,
+      (i.data->>'quantidade_atendida_pedido')::numeric,
       now()
     FROM raw_sped_documento_item i
     LEFT JOIN fato_produto p

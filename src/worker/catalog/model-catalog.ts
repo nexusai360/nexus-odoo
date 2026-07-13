@@ -8,6 +8,18 @@ export interface CatalogEntry {
   /** Campos que NÃO devem ser copiados para o cache (segredos, blobs).
    * `getModelFields` os subtrai. Vazio/ausente = comportamento padrão. */
   excludeFields?: readonly string[];
+  /** Campos COMPUTADOS (store=false) que queremos mesmo assim.
+   *
+   * Por padrão `getModelFields` só copia campo armazenado, porque campo computado
+   * o Odoo calcula na hora e sai caro. Mas alguns são a única fonte de verdade de
+   * algo que o negócio precisa , é o caso de `quantidade_a_atender_pedido`, que diz
+   * quanto de um pedido ainda falta entregar (sem ele, a plataforma conta o pedido
+   * inteiro como pendente mesmo depois de metade entregue).
+   *
+   * ATENÇÃO: campo computado não muda o `write_date` da linha, então o ciclo
+   * incremental (que filtra por write_date) NÃO o mantém atualizado sozinho. Quem
+   * garante o frescor é o job dedicado em `src/worker/sync/atendimento.ts`. */
+  extraFields?: readonly string[];
   /** Limpa 2026+ (spec/plan 2026-06-11): corte temporal do modelo TRANSACIONAL.
    * `odoo` = nome do campo no Odoo (domínio do sync); `raw` = chave no JSON do
    * raw (em geral igual ao odoo); `fato` = coluna do fato (quando há).
@@ -93,7 +105,12 @@ export const MODEL_CATALOG: readonly CatalogEntry[] = [
   { odooModel: "sped.consulta.dfe.item", mode: "incremental", corte: { odoo: "data_hora_emissao", raw: "data_hora_emissao" } },
   { odooModel: "sped.documento", mode: "incremental", corte: { odoo: "data_emissao", raw: "data_emissao" } },
   { odooModel: "sped.documento.duplicata", mode: "incremental", cortePai: { tabelaRawPai: "raw_sped_documento", fkRaw: "documento_id", fkM2O: true } },
-  { odooModel: "sped.documento.item", mode: "incremental", cortePai: { tabelaRawPai: "raw_sped_documento", fkRaw: "documento_id", fkM2O: true } },
+  // `quantidade_a_atender_pedido` e `quantidade_atendida_pedido` são computados no
+  // Odoo (store=false). São a única fonte de "quanto deste pedido ainda falta
+  // entregar" , sem eles a diretoria conta o pedido inteiro como pendente, mesmo com
+  // 47% da demanda já entregue. Quem os mantém frescos é o job de atendimento (o
+  // ciclo incremental não consegue: campo computado não mexe no write_date).
+  { odooModel: "sped.documento.item", mode: "incremental", cortePai: { tabelaRawPai: "raw_sped_documento", fkRaw: "documento_id", fkM2O: true }, extraFields: ["quantidade_a_atender_pedido", "quantidade_atendida_pedido"] },
   { odooModel: "sped.documento.item.declaracao.importacao", mode: "incremental" },
   { odooModel: "sped.documento.item.rastreabilidade", mode: "incremental", cortePai: { tabelaRawPai: "raw_sped_documento_item", fkRaw: "item_id", fkM2O: true } },
   { odooModel: "sped.documento.item.rateio", mode: "incremental" },

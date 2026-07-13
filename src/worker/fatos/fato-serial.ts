@@ -85,7 +85,8 @@ export async function rebuildFatoSerial(prisma: PrismaClient): Promise<number> {
         ON ii.odoo_id = CASE WHEN (r.data->'item_id'->>0) ~ '^[0-9]+$'
                              THEN (r.data->'item_id'->>0)::int END
       JOIN fato_nota_fiscal n ON n.odoo_id = ii.documento_id
-      WHERE n.entrada_saida = '1' AND n.situacao_nfe = 'autorizada'
+      WHERE coalesce(r.raw_deleted, false) = false
+        AND n.entrada_saida = '1' AND n.situacao_nfe = 'autorizada'
       GROUP BY r.data->'lote_serie_id'->>1
     ) sub
     WHERE fs.serial = sub.serial

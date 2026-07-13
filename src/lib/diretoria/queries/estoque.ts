@@ -13,6 +13,11 @@ import { clampDateAoCorte, corteAtualDate, janelaClampada } from "@/lib/corte-da
 import { diasRestantes, statusPrazo, type StatusPrazo } from "@/lib/diretoria/cores";
 import { VENDA_FUTURA } from "@/lib/fiscal/regras/venda-futura-policy";
 import { getIndiceEstoque, aplicarIndice } from "@/lib/indice-estoque";
+import type { ClassificacaoLocal } from "@/lib/estoque/classificacao-local";
+import {
+  localIdsPorClassificacao,
+  whereLocal,
+} from "@/lib/estoque/locais-por-classificacao";
 
 export interface IndicadoresEstoque {
   /** O número do KPI: valor a custo DIVIDIDO pelo índice configurado (Diretoria > Vendas). */
@@ -50,14 +55,17 @@ export async function queryIndicadoresEstoque(
   prisma: PrismaClient,
 ): Promise<IndicadoresEstoque> {
   const indice = await getIndiceEstoque(prisma);
+  // Só o que é da empresa e está em casa. Sem este filtro, o KPI somava também o
+  // estoque Virtual (R$ 10,2 mi) e o que está em poder de Terceiros (R$ 6,1 mi).
+  const fisico = await localIdsPorClassificacao(prisma, "fisico");
 
   // Só o saldo POSITIVO: zerado não é estoque, e negativo é furo de inventário.
   const rows = await prisma.fatoEstoqueSaldo.findMany({
-    where: { quantidade: { gt: 0 } },
+    where: { quantidade: { gt: 0 }, ...whereLocal(fisico) },
     select: { quantidade: true, produtoId: true, localId: true },
   });
   const linhasNegativas = await prisma.fatoEstoqueSaldo.count({
-    where: { quantidade: { lt: 0 } },
+    where: { quantidade: { lt: 0 }, ...whereLocal(fisico) },
   });
 
   const produtoIds = [
@@ -120,22 +128,38 @@ async function agrupaSaldo(
   prisma: PrismaClient,
   campo: "localNome" | "familiaNome" | "marcaNome",
   semNome: string,
+  classificacao: ClassificacaoLocal = "fisico",
 ): Promise<{ linhas: LinhaAgrupada[]; valorGeral: number }> {
+  const filtro = await localIdsPorClassificacao(prisma, classificacao);
   // Valorizacao a CUSTO (quantidade x preco_custo), a mesma do KPI , senao o donut e o
   // card da mesma tela contariam o estoque por criterios diferentes.
   const [rows, custos] = await Promise.all([
     prisma.fatoEstoqueSaldo.findMany({
       // Mesma regra do KPI: so o saldo POSITIVO (zerado nao e estoque, negativo e furo).
-      where: { quantidade: { gt: 0 } },
-      select: { [campo]: true, quantidade: true, produtoId: true },
+      where: { quantidade: { gt: 0 }, ...whereLocal(filtro) },
+      select: {
+        [campo]: true,
+        quantidade: true,
+        produtoId: true,
+        localId: true,
+      },
     }),
     custoPorProduto(prisma),
   ]);
-  const map = new Map<string, { quantidade: number; valorTotal: number }>();
+
+  // Agrupa por local_id quando o corte e por local: existem DOIS locais com o nome
+  // identico ("Proprio / INATIVO"), e agrupar pelo texto os fundiria numa linha so.
+  // O nome continua sendo o rotulo; a identidade e o id.
+  const porLocal = campo === "localNome";
+  const map = new Map<
+    string,
+    { rotulo: string; quantidade: number; valorTotal: number }
+  >();
   let valorGeral = 0;
   for (const r of rows) {
-    const chave = (r as Record<string, unknown>)[campo] as string | null;
-    const k = chave ?? semNome;
+    const nome = (r as Record<string, unknown>)[campo] as string | null;
+    const rotulo = nome ?? semNome;
+    const k = porLocal ? String(r.localId ?? "sem-local") : rotulo;
     const qtd = Number(r.quantidade ?? 0);
     const v = qtd * (r.produtoId != null ? custos.get(r.produtoId) ?? 0 : 0);
     const cur = map.get(k);
@@ -143,19 +167,28 @@ async function agrupaSaldo(
       cur.quantidade += qtd;
       cur.valorTotal += v;
     } else {
-      map.set(k, { quantidade: qtd, valorTotal: v });
+      map.set(k, { rotulo, quantidade: qtd, valorTotal: v });
     }
     valorGeral += v;
   }
-  const linhas = [...map.entries()]
-    .map(([chave, v]) => ({ chave, ...v }))
+  const linhas = [...map.values()]
+    .map((v) => ({
+      chave: v.rotulo,
+      quantidade: v.quantidade,
+      valorTotal: v.valorTotal,
+    }))
     .sort((a, b) => b.valorTotal - a.valorTotal || a.chave.localeCompare(b.chave));
   return { linhas, valorGeral };
 }
 
-/** A2 , Estoque por local (valor por armazém/local). */
+/** A2 , Estoque por local (valor por armazém/local). Só o estoque físico. */
 export function queryEstoquePorLocal(prisma: PrismaClient) {
   return agrupaSaldo(prisma, "localNome", "Sem local");
+}
+
+/** Estoque parado na casa do cliente (demonstração). Não é vendável. */
+export function queryEstoqueDemonstracao(prisma: PrismaClient) {
+  return agrupaSaldo(prisma, "localNome", "Sem local", "demonstracao");
 }
 
 /** A5 , Distribuição do estoque por família. */
@@ -250,9 +283,10 @@ export async function queryCatalogoEstoque(
   // Valorizacao a CUSTO (quantidade x preco_custo), a MESMA do KPI e do donut. O `vr_saldo`
   // que vem do Odoo e valorizado por outro criterio: usa-lo aqui fazia a mesma tela mostrar
   // dois valores diferentes para o mesmo estoque.
+  const fisico = await localIdsPorClassificacao(prisma, "fisico");
   const [rows, custos] = await Promise.all([
     prisma.fatoEstoqueSaldo.findMany({
-      where: { quantidade: { gt: 0 } },
+      where: { quantidade: { gt: 0 }, ...whereLocal(fisico) },
       select: {
         produtoId: true,
         produtoNome: true,
@@ -375,9 +409,10 @@ export async function queryEstoqueGranular(
   // A CUSTO, igual ao KPI e ao catalogo: e sobre estas linhas que o construtor recomputa os
   // indicadores quando o usuario cruza filtros. Se aqui fosse `vr_saldo`, o mesmo card mudaria
   // de valor so por causa do filtro.
+  const fisico = await localIdsPorClassificacao(prisma, "fisico");
   const [rows, custos] = await Promise.all([
     prisma.fatoEstoqueSaldo.findMany({
-      where: { quantidade: { gt: 0 } },
+      where: { quantidade: { gt: 0 }, ...whereLocal(fisico) },
       select: { produtoId: true, produtoNome: true, familiaNome: true, marcaNome: true, localNome: true, quantidade: true },
     }),
     custoPorProduto(prisma),
@@ -546,8 +581,9 @@ export async function queryIndicadoresAvancadosEstoque(
   const desde30 = clampDateAoCorte(new Date(hoje.getTime() - 30 * MS));
   const diasJanela = Math.max(1, Math.round((hoje.getTime() - desde30.getTime()) / MS));
 
+  const fisico = await localIdsPorClassificacao(prisma, "fisico");
   const [saldos, custos, vendidos, seriais] = await Promise.all([
-    prisma.fatoEstoqueSaldo.findMany({ where: { quantidade: { gt: 0 } }, select: { quantidade: true, produtoId: true } }),
+    prisma.fatoEstoqueSaldo.findMany({ where: { quantidade: { gt: 0 }, ...whereLocal(fisico) }, select: { quantidade: true, produtoId: true } }),
     // Mesma valorizacao a CUSTO do KPI: o giro e a cobertura sao lidos lado a lado com ele.
     custoPorProduto(prisma),
     prisma.fatoNotaFiscalItem.findMany({
@@ -696,7 +732,9 @@ export async function queryEstoqueDisponivelDiretoria(
   // Saldo físico agregado por produto. FOTO do agora (fato_estoque_saldo não tem data de
   // documento): a data de início das análises não se aplica aqui , o que está no armazém
   // hoje está no armazém hoje, independente de quando entrou.
+  const fisico = await localIdsPorClassificacao(prisma, "fisico");
   const saldos = await prisma.fatoEstoqueSaldo.findMany({
+    where: whereLocal(fisico),
     select: { produtoId: true, produtoNome: true, quantidade: true },
   });
   const saldoMap = new Map<number, { nome: string | null; q: number }>();
