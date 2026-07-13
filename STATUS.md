@@ -26,6 +26,17 @@
 >
 > **Armadilhas:** `docs/RADAR.md` (R-participante, R-corte, R-mapa-uf).
 
+> ### Pendências abertas (próxima sessão) , `docs/RADAR.md` R-pendencias-2026-07-12
+> 1. **Auditar o drift de configuração em `app` e `mcp`.** O worker rodava com 1 GB de heap
+>    embora o compose declarasse 4 GB: o deploy troca a IMAGEM e **não reaplica env/resources**.
+>    Corrigido só no worker; os outros dois não foram checados.
+> 2. **Consertar a RAIZ do deploy**: enquanto ele não reaplicar `environment`/`resources`, toda
+>    mudança de configuração no compose será ignorada em silêncio.
+> 3. **Baixar o teto de memória do worker para 3 GB** (hoje 4608M, veio do compose e não de
+>    medição; o pico real é ~1 GB). Medir o pico do ciclo antes.
+> 4. **Lock zumbi**: todo restart do worker deixa o lock preso no Redis por até 15 min.
+
+
 ---
 
 ## 2026-07-12 (anterior) , revisão completa das regras de consulta
