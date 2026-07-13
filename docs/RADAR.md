@@ -5,6 +5,39 @@
 
 ---
 
+## R-stack-prod-drift — O compose da stack no Portainer NÃO chega no serviço vivo (RESOLVIDO no worker)
+
+**O que aconteceu (2026-07-12).** O worker de produção morria com `JavaScript heap out of
+memory` e parou de rodar os ciclos de sync. Havia um bug de código (o rebuild de
+`fato_nota_fiscal_item` carregava as 9.595 notas inteiras no heap, corrigido no PR #178), mas
+por baixo dele havia um problema de **infra** que teria mordido de novo:
+
+| | compose da stack (Portainer) | serviço VIVO no Swarm |
+|---|---|---|
+| `NODE_OPTIONS` | `--max-old-space-size=4096` | `--max-old-space-size=1024` |
+| limite de memória | `4608M` | `1536M` |
+
+O compose declarava uma coisa e o Swarm rodava outra. **Causa:** `scripts/deploy-portainer.py`
+(e o Shepherd) fazem *service update* via API do Docker, que troca a **imagem** e força o
+rolling, mas **não reaplica o `environment` nem os `resources` do compose**. Só um
+`docker stack deploy` faria isso. Então o compose foi corrigido em algum momento e a correção
+**nunca chegou no serviço**: o worker seguiu com 1 GB de heap, e o container morria em ~1045 MB.
+
+Isso também explicava por que o bug não reproduzia em dev: o `docker-compose.yml` local já
+tinha `--max-old-space-size=2048`.
+
+**Corrigido no worker** com `scripts/_prod-worker-heap.py --aplicar`: update cirúrgico do
+serviço `nexus-odoo_worker` para heap 2048M dentro de um container de 4608M (folga de 2,5 GB,
+sem risco de OOM-kill do kernel). Validado: ciclo incremental concluído em 126s, sem OOM.
+
+**O que FICA de pendência:** a divergência é estrutural, não pontual. Qualquer mudança de
+`environment` ou de `resources` feita no compose da stack continua **sem efeito** até alguém
+rodar um stack deploy de verdade. Vale (a) auditar se `app`/`mcp` também estão com spec viva
+divergente do compose, e (b) decidir se o pipeline passa a fazer stack deploy em vez de service
+update. Enquanto isso, mudar env/limites em prod exige um update de serviço explícito.
+
+---
+
 ## R-f5-drop-booleans-legados — Drop das colunas `bubbleEnabled`/`whatsappEnabled` deferido (banco compartilhado)
 
 **Aberto em:** 2026-06-17 (F5 Onda C, branch `feat/router-ativacao-r2`).
