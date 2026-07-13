@@ -182,7 +182,7 @@ Inclui o **provisório** (lançado, não efetivado), que no a_pagar é a maior p
 
 ---
 
-## 5. Valor em estoque , R$ 37.211.689 (1.959 produtos)
+## 5. Valor em estoque , R$ 31.423.844 (902 produtos, 4 depósitos)
 
 **Fórmula:** `soma(quantidade x preco_custo do produto) ÷ índice`, sobre `fato_estoque_saldo`,
 cruzando produto a produto com `fato_produto.preco_custo`.
@@ -196,7 +196,27 @@ negativo não é estoque: agora fica fora do valor e aparece como gap (`linhasNe
 **dividido** por ele, e é esse resultado que vira o KPI. O valor a custo puro continua visível
 no rodapé do card, para conferir a conta sem sair da tela.
 
-No cache real: **R$ 47.697.919 a custo ÷ 0,95 = R$ 50.208.336** (o KPI).
+**Só o estoque que é NOSSO e está EM CASA** (regra nova, 2026-07-13). A árvore de locais do
+Odoo tem três raízes, e o KPI somava as três:
+
+| Classe | Valor a custo | Entra no KPI? |
+|---|---:|---|
+| **Próprio** (4 depósitos reais) | **R$ 29.852.652** | sim |
+| Virtual | R$ 10.243.115 | não |
+| Terceiros | R$ 6.071.867 | não |
+| Terceiros › Demonstração (35 clientes) | R$ 1.562.449 | não (painel A-13) |
+
+O KPI cai de **R$ 50.245.690** para **R$ 31.423.844** (R$ 29.852.652 ÷ 0,95). O estoque não
+encolheu: a conta passou a considerar só o que é da empresa e está no armazém.
+
+**A regra não é uma lista de nomes.** O próprio Odoo separa um depósito de verdade dos demais
+locais da árvore Própria (showroom, assistência técnica, razão social, inativos) pelos campos
+`estoque_em_maos`, `calcula_extrato_saldo` e `proprietario_local_id`. Classificar por texto
+seria frágil: existem **dois locais com o nome idêntico** ("Próprio / INATIVO"), e o nome que
+chega no fato vem invertido ("Jds - Matriz DF » Próprio"). Única exceção de negócio: o
+**Showroom**, que vive sob Próprio mas é vitrine, não estoque vendável , vai para demonstração.
+
+Fonte: `fato_estoque_local.classificacao` (`src/lib/estoque/classificacao-local.ts`).
 
 - É **foto do agora**, não histórico: a data de início das análises **não se aplica** (não
   existe "saldo de estoque em março").
@@ -210,28 +230,122 @@ No cache real: **R$ 47.697.919 a custo ÷ 0,95 = R$ 50.208.336** (o KPI).
   para quem não usa o índice padrão, o mesmo card mostrava um número **com** filtro e outro
   **sem**. `derivarIndicadores` passou a receber o índice já resolvido pelo servidor.
 
-### Seriais em estoque , 3.876 (não 8.860)
+### Seriais em estoque , 2.511, agora com o local e o saldo
 
-A lista de seriais (A6) contava **todo serial cadastrado**, inclusive o que **já saiu**,
-embora o título ("em estoque") e a idade em dias dependam de `data_saida IS NULL`. Em
-produção, **4.984 dos 8.860 seriais já haviam saído**: o total aparecia com mais que o dobro
-do real. Corrigido em 2026-07-13 (`querySeriais`), com o mesmo critério que a idade média do
-estoque já usava.
+A tabela A-06 lia `fato_serial` (o cadastro de lote/série): listava todo serial já registrado
+e **não sabia onde ele estava**. Dos 3.828 que dava como "em estoque", **100% tinham local
+nulo** , essa fonte só preenche o local de quem **já saiu**. Era uma lista de números, sem
+saldo e sem lugar.
+
+A fonte certa já estava no cache e ninguém lia: **`raw_estoque_saldo_rastreabilidade_hoje`**,
+que casa serial + local + saldo. Dela nasce **`fato_serial_saldo`**, com a classificação do
+local junto. A tabela agora mostra **Serial · Produto · Local · Saldo**, só do estoque próprio:
+
+| Depósito | Seriais |
+|---|---:|
+| Jds - Matriz DF | 1.235 |
+| Jds - Filial SE | 749 |
+| Jds - Filial SP | 527 |
+
+Os 1.589 em Virtual/Terceiros e os 104 em demonstração ficam fora do padrão. O **Jib DF** tem
+saldo mas nenhum serial , é correto, nem todo produto é serializado.
 
 ---
 
-## 6. Demandas a entregar , 331 (sendo 77 atrasadas)
+## 5b. Necessidade de compra , 215 produtos, 1.842 unidades, R$ 9.700.544
+
+**Fórmula:** por produto, `max(0, demanda_a_atender − saldo_físico)`, com o custo estimado em
+`falta × preco_custo`.
+
+A demanda é a **demanda em aberta** canônica (§6), mas contando o que **falta entregar**, não
+o que foi pedido. O saldo é só o dos **depósitos próprios**: mercadoria em poder de terceiros
+não atende pedido nenhum.
+
+A conta é **nacional** (a operação transfere entre filiais), e cada linha abre o **saldo por
+depósito** , quem decide a compra precisa saber se a mercadoria já existe em outra filial (e é
+caso de transferir) ou se não existe em lugar nenhum.
+
+**Não há estoque mínimo na conta**: o Odoo do cliente não tem esse parâmetro preenchido
+(`fato_estoque_min_max` está vazia). Lead time e mercadoria em trânsito ficaram para depois.
+
+O painel A-12 ("Estoque disponível") usa a mesma base e **fecha exatamente** com este.
+
+---
+
+## 6. Demandas a entregar , 337 pedidos, R$ 21.207.730 (a custo, do que falta entregar)
 
 **Fonte:** `fato_pedido` com `bucket_demanda = 'ABERTA'` e `data_orcamento >= início das
-análises`. O valor a entregar é a soma de `vr_produtos`: **R$ 62.329.027**.
+análises`.
+
+**O valor é o que FALTA ENTREGAR, a custo** (regra nova, 2026-07-13). Antes era a soma de
+`vr_produtos` (o cabeçalho do pedido inteiro, a preço de venda): um pedido com 10 itens, 6 já
+entregues, continuava valendo os 10. Medido no cache: **das 10.721 unidades pedidas, 5.097 já
+tinham sido entregues (48%)** e seguiam sendo contadas como pendentes.
+
+| Base | Valor |
+|---|---:|
+| Cabeçalho, a preço de venda (como era) | R$ 62,6 mi |
+| A custo, quantidade cheia | R$ 34,4 mi |
+| **A custo, o que falta entregar (o KPI)** | **R$ 21.207.730** |
+
+O "quanto falta entregar" vem de `quantidade_a_atender_pedido`, um campo **computado** do Odoo
+(não existe em coluna). Dois efeitos que custaram caro e estão cobertos por teste:
+
+1. o sync só copia campo armazenado, então o dado nunca entrava no cache. Agora há
+   `extraFields` no catálogo para declarar computados explicitamente;
+2. o ciclo incremental **não conseguiria mantê-lo fresco**: ele filtra por `write_date`, e o
+   `write_date` do item **não muda** quando a entrega acontece (quem nasce é a nota). O valor
+   entraria uma vez e **congelaria**. Por isso existe um job diário próprio
+   (`src/worker/sync/atendimento.ts`) que relê os itens ignorando o `write_date`.
+
+**Enquanto o job não roda, TODOS os pedidos caem na quantidade cheia e a tela avisa.** Nunca se
+mistura as duas bases no mesmo total: metade de cada produziria um número que não é nem a
+demanda cheia nem a real. O corte é por marcador de build (`fato_build_state`).
+
+**56 pedidos aparecem com R$ 0,00**: já foi tudo entregue, mas a etapa não avançou no Odoo.
+Ficam listados de propósito , o zero é justamente o que denuncia a esteira parada.
+
+O valor cheio a preço de venda continua disponível na consulta (`valorAAtenderVenda`), para
+quem precisar da leitura de receita futura.
 
 **"ABERTA"** é decidido pelos **gatilhos da própria etapa** do pedido no Odoo (não pelo nome
 dela): a etapa não pode ter `finaliza_faturamento`, `finaliza_pedido_confirmando` nem
 `finaliza_pedido_cancelando`. Ou seja: pedido de venda a cliente externo que **ainda não foi
 faturado, concluído nem cancelado**.
 
-**"Atrasadas" = 77**: dos 331 abertos, os que têm `data_prevista` **anterior a hoje**. É a data
+**"Atrasadas"**: dos abertos, os que têm `data_prevista` **anterior a hoje**. É a data
 prometida de entrega já vencida, com o pedido ainda aberto.
+
+---
+
+## 7. Formas de pagamento , três visões (2026-07-13)
+
+**Fonte: o TÍTULO FINANCEIRO** (`fato_financeiro_titulo`), não a parcela do pedido.
+
+O painel lia `fato_pedido_parcela`, onde a forma de pagamento é um campo **opcional** e vinha
+vazia em 24% dos casos , daí um balde **"Não informado" de R$ 23,08 mi**, o segundo maior do
+gráfico. **Não era um problema de negócio: era a fonte errada.** No título financeiro (o
+documento de cobrança de verdade) a forma está preenchida em **5.536 de 5.537 títulos
+(99,98%)**, e o "Não informado" vira **1 título de R$ 31.157,90**.
+
+O painel também deixou de somar três coisas diferentes num número só:
+
+| Visão | O que é | Títulos | Valor |
+|---|---|---:|---:|
+| **Pago** | nota emitida, título quitado | 1.149 | **R$ 31.401.301** |
+| **A receber** | nota emitida, parcela a vencer | 634 | **R$ 28.254.349** |
+| **Carteira em aberto** | pedido fechado, **nota ainda não saiu** | 3.654 | **R$ 52.390.497** |
+
+A **carteira em aberto não é faturamento**: a receita só é reconhecida na nota. É venda
+contratada esperando a entrega (86% dela já programada em boleto). Casa com o KPI "Carteira a
+faturar" (§3).
+
+**Contas provisórias:** o Odoo tem um campo para isso, e são **14 títulos de 5.537**. O sistema
+**não** está inflando com provisório, e a tela avisa quando há algum na visão selecionada.
+
+Recorte pela **data do documento** e valor pelo **`vr_documento`** , é a única combinação que
+reproduz os números conferidos contra o cache. A consulta passou a respeitar **empresa e UF**
+(antes não respeitava: usuário restrito a um estado via o grupo inteiro).
 
 ---
 
