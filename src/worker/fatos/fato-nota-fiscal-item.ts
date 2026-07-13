@@ -131,25 +131,58 @@ export function mapNotaFiscalItemRow(
  *     o GC coleta entre chunks. Heap constante sem --max-old-space-size.
  *   - Timeout 600s cobre amplamente o rebuild de ~40s; maxWait 60s para aquisição de tx.
  */
+/** Colunas da nota-mãe extraídas do jsonb , só o que o notaInfoMap usa. */
+interface NotaMaeRow {
+  id: number;
+  data_emissao: string | null;
+  entrada_saida: string | null;
+  empresa_id: number | null;
+  situacao_nfe: string | null;
+  operacao_id: number | null;
+  operacao_nome: string | null;
+  finalidade_nfe: string | null;
+}
+
 export async function rebuildFatoNotaFiscalItem(prisma: PrismaClient): Promise<number> {
-  // 1. Construir notaInfoMap FORA da transação (3743 linhas , trivial)
-  const rawNotas = await prisma.rawSpedDocumento.findMany({
-    where: { rawDeleted: false },
-  });
+  // 1. Construir notaInfoMap FORA da transação.
+  //
+  // A leitura EXTRAI AS COLUNAS do jsonb no próprio Postgres em vez de trazer o `data`
+  // inteiro para o heap. O `findMany` antigo carregava as notas com TODOS os campos: o
+  // comentário dizia "3743 linhas , trivial", mas a tabela cresceu para 9.595 notas e
+  // ~68 MB de JSON, que viram centenas de MB de objetos no heap do Node. Somado ao resto
+  // do ciclo, estourava o limite (~1 GB) e derrubava o worker de produção com
+  // "JavaScript heap out of memory" , sempre no MESMO ponto, logo depois de
+  // fato_nota_fiscal. Como fato_parceiro roda DEPOIS deste builder no registry, o ciclo
+  // morria antes de chegar nele e o cadastro nunca era reconstruído (o mapa por estado da
+  // Diretoria ficou congelado com dados velhos). O fato usa 7 campos da nota-mãe , é só
+  // isso que precisa sair do banco.
+  const rawNotas = await prisma.$queryRaw<NotaMaeRow[]>`
+    SELECT
+      odoo_id                                        AS id,
+      NULLIF(data->>'data_emissao', '')              AS data_emissao,
+      NULLIF(data->>'entrada_saida', '')             AS entrada_saida,
+      CASE WHEN jsonb_typeof(data->'empresa_id') = 'array'
+           THEN (data->'empresa_id'->>0)::int END    AS empresa_id,
+      NULLIF(data->>'situacao_nfe', '')              AS situacao_nfe,
+      CASE WHEN jsonb_typeof(data->'operacao_id') = 'array'
+           THEN (data->'operacao_id'->>0)::int END   AS operacao_id,
+      CASE WHEN jsonb_typeof(data->'operacao_id') = 'array'
+           THEN data->'operacao_id'->>1 END          AS operacao_nome,
+      NULLIF(data->>'finalidade_nfe', '')            AS finalidade_nfe
+    FROM raw_sped_documento
+    WHERE coalesce(raw_deleted, false) = false`;
+
   const notaInfoMap = new Map<number, NotaInfo>();
   for (const r of rawNotas) {
-    const data = r.data as Record<string, unknown>;
-    const odooId = Number(data.id);
-    notaInfoMap.set(odooId, {
-      dataEmissao: typeof data.data_emissao === "string"
-        ? new Date(`${data.data_emissao}T00:00:00Z`)
-        : null,
-      entradaSaida: typeof data.entrada_saida === "string" ? data.entrada_saida : null,
-      empresaId: relId(data.empresa_id as OdooM2O),
-      situacaoNfe: typeof data.situacao_nfe === "string" ? data.situacao_nfe : null,
-      operacaoId: relId(data.operacao_id as OdooM2O),
-      operacaoNome: relNome(data.operacao_id as OdooM2O),
-      finalidadeNfe: typeof data.finalidade_nfe === "string" ? data.finalidade_nfe : null,
+    notaInfoMap.set(Number(r.id), {
+      dataEmissao:
+        typeof r.data_emissao === "string" ? new Date(`${r.data_emissao}T00:00:00Z`) : null,
+      entradaSaida: r.entrada_saida,
+      empresaId: r.empresa_id,
+      situacaoNfe: r.situacao_nfe,
+      operacaoId: r.operacao_id,
+      operacaoNome: r.operacao_nome,
+      finalidadeNfe: r.finalidade_nfe,
     });
   }
 

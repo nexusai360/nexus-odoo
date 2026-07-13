@@ -154,7 +154,29 @@ describe("mapNotaFiscalItemRow", () => {
 // Os mocks refletem essa estrutura:
 //   - prisma.$transaction(callback, opts) captura o callback e o invoca com mockTx.
 //   - mockTx contém rawSpedDocumentoItem, fatoNotaFiscalItem e fatoBuildState.
-//   - prisma.rawSpedDocumento.findMany (fora da tx) retorna rawNotas.
+//   - prisma.$queryRaw (fora da tx) retorna as notas-mãe JÁ PROJETADAS (7 colunas
+//     extraídas do jsonb no Postgres). O builder não carrega mais o `data` inteiro das
+//     notas para o heap , era o que estourava a memória do worker em produção.
+
+/**
+ * Projeta uma nota crua (shape do jsonb) no shape achatado que o $queryRaw do builder
+ * devolve. Espelha, em TS, o SELECT que roda no Postgres , os testes continuam
+ * descrevendo as notas em jsonb, que é como elas vivem no banco.
+ */
+function projetarNotaMae(n: { data: Record<string, unknown> }) {
+  const d = n.data;
+  const m2o = (v: unknown, i: 0 | 1) => (Array.isArray(v) ? (v[i] ?? null) : null);
+  return {
+    id: Number(d.id),
+    data_emissao: typeof d.data_emissao === "string" ? d.data_emissao : null,
+    entrada_saida: typeof d.entrada_saida === "string" ? d.entrada_saida : null,
+    empresa_id: m2o(d.empresa_id, 0) as number | null,
+    situacao_nfe: typeof d.situacao_nfe === "string" ? d.situacao_nfe : null,
+    operacao_id: m2o(d.operacao_id, 0) as number | null,
+    operacao_nome: m2o(d.operacao_id, 1) as string | null,
+    finalidade_nfe: typeof d.finalidade_nfe === "string" ? d.finalidade_nfe : null,
+  };
+}
 
 describe("rebuildFatoNotaFiscalItem", () => {
   /**
@@ -179,7 +201,7 @@ describe("rebuildFatoNotaFiscalItem", () => {
     );
 
     const mocks = {
-      rawSpedDocumentoFindMany: jest.fn().mockResolvedValue(rawNotas),
+      rawSpedDocumentoQueryRaw: jest.fn().mockResolvedValue(rawNotas.map(projetarNotaMae)),
       rawSpedDocumentoItemFindMany: paginateFn,
       fatoNotaFiscalItemDeleteMany: jest.fn().mockResolvedValue({}),
       fatoNotaFiscalItemCreateMany: jest.fn().mockResolvedValue({}),
@@ -198,7 +220,7 @@ describe("rebuildFatoNotaFiscalItem", () => {
 
     // $transaction captura o callback e o invoca com mockTx
     const mockPrisma = {
-      rawSpedDocumento: { findMany: mocks.rawSpedDocumentoFindMany },
+      $queryRaw: mocks.rawSpedDocumentoQueryRaw,
       $transaction: jest.fn().mockImplementation(
         (callback: (tx: typeof mockTx) => Promise<unknown>) => callback(mockTx),
       ),
@@ -293,11 +315,11 @@ describe("rebuildFatoNotaFiscalItem", () => {
     };
 
     const mockPrisma = {
-      rawSpedDocumento: {
-        findMany: jest.fn().mockResolvedValue([
-          { data: { id: 1, data_emissao: "2024-01-15", entrada_saida: "1" } },
-        ]),
-      },
+      $queryRaw: jest.fn().mockResolvedValue(
+        [{ data: { id: 1, data_emissao: "2024-01-15", entrada_saida: "1" } }].map(
+          projetarNotaMae,
+        ),
+      ),
       $transaction: jest.fn().mockImplementation(
         (callback: (tx: typeof mockTx) => Promise<unknown>) => callback(mockTx),
       ),
@@ -311,7 +333,7 @@ describe("rebuildFatoNotaFiscalItem", () => {
     expect(markFatoBuiltCalled).toBe(false);
   });
 
-  it("notaInfoMap montado fora da $transaction (rawSpedDocumento.findMany no prisma raiz)", async () => {
+  it("notaInfoMap montado fora da $transaction, e via $queryRaw projetado (não carrega o jsonb inteiro)", async () => {
     const { rebuildFatoNotaFiscalItem } = await import("./fato-nota-fiscal-item");
 
     const { mocks, mockPrisma } = makeMocks(
@@ -323,8 +345,8 @@ describe("rebuildFatoNotaFiscalItem", () => {
       mockPrisma as unknown as Parameters<typeof rebuildFatoNotaFiscalItem>[0],
     );
 
-    // rawSpedDocumento.findMany chamado no prisma raiz (fora da tx), não no mockTx
-    expect(mocks.rawSpedDocumentoFindMany).toHaveBeenCalledTimes(1);
+    // notas-mãe lidas via $queryRaw no prisma raiz (fora da tx), não no mockTx
+    expect(mocks.rawSpedDocumentoQueryRaw).toHaveBeenCalledTimes(1);
     // rawSpedDocumentoItem.findMany chamado no mockTx (dentro da tx)
     expect(mocks.rawSpedDocumentoItemFindMany).toHaveBeenCalled();
   });
