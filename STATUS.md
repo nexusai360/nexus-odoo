@@ -26,15 +26,27 @@
 >
 > **Armadilhas:** `docs/RADAR.md` (R-participante, R-corte, R-mapa-uf).
 
-> ### Pendências abertas (próxima sessão) , `docs/RADAR.md` R-pendencias-2026-07-12
-> 1. **Auditar o drift de configuração em `app` e `mcp`.** O worker rodava com 1 GB de heap
->    embora o compose declarasse 4 GB: o deploy troca a IMAGEM e **não reaplica env/resources**.
->    Corrigido só no worker; os outros dois não foram checados.
-> 2. **Consertar a RAIZ do deploy**: enquanto ele não reaplicar `environment`/`resources`, toda
->    mudança de configuração no compose será ignorada em silêncio.
-> 3. **Baixar o teto de memória do worker para 3 GB** (hoje 4608M, veio do compose e não de
->    medição; o pico real é ~1 GB). Medir o pico do ciclo antes.
-> 4. **Lock zumbi**: todo restart do worker deixa o lock preso no Redis por até 15 min.
+> ### 2026-07-13 (INFRA DE PRODUÇÃO , as 4 pendências do OOM fechadas)
+>
+> Detalhe completo em `docs/RADAR.md` R-pendencias-2026-07-12 e no runbook de deploy §4.1.
+>
+> 1. **Teto de memória do worker: 3 GB** (era 4608M, de chute). Medido em produção com
+>    `scripts/_prod-worker-mem.py`: repouso ~0,48 GB, **pico do ciclo pesado ~1,9 GB** , o dobro
+>    do que se supunha. Heap V8 fica em 2048M; sobra 1,1 GB de folga sobre o pico.
+> 2. **Drift de configuração auditado na stack inteira** (`scripts/_prod-stack-drift.py`):
+>    `app` e `mcp` estavam limpos; o achado novo foi o **`db`, que roda com 1536M enquanto o
+>    compose ainda dizia 1024M** , um `stack deploy` ingênuo teria rebaixado o Postgres.
+> 3. **Raiz do deploy corrigida:** o `deploy-portainer.py` passou a **reconciliar
+>    `environment`, `resources` e labels a partir do compose da stack** (que é a fonte da
+>    verdade), mantendo o rolling um-a-um. Nada de `docker stack deploy` paralelo.
+> 4. **Lock zumbi resolvido:** o lock do ciclo agora tem **dono e heartbeat** (TTL 90s renovado
+>    a cada 30s). Restart não prende mais a sync por 15 min.
+>
+> **Lição cara da noite: em compose, OMITIR é APAGAR.** Publicar o compose disparou um
+> `docker stack deploy` que removeu o label `com.nexus.autodeploy=true` de app/mcp/worker
+> (**o auto-deploy do Shepherd morreu em silêncio**) e o `UpdateConfig` (o app passou a dar 502
+> no update). Restaurado, agora declarado no compose, e as ferramentas passaram a avisar o que
+> seria apagado. **Backup da stack antes de publicar é obrigatório.**
 
 
 ---

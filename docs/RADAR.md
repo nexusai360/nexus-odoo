@@ -886,35 +886,93 @@ parceiro forem usadas de verdade, o directed sync precisa passar a atualizar
 
 ---
 
-## R-pendencias-2026-07-12 , o que ficou aberto ao fim da sessão
+## R-pendencias-2026-07-12 , RESOLVIDAS em 2026-07-13
 
-### 1. Auditar o drift de configuração no `app` e no `mcp` (não feito)
+As quatro pendências que sobraram do incidente de OOM do worker foram fechadas. Registro do que
+era, do que se descobriu medindo, e de onde ficou cada coisa.
+
+### 1. Drift de configuração no `app` e no `mcp` , AUDITADO, ESTAVAM LIMPOS
 O `worker` rodava com **1 GB de heap e 1,5 GiB de limite**, embora o compose da stack declarasse
 **4 GB / 4608M**. Causa: `deploy-portainer.py` (e o Shepherd) fazem *service update* pela API do
-Docker , trocam a IMAGEM e forçam o rolling, mas **não reaplicam `environment` nem `resources`**.
-Só um `docker stack deploy` faria isso. O compose virou papel; o Swarm ficou com a spec antiga.
+Docker , trocam a IMAGEM e forçam o rolling, mas **não reaplicavam `environment` nem `resources`**.
+O compose virou papel; o Swarm ficou com a spec antiga.
 
-**Corrigido só no worker** (PR #180, via `scripts/_prod-worker-heap.py`). **`app` e `mcp` NÃO foram
-auditados**: podem estar com a mesma divergência silenciosa. Comparar, para cada serviço, o que o
-compose da stack declara com o que o serviço VIVO tem.
+Auditoria completa da stack com `scripts/_prod-stack-drift.py` (compara, serviço a serviço, o
+compose da stack com a spec VIVA no Swarm, e faz backup da stack em `.prod-backups/`):
 
-### 2. Consertar a RAIZ do deploy (não feito)
-Enquanto o deploy não reaplicar `environment`/`resources`, **toda mudança futura de configuração
-no compose vai ser ignorada em silêncio**. Duas saídas:
-  (a) o deploy passar a fazer `docker stack deploy` de verdade (reaplica tudo), ou
-  (b) o `deploy-portainer.py` reaplicar env/resources junto com a imagem.
-Decidir e implementar. Sem isso, o mesmo erro volta.
+| serviço | drift encontrado |
+|---|---|
+| `app` | nenhum |
+| `mcp` | nenhum |
+| `worker` | `NODE_OPTIONS` (o compose ainda dizia 4096; o vivo já estava em 2048 pelo PR #180) |
+| `db` | limite de memória: compose 1024M, **vivo 1536M** |
+| `redis` | nenhum |
 
-### 3. Apertar o teto de memória do worker para 3 GB (decisão do dono, 2026-07-12)
-Hoje o worker está com **heap 2048 MB e limite de container 4608M**. O 4608M veio do compose, não
-de medição: o pico real do ciclo fica na casa de 1 GB. O limite é TETO, não reserva (não tira RAM
-dos outros serviços da VPS), mas é generoso demais.
+O `db` é o achado novo: o Postgres roda com 1536M desde que sofreu OOM interno (cgroup) com teto
+de 1 GB durante o reconcile pesado, e **o compose nunca acompanhou**. Ou seja, o drift era nos dois
+sentidos. O compose foi corrigido para refletir a realidade (1536M) , se alguém tivesse feito um
+`docker stack deploy` ingênuo, o Postgres teria sido rebaixado de volta para 1 GB.
 
-**A fazer:** medir o pico real de memória do worker durante um ciclo completo e **baixar o limite
-do container para 3 GB** (mantendo o heap em 2048, que deixa ~1 GB de folga para o processo fora
-do heap). Usar `scripts/_prod-worker-heap.py`, que já se recusa a subir heap sem folga mínima.
+### 2. Raiz do deploy , CORRIGIDA (o deploy agora reconcilia o compose)
+Decisão: **não** virar `docker stack deploy` (opção (a) descartada , ele atualiza os serviços em
+paralelo, e em 2026-06-12 recriar `app`+`mcp`+`worker` juntos estourou a memória do nó e o OOM
+killer atingiu o Postgres). Adotada a opção (b): o `deploy-portainer.py` passou a **ler o compose
+da stack e aplicar `environment` + `resources` na spec de cada serviço**, junto com a imagem,
+mantendo o rolling um-a-um. Ele imprime tudo que muda antes de subir.
 
-### 4. Lock zumbi a cada restart do worker
-Todo restart deixa `odoo-sync:lock:incremental` preso no Redis, e o worker novo pula ciclos até o
-TTL de 15 min expirar. Existe `scripts/_prod-redis-lock.py --destravar` para resolver na hora, mas
-o certo é o worker limpar o próprio lock no boot (ou o lock ter dono/heartbeat).
+Regra que fica: **o compose da stack é a fonte da verdade da configuração.** Variável que exista só
+no serviço vivo é mantida e reportada (tirar env de produção é decisão humana, não efeito colateral
+de deploy). Ferramentas: `_prod-stack-drift.py` (conferir), `_prod-stack-put.py` (publicar o
+compose; se recusa a publicar um compose que divirja dos serviços vivos, para o `stack deploy` do
+PUT ser no-op e não recriar task). Passo a passo em `docs/runbooks/deploy-procedure.md` §4.1.
+
+O Shepherd continua trocando só a imagem , o que é seguro: ele não *causa* drift, apenas não o
+corrige. Mudança de configuração passa pelo caminho acima.
+
+### 3. Teto de memória do worker , 3 GB APLICADO, e o pico real era o dobro do que se supunha
+O que se supunha: "pico real do ciclo fica na casa de 1 GB". **Medido** em produção com
+`scripts/_prod-worker-mem.py` (amostra o endpoint de stats do Docker durante um ciclo completo):
+
+- em repouso: **~0,48 GB**
+- no ciclo pesado (rebuild dos fatos): **~1,9 GB**
+
+Ou seja, 1 GB de heap (o que o serviço rodava por causa do drift) era mesmo insuficiente , o OOM
+não era azar. E um teto de 2 GB teria sido apertado demais. Ficou: **teto do container 3072M, heap
+V8 2048M**, que cobre o pico com ~1,1 GB de folga. O 4608M anterior veio de chute.
+
+### 5. LIÇÃO NOVA (a mais cara da noite): em compose, OMITIR é APAGAR
+Publicar o compose corrigido pelo Portainer dispara um `docker stack deploy`, e ele
+**remove do serviço tudo que o compose não declara**. Como o compose da stack não trazia
+`deploy.labels` nem `deploy.update_config`, a publicação silenciosamente:
+
+- **apagou `com.nexus.autodeploy=true` de `app`, `mcp` e `worker`.** O Shepherd só toca
+  serviço com esse label , ou seja, **o auto-deploy de produção morreu sem avisar**.
+  Pego no diff da spec viva contra o backup da stack e restaurado em ~2 min;
+- **apagou `UpdateConfig`/`RollbackConfig`** (start-first + rollback automático). O update
+  virou stop-first e o `app` devolveu 502 durante a troca.
+
+Os dois voltaram, agora **declarados no compose** (que é a fonte da verdade): `app` e `mcp`
+com `start-first`, `worker` com `stop-first` (com start-first existiriam dois workers vivos
+rodando ciclo de sync em cima do mesmo cache; ninguém depende do worker responder request).
+
+O que ficou de defesa, para não repetir:
+- `_prod-stack-put.py` agora avisa o que o compose **omite** e o serviço vivo tem (labels,
+  update_config, rollback_config), dizendo que aquilo **seria apagado**;
+- `_prod-stack-drift.py` passou a comparar **labels de serviço** (o do Shepherd inclusive).
+  A auditoria não olhava labels , foi exatamente por isso que a perda passou despercebida;
+- `deploy-portainer.py` reconcilia labels do compose junto com env/resources, de forma
+  aditiva (não remove o que só existe no serviço vivo).
+
+**Sempre faça backup da stack antes de publicar** (`_prod-stack-drift.py` grava em
+`.prod-backups/`). Foi o backup que permitiu descobrir o que tinha sumido.
+
+### 4. Lock zumbi a cada restart , CORRIGIDO (dono + heartbeat)
+Todo restart deixava `odoo-sync:lock:incremental` preso no Redis, e o worker novo pulava ciclos até
+o TTL de 15 min expirar. Agora o lock tem **dono e heartbeat** (`src/worker/sync/ciclo-lock.ts`):
+TTL de 90s, renovado a cada 30s por quem o detém. Ciclo honesto e longo segue protegido; processo
+morto para de renovar e o lock cai sozinho em no máximo 90s. A liberação é compare-and-delete, para
+um worker atrasado não apagar o lock de outro.
+
+Não se limpa o lock no boot de propósito: o worker não distingue lock órfão de lock de outra
+réplica viva; apagar no boot funcionaria hoje (`replicas=1`) e viraria bug no dia de uma segunda
+réplica. O `scripts/_prod-redis-lock.py --destravar` continua existindo como paliativo manual.

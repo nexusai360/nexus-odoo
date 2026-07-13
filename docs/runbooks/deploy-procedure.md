@@ -186,6 +186,20 @@ Em 2026-06-12 recriar `app`+`mcp`+`worker` juntos estourou a memória do nó e o
 killer atingiu o Postgres (crash recovery em produção). O rolling um-a-um do
 `deploy-portainer.py` é o que mantém o pico baixo.
 
+> ### ⚠️ EM COMPOSE, OMITIR É APAGAR (lição de 2026-07-13)
+>
+> O `docker stack deploy` (que o PUT do passo 4 dispara) **remove do serviço tudo que
+> o compose não declara**. Na primeira publicação, o compose não trazia
+> `deploy.labels` nem `deploy.update_config`, e o deploy apagou:
+> - **`com.nexus.autodeploy=true`** de `app`/`mcp`/`worker` , o Shepherd só atualiza
+>   serviço com esse label, então **o auto-deploy morreu em silêncio**;
+> - **`UpdateConfig`/`RollbackConfig`** , o update virou `stop-first` e o app deu 502.
+>
+> Os dois estão declarados no compose agora. **Nunca publique um compose sem antes ver
+> o aviso de "seria APAGADO" do `_prod-stack-put.py`**, e sempre tenha o backup da
+> stack (`_prod-stack-drift.py` grava em `.prod-backups/`). Foi o backup que permitiu
+> descobrir o que havia sumido.
+
 **Memória do worker (medida, não chutada):** teto do container **3072M** com heap V8
 de **2048M**. O pico real de um ciclo completo (sync + rebuild dos fatos) medido em
 produção é de ~0,5 GB (`scripts/_prod-worker-mem.py`). O 4608M anterior veio de
