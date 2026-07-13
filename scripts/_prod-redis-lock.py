@@ -8,12 +8,18 @@
 # ("ciclo X ainda rodando (lock) , pulado") ate o TTL vencer. Este script mostra os locks
 # vivos com o TTL restante e, com --destravar, apaga SOMENTE as chaves de lock.
 #
+# DESDE 2026-07-13 o lock tem DONO e HEARTBEAT (src/worker/sync/ciclo-lock.ts): TTL de 90s,
+# renovado a cada 30s por quem o detem. Processo morto para de renovar e o lock cai sozinho
+# em no maximo 90s , o --destravar virou paliativo de excecao, nao rotina. No `valor` da
+# chave voce agora ve o dono (hostname:pid:uuid), nao mais um timestamp solto.
+#
 # Uso:
 #   python3 scripts/_prod-redis-lock.py              # so lista (seguro)
+#   python3 scripts/_prod-redis-lock.py --observar   # amostra por 4 min (ve o lock durante o ciclo)
 #   python3 scripts/_prod-redis-lock.py --destravar  # apaga as chaves odoo-sync:lock:*
 #
 # Reusa a credencial do Portainer via deploy-portainer.py (mesmo padrao dos demais _prod-*).
-import importlib.util, json, sys, urllib.parse, urllib.request
+import importlib.util, json, sys, time, urllib.parse, urllib.request
 
 spec = importlib.util.spec_from_file_location("dp", "scripts/deploy-portainer.py")
 dp = importlib.util.module_from_spec(spec); spec.loader.exec_module(dp)
@@ -56,6 +62,22 @@ listar = (
 locks = exec_sh(cid, listar)
 print("=== locks vivos ===")
 print(locks if locks else "(nenhum)")
+
+if "--observar" in sys.argv:
+    # Amostra por 4 min. Serve para ver o lock EXISTINDO durante um ciclo (o ciclo dura
+    # segundos, entao uma leitura isolada quase sempre pega "nenhum") e para conferir, em
+    # producao, que o TTL e o novo (<=90s) e que o valor traz o dono.
+    print("\n=== observando por 4 min (amostra a cada 5s) ===")
+    vistos = 0
+    for _ in range(48):
+        agora = exec_sh(cid, listar)
+        if agora:
+            vistos += 1
+            print(f"  {time.strftime('%H:%M:%S')}  {agora}")
+        time.sleep(5)
+    print(f"\nlocks capturados: {vistos}")
+    if not vistos:
+        print("(nenhum lock apareceu na janela , o ciclo pode nao ter rodado agora)")
 
 if "--destravar" in sys.argv:
     if not locks:
