@@ -2068,6 +2068,33 @@ model SyncState {
   @@map("sync_state")
 }
 
+/// Locais de estoque do Odoo, com a classificação que separa o estoque que existe
+/// dentro de casa do que não é nosso.
+///
+/// A árvore tem três raízes (Próprio, Terceiros, Virtual) e a diretoria somava as três:
+/// o KPI mostrava R$ 50,25 mi quando o estoque físico real era R$ 31,42 mi. A regra não
+/// é uma lista de nomes , o próprio Odoo distingue um depósito de verdade dos demais
+/// locais da árvore Própria (showroom, assistência técnica, razão social, inativos)
+/// pelos campos abaixo. Ver src/lib/estoque/classificacao-local.ts.
+model FatoEstoqueLocal {
+  odooId              Int      @id @map("odoo_id")
+  nome                String?
+  nomeCompleto        String?  @map("nome_completo")
+  /// 'S' sintético (nó de árvore) | 'A' analítico.
+  tipo                String?
+  nivel               Int?
+  localSuperiorId     Int?     @map("local_superior_id")
+  estoqueEmMaos       Boolean  @default(false) @map("estoque_em_maos")
+  calculaExtratoSaldo Boolean  @default(false) @map("calcula_extrato_saldo")
+  temProprietario     Boolean  @default(false) @map("tem_proprietario")
+  /// fisico | demonstracao | fora
+  classificacao       String
+  atualizadoEm        DateTime @default(now()) @map("atualizado_em")
+
+  @@index([classificacao])
+  @@map("fato_estoque_local")
+}
+
 /// Saldo de estoque por produto/local, enriquecido com valor e classificação.
 model FatoEstoqueSaldo {
   id           String   @id @default(uuid()) @db.Uuid

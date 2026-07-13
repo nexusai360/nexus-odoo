@@ -46,6 +46,7 @@ import type { DirectedSyncJob } from "../../mcp/sync/queue";
 import { cleanupExpiredIdempotency } from "./cleanup/idempotency";
 import { cleanupAuditLog } from "./cleanup/audit-log";
 import { capturarSnapshotEstoqueDiario } from "./fatos/snapshot-estoque-diario";
+import { rebuildFatoEstoqueLocal } from "./fatos/fato-estoque-local";
 import { rodarProfileAggregate } from "./agent-intelligence/profile-aggregate";
 
 export const MAINTENANCE_QUEUE = "maintenance";
@@ -54,6 +55,8 @@ export const JOB_CLEANUP_MCP_IDEMPOTENCY = "cleanup-mcp-idempotency";
 export const JOB_CLEANUP_AUDIT_LOG = "cleanup-audit-log";
 export const JOB_REFRESH_USD_BRL = "refresh-usd-brl-ptax";
 export const JOB_SNAPSHOT_ESTOQUE = "snapshot-estoque-diario";
+/** Classifica os locais de estoque (fisico | demonstracao | fora). Roda no boot. */
+export const JOB_CLASSIFICACAO_LOCAIS = "classificacao-locais";
 export const JOB_PROFILE_AGGREGATE = "profile-aggregate";
 /** Cadencia do perfil deterministico por usuario (camada deterministica, roda em prod). */
 const PROFILE_AGGREGATE_EVERY_MS = 60 * 60_000; // 1h
@@ -178,6 +181,20 @@ const maintenanceWorker = new Worker(
         return { ok: true, ...r };
       } catch (err) {
         console.error("[maintenance] falha no snapshot de estoque:", err);
+        return { ok: false, error: (err as Error).message };
+      }
+    }
+    if (job.name === JOB_CLASSIFICACAO_LOCAIS) {
+      // O app ja serve as consultas de estoque assim que sobe, e elas filtram pelos
+      // locais classificados. Se esperassemos o snapshot (30 min), haveria uma janela
+      // com o fato vazio. As consultas tem fail-safe (nao filtram e avisam), mas o
+      // certo e ter a classificacao em segundos, nao em meia hora.
+      try {
+        const locais = await rebuildFatoEstoqueLocal(prisma);
+        console.log(`[maintenance] classificacao de locais: ${locais} locais`);
+        return { ok: true, locais };
+      } catch (err) {
+        console.error("[maintenance] falha ao classificar locais:", err);
         return { ok: false, error: (err as Error).message };
       }
     }
@@ -521,6 +538,17 @@ async function bootstrap(): Promise<void> {
   );
   await maintenanceQueue.add(JOB_SNAPSHOT_ESTOQUE, {});
   console.log("[worker] cron de snapshot diário de estoque agendado (09:00 BRT)");
+
+  // Classificação dos locais de estoque. O ciclo de snapshot (30 min) também a
+  // reconstrói, mas disparamos no boot para que o app nunca sirva uma tela de estoque
+  // sem saber quais locais são da casa.
+  await maintenanceQueue.upsertJobScheduler(
+    JOB_CLASSIFICACAO_LOCAIS,
+    { every: 6 * 60 * 60_000 },
+    { name: JOB_CLASSIFICACAO_LOCAIS },
+  );
+  await maintenanceQueue.add(JOB_CLASSIFICACAO_LOCAIS, {});
+  console.log("[worker] classificação de locais agendada (6h) + build inicial");
   console.log("[worker] cron de PTAX USD/BRL agendado (diário 18:30 BRT) + refresh inicial");
 
   // Perfil de interacao por usuario (camada DETERMINISTICA, SQL puro, sem claude) , roda em
