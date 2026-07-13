@@ -4,6 +4,7 @@ import { prisma } from "./prisma";
 import { clientFromEnv } from "./odoo/client";
 import { MODEL_CATALOG } from "./catalog/model-catalog";
 import { readSyncConfig } from "./sync/sync-config";
+import { criarCicloLock } from "./sync/ciclo-lock";
 import {
   processIncrementalCycle,
   processSnapshotCycle,
@@ -238,29 +239,30 @@ directedSyncWorker.on("failed", (job, err) =>
 );
 directedSyncWorker.on("error", (err) => console.error("[directed-sync-worker] erro:", err));
 
-// Guarda de sobreposição cluster-safe: lock no Redis com TTL (WR-01). Sobrevive
-// a restart e protege contra uma segunda réplica do worker rodando o mesmo
-// ciclo. Reduzido de 2h para 15min: 2h mascarava lock zumbi (incremental
-// que travasse sem liberar prendia a fila por ate 2h). 15min eh folgado
-// pra ciclo honesto (incremental leva segundos; snapshot 1-2min), mas se
-// algo travar, o lock expira sozinho e a fila destrava sem intervencao.
-const LOCK_TTL_MS = 15 * 60 * 1000;
+// Guarda de sobreposição cluster-safe: lock no Redis com dono + heartbeat
+// (WR-01). Protege contra uma segunda réplica do worker rodando o mesmo ciclo.
+//
+// Histórico: o lock era um SET NX com TTL fixo de 15 min e sem dono. Quando o
+// worker morria no meio do ciclo (OOM, deploy, restart), o lock ficava para trás
+// e o worker novo pulava ciclos até o TTL vencer , 15 minutos de sync parada por
+// restart, destravados na mão (scripts/_prod-redis-lock.py --destravar). Agora o
+// TTL é curto (90s) e quem detém o lock o renova a cada 30s; processo morto para
+// de renovar e o lock cai sozinho. Ver src/worker/sync/ciclo-lock.ts.
+const cicloLock = criarCicloLock(connection);
 // Hard timeout do rodarCiclo: se passar disso sem retornar (ex.: chamada
-// HTTP ao Tauga hangando sem timeout proprio), aborta. Pareado com o
-// LOCK_TTL_MS pra garantir que o lock sempre libera mesmo se algo
-// "ainda rodando" for mentira.
+// HTTP ao Tauga hangando sem timeout proprio), aborta. Com o heartbeat o lock
+// acompanha o ciclo enquanto ele vive; este timeout garante que "ainda rodando"
+// não vire desculpa eterna.
 const CYCLE_HARD_TIMEOUT_MS = 10 * 60 * 1000;
-const lockKey = (jobName: string) => `odoo-sync:lock:${jobName}`;
 
 /** Tenta adquirir o lock do ciclo. Retorna true se conseguiu. */
 async function adquirirLock(jobName: string): Promise<boolean> {
-  const res = await connection.set(lockKey(jobName), String(Date.now()), "PX", LOCK_TTL_MS, "NX");
-  return res === "OK";
+  return cicloLock.adquirir(jobName);
 }
 
-/** Libera o lock do ciclo. */
+/** Libera o lock do ciclo (só se ainda for nosso). */
 async function liberarLock(jobName: string): Promise<void> {
-  await connection.del(lockKey(jobName));
+  await cicloLock.liberar(jobName);
 }
 
 // Cache da última config aplicada , evita churn de upsertJobScheduler (WR-04).
@@ -541,6 +543,11 @@ console.log("[worker] nexus-odoo worker iniciado");
 
 async function shutdown() {
   console.log("[worker] encerrando…");
+  // Para os heartbeats antes de fechar a conexão do Redis (renovar em conexão
+  // morta só geraria ruído). O lock em si não é apagado aqui de propósito: se um
+  // ciclo estiver rodando, quem o segura é o `finally` do processor; se o processo
+  // for derrubado no meio, o TTL de 90s dá conta.
+  cicloLock.pararTudo();
   await worker.close();
   await agentWorker.close();
   await maintenanceWorker.close();
