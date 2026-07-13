@@ -883,3 +883,38 @@ parceiro forem usadas de verdade, o directed sync precisa passar a atualizar
 
 **Lição:** ao cruzar dois modelos do Odoo por id, CONFIRA a `relation` do campo com
 `fields_get`. Id igual não quer dizer entidade igual.
+
+---
+
+## R-pendencias-2026-07-12 , o que ficou aberto ao fim da sessão
+
+### 1. Auditar o drift de configuração no `app` e no `mcp` (não feito)
+O `worker` rodava com **1 GB de heap e 1,5 GiB de limite**, embora o compose da stack declarasse
+**4 GB / 4608M**. Causa: `deploy-portainer.py` (e o Shepherd) fazem *service update* pela API do
+Docker , trocam a IMAGEM e forçam o rolling, mas **não reaplicam `environment` nem `resources`**.
+Só um `docker stack deploy` faria isso. O compose virou papel; o Swarm ficou com a spec antiga.
+
+**Corrigido só no worker** (PR #180, via `scripts/_prod-worker-heap.py`). **`app` e `mcp` NÃO foram
+auditados**: podem estar com a mesma divergência silenciosa. Comparar, para cada serviço, o que o
+compose da stack declara com o que o serviço VIVO tem.
+
+### 2. Consertar a RAIZ do deploy (não feito)
+Enquanto o deploy não reaplicar `environment`/`resources`, **toda mudança futura de configuração
+no compose vai ser ignorada em silêncio**. Duas saídas:
+  (a) o deploy passar a fazer `docker stack deploy` de verdade (reaplica tudo), ou
+  (b) o `deploy-portainer.py` reaplicar env/resources junto com a imagem.
+Decidir e implementar. Sem isso, o mesmo erro volta.
+
+### 3. Apertar o teto de memória do worker para 3 GB (decisão do dono, 2026-07-12)
+Hoje o worker está com **heap 2048 MB e limite de container 4608M**. O 4608M veio do compose, não
+de medição: o pico real do ciclo fica na casa de 1 GB. O limite é TETO, não reserva (não tira RAM
+dos outros serviços da VPS), mas é generoso demais.
+
+**A fazer:** medir o pico real de memória do worker durante um ciclo completo e **baixar o limite
+do container para 3 GB** (mantendo o heap em 2048, que deixa ~1 GB de folga para o processo fora
+do heap). Usar `scripts/_prod-worker-heap.py`, que já se recusa a subir heap sem folga mínima.
+
+### 4. Lock zumbi a cada restart do worker
+Todo restart deixa `odoo-sync:lock:incremental` preso no Redis, e o worker novo pula ciclos até o
+TTL de 15 min expirar. Existe `scripts/_prod-redis-lock.py --destravar` para resolver na hora, mas
+o certo é o worker limpar o próprio lock no boot (ou o lock ter dono/heartbeat).
