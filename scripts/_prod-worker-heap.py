@@ -15,9 +15,19 @@
 #   "JavaScript heap out of memory" , foi o que derrubou os ciclos de sync.
 #
 # O QUE FAZ: um update CIRURGICO do servico nexus-odoo_worker (e SO dele):
-#   - NODE_OPTIONS=--max-old-space-size=<HEAP_MB>  (default 2048, igual ao docker-compose.yml local)
-#   - resources.limits.memory = <MEM_MB>           (default 4608M, igual ao compose da stack)
+#   - NODE_OPTIONS=--max-old-space-size=<HEAP_MB>  (2048, igual ao docker-compose.yml local)
+#   - resources.limits.memory = <MEM_MB>           (3072M)
 #   Nao toca em nenhuma outra variavel, nem em app/mcp/db/redis.
+#
+# DE ONDE VEM O 3072M (2026-07-13): de MEDICAO, nao de chute. O
+# scripts/_prod-worker-mem.py amostrou o container durante ciclos completos em producao:
+# repouso ~0.48 GB, pico do ciclo pesado (rebuild dos fatos) ~1.9 GB. O teto de 3 GB
+# cobre o pico com ~1.1 GB de folga e comporta o heap de 2 GB inteiro. O 4608M anterior
+# tinha vindo do compose, sem medicao nenhuma por tras.
+#
+# ORDEM IMPORTA: aplique aqui (servico vivo, rolling) e SO DEPOIS publique o compose com
+# os mesmos valores (scripts/_prod-stack-put.py). Assim o `stack deploy` disparado pelo
+# PUT nao recria task nenhuma. Confira no fim com scripts/_prod-stack-drift.py.
 #
 # CUIDADO (a armadilha que este script evita): o heap do Node TEM que caber no limite de
 # memoria do container, com folga pro resto do processo. Heap 2048 dentro de um container
@@ -35,7 +45,7 @@ base, token = dp.resolve_portainer(); ep = dp.find_endpoint(base, token)
 
 SERVICO = "nexus-odoo_worker"
 HEAP_MB = 2048   # --max-old-space-size
-MEM_MB = 4608    # limite de memoria do container (o que a stack ja declara)
+MEM_MB = 3072    # teto do container (pico medido do ciclo: ~1.9 GB)
 # Folga minima exigida entre o limite do container e o heap: fora do old space ainda vivem
 # stack, code space, buffers do pg/redis e o proprio runtime.
 FOLGA_MIN_MB = 512
