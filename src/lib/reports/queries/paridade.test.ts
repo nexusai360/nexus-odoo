@@ -55,6 +55,12 @@ function makeMcpPrisma() {
     fatoBuildState: { findMany: jest.fn() },
     syncState: { findMany: jest.fn() },
     fatoEstoqueSaldo: { findMany: jest.fn(), groupBy: jest.fn() },
+    // A tool do agente filtra por classificacao de local; sem o fato construido o filtro
+    // nao se aplica, e a paridade com a tela continua sendo medida sobre o mesmo conjunto.
+    fatoEstoqueLocal: {
+      count: jest.fn().mockResolvedValue(0),
+      findMany: jest.fn().mockResolvedValue([]),
+    },
   };
 }
 
@@ -93,7 +99,7 @@ describe.skip("paridade R1 (saldo produto): dashboard e MCP delegam ao mesmo nú
       prisma: mcpPrisma as never,
       user: { userId: "u1", role: "admin", domains: ["estoque"] } as UserContext,
     };
-    await estoqueSaldoProduto.handler({}, ctx);
+    await estoqueSaldoProduto.handler({} as never, ctx);
     expect(spy).toHaveBeenCalledTimes(1);
     spy.mockRestore();
   });
@@ -131,7 +137,7 @@ describe.skip("paridade R6 (concentração): dashboard e MCP delegam ao mesmo n�
       prisma: mcpPrisma as never,
       user: { userId: "u1", role: "admin", domains: ["estoque"] } as UserContext,
     };
-    await estoqueConcentracao.handler({}, ctx);
+    await estoqueConcentracao.handler({} as never, ctx);
     expect(spy).toHaveBeenCalledTimes(1);
     spy.mockRestore();
   });

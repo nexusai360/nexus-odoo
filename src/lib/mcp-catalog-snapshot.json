@@ -4,7 +4,7 @@
       "id": "estoque_saldo_produto",
       "operation": "read",
       "module": "estoque",
-      "descricao": "Saldo de estoque por produto: unidades e valor a custo, com nº de localizações. Para o saldo de um produto específico, passe `termo` com o nome ou o código do produto.",
+      "descricao": "Saldo de estoque por produto: unidades e valor a custo, com nº de localizações. Para o saldo de um produto específico, passe `termo` com o nome ou o código do produto. Por padrão conta só o estoque próprio; use `classificacao` para 'demonstracao' ou 'todos' os locais.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
@@ -12,6 +12,7 @@
         "armazemId",
         "familiaId",
         "termo",
+        "classificacao",
         "limit",
         "offset"
       ],
@@ -30,6 +31,16 @@
           "name": "termo",
           "type": "string",
           "optional": true
+        },
+        {
+          "name": "classificacao",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "fisico",
+            "demonstracao",
+            "todos"
+          ]
         },
         {
           "name": "limit",
@@ -74,13 +85,13 @@
       "id": "estoque_valor_armazem",
       "operation": "read",
       "module": "estoque",
-      "descricao": "Valor de estoque a preço de custo por armazém. Filtre por `locais` (prefixos da árvore de locais, ex.: 'Terceiros / Demonstração') ou `apenasFisicos` (subárvore Próprio). Use para 'valor total de estoque', 'valor de estoque físico', 'estoque em demonstração', 'estoque em poder de terceiros', 'estoque no local X'.",
+      "descricao": "Valor de estoque a preço de custo por armazém. Por padrão traz só o estoque próprio (o mesmo número do painel da diretoria); use `classificacao` para pedir 'demonstracao' ou 'todos' os locais, e `locais` para um ramo específico da árvore (ex.: 'Vendas'). Use para 'valor total de estoque', 'valor de estoque físico', 'estoque em demonstração', 'estoque em poder de terceiros', 'estoque no local X'.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [
         "locais",
-        "apenasFisicos"
+        "classificacao"
       ],
       "inputSchemaFields": [
         {
@@ -89,9 +100,14 @@
           "optional": true
         },
         {
-          "name": "apenasFisicos",
-          "type": "boolean",
-          "optional": true
+          "name": "classificacao",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "fisico",
+            "demonstracao",
+            "todos"
+          ]
         }
       ],
       "examples": []
@@ -206,19 +222,32 @@
       "id": "estoque_concentracao",
       "operation": "read",
       "module": "estoque",
-      "descricao": "Concentração do estoque por família e marca (valor e percentual).",
+      "descricao": "Concentração do estoque por família e marca (valor e percentual). Por padrão só o estoque próprio; use `classificacao` para 'demonstracao' ou 'todos' os locais.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
-      "inputSchemaKeys": [],
-      "inputSchemaFields": [],
+      "inputSchemaKeys": [
+        "classificacao"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "classificacao",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "fisico",
+            "demonstracao",
+            "todos"
+          ]
+        }
+      ],
       "examples": []
     },
     {
       "id": "estoque_produtos_saldo_zero",
       "operation": "read",
       "module": "estoque",
-      "descricao": "Conta produtos com saldo total zero (e opcionalmente negativos) consolidado em todos os armazens. Retorna `totalProdutos`, `totalZerados`, `totalNegativos` + amostra de produtos. Use para perguntas tipo: 'quantos itens com saldo zero?', 'produtos sem estoque', 'itens negativos'.",
+      "descricao": "Conta produtos com saldo total zero (e opcionalmente negativos) consolidado em todos os armazens. Retorna `totalProdutos`, `totalZerados`, `totalNegativos` + amostra de produtos. Use para perguntas tipo: 'quantos itens com saldo zero?', 'produtos sem estoque', 'itens negativos'. Por padrão olha só o estoque próprio; use `classificacao` para 'demonstracao' ou 'todos' os locais.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
@@ -226,6 +255,7 @@
         "incluirNegativos",
         "familiaId",
         "armazemId",
+        "classificacao",
         "limit",
         "offset"
       ],
@@ -246,6 +276,16 @@
           "optional": true
         },
         {
+          "name": "classificacao",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "fisico",
+            "demonstracao",
+            "todos"
+          ]
+        },
+        {
           "name": "limit",
           "type": "integer",
           "optional": true
@@ -262,12 +302,13 @@
       "id": "estoque_locais_por_produto",
       "operation": "read",
       "module": "estoque",
-      "descricao": "Lista todos os armazens/locais onde um produto tem saldo, com saldo por local. Use para 'quais armazens tem o produto X', 'onde esta o saldo de Y'. Aceita termo (nome ou codigo).",
+      "descricao": "Lista os armazens/locais onde um produto tem saldo, com saldo por local. Use para 'quais armazens tem o produto X', 'onde esta o saldo de Y'. Aceita termo (nome ou codigo). Por padrao lista so os locais do estoque proprio; para ver tambem demonstracao e terceiros, passe classificacao='todos'.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [
         "termo",
+        "classificacao",
         "limit",
         "offset"
       ],
@@ -276,6 +317,16 @@
           "name": "termo",
           "type": "string",
           "optional": false
+        },
+        {
+          "name": "classificacao",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "fisico",
+            "demonstracao",
+            "todos"
+          ]
         },
         {
           "name": "limit",
@@ -440,17 +491,23 @@
       "id": "financeiro_contas_a_receber",
       "operation": "read",
       "module": "financeiro",
-      "descricao": "Títulos a receber em aberto, com valor total e dias de atraso.",
+      "descricao": "Títulos a receber em aberto (JÁ FATURADOS), com valor total e dias de atraso. Devolve à parte `carteiraAFaturar`: pedidos ainda sem nota emitida, que são receita contratada e NÃO entram no total a receber.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [
-        "participanteId"
+        "participanteId",
+        "periodoAte"
       ],
       "inputSchemaFields": [
         {
           "name": "participanteId",
           "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
           "optional": true
         }
       ],
@@ -465,12 +522,18 @@
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [
-        "participanteId"
+        "participanteId",
+        "periodoAte"
       ],
       "inputSchemaFields": [
         {
           "name": "participanteId",
           "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
           "optional": true
         }
       ],
@@ -817,7 +880,7 @@
       "id": "bi_consulta_avancada",
       "operation": "read",
       "module": "outros",
-      "descricao": "Modo BI avançado (Caminho 3c): executa um SQL SELECT pronto sob o role read-only nexus_mcp_bi. O SQL deve ser gerado pelo agente (F5); esta tool apenas executa. Restrito a admin/super_admin. AVISO: consulta dinâmica, resultados não são filtrados pelo RBAC semântico das tools de domínio.",
+      "descricao": "Modo BI avançado (Caminho 3c): executa um SQL SELECT pronto sob o role read-only nexus_mcp_bi. O SQL deve ser gerado pelo agente (F5); esta tool apenas executa. Restrito a admin/super_admin. AVISO: consulta dinâmica, resultados não são filtrados pelo RBAC semântico das tools de domínio. IMPORTANTE: a plataforma só considera documentos a partir da data de início das análises. Toda consulta a tabela de histórico (fato_nota_fiscal.data_emissao, fato_pedido.data_orcamento, fato_financeiro_titulo.data_documento, fato_estoque_movimento.data, fato_contabil_lancamento_item.data_lancamento, fato_dfe.data_emissao...) DEVE trazer o piso `WHERE <coluna_de_data> >= '<data de início das análises>'` , sem isso o número contradiz o dashboard e as demais tools. A tool devolve a data vigente em `dataInicioAnalises`.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
@@ -1138,12 +1201,26 @@
       "id": "comercial_vendedores_cadastrados",
       "operation": "read",
       "module": "comercial",
-      "descricao": "Lista vendedores distintos que aparecem em pedidos (histórico completo), ordenados por quantidade de pedidos. Use para 'vendedores cadastrados', 'lista de vendedores'. Sem filtro de período.",
+      "descricao": "Lista vendedores distintos que aparecem em pedidos, ordenados por quantidade de pedidos. Use para 'vendedores cadastrados', 'lista de vendedores'. A contagem cobre os pedidos dentro da janela de análise da plataforma (a partir da data de início das análises); aceita período para estreitar mais.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
-      "inputSchemaKeys": [],
-      "inputSchemaFields": [],
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        }
+      ],
       "examples": []
     },
     {
@@ -1471,7 +1548,7 @@
       "id": "comercial_demanda_em_aberta",
       "operation": "read",
       "module": "comercial",
-      "descricao": "Demanda em aberta (pedidos de venda a cliente externo, aprovados, ainda sem nota fiscal ao consumidor final). Devolve o total em pedidos e em R$, a quebra por etapa (etapa: quantidade) e a lista de pedidos (com NUMERO). Use para 'quanto temos de demanda em aberto', 'pedidos parados', 'carteira a faturar'. Para DRILL numa etapa especifica ('os pedidos em FAT JDS x GRUPO'), passe 'etapa' para receber os pedidos daquela etapa com numero, e em seguida chame comercial_pedido_situacao com o numero para a imersao completa. Aceita filtro por empresa, etapa e ordenacao (tempo_parado padrao, valor, data_criacao).",
+      "descricao": "Demanda em aberta (pedidos de venda a cliente externo, aprovados, ainda sem nota fiscal ao consumidor final). O valor é o que FALTA ENTREGAR (não o pedido inteiro), a preço de venda (`valorTotal`) e a preço de custo (`valorCusto`, a mesma base do painel da diretoria). Devolve o total em pedidos e em R$, a quebra por etapa (etapa: quantidade) e a lista de pedidos (com NUMERO). Use para 'quanto temos de demanda em aberto', 'pedidos parados', 'carteira a faturar'. Para DRILL numa etapa especifica ('os pedidos em FAT JDS x GRUPO'), passe 'etapa' para receber os pedidos daquela etapa com numero, e em seguida chame comercial_pedido_situacao com o numero para a imersao completa. Aceita filtro por empresa, etapa e ordenacao (tempo_parado padrao, valor, data_criacao).",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
@@ -1534,7 +1611,7 @@
       "id": "comercial_demanda_por_produto",
       "operation": "read",
       "module": "comercial",
-      "descricao": "Produto com mais demanda, por QUANTIDADE, somando os itens dos pedidos em demanda aberta (aprovados, sem nota ao cliente). Use para 'qual produto tem mais demanda', 'produtos mais pedidos em aberto', 'ranking de demanda por item'.",
+      "descricao": "Produto com mais demanda, por QUANTIDADE A ENTREGAR (o que falta, não o pedido inteiro), somando os itens dos pedidos em demanda aberta (aprovados, sem nota ao cliente). Traz o valor dessas unidades a preço de venda e a preço de custo. Use para 'qual produto tem mais demanda', 'produtos mais pedidos em aberto', 'ranking de demanda por item'.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
@@ -1560,7 +1637,7 @@
       "id": "comercial_estoque_disponivel",
       "operation": "read",
       "module": "comercial",
-      "descricao": "Estoque disponivel por produto = saldo em estoque menos o comprometido em demanda aberta. Fica NEGATIVO quando ha mais demanda que saldo (precisa comprar). Use para 'estoque disponivel de X', 'o que precisa comprar', 'produtos com estoque negativo'. Aceita busca por produto e recorte de negativos.",
+      "descricao": "Estoque disponivel por produto = saldo do estoque PRÓPRIO menos o que falta entregar da demanda aberta (não o pedido inteiro). Fica NEGATIVO quando ha mais demanda que saldo (precisa comprar). Traz também o valor dessa demanda a preço de venda e a custo. Use para 'estoque disponivel de X', 'o que precisa comprar', 'produtos com estoque negativo'. Aceita busca por produto e recorte de negativos.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
@@ -1592,12 +1669,13 @@
       "id": "comercial_seriais_produto",
       "operation": "read",
       "module": "comercial",
-      "descricao": "Numeros de serie por produto: quantos estao parados em estoque (sem saida) e quantos ja sairam (apareceram em nota de saida autorizada). Use para 'seriais parados do produto X', 'quantos numeros de serie em estoque vs vendidos'.",
+      "descricao": "Numeros de serie EM ESTOQUE por produto: quantos existem hoje, em quantos locais estao e quantos deles estao no estoque proprio ou em demonstracao. Use para 'quantos seriais do produto X temos', 'onde estao os seriais de X', 'quantos equipamentos em demonstracao'.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [
         "produto",
+        "classificacao",
         "limite"
       ],
       "inputSchemaFields": [
@@ -1605,6 +1683,16 @@
           "name": "produto",
           "type": "string",
           "optional": true
+        },
+        {
+          "name": "classificacao",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "fisico",
+            "demonstracao",
+            "todos"
+          ]
         },
         {
           "name": "limite",
@@ -4489,5 +4577,5 @@
     }
   ],
   "count": 128,
-  "generatedAt": "2026-07-08T18:12:53.098Z"
+  "generatedAt": "2026-07-13T22:27:53.788Z"
 }

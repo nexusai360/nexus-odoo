@@ -7,8 +7,9 @@ import type { ToolEntry } from "../../catalog/types.js";
 import { queryConcentracao } from "@/lib/reports/queries/estoque.js";
 import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
+import { classificacaoInputShape, rotuloClassificacao } from "../../lib/classificacao.js";
 
-const inputSchema = z.object({});
+const inputSchema = z.object({ ...classificacaoInputShape });
 
 const dados = z.object({
   familia: z.array(z.object({ familia: z.string(), valor: z.number(), percentual: z.number() })),
@@ -65,15 +66,18 @@ function shape(d: Awaited<ReturnType<typeof queryConcentracao>>) {
 export const estoqueConcentracao: ToolEntry<Input, Output> = {
   id: "estoque_concentracao",
   dominio: "estoque",
-  descricao: "Concentração do estoque por família e marca (valor e percentual).",
+  descricao:
+    "Concentração do estoque por família e marca (valor e percentual). Por padrão só o " +
+    "estoque próprio; use `classificacao` para 'demonstracao' ou 'todos' os locais.",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
-  handler: async (_input, ctx) => {
+  handler: async (input, ctx) => {
+    const classificacao = input.classificacao ?? "fisico";
     const envelope = await withFreshness(
       ctx.prisma,
       ["fato_estoque_saldo"],
-      async () => shape(await queryConcentracao(ctx.prisma)),
+      async () => shape(await queryConcentracao(ctx.prisma, { classificacao })),
       // Paridade com dashboard F3 (getRelatorioConcentracao): "vazio" apenas
       // quando AMBOS os arrays estão vazios (regra conjuntiva). Se só famílias
       // estiverem vazias mas marcas preenchidas (ou vice-versa), o estado é "ok".
@@ -89,6 +93,7 @@ export const estoqueConcentracao: ToolEntry<Input, Output> = {
       totalFamilias: d.familia.length,
       totalMarcas: d.marca.length,
       valorTotal: valorTotalFamilia,
+      escopoLocais: rotuloClassificacao(classificacao),
     };
     if (topFamilia) {
       destaque.topFamilia = topFamilia.familia;

@@ -23,11 +23,16 @@ const linhaSchema = z.object({
   familiaNome: z.string().nullable(),
   quantidade: z.number(),
   valorProdutos: z.number(),
+  valorCusto: z.number(),
 });
 
 const dados = z.object({
   totalProdutos: z.number().int(),
   linhas: z.array(linhaSchema),
+  /** Quando o job de atendimento completou pela ultima vez (null = nunca rodou). */
+  atendimento_sincronizado_em: z.string().nullable(),
+  /** true = valor provisorio (caiu na quantidade cheia porque o job nao rodou). */
+  parcial: z.boolean().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -51,13 +56,29 @@ const outputSchema = z.union([
 type Input = z.infer<typeof inputSchema>;
 type Output = z.infer<typeof outputSchema>;
 
+/** Renomeia o status do atendimento para o contrato do envelope (snake_case). */
+function shape(d: Awaited<ReturnType<typeof queryDemandaPorProduto>>) {
+  const { atendimentoSincronizadoEm, parcial, ...resto } = d;
+  return {
+    ...resto,
+    atendimento_sincronizado_em: atendimentoSincronizadoEm,
+    ...(parcial ? { parcial: true } : {}),
+  };
+}
+
+const AVISO_PARCIAL =
+  "Valor provisório: o atendimento ainda não sincronizou hoje, então a quantidade é a do " +
+  "pedido inteiro (inclusive o que já foi entregue).";
+
 export const comercialDemandaPorProduto: ToolEntry<Input, Output> = {
   id: "comercial_demanda_por_produto",
   dominio: "comercial",
   descricao:
-    "Produto com mais demanda, por QUANTIDADE, somando os itens dos pedidos em " +
-    "demanda aberta (aprovados, sem nota ao cliente). Use para 'qual produto tem " +
-    "mais demanda', 'produtos mais pedidos em aberto', 'ranking de demanda por item'.",
+    "Produto com mais demanda, por QUANTIDADE A ENTREGAR (o que falta, não o pedido " +
+    "inteiro), somando os itens dos pedidos em demanda aberta (aprovados, sem nota ao " +
+    "cliente). Traz o valor dessas unidades a preço de venda e a preço de custo. Use " +
+    "para 'qual produto tem mais demanda', 'produtos mais pedidos em aberto', 'ranking " +
+    "de demanda por item'.",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
@@ -65,17 +86,18 @@ export const comercialDemandaPorProduto: ToolEntry<Input, Output> = {
     const envelope = await withFreshness(
       ctx.prisma,
       ["fato_pedido_item", "fato_pedido"],
-      () => queryDemandaPorProduto(ctx.prisma, input),
+      async () => shape(await queryDemandaPorProduto(ctx.prisma, input)),
     );
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
 
     const top = d.linhas[0];
-    const resposta =
+    let resposta =
       d.totalProdutos === 0
         ? "Nao ha itens em demanda aberta no momento."
-        : `${d.totalProdutos} produtos em demanda aberta. ` +
-          `Maior demanda: ${top?.produtoNome ?? "?"} (${Math.round(top?.quantidade ?? 0)} un).`;
+        : `${d.totalProdutos} produtos com unidades a entregar. ` +
+          `Maior demanda: ${top?.produtoNome ?? "?"} (${Math.round(top?.quantidade ?? 0)} un a entregar).`;
+    if (d.parcial) resposta = `${resposta} ${AVISO_PARCIAL}`;
 
     const destaque: Record<string, string | number> = top
       ? { produtoTop: top.produtoNome ?? "?", quantidadeTop: Math.round(top.quantidade) }

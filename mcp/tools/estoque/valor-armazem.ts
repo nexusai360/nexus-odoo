@@ -5,15 +5,15 @@ import type { ToolEntry } from "../../catalog/types.js";
 import { queryValorArmazem } from "@/lib/reports/queries/estoque.js";
 import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
+import { classificacaoInputShape, rotuloClassificacao } from "../../lib/classificacao.js";
 
 const inputSchema = z.object({
-  // Cobertura Cliente A6: filtro pela arvore de locais (prefixo do
-  // nome_completo). Fisico = subarvore "Próprio"; demonstracao =
-  // "Terceiros / Demonstração".
+  // Cobertura Cliente A6: filtro pela arvore de locais (prefixo do nome_completo). E o
+  // recorte fino, para um ramo especifico ("Vendas"). Quando ele vem, manda: a
+  // classificacao vale para a consulta sem ramo (ver queryValorArmazem).
   locais: z.array(z.string().trim().min(2)).optional()
-    .describe("Prefixos da arvore de locais, ex.: ['Terceiros / Demonstração'] ou ['Vendas']."),
-  apenasFisicos: z.boolean().optional()
-    .describe("true = apenas estoque fisico (subarvore 'Próprio')."),
+    .describe("Prefixos da arvore de locais, ex.: ['Terceiros / Demonstração'] ou ['Vendas']. Quando informado, ignora `classificacao`."),
+  ...classificacaoInputShape,
 });
 
 // Onda 1.C: envelope canonico
@@ -70,20 +70,23 @@ export const estoqueValorArmazem: ToolEntry<Input, Output> = {
   id: "estoque_valor_armazem",
   dominio: "estoque",
   descricao:
-    "Valor de estoque a preço de custo por armazém. Filtre por `locais` (prefixos da " +
-    "árvore de locais, ex.: 'Terceiros / Demonstração') ou `apenasFisicos` (subárvore " +
-    "Próprio). Use para 'valor total de estoque', 'valor de estoque físico', 'estoque " +
-    "em demonstração', 'estoque em poder de terceiros', 'estoque no local X'.",
+    "Valor de estoque a preço de custo por armazém. Por padrão traz só o estoque " +
+    "próprio (o mesmo número do painel da diretoria); use `classificacao` para pedir " +
+    "'demonstracao' ou 'todos' os locais, e `locais` para um ramo específico da árvore " +
+    "(ex.: 'Vendas'). Use para 'valor total de estoque', 'valor de estoque físico', " +
+    "'estoque em demonstração', 'estoque em poder de terceiros', 'estoque no local X'.",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
-    const prefixos = [
-      ...(input.apenasFisicos ? ["Próprio"] : []),
-      ...(input.locais ?? []),
-    ];
+    const prefixos = input.locais ?? [];
+    // `?? "fisico"` de novo aqui: o default do Zod so vale quando quem chama passa pelo
+    // parse do servidor, e a tool tambem e exercida direto (testes, rota in-app).
+    const classificacao = input.classificacao ?? "fisico";
     const escopoLocais =
-      prefixos.length > 0 ? prefixos.join("; ") : "todos os locais";
+      prefixos.length > 0
+        ? prefixos.join("; ")
+        : rotuloClassificacao(classificacao);
     const envelope = await withFreshness(
       ctx.prisma,
       ["fato_estoque_saldo"],
@@ -91,7 +94,7 @@ export const estoqueValorArmazem: ToolEntry<Input, Output> = {
         shape(
           await queryValorArmazem(
             ctx.prisma,
-            prefixos.length > 0 ? { prefixosArvore: prefixos } : undefined,
+            prefixos.length > 0 ? { prefixosArvore: prefixos } : { classificacao },
           ),
         ),
     );

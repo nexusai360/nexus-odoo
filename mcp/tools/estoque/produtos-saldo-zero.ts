@@ -10,6 +10,8 @@ import {
   montarPaginacaoMeta,
 } from "../../lib/paginacao.js";
 import type { PrismaClient } from "@/generated/prisma/client.js";
+import { classificacaoInputShape, rotuloClassificacao } from "../../lib/classificacao.js";
+import { whereLocalDoEscopo } from "@/lib/estoque/locais-por-classificacao.js";
 
 const inputSchema = z.object({
   incluirNegativos: z
@@ -18,6 +20,7 @@ const inputSchema = z.object({
     .describe("Quando true (default), inclui produtos com saldo negativo no count."),
   familiaId: z.number().int().positive().optional(),
   armazemId: z.number().int().positive().optional(),
+  ...classificacaoInputShape,
   ...paginacaoInputShape,
 });
 
@@ -83,9 +86,15 @@ async function queryProdutosSaldoZero(
   // total = numero de candidatos encontrados (alavanca 2b).
   const { limit, offset } = resolverPaginacao(input);
 
+  // Um armazem pedido explicitamente manda sobre o escopo da arvore: quem pergunta pelo
+  // armazem X quer o X, seja qual for a classificacao dele.
+  const escopo = input.armazemId
+    ? { localId: input.armazemId }
+    : await whereLocalDoEscopo(prisma, input.classificacao ?? "fisico");
+
   const rows = await prisma.fatoEstoqueSaldo.findMany({
     where: {
-      ...(input.armazemId ? { localId: input.armazemId } : {}),
+      ...escopo,
       ...(input.familiaId ? { familiaId: input.familiaId } : {}),
       produtoId: { not: null },
     },
@@ -183,7 +192,8 @@ export const estoqueProdutosSaldoZero: ToolEntry<Input, Output> = {
     "consolidado em todos os armazens. Retorna `totalProdutos`, " +
     "`totalZerados`, `totalNegativos` + amostra de produtos. " +
     "Use para perguntas tipo: 'quantos itens com saldo zero?', " +
-    "'produtos sem estoque', 'itens negativos'.",
+    "'produtos sem estoque', 'itens negativos'. Por padrão olha só o estoque próprio; " +
+    "use `classificacao` para 'demonstracao' ou 'todos' os locais.",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
@@ -206,6 +216,7 @@ export const estoqueProdutosSaldoZero: ToolEntry<Input, Output> = {
         totalProdutos: envelope.dados.totalProdutos,
         totalZerados: envelope.dados.totalZerados,
         totalNegativos: envelope.dados.totalNegativos,
+        escopoLocais: rotuloClassificacao(input.classificacao ?? "fisico"),
       },
       paginacao,
     });

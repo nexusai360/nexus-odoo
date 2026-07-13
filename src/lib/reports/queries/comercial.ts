@@ -8,6 +8,32 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { diasAtraso } from "../../../../mcp/lib/dias-atraso";
 import { VENDA_FUTURA } from "@/lib/fiscal/regras/venda-futura-policy";
 import { corteAtualDate, janelaClampada } from "@/lib/corte-dados";
+import { atendimentoSincronizado } from "@/lib/diretoria/atendimento-status";
+import {
+  whereLocalDoEscopo,
+  type EscopoLocal,
+} from "@/lib/estoque/locais-por-classificacao";
+
+// ---------------------------------------------------------------------------
+// Demanda = o que FALTA ENTREGAR, nao o pedido inteiro
+//
+// O `vr_produtos` do cabecalho e o pedido inteiro: um pedido com 10 itens, 6 ja
+// entregues, continuava valendo os 10 (48% da demanda ja tinha sido entregue e seguia
+// sendo somada). O quanto falta vem de um campo computado do Odoo, trazido por um job
+// diario, e a regra e uma so, igual a da diretoria (src/lib/diretoria/atendimento-status):
+//
+//   - job JA rodou     -> TODAS as linhas usam a quantidade a atender;
+//   - job NUNCA rodou  -> TODAS caem na quantidade cheia, e a resposta avisa.
+//
+// Misturar as duas bases no mesmo total produziria um numero que nao e nem a demanda
+// cheia nem a real, e ninguem saberia explicar de onde ele veio.
+//
+// Nas consultas em SQL abaixo, a quantidade da linha e sempre
+// `GREATEST(0, CASE WHEN <usar> THEN COALESCE(quantidade_a_atender, 0) ELSE quantidade END)`.
+// O piso em zero existe porque "a atender" vem NEGATIVO quando entregaram mais do que
+// foi pedido: sem ele, essa linha abateria a demanda das outras.
+// ---------------------------------------------------------------------------
+
 
 // Pedidos COMERCIAIS = só operação de VENDA (categoria_operacao='venda',
 // materializada). Exclui transferência intragrupo, remessa, bonificação e entrada
@@ -115,20 +141,34 @@ export async function queryDemandaEmAberta(
   filtros: { empresaId?: number; etapa?: string; limite?: number; ordenacao?: OrdenacaoDemanda } = {},
 ): Promise<{
   totalPedidos: number;
+  /** O que falta entregar, a preço de VENDA. */
   valorTotal: number;
-  porEtapa: { etapaNome: string | null; quantidade: number; valorTotal: number }[];
+  /** O mesmo recorte, a preço de CUSTO (a base do painel da diretoria). */
+  valorCusto: number;
+  porEtapa: {
+    etapaNome: string | null;
+    quantidade: number;
+    valorTotal: number;
+    valorCusto: number;
+  }[];
   lista: {
     numero: string | null;
     etapaNome: string | null;
     empresaNome: string | null;
     participanteNome: string | null;
     valorProdutos: number;
+    valorCusto: number;
     diasParado: number | null;
   }[];
   ordenadoPor: OrdenacaoDemanda;
+  /** Quando o job de atendimento completou pela última vez (null = nunca). */
+  atendimentoSincronizadoEm: string | null;
+  /** true quando o valor é provisório (caiu na quantidade cheia por falta do job). */
+  parcial: boolean;
 }> {
   const limite = Math.min(Math.max(filtros.limite ?? 20, 1), 100);
   const ordenacao = filtros.ordenacao ?? "tempo_parado";
+  const status = await atendimentoSincronizado(prisma);
 
   const todas = await prisma.$queryRaw<
     {
@@ -138,15 +178,38 @@ export async function queryDemandaEmAberta(
       empresa_nome: string | null;
       participante_nome: string | null;
       valor: number;
+      valor_custo: number;
       dias_parado: number | null;
       data_orcamento: Date | null;
     }[]
   >`
+    WITH linha AS (
+      SELECT it.pedido_id,
+             GREATEST(0, CASE WHEN ${status.ok}::boolean
+                              THEN COALESCE(it.quantidade_a_atender, 0)
+                              ELSE it.quantidade END)::float8 AS qtd,
+             -- Preço unitário reconstruído da própria linha; o custo vem de fato_produto
+             -- (o custo da linha do pedido vem zerado no Odoo), a MESMA fonte do valor de
+             -- estoque, para as duas telas fecharem entre si.
+             CASE WHEN it.quantidade > 0
+                  THEN (it.vr_produtos / it.quantidade)::float8 ELSE 0 END AS preco_unit,
+             COALESCE(p.preco_custo, 0)::float8 AS custo_unit
+      FROM fato_pedido_item it
+      LEFT JOIN fato_produto p ON p.odoo_id = it.produto_id
+    ),
+    item AS (
+      SELECT pedido_id,
+             sum(qtd * preco_unit) AS valor_venda,
+             sum(qtd * custo_unit) AS valor_custo
+      FROM linha GROUP BY pedido_id
+    )
     SELECT f.numero, f.etapa_nome, f.empresa_id, f.empresa_nome, f.participante_nome,
-           f.vr_produtos::float8 AS valor,
+           COALESCE(i.valor_venda, 0)::float8 AS valor,
+           COALESCE(i.valor_custo, 0)::float8 AS valor_custo,
            EXTRACT(DAY FROM now() - COALESCE(h.data_entrada, f.data_aprovacao, f.data_orcamento))::int AS dias_parado,
            f.data_orcamento
     FROM fato_pedido f
+    LEFT JOIN item i ON i.pedido_id = f.odoo_id
     LEFT JOIN LATERAL (
       SELECT max(data_entrada) AS data_entrada
       FROM fato_pedido_historico h
@@ -169,12 +232,21 @@ export async function queryDemandaEmAberta(
 
   const totalPedidos = rows.length;
   const valorTotal = rows.reduce((s, r) => s + (r.valor ?? 0), 0);
+  const valorCusto = rows.reduce((s, r) => s + (r.valor_custo ?? 0), 0);
 
-  const mapEtapa = new Map<string | null, { quantidade: number; valorTotal: number }>();
+  const mapEtapa = new Map<
+    string | null,
+    { quantidade: number; valorTotal: number; valorCusto: number }
+  >();
   for (const r of rows) {
-    const e = mapEtapa.get(r.etapa_nome) ?? { quantidade: 0, valorTotal: 0 };
+    const e = mapEtapa.get(r.etapa_nome) ?? {
+      quantidade: 0,
+      valorTotal: 0,
+      valorCusto: 0,
+    };
     e.quantidade += 1;
     e.valorTotal += r.valor ?? 0;
+    e.valorCusto += r.valor_custo ?? 0;
     mapEtapa.set(r.etapa_nome, e);
   }
   const porEtapa = [...mapEtapa.entries()]
@@ -198,10 +270,20 @@ export async function queryDemandaEmAberta(
       empresaNome: r.empresa_nome,
       participanteNome: r.participante_nome,
       valorProdutos: r.valor,
+      valorCusto: r.valor_custo,
       diasParado: r.dias_parado,
     }));
 
-  return { totalPedidos, valorTotal, porEtapa, lista, ordenadoPor: ordenacao };
+  return {
+    totalPedidos,
+    valorTotal,
+    valorCusto,
+    porEtapa,
+    lista,
+    ordenadoPor: ordenacao,
+    atendimentoSincronizadoEm: status.em ? status.em.toISOString() : null,
+    parcial: !status.ok,
+  };
 }
 
 /**
@@ -362,14 +444,21 @@ export async function queryDemandaPorProduto(
     produtoId: number | null;
     produtoNome: string | null;
     familiaNome: string | null;
+    /** Unidades que ainda faltam entregar (não o pedido inteiro). */
     quantidade: number;
+    /** Essas unidades a preço de venda. */
     valorProdutos: number;
+    /** As mesmas unidades a preço de custo. */
+    valorCusto: number;
   }[];
   totalProdutos: number;
+  atendimentoSincronizadoEm: string | null;
+  parcial: boolean;
 }> {
   const limite = Math.min(Math.max(filtros.limite ?? 20, 1), 100);
   // Recorte opcional por empresa (decisão #2: demanda por grupo E por empresa).
   const empresaId = filtros.empresaId ?? null;
+  const status = await atendimentoSincronizado(prisma);
   const rows = await prisma.$queryRaw<
     {
       produto_id: number | null;
@@ -377,20 +466,35 @@ export async function queryDemandaPorProduto(
       familia_nome: string | null;
       quantidade: number;
       valor: number;
+      valor_custo: number;
     }[]
   >`
-    SELECT it.produto_id, it.produto_nome, it.familia_nome,
-           sum(it.quantidade)::float8 AS quantidade,
-           sum(it.vr_produtos)::float8 AS valor
-    FROM fato_pedido_item it
-    JOIN fato_pedido f ON f.odoo_id = it.pedido_id
-    WHERE f.bucket_demanda = 'ABERTA'
-      -- Piso da janela de análise (data do documento pai): item de pedido pré-corte
-      -- não pode somar quantidade no ranking de produto com mais demanda.
-      AND f.data_orcamento >= ${corteAtualDate()}
-      AND (${empresaId}::int IS NULL OR f.empresa_id = ${empresaId}::int)
-    GROUP BY it.produto_id, it.produto_nome, it.familia_nome
-    ORDER BY sum(it.quantidade) DESC
+    WITH linha AS (
+      SELECT it.produto_id, it.produto_nome, it.familia_nome,
+             GREATEST(0, CASE WHEN ${status.ok}::boolean
+                              THEN COALESCE(it.quantidade_a_atender, 0)
+                              ELSE it.quantidade END)::float8 AS qtd,
+             CASE WHEN it.quantidade > 0
+                  THEN (it.vr_produtos / it.quantidade)::float8 ELSE 0 END AS preco_unit,
+             COALESCE(p.preco_custo, 0)::float8 AS custo_unit
+      FROM fato_pedido_item it
+      JOIN fato_pedido f ON f.odoo_id = it.pedido_id
+      LEFT JOIN fato_produto p ON p.odoo_id = it.produto_id
+      WHERE f.bucket_demanda = 'ABERTA'
+        -- Piso da janela de análise (data do documento pai): item de pedido pré-corte
+        -- não pode somar quantidade no ranking de produto com mais demanda.
+        AND f.data_orcamento >= ${corteAtualDate()}
+        AND (${empresaId}::int IS NULL OR f.empresa_id = ${empresaId}::int)
+    )
+    SELECT produto_id, produto_nome, familia_nome,
+           sum(qtd)::float8 AS quantidade,
+           sum(qtd * preco_unit)::float8 AS valor,
+           sum(qtd * custo_unit)::float8 AS valor_custo
+    FROM linha
+    GROUP BY produto_id, produto_nome, familia_nome
+    -- Produto totalmente entregue sai do ranking: a demanda dele é zero agora.
+    HAVING sum(qtd) > 0
+    ORDER BY sum(qtd) DESC
   `;
   return {
     totalProdutos: rows.length,
@@ -400,7 +504,10 @@ export async function queryDemandaPorProduto(
       familiaNome: r.familia_nome,
       quantidade: r.quantidade,
       valorProdutos: r.valor,
+      valorCusto: r.valor_custo,
     })),
+    atendimentoSincronizadoEm: status.em ? status.em.toISOString() : null,
+    parcial: !status.ok,
   };
 }
 
@@ -412,116 +519,199 @@ export async function queryDemandaPorProduto(
  */
 export async function queryEstoqueDisponivel(
   prisma: PrismaClient,
-  filtros: { produto?: string; apenasNegativos?: boolean; limite?: number } = {},
+  filtros: {
+    produto?: string;
+    apenasNegativos?: boolean;
+    limite?: number;
+    /** Escopo do lado do SALDO. Padrão: só o estoque próprio (o da casa). */
+    classificacao?: EscopoLocal;
+  } = {},
 ): Promise<{
   linhas: {
     produtoId: number | null;
     produtoNome: string | null;
     saldo: number;
+    /** Unidades que faltam entregar (não o pedido inteiro). */
     demanda: number;
+    /** Essas unidades a preço de venda e a preço de custo. */
+    demandaValorVenda: number;
+    demandaValorCusto: number;
     disponivel: number;
   }[];
   total: number;
   negativos: number;
+  atendimentoSincronizadoEm: string | null;
+  parcial: boolean;
 }> {
   const limite = Math.min(Math.max(filtros.limite ?? 20, 1), 100);
-  const padrao = filtros.produto ? `%${filtros.produto}%` : "%";
-  const rows = await prisma.$queryRaw<
-    {
-      produto_id: number | null;
-      produto_nome: string | null;
-      saldo: number;
-      demanda: number;
-      disponivel: number;
-    }[]
+  const status = await atendimentoSincronizado(prisma);
+
+  // Lado do SALDO: só o estoque que existe dentro de casa. Contar demonstração e
+  // terceiros aqui daria "disponível" onde não há mercadoria para entregar. O escopo sai
+  // do Prisma (e não de um pedaço de SQL montado na mão) para o filtro de local ser o
+  // mesmo das telas de estoque.
+  const escopo = await whereLocalDoEscopo(prisma, filtros.classificacao ?? "fisico");
+  const saldoRows = await prisma.fatoEstoqueSaldo.findMany({
+    where: {
+      ...escopo,
+      produtoId: { not: null },
+      ...(filtros.produto
+        ? { produtoNome: { contains: filtros.produto, mode: "insensitive" as const } }
+        : {}),
+    },
+    select: { produtoId: true, produtoNome: true, quantidade: true },
+  });
+
+  const saldoPorProduto = new Map<number, { nome: string | null; saldo: number }>();
+  for (const r of saldoRows) {
+    if (r.produtoId == null) continue;
+    const atual = saldoPorProduto.get(r.produtoId);
+    const q = Number(r.quantidade ?? 0);
+    if (atual) atual.saldo += q;
+    else saldoPorProduto.set(r.produtoId, { nome: r.produtoNome, saldo: q });
+  }
+
+  // Lado da DEMANDA: o que falta entregar, com o valor a venda e a custo.
+  const demRows = await prisma.$queryRaw<
+    { produto_id: number | null; q: number; venda: number; custo: number }[]
   >`
-    WITH saldo AS (
-      SELECT produto_id, max(produto_nome) AS nome, sum(quantidade)::float8 AS q
-      FROM fato_estoque_saldo GROUP BY produto_id
-    ),
-    dem AS (
-      SELECT it.produto_id, sum(it.quantidade)::float8 AS q
+    WITH linha AS (
+      SELECT it.produto_id,
+             GREATEST(0, CASE WHEN ${status.ok}::boolean
+                              THEN COALESCE(it.quantidade_a_atender, 0)
+                              ELSE it.quantidade END)::float8 AS qtd,
+             CASE WHEN it.quantidade > 0
+                  THEN (it.vr_produtos / it.quantidade)::float8 ELSE 0 END AS preco_unit,
+             COALESCE(p.preco_custo, 0)::float8 AS custo_unit
       FROM fato_pedido_item it
       JOIN fato_pedido f ON f.odoo_id = it.pedido_id
+      LEFT JOIN fato_produto p ON p.odoo_id = it.produto_id
       -- Comprometido em demanda aberta; e, se a politica de venda futura estiver
       -- ligada (VENDA_FUTURA.RESERVA_ESTOQUE_ATE_REMESSA), tambem o simples
       -- faturamento (venda futura ja faturada, reservada ate a remessa).
       WHERE (f.bucket_demanda = 'ABERTA'
              OR (${VENDA_FUTURA.RESERVA_ESTOQUE_ATE_REMESSA} AND f.categoria_operacao = 'simples_faturamento'))
-        -- Piso da janela de análise no lado da DEMANDA (documento com data). O lado
-        -- do saldo (CTE saldo) é foto do estoque de hoje: não se aplica. Sem o piso,
-        -- pedido pré-corte comprometia estoque e gerava "disponível negativo" falso.
+        -- Piso da janela de análise no lado da DEMANDA (documento com data). O lado do
+        -- saldo é foto do estoque de hoje: não se aplica. Sem o piso, pedido pré-corte
+        -- comprometia estoque e gerava "disponível negativo" falso.
         AND f.data_orcamento >= ${corteAtualDate()}
-      GROUP BY it.produto_id
     )
-    SELECT s.produto_id, s.nome AS produto_nome, s.q AS saldo,
-           COALESCE(d.q, 0) AS demanda,
-           (s.q - COALESCE(d.q, 0)) AS disponivel
-    FROM saldo s
-    LEFT JOIN dem d ON d.produto_id = s.produto_id
-    WHERE s.nome ILIKE ${padrao}
-    ORDER BY (s.q - COALESCE(d.q, 0)) ASC
-    LIMIT 500
+    SELECT produto_id,
+           sum(qtd)::float8 AS q,
+           sum(qtd * preco_unit)::float8 AS venda,
+           sum(qtd * custo_unit)::float8 AS custo
+    FROM linha
+    GROUP BY produto_id
   `;
+  const demandaPorProduto = new Map(
+    demRows
+      .filter((r) => r.produto_id != null)
+      .map((r) => [r.produto_id as number, r]),
+  );
+
+  const rows = [...saldoPorProduto.entries()]
+    .map(([produtoId, s]) => {
+      const d = demandaPorProduto.get(produtoId);
+      const demanda = d?.q ?? 0;
+      return {
+        produtoId,
+        produtoNome: s.nome,
+        saldo: s.saldo,
+        demanda,
+        demandaValorVenda: d?.venda ?? 0,
+        demandaValorCusto: d?.custo ?? 0,
+        disponivel: s.saldo - demanda,
+      };
+    })
+    // Menor disponibilidade primeiro: quem precisa de compra aparece no topo.
+    .sort((a, b) => a.disponivel - b.disponivel)
+    .slice(0, 500);
+
   const filtradas = filtros.apenasNegativos
     ? rows.filter((r) => r.disponivel < 0)
     : rows;
   return {
     total: filtradas.length,
     negativos: rows.filter((r) => r.disponivel < 0).length,
-    linhas: filtradas.slice(0, limite).map((r) => ({
-      produtoId: r.produto_id,
-      produtoNome: r.produto_nome,
-      saldo: r.saldo,
-      demanda: r.demanda,
-      disponivel: r.disponivel,
-    })),
+    linhas: filtradas.slice(0, limite),
+    atendimentoSincronizadoEm: status.em ? status.em.toISOString() : null,
+    parcial: !status.ok,
   };
 }
 
 /**
- * Seriais por produto: parados (em estoque, sem saida registrada) vs saidos (numero
- * de serie que ja apareceu em nota de saida autorizada). Cruza fato_serial com a
- * rastreabilidade de item de nota (raw_sped_documento_item_rastreabilidade -> item ->
- * nota). Aceita busca por produto.
+ * Seriais em estoque por produto, a partir de `fato_serial_saldo`: cada serial com saldo
+ * positivo, onde ele está (local) e em que classificação esse local cai.
+ *
+ * A fonte antiga (`fato_serial`) NÃO sabia onde o serial estava: 100% dos seriais "em
+ * estoque" tinham local nulo, então "parado" era um serial sem endereço, e a pergunta
+ * "onde está o serial X?" não tinha resposta. Aqui só entra serial com saldo > 0 e com
+ * local, que é o que se pode ir buscar na prateleira.
  */
 export async function querySeriaisProduto(
   prisma: PrismaClient,
-  filtros: { produto?: string; limite?: number } = {},
+  filtros: { produto?: string; limite?: number; classificacao?: EscopoLocal } = {},
 ): Promise<{
-  linhas: { produtoNome: string | null; total: number; parados: number; sairam: number }[];
+  linhas: {
+    produtoNome: string | null;
+    /** Seriais em estoque (saldo > 0) do produto, no escopo pedido. */
+    emEstoque: number;
+    /** Quantos deles estão em local de estoque próprio e quantos em demonstração. */
+    proprio: number;
+    demonstracao: number;
+    /** Quantos locais diferentes guardam seriais desse produto. */
+    locais: number;
+    saldo: number;
+  }[];
   totalProdutos: number;
+  totalSeriais: number;
 }> {
   const limite = Math.min(Math.max(filtros.limite ?? 20, 1), 100);
   const padrao = filtros.produto ? `%${filtros.produto}%` : "%";
-  // Lê direto de fato_serial (data_saida enriquecida pelo builder via rastreabilidade):
-  // parado = ainda em estoque (sem data de saída); saiu = já vendido/baixado em nota.
-  // Antes cruzava raw_sped_documento_item_rastreabilidade, que o role read-only do MCP
-  // NÃO acessa (só fato_*) , dava "Erro interno" pela rota do Agente Nex.
+  // Aqui o padrão é "todos": a pergunta é "onde está o serial", e esconder os que estão
+  // em demonstração seria sumir com equipamento que existe. A quebra por classificação
+  // vai nas colunas, para a resposta poder dizer quantos são de cada tipo.
+  const escopo = filtros.classificacao ?? "todos";
+
   const rows = await prisma.$queryRaw<
-    { produto_nome: string | null; total: number; parados: number; sairam: number }[]
+    {
+      produto_nome: string | null;
+      em_estoque: number;
+      proprio: number;
+      demonstracao: number;
+      locais: number;
+      saldo: number;
+    }[]
   >`
     SELECT s.produto_nome,
-           count(*)::int AS total,
-           count(*) FILTER (WHERE s.data_saida IS NULL)::int AS parados,
-           count(*) FILTER (WHERE s.data_saida IS NOT NULL)::int AS sairam
-    FROM fato_serial s
+           count(*)::int AS em_estoque,
+           count(*) FILTER (WHERE s.classificacao = 'fisico')::int AS proprio,
+           count(*) FILTER (WHERE s.classificacao = 'demonstracao')::int AS demonstracao,
+           count(DISTINCT s.local_id)::int AS locais,
+           sum(s.saldo)::float8 AS saldo
+    FROM fato_serial_saldo s
     WHERE s.produto_nome ILIKE ${padrao}
-      -- "Parado" é foto de estoque (data_saida IS NULL): não se aplica o corte.
-      -- "Saiu" é MOVIMENTO datado: só conta saída dentro da janela de análise. Assim
-      -- total = parados + sairam continua fechando, sem misturar saída pré-corte.
-      AND (s.data_saida IS NULL OR s.data_saida >= ${corteAtualDate()})
+      -- Serial é foto de estoque (não tem eixo de tempo): a data de início das análises
+      -- não se aplica. Saldo > 0 e local conhecido: é o que existe para ir buscar.
+      AND s.saldo > 0
+      AND s.local_id IS NOT NULL
+      -- Escopo como parâmetro, sem montar SQL na mão: 'todos' passa reto, o resto compara
+      -- a classificação já materializada no fato.
+      AND (${escopo}::text = 'todos' OR s.classificacao = ${escopo}::text)
     GROUP BY s.produto_nome
     ORDER BY count(*) DESC
     LIMIT 500
   `;
   return {
     totalProdutos: rows.length,
+    totalSeriais: rows.reduce((s, r) => s + r.em_estoque, 0),
     linhas: rows.slice(0, limite).map((r) => ({
       produtoNome: r.produto_nome,
-      total: r.total,
-      parados: r.parados,
-      sairam: r.sairam,
+      emEstoque: r.em_estoque,
+      proprio: r.proprio,
+      demonstracao: r.demonstracao,
+      locais: r.locais,
+      saldo: r.saldo,
     })),
   };
 }

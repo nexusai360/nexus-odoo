@@ -461,9 +461,18 @@ describe("CORTE , piso da data de início das análises nas consultas de pedido"
     expect(parcelaCall.where?.pedidoId).toEqual({ in: [7] });
   });
 
+  // O job de atendimento nunca rodou nestes mocks: as consultas caem na quantidade cheia,
+  // uniformemente, que e exatamente o contrato (nunca misturar as duas bases).
+  const semAtendimento = () => ({
+    fatoBuildState: { findUnique: jest.fn().mockResolvedValue(null) },
+  });
+
   it("queryDemandaEmAberta: o SQL tem piso em data_orcamento >= corte", async () => {
     const raw = jest.fn().mockResolvedValue([]);
-    const mockPrisma = { $queryRaw: raw } as unknown as import("@/generated/prisma/client").PrismaClient;
+    const mockPrisma = {
+      ...semAtendimento(),
+      $queryRaw: raw,
+    } as unknown as import("@/generated/prisma/client").PrismaClient;
 
     await queryDemandaEmAberta(mockPrisma, {});
     expect(sqlDoRaw(raw)).toContain("f.data_orcamento >=");
@@ -472,33 +481,48 @@ describe("CORTE , piso da data de início das análises nas consultas de pedido"
 
   it("queryDemandaPorProduto: o JOIN com o pedido tem piso de data", async () => {
     const raw = jest.fn().mockResolvedValue([]);
-    const mockPrisma = { $queryRaw: raw } as unknown as import("@/generated/prisma/client").PrismaClient;
+    const mockPrisma = {
+      ...semAtendimento(),
+      $queryRaw: raw,
+    } as unknown as import("@/generated/prisma/client").PrismaClient;
 
     await queryDemandaPorProduto(mockPrisma, {});
     expect(sqlDoRaw(raw)).toContain("f.data_orcamento >=");
     expect(valoresDoRaw(raw)).toContainEqual(CORTE);
   });
 
-  it("queryEstoqueDisponivel: piso na CTE de demanda (o saldo, foto, fica sem filtro)", async () => {
+  it("queryEstoqueDisponivel: piso na demanda; o saldo, que é foto, fica sem filtro de data", async () => {
     const raw = jest.fn().mockResolvedValue([]);
-    const mockPrisma = { $queryRaw: raw } as unknown as import("@/generated/prisma/client").PrismaClient;
+    const saldoFindMany = jest.fn().mockResolvedValue([]);
+    const mockPrisma = {
+      ...semAtendimento(),
+      fatoEstoqueLocal: {
+        count: jest.fn().mockResolvedValue(0),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      fatoEstoqueSaldo: { findMany: saldoFindMany },
+      $queryRaw: raw,
+    } as unknown as import("@/generated/prisma/client").PrismaClient;
 
     await queryEstoqueDisponivel(mockPrisma, {});
-    const sql = sqlDoRaw(raw);
-    expect(sql).toContain("f.data_orcamento >=");
+    // A demanda (documento com data) respeita o piso...
+    expect(sqlDoRaw(raw)).toContain("f.data_orcamento >=");
     expect(valoresDoRaw(raw)).toContainEqual(CORTE);
-    // O lado do saldo (foto do estoque de hoje) continua sem recorte de data.
-    const cteSaldo = sql.slice(sql.indexOf("WITH saldo AS"), sql.indexOf("dem AS"));
-    expect(cteSaldo).not.toContain("data_orcamento");
+    // ...e o saldo, que e foto do estoque de hoje, nao leva recorte de data nenhum.
+    expect(saldoFindMany.mock.calls[0][0].where).not.toHaveProperty("dataOrcamento");
   });
 
-  it("querySeriaisProduto: só conta saída dentro da janela (parado é foto, fica)", async () => {
+  it("querySeriaisProduto: lê fato_serial_saldo, só o que tem saldo e local (foto, sem corte)", async () => {
     const raw = jest.fn().mockResolvedValue([]);
     const mockPrisma = { $queryRaw: raw } as unknown as import("@/generated/prisma/client").PrismaClient;
 
     await querySeriaisProduto(mockPrisma, {});
-    expect(sqlDoRaw(raw)).toContain("s.data_saida IS NULL OR s.data_saida >=");
-    expect(valoresDoRaw(raw)).toContainEqual(CORTE);
+    const sql = sqlDoRaw(raw);
+    expect(sql).toContain("FROM fato_serial_saldo");
+    expect(sql).toContain("s.saldo > 0");
+    expect(sql).toContain("s.local_id IS NOT NULL");
+    // Serial em estoque e foto: a data de inicio das analises nao entra aqui.
+    expect(valoresDoRaw(raw)).not.toContainEqual(CORTE);
   });
 
   it("queryPedidoSituacao: pedido anterior ao corte não é devolvido (foraDaJanela)", async () => {
