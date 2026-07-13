@@ -150,6 +150,18 @@ No cache real: **R$ 47.697.919 a custo ÷ 0,95 = R$ 50.208.336** (o KPI).
   granulares e o giro usam todos o mesmo custo.
 - Produto com saldo e **sem custo cadastrado** entra com valor zero e aparece como gap
   (`produtosSemCusto`). Em produção há 52 linhas nessa situação.
+- **O índice vale também no filtro cruzado** (corrigido em 2026-07-13). A recomputação
+  client-side do construtor (família/marca/local) ignorava o índice e devolvia o custo puro:
+  para quem não usa o índice padrão, o mesmo card mostrava um número **com** filtro e outro
+  **sem**. `derivarIndicadores` passou a receber o índice já resolvido pelo servidor.
+
+### Seriais em estoque , 3.876 (não 8.860)
+
+A lista de seriais (A6) contava **todo serial cadastrado**, inclusive o que **já saiu**,
+embora o título ("em estoque") e a idade em dias dependam de `data_saida IS NULL`. Em
+produção, **4.984 dos 8.860 seriais já haviam saído**: o total aparecia com mais que o dobro
+do real. Corrigido em 2026-07-13 (`querySeriais`), com o mesmo critério que a idade média do
+estoque já usava.
 
 ---
 
