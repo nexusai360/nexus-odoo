@@ -12,6 +12,7 @@
  */
 
 import { IDENTITY_BASE } from "./identity-base";
+import { REGRA_INICIO_ANALISES } from "./regra-corte";
 
 export { IDENTITY_BASE };
 
@@ -79,8 +80,11 @@ export function composeSystemPrompt(
   biSchema?: string,
   source: AgentPromptSource = "bubble",
 ): string {
+  // O override descarta a identidade inteira , mas NÃO a regra da data de início das
+  // análises. Ela é da plataforma, não do texto que o admin edita: sem ela o agente recebe
+  // a data no [Contexto] de cada turno e não sabe o que fazer com ela. Ver regra-corte.ts.
   if (cfg.advancedOverride && cfg.advancedOverride.trim().length > 0) {
-    return cfg.advancedOverride;
+    return cfg.advancedOverride + REGRA_INICIO_ANALISES;
   }
 
   // identityBase do DB tem prioridade sobre IDENTITY_BASE hardcoded
@@ -215,6 +219,11 @@ export function composeSystemPrompt(
       "\n\nEvite a pergunta \"qual visao voce quer?\" como resposta principal. Se for genuinamente impossivel responder sem essa clarificacao, ofereca a pergunta DEPOIS de ter trazido pelo menos o total + 1 amostra." +
       "\n\nLIMITE RIGIDO DE TOOLS: maximo 2 chamadas de ferramenta por resposta. Voce TEM apenas 2 oportunidades de chamar tools para uma pergunta. Use-as bem. Apos a 2a chamada, RESPONDA com o que tiver, mesmo que parcial. NUNCA encadeie a mesma tool 2x esperando resultado diferente. NUNCA chame uma tool diferente esperando 'completar' a primeira: se a 1a tool nao deu o dado, e improvavel que a 2a de. Resposta parcial e honesta vale infinitamente mais que loop de tools.",
   );
+
+  // Por ÚLTIMO, sempre: a data de início das análises manda em toda leitura, e o texto
+  // que ensina isso não pode depender de o admin ter editado (ou não) o prompt na tela.
+  // Se o identityBase vier do banco com a redação ANTIGA, esta regra vem depois e corrige.
+  parts.push(REGRA_INICIO_ANALISES);
 
   return parts.join("");
 }
