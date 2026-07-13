@@ -7,6 +7,7 @@ import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
+import { corteAtualDate, corteLabel } from "@/lib/corte-dados.js";
 
 const inputSchema = z.object({
   odooId: z.number().int().positive(),
@@ -14,6 +15,8 @@ const inputSchema = z.object({
 
 const dados = z.object({
   encontrado: z.boolean(),
+  /** true quando a nota existe no cache mas e anterior a data de inicio das analises. */
+  foraDaJanela: z.boolean().optional(),
   nota: z
     .object({
       odooId: z.number().int(),
@@ -72,9 +75,17 @@ export const fiscalDetalharNota: ToolEntry<Input, Output> = {
         const row = await ctx.prisma.fatoNotaFiscal.findFirst({
           where: { odooId: input.odooId },
         });
-        if (!row) return { encontrado: false, nota: null };
+        if (!row) return { encontrado: false, foraDaJanela: false, nota: null };
+        // Drill nominal, mas a nota continua sendo documento com data: nota anterior a data
+        // de inicio das analises nao e considerada pela plataforma. Devolver o valor dela
+        // aqui contradiria todo o resto (o mesmo documento nao aparece em nenhum total).
+        // Mesmo tratamento de `queryPedidoSituacao` (src/lib/reports/queries/comercial.ts).
+        if (row.dataEmissao && row.dataEmissao < corteAtualDate()) {
+          return { encontrado: false, foraDaJanela: true, nota: null };
+        }
         return {
           encontrado: true,
+          foraDaJanela: false,
           nota: {
             odooId: row.odooId,
             serie: row.serie,
@@ -94,6 +105,14 @@ export const fiscalDetalharNota: ToolEntry<Input, Output> = {
     );
     if (envelope.estado === "preparando") return envelope;
     const n = envelope.dados.nota;
+    // Fora da janela nao e "nao existe": a nota esta no Odoo, so nao e analisada pela
+    // plataforma. Sem esta frase o agente responderia "nota nao encontrada", que e falso.
+    if (envelope.dados.foraDaJanela) {
+      return enriquecerEnvelope(envelope, "fiscal_detalhar_nota", {
+        periodo: { preCorte: true, label: `nota anterior a ${corteLabel()}` },
+        destaque: { encontrado: "fora da janela de analise" },
+      });
+    }
     return enriquecerEnvelope(envelope, "fiscal_detalhar_nota", {
       destaque: n
         ? {

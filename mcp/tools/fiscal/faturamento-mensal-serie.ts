@@ -9,6 +9,7 @@ import { faturamentoSerieMensal } from "@/lib/metrics/fiscal/index.js";
 import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
 import { montarEscopoEmpresa } from "./_escopo-empresa.js";
+import { avisoCorte, corteAtual, corteLabel } from "@/lib/corte-dados.js";
 
 const inputSchema = z.object({
   ano: z.number().int().min(2000).max(2100).optional(),
@@ -25,6 +26,8 @@ const mesSchema = z.object({
 
 const dados = z.object({
   ano: z.number().int(),
+  /** Aviso pronto quando parte do ano pedido esta antes da data de inicio das analises. */
+  aviso: z.string().optional(),
   serie: z.array(mesSchema),
   totalExternaAno: z.number(),
   totalIndividualAno: z.number(),
@@ -73,6 +76,28 @@ export const fiscalFaturamentoMensalSerie: ToolEntry<Input, Output> = {
     const mesLimite = ano === hoje.getUTCFullYear() ? hoje.getUTCMonth() + 1 : 12;
     const escopo = await montarEscopoEmpresa(ctx.prisma, input.empresaRef);
 
+    // Ano INTEIRAMENTE anterior a data de inicio das analises: a serie sairia com 12 meses
+    // zerados, e o agente leria isso como "faturamento zero" , mentira. O dado existe no
+    // Odoo; a plataforma e que nao analisa aquele periodo. Mesma armadilha do "filtro x
+    // faxina", agora na saida.
+    const anoDoCorte = Number(corteAtual().slice(0, 4));
+    if (ano < anoDoCorte) {
+      const envelopeVazio = await withFreshness(ctx.prisma, ["fato_nota_fiscal"], async () => ({
+        ano,
+        serie: [],
+        totalExternaAno: 0,
+        totalIndividualAno: 0,
+        totalNotasExternasAno: 0,
+        escopoEmpresa: escopo.escopo as unknown as Record<string, unknown>,
+        ordenadoPor: "mês asc",
+      }));
+      if (envelopeVazio.estado === "preparando") return envelopeVazio;
+      return enriquecerEnvelope(envelopeVazio, "fiscal_faturamento_mensal_serie", {
+        periodo: { preCorte: true, label: `ano de ${ano}` },
+        destaque: { ano, corte: corteLabel() },
+      });
+    }
+
     const envelope = await withFreshness(ctx.prisma, ["fato_nota_fiscal"], async () => {
       const r = await faturamentoSerieMensal(ctx.prisma, {
         ano,
@@ -81,6 +106,10 @@ export const fiscalFaturamentoMensalSerie: ToolEntry<Input, Output> = {
       });
       return {
         ano: r.ano,
+        // Ano do proprio corte: os meses anteriores a data de inicio das analises saem
+        // zerados de direito (a plataforma nao os analisa). Sem esta frase, o agente leria
+        // "janeiro: R$ 0,00" como fato do negocio.
+        aviso: ano === anoDoCorte ? avisoCorte() : undefined,
         serie: r.serie,
         totalExternaAno: r.totalExternaAno,
         totalIndividualAno: r.totalIndividualAno,
@@ -94,6 +123,7 @@ export const fiscalFaturamentoMensalSerie: ToolEntry<Input, Output> = {
     return enriquecerEnvelope(envelope, "fiscal_faturamento_mensal_serie", {
       destaque: {
         ano: d.ano,
+        ...(d.aviso ? { inicioDasAnalises: corteLabel() } : {}),
         totalExternaAno: d.totalExternaAno,
         totalIndividualAno: d.totalIndividualAno,
         totalNotasExternasAno: d.totalNotasExternasAno,

@@ -12,6 +12,7 @@ import {
   montarPaginacaoMeta,
 } from "../../lib/paginacao.js";
 import type { PrismaClient } from "@/generated/prisma/client.js";
+import { avisoCorte, corteAtual } from "@/lib/corte-dados.js";
 
 const inputSchema = z.object({
   periodoNome: z.enum([
@@ -52,6 +53,10 @@ const dados = z.object({
     ate: z.string(),
     nome: z.string().nullable(),
   }),
+  /** true quando o periodo pedido comecava antes da data de inicio das analises. */
+  cortado: z.boolean().optional(),
+  /** Aviso pronto para o agente repassar quando houve corte. */
+  aviso: z.string().optional(),
   // Contrato de lista (Fase B): parceiros novos ordenados por data de criacao desc.
   ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
@@ -80,12 +85,51 @@ const outputSchema = z.union([
 type Input = z.infer<typeof inputSchema>;
 type Output = z.infer<typeof outputSchema>;
 
+export interface PeriodoParceirosNovos {
+  de: Date;
+  ate: Date;
+  nome: string | null;
+  /** true quando o pedido comecava antes da data de inicio das analises e foi puxado para ela. */
+  cortado: boolean;
+  /** Frase pronta de aviso quando houve corte; undefined quando nao ha o que avisar. */
+  aviso?: string;
+}
+
 /**
- * Resolve {de, ate} a partir do periodoNome ou periodoDe/Ate explicitos.
+ * Resolve {de, ate} a partir do periodoNome ou periodoDe/Ate explicitos, SEMPRE grampeado na
+ * data de inicio das analises (AppSetting `sync.corte_dados`).
+ *
  * Default: essa_semana (segunda 00:00 a domingo 23:59:59).
  * Timezone: America/Sao_Paulo via offset numerico simples.
+ *
+ * O piso NAO e detalhe: esta tool tinha um resolvedor proprio, que nao importava nada de
+ * `corte-dados` , era a unica do MCP que ignorava a data de inicio das analises. Pedir
+ * `periodoDe: "2020-01-01"`, ou o preset `ano_corrente` (que nasce em 1o de janeiro),
+ * varria o cadastro inteiro abaixo do corte e ainda respondia como se aquele fosse o
+ * periodo coberto. `corte` e `hoje` sao injetaveis para o teste ser deterministico.
  */
-function resolverPeriodo(input: Input): { de: Date; ate: Date; nome: string | null } {
+export function resolverPeriodoParceirosNovos(
+  input: Pick<Input, "periodoDe" | "periodoAte" | "periodoNome">,
+  corte: string = corteAtual(),
+  hoje: Date = new Date(),
+): PeriodoParceirosNovos {
+  const bruto = resolverPeriodoBruto(input, hoje);
+  const piso = new Date(`${corte}T00:00:00Z`);
+  const cortado = bruto.de < piso;
+  return {
+    de: cortado ? piso : bruto.de,
+    ate: bruto.ate,
+    nome: bruto.nome,
+    cortado,
+    aviso: cortado ? avisoCorte(corte) : undefined,
+  };
+}
+
+/** O periodo tal como o usuario pediu, antes do piso do corte. */
+function resolverPeriodoBruto(
+  input: Pick<Input, "periodoDe" | "periodoAte" | "periodoNome">,
+  now: Date,
+): { de: Date; ate: Date; nome: string | null } {
   if (input.periodoDe && input.periodoAte) {
     return {
       de: new Date(`${input.periodoDe}T00:00:00-03:00`),
@@ -94,8 +138,6 @@ function resolverPeriodo(input: Input): { de: Date; ate: Date; nome: string | nu
     };
   }
   const nome = input.periodoNome ?? "essa_semana";
-  // referencia "agora" no fuso BR
-  const now = new Date();
   // diferenca atual entre UTC e BR ignorada — usamos data calendario simples.
   // Para fins de janelas grandes (dia/semana/mes), o erro de ate 3h e irrelevante.
   const y = now.getUTCFullYear();
@@ -140,7 +182,7 @@ function resolverPeriodo(input: Input): { de: Date; ate: Date; nome: string | nu
 
 async function queryParceirosNovos(prisma: PrismaClient, input: Input) {
   const { limit, offset } = resolverPaginacao(input);
-  const { de, ate, nome } = resolverPeriodo(input);
+  const { de, ate, nome, cortado, aviso } = resolverPeriodoParceirosNovos(input);
   const tipo = input.tipo ?? "todos";
 
   const where: Record<string, unknown> = {
@@ -184,6 +226,8 @@ async function queryParceirosNovos(prisma: PrismaClient, input: Input) {
       ate: ate.toISOString(),
       nome,
     },
+    cortado,
+    aviso,
     // Contrato de lista (Fase B): orderBy dataCriacao desc (desempate odooId).
     ordenadoPor: "data de criação desc",
   };
@@ -221,13 +265,16 @@ export const cadastroParceirosNovos: ToolEntry<Input, Output> = {
       input.tipo === "clientes" ? "clientes" :
       input.tipo === "fornecedores" ? "fornecedores" : "parceiros";
     const top = d.linhas[0];
+    // O periodo pedido comecava antes da data de inicio das analises: a resposta precisa
+    // dizer isso, senao o agente afirma ter coberto um intervalo que a plataforma nao cobre.
+    const sufixoCorte = d.aviso ? ` ${d.aviso}` : "";
     return {
       ...envelope,
       dados: {
         ...d,
         _RESPOSTA: d.totalEncontrados === 0
-          ? `Nao ha ${tipoLabel} novos cadastrados em ${periodoLabel}.`
-          : `${d.totalEncontrados} ${tipoLabel} novos cadastrados em ${periodoLabel}. Mais recente: ${top?.nome ?? "(sem nome)"}${top?.dataCriacao ? ` (${top.dataCriacao.slice(0, 10)})` : ""}. Listando ${d.linhasExibidas}.`,
+          ? `Nao ha ${tipoLabel} novos cadastrados em ${periodoLabel}.${sufixoCorte}`
+          : `${d.totalEncontrados} ${tipoLabel} novos cadastrados em ${periodoLabel}. Mais recente: ${top?.nome ?? "(sem nome)"}${top?.dataCriacao ? ` (${top.dataCriacao.slice(0, 10)})` : ""}. Listando ${d.linhasExibidas}.${sufixoCorte}`,
         _DESTAQUE: {
           totalEncontrados: d.totalEncontrados,
           linhasExibidas: d.linhasExibidas,
