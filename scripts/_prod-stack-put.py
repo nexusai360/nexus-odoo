@@ -9,10 +9,18 @@
 #
 #   PRIMEIRO alinhe os servicos VIVOS (rolling, um por vez, via deploy-portainer.py
 #   ou _prod-worker-heap.py); SO DEPOIS publique o compose com os mesmos valores.
-#   Assim o `stack deploy` resultante e um no-op de spec: nenhuma task e recriada.
 #
-# Por isso o script CHECA o drift antes de publicar e se recusa a rodar se o compose
-# novo divergir dos servicos vivos, a menos que voce passe --aceitar-recriacao.
+# LICAO CARA (2026-07-13, aprendida publicando este compose): o `docker stack deploy`
+# APAGA do servico tudo que o compose NAO DECLARA. Na primeira publicacao, o compose
+# nao trazia `deploy.labels` nem `deploy.update_config`, e o deploy silenciosamente:
+#   - removeu o label com.nexus.autodeploy=true de app/mcp/worker , o Shepherd
+#     (auto-deploy) so toca servico com esse label, entao o deploy automatico de
+#     producao MORREU sem avisar;
+#   - removeu UpdateConfig/RollbackConfig (start-first, rollback automatico), fazendo o
+#     app cair em stop-first e devolver 502 durante o update.
+# Por isso o script hoje checa DOIS lados: valores que MUDAM e, principalmente, o que o
+# compose OMITE e o servico vivo tem (labels, update_config, rollback_config). Omissao
+# em compose nao e "deixar como esta" , e "apagar".
 #
 # Baixar o compose atual (para editar):
 #   python3 scripts/_prod-stack-put.py --baixar .prod-backups/compose-atual.yml
@@ -51,6 +59,40 @@ def baixar(base, token, stack) -> str:
     return arq["StackFileContent"]
 
 
+def perdas_por_omissao(compose, vivos) -> list[str]:
+    """O que o servico VIVO tem e o compose NAO declara , e que o `stack deploy` vai
+    APAGAR. E a checagem mais importante deste script (ver o cabecalho)."""
+    perdas = []
+    for nome, svc in (compose.get("services") or {}).items():
+        full = dp.STACK_PREFIX + nome
+        vivo = vivos.get(full)
+        if not vivo:
+            continue
+        spec_viva = vivo["Spec"]
+        deploy = svc.get("deploy") or {}
+
+        # Labels do servico. As `com.docker.stack.*` sao postas pelo proprio stack deploy.
+        labels_compose = deploy.get("labels") or []
+        if isinstance(labels_compose, dict):
+            labels_compose = [f"{k}={v}" for k, v in labels_compose.items()]
+        chaves_compose = {str(l).split("=", 1)[0] for l in labels_compose}
+        for k in (spec_viva.get("Labels") or {}):
+            if k.startswith("com.docker.stack."):
+                continue
+            if k not in chaves_compose:
+                perdas.append(f"{full}: LABEL {k} seria APAGADO (o compose nao declara)")
+
+        if spec_viva.get("UpdateConfig") and not deploy.get("update_config"):
+            uc = spec_viva["UpdateConfig"]
+            perdas.append(
+                f"{full}: UpdateConfig seria APAGADO "
+                f"(order={uc.get('Order')} failure_action={uc.get('FailureAction')})"
+            )
+        if spec_viva.get("RollbackConfig") and not deploy.get("rollback_config"):
+            perdas.append(f"{full}: RollbackConfig seria APAGADO")
+    return perdas
+
+
 def divergencias_contra_vivos(base, token, ep, conteudo) -> list[str]:
     """O compose NOVO bate com o que os servicos vivos ja tem? Se nao bater, publicar
     vai recriar task , e o script exige que voce diga que aceita isso."""
@@ -58,7 +100,7 @@ def divergencias_contra_vivos(base, token, ep, conteudo) -> list[str]:
     stack = achar_stack(base, token)
     env_stack = {e["name"]: e.get("value", "") for e in (stack.get("Env") or [])}
     vivos = dp.list_services(base, token, ep)
-    fora = []
+    fora = perdas_por_omissao(compose, vivos)
     for nome, svc in (compose.get("services") or {}).items():
         full = dp.STACK_PREFIX + nome
         vivo = vivos.get(full)
@@ -138,11 +180,15 @@ def main() -> int:
     fora = divergencias_contra_vivos(base, token, ep, novo)
     print("\n=== o compose novo bate com os servicos VIVOS? ===")
     if fora:
-        print("  NAO , publicar vai recriar task nestes pontos:")
+        print("  NAO , publicar vai mudar/recriar task nestes pontos:")
         for f in fora:
             print(f"    - {f}")
+        print(
+            "\n  Lembre: o `stack deploy` APAGA o que o compose nao declara. Um 'APAGADO'"
+            "\n  acima nao e detalhe , e configuracao de producao sumindo em silencio."
+        )
     else:
-        print("  SIM , o `stack deploy` disparado pelo PUT nao muda nenhuma spec (no-op)")
+        print("  SIM , nenhuma mudanca de spec detectada nos campos checados")
 
     if not args.aplicar:
         print("\n(dry-run , rode com --aplicar para publicar)")

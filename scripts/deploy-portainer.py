@@ -226,15 +226,26 @@ def carregar_desejado(base, token):
             if isinstance(bruto, dict)
             else [(e.split("=", 1)[0], e.split("=", 1)[1] if "=" in e else "") for e in bruto]
         )
-        rec = ((svc.get("deploy") or {}).get("resources") or {})
+        deploy = svc.get("deploy") or {}
+        rec = deploy.get("resources") or {}
         lim = rec.get("limits") or {}
         res = rec.get("reservations") or {}
+        labels = deploy.get("labels") or []
+        if isinstance(labels, dict):
+            labels = [f"{k}={v}" for k, v in labels.items()]
         desejado[STACK_PREFIX + nome] = {
             "env": {k: _expandir(v, env_stack) for k, v in itens},
             "mem_limite": mem_para_bytes(lim.get("memory")),
             "cpu_limite": cpu_para_nano(lim.get("cpus")),
             "mem_reserva": mem_para_bytes(res.get("memory")),
             "cpu_reserva": cpu_para_nano(res.get("cpus")),
+            # Labels do SERVICO (deploy.labels). O com.nexus.autodeploy=true vive aqui: e o
+            # que o Shepherd usa para saber quem ele pode atualizar. Perder esse label mata
+            # o auto-deploy em silencio (aconteceu em 2026-07-13).
+            "labels": {
+                l.split("=", 1)[0]: _expandir(l.split("=", 1)[1] if "=" in l else "", env_stack)
+                for l in labels
+            },
         }
     return desejado
 
@@ -268,6 +279,15 @@ def reconciliar_spec(spec, alvo):
         if k not in (alvo.get("env") or {}):
             mudancas.append(f"    ! ENV {k}: existe no servico mas nao no compose (mantida)")
     cspec["Env"] = [f"{k}={env_vivo[k]}" for k in ordem]
+
+    # Labels do servico: aplica as do compose; NAO remove as que so existem no vivo
+    # (mesma politica do env , tirar coisa de producao e decisao humana).
+    labels_vivas = spec.get("Labels") or {}
+    for k, v in (alvo.get("labels") or {}).items():
+        if labels_vivas.get(k) != v:
+            mudancas.append(f"    ~ LABEL {k}: {labels_vivas.get(k)!r} -> {v!r}")
+            labels_vivas[k] = v
+    spec["Labels"] = labels_vivas
 
     recursos = tmpl.setdefault("Resources", {})
     for chave_alvo, bloco, campo, rotulo, fmt in (

@@ -145,6 +145,55 @@ gh api /repos/<org>/<repo>/actions/runs/<id>/jobs --jq '.jobs[]|.name+" "+(.conc
 
 ---
 
+## 4.1 MUDANÇA DE CONFIGURAÇÃO (env, memória, CPU) , REGRA DE RAIZ (2026-07-13)
+
+**O compose da stack no Portainer é a FONTE DA VERDADE da configuração.** Mas
+atenção ao que o deploy faz de verdade:
+
+- O **Shepherd** e o `deploy-portainer.py` fazem *service update* pela API do
+  Docker: trocam a **imagem** e forçam o rolling. O Shepherd **não** reaplica
+  `environment` nem `resources`.
+- Por isso o compose pode ficar dizendo uma coisa e o serviço vivo rodando outra,
+  **em silêncio**. Foi exatamente o que aconteceu: o compose declarava heap 4096 e
+  4608M de memória no worker, e o serviço vivo rodava com heap **1024** e 1536M , o
+  worker morria de `JavaScript heap out of memory` e nada se atualizava
+  (2026-07-12).
+
+**Como mudar configuração, na ordem:**
+
+```bash
+# 1. Ver se já existe drift entre o compose e os serviços vivos (faz backup da stack)
+python3 scripts/_prod-stack-drift.py
+
+# 2. Baixar o compose, editar (fica em .prod-backups/, que tem SEGREDOS e está no .gitignore)
+python3 scripts/_prod-stack-put.py --baixar .prod-backups/compose-novo.yml
+
+# 3. Aplicar nos serviços VIVOS, rolling, um por vez (o deploy agora reconcilia
+#    env/resources do compose junto com a imagem)
+python3 scripts/deploy-portainer.py worker      # ou app / mcp
+
+# 4. Publicar o compose (o PUT dispara um `docker stack deploy`; como os serviços já
+#    estão alinhados, ele é no-op de spec e não recria nada). O script se recusa a
+#    publicar se ainda houver divergência.
+python3 scripts/_prod-stack-put.py --arquivo .prod-backups/compose-novo.yml --aplicar
+
+# 5. Conferir
+python3 scripts/_prod-stack-drift.py     # tem que dar 0 divergências
+```
+
+**Por que não `docker stack deploy` direto:** ele atualiza os serviços em paralelo.
+Em 2026-06-12 recriar `app`+`mcp`+`worker` juntos estourou a memória do nó e o OOM
+killer atingiu o Postgres (crash recovery em produção). O rolling um-a-um do
+`deploy-portainer.py` é o que mantém o pico baixo.
+
+**Memória do worker (medida, não chutada):** teto do container **3072M** com heap V8
+de **2048M**. O pico real de um ciclo completo (sync + rebuild dos fatos) medido em
+produção é de ~0,5 GB (`scripts/_prod-worker-mem.py`). O 4608M anterior veio de
+chute. Os limites do Swarm são **teto**, não reserva: não tiram RAM dos outros
+serviços.
+
+---
+
 ## 5. GUIA , montar deploy automatizado num PROJETO NOVO (do zero)
 
 Receita reutilizável para qualquer projeto que rode em Docker Swarm na mesma

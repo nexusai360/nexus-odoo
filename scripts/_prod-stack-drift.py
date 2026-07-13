@@ -98,6 +98,25 @@ def main() -> int:
                 segredo = any(t in k for t in ("PASSWORD", "SECRET", "TOKEN", "KEY", "URL"))
                 achados.append(f"  ENV {k}: DIVERGE" + ("" if segredo else f" (compose={c!r} vivo={v!r})"))
 
+        # Labels do servico. O com.nexus.autodeploy=true e o que autoriza o Shepherd a
+        # atualizar o servico: se ele sumir, o auto-deploy morre e ninguem percebe (foi o
+        # que um `stack deploy` com compose incompleto fez em 2026-07-13). As
+        # com.docker.stack.* sao postas pelo proprio swarm, entao ficam de fora.
+        labels_vivas = {
+            k: v for k, v in (vivo["Spec"].get("Labels") or {}).items()
+            if not k.startswith("com.docker.stack.")
+        }
+        for k in sorted(set(alvo.get("labels") or {}) | set(labels_vivas)):
+            c, v = (alvo.get("labels") or {}).get(k), labels_vivas.get(k)
+            if c == v:
+                continue
+            if k not in labels_vivas:
+                achados.append(f"  LABEL {k}: no compose, AUSENTE no servico vivo")
+            elif k not in (alvo.get("labels") or {}):
+                achados.append(f"  LABEL {k}: no servico vivo, AUSENTE no compose (some num stack deploy)")
+            else:
+                achados.append(f"  LABEL {k}: compose={c!r} vivo={v!r}")
+
         limites = (tmpl.get("Resources") or {}).get("Limits") or {}
         reservas = (tmpl.get("Resources") or {}).get("Reservations") or {}
         for rotulo, c, v, fmt in (
