@@ -65,3 +65,6 @@ docs/agent-quality-review/results/
 .superpowers/
 # Lock do harness (churn por sessao, nao versionar)
 .claude/scheduled_tasks.lock
+
+# Backups da stack de producao (compose + specs do Swarm). Contem segredos em texto claro.
+.prod-backups/
