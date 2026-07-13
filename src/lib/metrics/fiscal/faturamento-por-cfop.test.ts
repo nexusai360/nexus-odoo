@@ -34,6 +34,69 @@ function mockPrisma(
   return { prisma, groupBy, findMany, aggregate, queryRawUnsafe };
 }
 
+// REGRESSAO REAL (PR #166, medida em producao em 2026-07-13): a tool agrega TODA saida
+// autorizada, mas a marcacao de intragrupo vinha de um loader cujo universo EXCLUI a
+// operacao "venda interna" , que e justamente onde mora a venda entre empresas do grupo,
+// com CFOP de receita (5102/6108). Numerador contava, subtraendo nao: a eliminacao foi a
+// R$ 0,02 e a tool passou a responder "receita real R$ 102,1 mi" enquanto o KPI da diretoria
+// dizia R$ 61,9 mi (+65%). A marcacao TEM que nascer do mesmo universo que a soma.
+describe("faturamentoPorCfop , eliminacao intragrupo (mesmo universo da soma)", () => {
+  it("nota de venda INTERNA para empresa do grupo e eliminada da receita real", async () => {
+    const notasDoUniverso = [
+      // Venda externa: cliente de fora (nao esta na whitelist nem no cadastro do grupo).
+      { odooId: 10, participanteId: 999, participanteNome: "Cliente Externo", empresaId: 1, empresaNome: "JDS" },
+      // Venda INTERNA: destinatario e empresa do grupo (vem do cadastro, fatoParceiro).
+      { odooId: 20, participanteId: 500, participanteNome: "JDS Matriz", empresaId: 1, empresaNome: "JDS" },
+    ];
+    const groupBy = jest.fn().mockImplementation((arg: { where?: { documentoId?: { in: number[] } } }) => {
+      // 2a chamada: itens SO das notas intragrupo (a tool passa documentoId in [...]).
+      const ids = arg.where?.documentoId?.in;
+      if (ids) {
+        return Promise.resolve(
+          ids.includes(20) ? [{ cfopId: 1, _sum: { vrProdutos: 400 }, _count: 1 }] : [],
+        );
+      }
+      // 1a chamada: universo inteiro (externa 1000 + interna 400, ambas CFOP 5102 receita).
+      return Promise.resolve([{ cfopId: 1, _sum: { vrProdutos: 1400 }, _count: 5 }]);
+    });
+    const prisma = {
+      fatoNotaFiscalItem: {
+        groupBy,
+        findMany: jest.fn().mockResolvedValue([{ cfopId: 1, cfopNome: "5102 - Venda" }]),
+      },
+      fatoNotaFiscal: {
+        aggregate: jest.fn().mockResolvedValue({ _sum: { vrProdutos: 1400 } }),
+        findMany: jest.fn().mockResolvedValue(notasDoUniverso),
+      },
+      // Cadastro do grupo: o participante 500 tem CNPJ com raiz do grupo (RAIZES_GRUPO),
+      // que e a 2a camada da marcacao intercompany (whitelist -> cadastro -> raiz no nome).
+      fatoParceiro: {
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ odooId: 500, documentoDigits: "07390039000199" }]),
+      },
+      $queryRawUnsafe: jest.fn().mockResolvedValue([]),
+    } as unknown as PrismaClient;
+
+    const r = await faturamentoPorCfop(prisma, { agruparPor: "categoria" });
+
+    expect(r.totalReceita).toBe(1400); // bruto, com a interna dentro
+    expect(r.receitaIntragrupo).toBe(400); // a interna e reconhecida (era 0 , o bug)
+    expect(r.totalReceitaReal).toBe(1000); // e sai da receita real
+  });
+
+  it("sem nota intragrupo no universo, a receita real e igual a bruta", async () => {
+    const { prisma } = mockPrisma(
+      [{ cfopId: 1, _sum: { vrProdutos: 1000 }, _count: 4 }],
+      [{ cfopId: 1, cfopNome: "5102 - Venda" }],
+      1000,
+    );
+    const r = await faturamentoPorCfop(prisma, { agruparPor: "categoria" });
+    expect(r.receitaIntragrupo).toBe(0);
+    expect(r.totalReceitaReal).toBe(1000);
+  });
+});
+
 describe("faturamentoPorCfop , agruparPor categoria (default)", () => {
   it("agrega CFOPs em categorias, totalReceita exclui nao-receita, semCfop em linha propria", async () => {
     const { prisma } = mockPrisma(
