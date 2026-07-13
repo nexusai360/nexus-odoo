@@ -43,8 +43,12 @@ export const SQL_REBUILD_PEDIDO_ITEM = `
       -- SEM coalesce: item que o job de atendimento ainda nao visitou fica NULO, nao
       -- zero. Zero significaria "nada a entregar" e faria o pedido inteiro valer
       -- R$ 0,00 na tela. Nulo significa "ainda nao sei", e a consulta trata isso.
-      (i.data->>'quantidade_a_atender_pedido')::numeric,
-      (i.data->>'quantidade_atendida_pedido')::numeric,
+      -- Guarda no cast: o Odoo devolve o booleano false (nao nulo) para campo nao
+      -- aplicavel, e 'false'::numeric aborta a transacao INTEIRA que reconstroi o fato.
+      CASE WHEN (i.data->>'quantidade_a_atender_pedido') ~ '^-?[0-9]+([.][0-9]+)?$'
+           THEN (i.data->>'quantidade_a_atender_pedido')::numeric END,
+      CASE WHEN (i.data->>'quantidade_atendida_pedido') ~ '^-?[0-9]+([.][0-9]+)?$'
+           THEN (i.data->>'quantidade_atendida_pedido')::numeric END,
       now()
     FROM raw_sped_documento_item i
     LEFT JOIN fato_produto p

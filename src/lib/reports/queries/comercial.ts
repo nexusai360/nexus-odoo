@@ -555,6 +555,10 @@ export async function queryEstoqueDisponivel(
     where: {
       ...escopo,
       produtoId: { not: null },
+      // Mesma regra do painel A-12 e do KPI: so o saldo POSITIVO. Somar as linhas
+      // negativas (furo de inventario) rebaixava o saldo do produto e fabricava
+      // "disponivel negativo" que nao existe , e fazia a tool divergir da tela.
+      quantidade: { gt: 0 },
       ...(filtros.produto
         ? { produtoNome: { contains: filtros.produto, mode: "insensitive" as const } }
         : {}),
@@ -624,15 +628,18 @@ export async function queryEstoqueDisponivel(
       };
     })
     // Menor disponibilidade primeiro: quem precisa de compra aparece no topo.
-    .sort((a, b) => a.disponivel - b.disponivel)
-    .slice(0, 500);
+    .sort((a, b) => a.disponivel - b.disponivel);
 
+  // O contador de negativos conta a lista INTEIRA, nao a pagina. Antes ele lia a lista ja
+  // cortada em 500 e publicava um numero capado , a tool dizia "500 negativos" quando eram
+  // mais, e nunca batia com o painel.
+  const negativos = rows.filter((r) => r.disponivel < 0).length;
   const filtradas = filtros.apenasNegativos
     ? rows.filter((r) => r.disponivel < 0)
     : rows;
   return {
     total: filtradas.length,
-    negativos: rows.filter((r) => r.disponivel < 0).length,
+    negativos,
     linhas: filtradas.slice(0, limite),
     atendimentoSincronizadoEm: status.em ? status.em.toISOString() : null,
     parcial: !status.ok,

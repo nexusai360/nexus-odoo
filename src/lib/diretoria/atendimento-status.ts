@@ -17,11 +17,20 @@ import type { PrismaClient } from "@/generated/prisma/client";
  * de build, nao linha a linha.
  */
 export interface StatusAtendimento {
-  /** true quando o job ja completou ao menos uma vez: pode confiar nas colunas. */
+  /** true quando o job completou RECENTEMENTE: pode confiar nas colunas. */
   ok: boolean;
   /** quando o job completou pela ultima vez. */
   em: Date | null;
 }
+
+/**
+ * O job e diario. Se ele nao completa ha mais de dois dias, o dado congelou (Odoo fora,
+ * timeout, lock ocupado) e nao da mais para confiar nas colunas , um pedido ja entregue
+ * voltaria a ser contado como pendente, e a tela diria "sincronizado". Passado esse prazo,
+ * a plataforma volta ao valor cheio COM aviso, que e honesto, em vez de um numero errado
+ * que parece certo.
+ */
+const VALIDADE_MS = 48 * 60 * 60_000;
 
 /** Chave do marcador gravado pelo job de atendimento em `fato_build_state`. */
 export const CHAVE_BUILD_ATENDIMENTO = "job_atendimento";
@@ -34,5 +43,7 @@ export async function atendimentoSincronizado(
     select: { ultimoBuildAt: true },
   });
 
-  return { ok: estado != null, em: estado?.ultimoBuildAt ?? null };
+  const em = estado?.ultimoBuildAt ?? null;
+  const fresco = em != null && Date.now() - em.getTime() < VALIDADE_MS;
+  return { ok: fresco, em };
 }

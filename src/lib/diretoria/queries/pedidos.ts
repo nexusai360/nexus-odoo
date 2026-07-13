@@ -131,7 +131,13 @@ async function enriquecerComAAtender(
   for (const it of itens) {
     const cheia = Number(it.quantidade ?? 0);
     // Sem o job, "a atender" é desconhecido , cai na quantidade cheia, uniformemente.
-    const aAtender = status.ok ? Number(it.quantidadeAAtender ?? 0) : cheia;
+    // Piso em zero: o Odoo devolve "a atender" NEGATIVO quando entregaram MAIS do que foi
+    // pedido. Sem o piso, o excesso de um pedido abate a falta de outro e o valor a
+    // entregar sai menor do que é (e um pedido pode até aparecer com valor negativo).
+    const aAtender = Math.max(
+      0,
+      status.ok ? Number(it.quantidadeAAtender ?? 0) : cheia,
+    );
     const custoUnit = it.produtoId != null ? custoDe.get(it.produtoId) : undefined;
     const precoUnit = cheia > 0 ? Number(it.vrProdutos ?? 0) / cheia : 0;
 

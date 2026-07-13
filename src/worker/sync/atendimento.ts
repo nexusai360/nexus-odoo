@@ -58,6 +58,7 @@ export interface ResultadoAtendimento {
 export async function syncAtendimento(
   client: OdooClient,
   raw: RawDelegate,
+  prazoMs = Number.POSITIVE_INFINITY,
 ): Promise<ResultadoAtendimento> {
   const inicio = Date.now();
   const fields = await getModelFields(client, MODELO);
@@ -70,6 +71,16 @@ export async function syncAtendimento(
   // Pagina de propósito: sao ~23 mil itens e ~196 MB de JSON. O worker roda com 2 GB de
   // heap e ja morreu de OOM antes , carregar tudo de uma vez repetiria o incidente.
   for (;;) {
+    // Cancelamento cooperativo: quem chama nos da um prazo, e paramos de verdade quando
+    // ele estoura. Sem isto, um Promise.race la fora desistiria da espera mas este laco
+    // continuaria escrevendo na mesma tabela que o ciclo de sync , duas escritas
+    // concorrentes no mesmo raw, uma sobrescrevendo a outra.
+    if (Date.now() - inicio > prazoMs) {
+      throw new Error(
+        `atendimento excedeu o prazo de ${Math.round(prazoMs / 1000)}s (parou em ${lidos} itens)`,
+      );
+    }
+
     const { records, hasMore } = await client.searchReadPage(
       MODELO,
       DOMINIO_ATENDIMENTO,

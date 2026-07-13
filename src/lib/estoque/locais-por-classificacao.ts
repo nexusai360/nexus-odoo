@@ -61,7 +61,10 @@ export async function localIdsPorClassificacao(
     }),
   ]);
 
-  if (total === 0) {
+  // Fato vazio (primeiro deploy, worker ainda nao rodou) OU nenhum local fisico (o Odoo
+  // parou de expor os campos que classificam o deposito, e todo local virou "fora"). Nos
+  // dois casos, filtrar zeraria o KPI em silencio , preferimos o numero antigo com aviso.
+  if (total === 0 || locais.length === 0) {
     return { ids: null, classificacaoIndisponivel: true };
   }
 

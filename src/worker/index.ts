@@ -215,15 +215,14 @@ const maintenanceWorker = new Worker(
       try {
         const client = clientFromEnv();
         await client.authenticate();
-        const r = await Promise.race([
-          syncAtendimento(client, prisma.rawSpedDocumentoItem as never),
-          new Promise<never>((_, reject) =>
-            setTimeout(
-              () => reject(new Error("atendimento excedeu 15 min")),
-              ATENDIMENTO_TIMEOUT_MS,
-            ),
-          ),
-        ]);
+        // O prazo vai DENTRO do job: ele checa a cada pagina e para. Um Promise.race aqui
+        // desistiria da espera e liberaria o lock, mas deixaria o job rodando por baixo,
+        // escrevendo na mesma tabela que o ciclo de sync que pegasse o lock em seguida.
+        const r = await syncAtendimento(
+          client,
+          prisma.rawSpedDocumentoItem as never,
+          ATENDIMENTO_TIMEOUT_MS,
+        );
         await rebuildFatoPedidoItem(prisma);
         // Barreira de completude: o marcador só é gravado quando o job termina INTEIRO.
         // É ele que as consultas leem para decidir se podem confiar nas colunas de
