@@ -78,11 +78,15 @@ export function mapTituloRow(
     pedidoId,
     notaFiscalId,
     // A forma de pagamento mora aqui, no titulo, nao na parcela do pedido: e o documento de
-    // cobranca de verdade. Conferido no banco de PRODUCAO em 2026-07-13: dos 12.411
-    // lancamentos, 11.199 tem forma preenchida (90,2%) , Boleto 9.435, PIX 610, cartoes e
-    // transferencia. Os ~9,8% restantes caem legitimamente em "Nao informado" no painel; nao
-    // e bug, e lacuna de cadastro no Odoo. (O comentario anterior dizia 99,98%, o que nao se
-    // sustentou na medicao.)
+    // cobranca de verdade.
+    //
+    // Conferido no banco de PRODUCAO em 2026-07-14, no universo QUE O PAINEL USA (titulo a
+    // receber): 5.537 titulos, e apenas 1 sem forma preenchida (99,98%). O "Nao informado" do
+    // grafico e esse unico titulo de R$ 31.157,90 , residuo de cadastro no Odoo, acionavel.
+    //
+    // (Nota para quem for medir de novo: no universo de TODOS os lancamentos, incluindo os a
+    // pagar, a cobertura cai para 90,2%. Sao coisas diferentes, e o painel so mostra os a
+    // receber. Ja errei essa conta uma vez medindo o universo errado.)
     formaPagamentoNome: relNome(raw.forma_pagamento_id as OdooM2O),
     provisorio: raw.provisorio === true,
     empresaId: relId(raw.empresa_id as OdooM2O),
