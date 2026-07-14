@@ -400,3 +400,28 @@ estados passam a ser os verdadeiros.
 | Bucket da demanda (ABERTA) | `src/lib/fiscal/regras/classifica-etapa-demanda.ts` |
 | Empresas do grupo (intragrupo) | `src/lib/fiscal/grupo/` |
 | Data de início das análises | `src/lib/corte-dados.ts` |
+
+---
+
+## As TRES bases que pareciam a mesma coisa (2026-07-14)
+
+O dono olhou a tela de Vendas e viu, ao mesmo tempo: faturamento **R$ 7,58 mi**, "Modalidades
+de operação" somando **R$ 12,7 mi** e "Formas de pagamento" com outros valores. Concluiu, com
+razão, que o sistema se contradizia.
+
+**Nenhum número estava errado.** Eram três perguntas diferentes com rótulo que sugeria a mesma:
+
+| Card | O que soma | Fonte | Julho/2026 |
+|---|---|---|---|
+| **Faturamento** | **notas** de venda emitidas | `fato_nota_fiscal` (`is_venda_externa`) | R$ 7.578.128,64 |
+| **C-05 Modalidades** | **pedidos** abertos no período | `fato_pedido` (por `data_orcamento`) | **R$ 12.743.333,15** |
+| **C-07 Formas de pagamento** | **títulos** financeiros a receber | `fato_financeiro_titulo` | 3 visões (pago / a receber / carteira) |
+
+"Vendido" (o pedido que o cliente fechou) e "faturado" (a nota que saiu) são coisas diferentes,
+e a diferença entre eles é justamente o que ainda não foi entregue. Os dois cards agora **dizem
+no próprio card** o que somam e o que não somam.
+
+**Regra para quem criar card novo:** se o número não vem de `fato_nota_fiscal`, o card tem que
+dizer de onde vem. Card que mostra dinheiro sem dizer a base é card que vai ser lido como
+faturamento.
+

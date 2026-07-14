@@ -1,5 +1,36 @@
 # STATUS , ponto de retomada
 
+> **Atualizado em 2026-07-14 (madrugada). TUDO O QUE SEGUE ESTA EM PRODUCAO E VALIDADO.**
+> Nenhuma branch aberta, nenhum PR pendente, nenhuma worktree viva. Repositorio limpo: so `main`.
+
+## O que entrou em producao nesta sessao (6 PRs)
+
+| PR | O que resolve |
+|---|---|
+| #187 | **A receita da venda futura sumia das duas pontas.** A regra procura "venda" no nome da operacao fiscal, e nem "Simples Faturamento 5922/6922" nem "Remessa 5117/6117" tem essa palavra: a receita nao entrava nem na cobranca nem na entrega. **R$ 538 mil em silencio desde 16/03.** Decisao do dono: a receita e a REMESSA (x117). |
+| #190 | **O cache parava de receber registros e nada os trazia de volta.** O Odoo carimba `write_date` no inicio da transacao e so torna visivel no commit; quem caia nessa janela nunca mais era buscado. E a reconciliacao so olhava o que sumiu do Odoo, nunca o que faltava aqui. Agora: margem de 15 min na marca d'agua + reconciliacao BIDIRECIONAL. |
+| #191 | **Classificacao de receita em MODO SOMBRA.** A regra nova (natureza da operacao) roda em paralelo; `is_venda_externa` continua recebendo SEMPRE a regra antiga (a trava). Painel em **Configuracao > Classificacao fiscal**. |
+| #192 | **Diretoria: estoque, demanda e pagamentos** (assumida do outro agente). Estoque so do que e nosso (R$ 50,2 mi -> R$ 31,4 mi), demanda so do que falta entregar (R$ 62,6 mi -> R$ 21,2 mi), pagamentos em 3 visoes. Fechei os 2 bugs que ela deixou (donut de fatia unica + aviso de provisorios). |
+| #193 | Pagamentos: a tela diz se o total inclui titulo provisorio, e o que e o "Nao informado". |
+| #194 | **Filtros de periodo e empresa em TODAS as telas da Diretoria**, calendario refeito (1 mes, por extenso, dropdown do sistema), dropdown de empresa consertado, siglas em caixa alta, e os cards C-05/C-07 param de parecer faturamento. |
+
+## PROXIMA ACAO , o dono vai testar a UI nova
+
+**Pendente de validacao visual dele** (subiu as 05:16 UTC de 14/07): a barra de filtros nas 4
+telas, o calendario, o dropdown de empresa e os rotulos novos. Se algo estiver torto, e ajuste
+de layout (sessao principal + skill `ui-ux-pro-max`, nunca subagente).
+
+## Decisao que espera o dono (sem prazo)
+
+**Virar a chave da classificacao por NATUREZA da operacao.** Ela roda em sombra desde o PR #191
+e o placar esta em **Configuracao > Classificacao fiscal**: hoje **99,95% de acerto, 1
+divergencia, 0 naturezas desconhecidas**. Quando ele achar que o placar esta maduro, a troca e
+feita com prova. O laudo completo esta em `docs/pericia-classificacao-receita-2026-07-13.md`.
+
+---
+
+## Historico da sessao anterior (2026-07-13)
+
 > **Atualizado em 2026-07-13 (fim da sessão da Diretoria).**
 
 ## 🔴 EM ANDAMENTO , PR #189: Diretoria (estoque, pedidos, pagamentos)
