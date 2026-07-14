@@ -261,6 +261,22 @@ function AbaPagamentos({ data }: { data: VendasData }) {
         ) : (
           <p className="py-6 text-center text-sm text-muted-foreground">Sem dados.</p>
         )}
+        {/* O que entra na conta. A pergunta ("isso aqui está somando título provisório ou só
+            efetivo?") não tinha resposta na tela: o número existia na consulta e morria lá. */}
+        <p className="mt-4 border-t border-border/40 pt-3 text-xs leading-relaxed text-muted-foreground">
+          {num.format(formasPagamento.titulos)} títulos a receber no período
+          {formasPagamento.provisorios > 0 ? (
+            <>
+              , dos quais <span className="font-medium text-amber-400">{num.format(formasPagamento.provisorios)} ainda provisórios</span> no
+              Odoo (não efetivados). Eles entram no total: o título já existe e a cobrança está
+              programada, mas o financeiro ainda pode alterá-lo.
+            </>
+          ) : (
+            ", todos já efetivados no Odoo (nenhum provisório)."
+          )}{" "}
+          O balde <span className="font-medium">Não informado</span>, quando aparece, é título sem
+          forma de pagamento preenchida no Odoo: é lacuna de cadastro, não erro de cálculo.
+        </p>
       </SectionCard>
     </div>
   );
