@@ -909,7 +909,23 @@ marcado; o resto é dívida aberta.
 
 ---
 
-## R-mapa-uf , "Sem UF" no mapa da Diretoria (investigado 2026-07-12, a pedido do dono)
+## R-mapa-uf , "Sem UF" no mapa da Diretoria , **RESOLVIDO** (2026-07-13)
+
+> **Fechado.** O "Sem UF" **zerou**: hoje são **0 notas** sem estado. Quem resolveu foi o
+> PR #174 (o destinatário da nota é `sped.participante`, não `res.partner`) somado ao
+> fallback que lê a UF do rótulo do município ("Brasília - DF"). O código já estava certo.
+>
+> **O susto de 2026-07-13** (o dono viu R$ 670 mil em "Sem UF" na tela e cobrou) foi
+> **ambiente local desatualizado**: o container do worker rodava imagem velha, então o
+> `fato_parceiro` estava com o cadastro antigo (nomes do `res.partner`, sem UF). Depois do
+> rebuild do worker, os mesmos clientes apareceram com nome certo E com estado:
+> OLYMPIQUE FULL (DF), PALMS VILLE (MA), VOG TAPERAPUAN (BA).
+>
+> Lição: **antes de abrir investigação sobre número errado na tela, conferir a data da
+> imagem do worker** (`CLAUDE.md` §2.1).
+
+### (registro original, mantido para histórico)
+## R-mapa-uf-original , "Sem UF" no mapa da Diretoria (investigado 2026-07-12, a pedido do dono)
 
 O mapa por estado usa a **UF do CADASTRO DO CLIENTE** (`fato_parceiro.uf`), não a UF da nota.
 A nota fiscal sempre tem destinatário, mas o CADASTRO do parceiro no Odoo pode estar sem estado

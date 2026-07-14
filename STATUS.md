@@ -1,4 +1,40 @@
-# STATUS — nexus-odoo
+# STATUS , ponto de retomada
+
+> **Atualizado em 2026-07-13 (fim da sessão da Diretoria).**
+
+## 🔴 EM ANDAMENTO , PR #189: Diretoria (estoque, pedidos, pagamentos)
+
+**Branch:** `feat/diretoria-estoque-pedidos-pagamentos` ·
+**Worktree:** `branches/feat-diretoria-estoque-pedidos-pagamentos` ·
+**PR:** https://github.com/nexusai360/nexus-odoo/pull/189
+
+O trabalho está **todo commitado e testado** (tsc limpo, eslint limpo, 4.213 testes
+verdes), mas **a tela de pagamentos está quebrada por dois bugs**, e o dono ainda não
+validou. **O documento a ler primeiro é
+`docs/superpowers/plans/2026-07-13-PROGRESSO.md`** , ele abre com os dois bugs, o
+diagnóstico medido e o caminho da correção.
+
+**Resumo dos dois bugs:**
+
+1. **O container do worker roda imagem velha** e, a cada ciclo, reconstrói o
+   `fato_financeiro_titulo` com o builder antigo, **zerando `forma_pagamento_nome` e
+   `empresa_id`**. Por isso o painel mostra "Não informado , 100%". Corrige com
+   `docker compose build app` + `up -d --force-recreate worker` (o worker **não** tem
+   `build:` próprio , `CLAUDE.md` §2.1).
+2. **O donut não desenha fatia de 100%** (arco de início e fim coincidentes não renderiza).
+   Só aparece porque o bug 1 deixou uma única fatia.
+
+**O que a entrega faz** (tudo medido contra o cache real):
+KPI de estoque R$ 50,2 mi → **R$ 31,4 mi** (só o que é nosso e está em casa) ·
+demonstração em painel próprio (R$ 1,56 mi) · **necessidade de compra** (215 produtos,
+R$ 9,7 mi, com saldo por depósito) · B-04 do pedido cheio (R$ 62,6 mi) para o que **falta
+entregar, a custo** (R$ 21,2 mi) · seriais com local e saldo (2.511) · pagamentos em 3
+visões (Pago / A receber / Carteira) lendo o **título financeiro**, onde a forma de
+pagamento existe em 99,98% (contra 76% na parcela do pedido) · 8 tools do Nex alinhadas.
+
+---
+
+## (histórico anterior)
 
 > ## 2026-07-13 (A RECEITA DA VENDA FUTURA SUMIA , corrigido em produção; laudo pendente de decisão)
 >
