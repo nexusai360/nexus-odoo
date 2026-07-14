@@ -1,17 +1,24 @@
 "use client";
 
-// Picker de período personalizado da Diretoria , calendário de 2 meses em
-// popover (igual ao relatório de conversas do nexus-insights). Trava a data
-// mínima (primeira nota do cache) e desabilita datas futuras; o dia de hoje fica
-// destacado de leve. No mobile mostra 1 mês. Emite { start, end } em yyyy-mm-dd.
+// Picker de período personalizado da Diretoria: UM calendário grande em popover. Trava a data
+// mínima (a data de início das análises) e desabilita datas futuras. Mês e ano no cabeçalho
+// usam o dropdown do design system, e o mês vem por extenso. Emite { start, end } em
+// yyyy-mm-dd.
 
 import { useEffect, useMemo, useState, type ReactElement } from "react";
-import { type DateRange } from "react-day-picker";
+import { type DateRange, type DropdownProps } from "react-day-picker";
 import { ptBR } from "date-fns/locale";
 
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { getDiretoriaMinDate } from "@/lib/actions/diretoria-period";
 
 const MOBILE_BREAKPOINT_PX = 640;
@@ -48,6 +55,51 @@ export interface DiretoriaRangePickerProps {
   initialRange?: { start: string; end: string };
   onApply: (range: { start: string; end: string }) => void;
   trigger: ReactElement;
+}
+
+/**
+ * Os seletores de mês e ano do cabeçalho do calendário.
+ *
+ * O react-day-picker desenha isso com `<select>` NATIVO. Fica com a cara do navegador (o
+ * "cru do Chrome"), ignora o tema escuro e não se parece com nenhum outro dropdown da
+ * plataforma. Aqui trocamos pelo Select do design system, o mesmo do resto do sistema.
+ *
+ * O `onChange` do day-picker espera um evento de <select>; como só lemos `target.value`,
+ * entregamos exatamente isso.
+ */
+function CalendarioDropdown({ options, value, onChange, "aria-label": ariaLabel }: DropdownProps) {
+  const items = (options ?? []).map((o) => ({ value: String(o.value), label: o.label }));
+  return (
+    <Select
+      items={items}
+      value={String(value ?? "")}
+      onValueChange={(v) =>
+        onChange?.({
+          target: { value: String(v) },
+        } as React.ChangeEvent<HTMLSelectElement>)
+      }
+    >
+      <SelectTrigger
+        aria-label={ariaLabel}
+        className="h-9 w-auto min-w-[7.5rem] gap-1 rounded-lg px-3 text-sm font-medium capitalize"
+      >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent
+        side="bottom"
+        align="start"
+        sideOffset={6}
+        alignItemWithTrigger={false}
+        className="max-h-72"
+      >
+        {items.map((i) => (
+          <SelectItem key={i.value} value={i.value} className="capitalize">
+            {i.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
 }
 
 export function DiretoriaRangePicker({
@@ -156,23 +208,35 @@ function PickerPanel({
   };
 
   const helperText = minDate
-    ? `Selecione qualquer intervalo a partir de ${new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "numeric" }).format(minDate)}.`
+    ? `Selecione qualquer intervalo a partir de ${new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "long", year: "numeric" }).format(minDate)}.`
     : "Selecione qualquer intervalo até hoje.";
 
   return (
     <div className="flex flex-col gap-3">
+      {/* UM mês, e grande. Dois meses lado a lado espremiam tudo num tamanho ilegível, e o
+          intervalo quase sempre nasce dentro do mesmo mês. Quem precisa cruzar meses usa os
+          seletores de mês e ano do cabeçalho, que agora são os do design system. */}
       <Calendar
         mode="range"
         selected={range}
         onSelect={setRange}
         locale={ptBR}
-        numberOfMonths={isMobile ? 1 : 2}
+        numberOfMonths={1}
         defaultMonth={range?.from ?? today}
         disabled={disabledMatcher}
         startMonth={minDate}
         endMonth={today}
         // Dropdowns de mês e ano no cabeçalho: pular meses sem clicar na setinha um a um.
         captionLayout="dropdown"
+        className="p-1 [--cell-size:2.75rem]"
+        // Mês por extenso: "julho", não "jul.". Cabe, porque agora é um mês só.
+        formatters={{
+          formatMonthDropdown: (date) => date.toLocaleString("pt-BR", { month: "long" }),
+        }}
+        // O react-day-picker desenha o mês e o ano com <select> NATIVO, que é o visual cru do
+        // navegador e destoa de tudo na plataforma. Aqui ele passa a usar o mesmo dropdown do
+        // resto do sistema.
+        components={{ Dropdown: CalendarioDropdown }}
       />
       {error ? (
         <p role="alert" className="px-1 text-xs text-destructive">

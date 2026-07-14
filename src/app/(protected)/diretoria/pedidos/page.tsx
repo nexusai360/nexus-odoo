@@ -16,6 +16,11 @@ import { queryContasAReceber } from "@/lib/reports/queries/financeiro";
 import { SyncNowButton } from "@/components/diretoria/sync-now-button";
 import { FreshnessBadge } from "@/components/diretoria/freshness-badge";
 import { ultimaSyncIso } from "@/lib/diretoria/freshness";
+import { DiretoriaFiltros } from "@/components/diretoria/diretoria-filtros";
+import { listarEmpresasDoFato } from "@/lib/metrics/_shared/empresa";
+import { opcoesDeEmpresa } from "@/lib/diretoria/empresa-opcoes";
+import { resolverPeriodoDir } from "@/lib/diretoria/periodo";
+
 import { type PedidosData } from "@/components/diretoria/pedidos/pedidos-screen";
 import { PedidosMontavel } from "@/components/diretoria/pedidos/pedidos-montavel";
 import { carregarLayout } from "@/lib/diretoria/builder/layout-repo";
@@ -23,18 +28,47 @@ import type { BlocoLayout } from "@/lib/diretoria/builder/layout";
 
 export const dynamic = "force-dynamic";
 
-export default async function DiretoriaPedidosPage() {
+function isoDia(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+
+export default async function DiretoriaPedidosPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const user = await requireDiretoriaArea("pedidos");
   await aquecerCorte();
+  const sp = await searchParams;
+  const param = (k: string) => (Array.isArray(sp[k]) ? sp[k]?.[0] : sp[k]) as string | undefined;
   const ufs = await userUfs(user);
   const hoje = new Date();
 
+  const periodo = resolverPeriodoDir(
+    { periodo: param("periodo"), de: param("de"), ate: param("ate") },
+    hoje,
+  );
+  const empresas = await listarEmpresasDoFato(prisma);
+  const empresaParam = Number(param("empresa"));
+  const empresaSel = Number.isFinite(empresaParam)
+    ? empresas.find((e) => e.empresaId === empresaParam)
+    : undefined;
+
+  // O periodo recorta o PEDIDO pela data do orcamento; a empresa recorta o dono do pedido.
+  const f = {
+    ufs,
+    periodoDe: isoDia(periodo.de),
+    periodoAte: isoDia(periodo.ate),
+    empresaId: empresaSel?.empresaId,
+  };
+
   const [indicadores, porUf, pendentes, porEtapa, maisParadas, aReceber] = await Promise.all([
-    queryIndicadoresDemandas(prisma, hoje, { ufs }),
-    queryDemandasPorUf(prisma, { ufs }),
-    queryDemandasPendentes(prisma, hoje, { ufs }),
-    queryDemandaPorEtapa(prisma, { ufs }),
-    queryDemandasMaisParadas(prisma, hoje, { ufs, limite: 50 }),
+    queryIndicadoresDemandas(prisma, hoje, f),
+    queryDemandasPorUf(prisma, f),
+    queryDemandasPendentes(prisma, hoje, f),
+    queryDemandaPorEtapa(prisma, f),
+    queryDemandasMaisParadas(prisma, hoje, { ...f, limite: 50 }),
     queryContasAReceber(prisma, {}, hoje),
   ]);
 
@@ -86,6 +120,10 @@ export default async function DiretoriaPedidosPage() {
             {podeSync ? <SyncNowButton area="pedidos" /> : null}
           </div>
         }
+      />
+      <DiretoriaFiltros
+        empresas={opcoesDeEmpresa(empresas)}
+        aviso="O período recorta os pedidos pela data do orçamento. As contas a receber seguem a janela de cobrança do período."
       />
       <PedidosMontavel data={data} layoutsPorAba={layoutsPorAba} podeEditarGlobal={podeEditarGlobal} />
     </PageShell>

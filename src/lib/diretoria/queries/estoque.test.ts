@@ -11,6 +11,7 @@ import {
   queryComprasSerie,
   queryEstoqueGranular,
   queryEstoqueDisponivelDiretoria,
+  queryNecessidadeCompra,
 } from "./estoque";
 
 /** Data de início das análises vigente nos testes (padrão da plataforma). */
@@ -829,5 +830,155 @@ describe("queryEstoqueDisponivelDiretoria (A12)", () => {
       quantidade: { gt: 0 },
       localId: { in: [1, 2, 3] },
     });
+  });
+});
+
+// Filtros globais da Diretoria (período + empresa) na tela de Estoque & Compras.
+// A fronteira é semântica: estoque é FOTO do agora (não se recorta por data), compra e
+// demanda são DOCUMENTO com data (se recortam). Empresa só existe em fato_compra e
+// fato_pedido; fato_estoque_saldo, fato_serial_saldo e fato_dfe não têm a coluna.
+describe("filtros globais de período e empresa (Estoque & Compras)", () => {
+  const hoje = new Date("2026-06-28T00:00:00Z");
+  const FIM = new Date("2026-07-01T00:00:00Z"); // "2026-06-30" + 1 dia (borda exclusiva)
+
+  function base() {
+    return {
+      fatoEstoqueLocal: {
+        count: jest.fn().mockResolvedValue(389),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ odooId: 1 }, { odooId: 2 }, { odooId: 3 }]),
+      },
+      fatoBuildState: { findUnique: jest.fn().mockResolvedValue(null) },
+      fatoSerialSaldo: {
+        count: jest.fn().mockResolvedValue(0),
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      fatoEstoqueSaldo: {
+        findMany: jest.fn().mockResolvedValue([]),
+        count: jest.fn().mockResolvedValue(0),
+      },
+      fatoProduto: { findMany: jest.fn().mockResolvedValue([]) },
+      fatoCompra: { findMany: jest.fn().mockResolvedValue([]) },
+      fatoDfe: { findMany: jest.fn().mockResolvedValue([]) },
+      fatoPedido: { findMany: jest.fn().mockResolvedValue([]) },
+      fatoPedidoItem: { findMany: jest.fn().mockResolvedValue([]) },
+      appSetting: { findUnique: jest.fn().mockResolvedValue(null) },
+    };
+  }
+
+  it("queryResumoCompras recorta a ordem de compra por período E por empresa", async () => {
+    const prisma = base() as unknown as Parameters<typeof queryResumoCompras>[0];
+    await queryResumoCompras(prisma, hoje, {
+      periodoDe: "2026-05-01",
+      periodoAte: "2026-06-30",
+      empresaId: 7,
+    });
+    const call = (prisma.fatoCompra.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where.dataOrcamento).toEqual({
+      gte: new Date("2026-05-01T00:00:00Z"),
+      lt: FIM,
+    });
+    expect(call.where.empresaId).toBe(7);
+  });
+
+  it("queryComprasAtivas recorta a ordem de compra por período E por empresa", async () => {
+    const prisma = base() as unknown as Parameters<typeof queryComprasAtivas>[0];
+    await queryComprasAtivas(prisma, hoje, 50, {
+      periodoDe: "2026-05-01",
+      periodoAte: "2026-06-30",
+      empresaId: 7,
+    });
+    const call = (prisma.fatoCompra.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where.dataOrcamento).toEqual({
+      gte: new Date("2026-05-01T00:00:00Z"),
+      lt: FIM,
+    });
+    expect(call.where.empresaId).toBe(7);
+  });
+
+  it("sem empresa escolhida, a compra continua somando o grupo inteiro", async () => {
+    const prisma = base() as unknown as Parameters<typeof queryResumoCompras>[0];
+    await queryResumoCompras(prisma, hoje, {});
+    const call = (prisma.fatoCompra.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where.empresaId).toBeUndefined();
+    // Sem período, o piso continua sendo a data de início das análises.
+    expect(call.where.dataOrcamento.gte).toEqual(CORTE);
+  });
+
+  it("a nota de entrada (fato_dfe) recorta por período, mas NÃO por empresa: a coluna não existe", async () => {
+    const prisma = base() as unknown as Parameters<typeof queryComprasPorFornecedor>[0];
+    await queryComprasPorFornecedor(prisma, {
+      periodoDe: "2026-05-01",
+      periodoAte: "2026-06-30",
+    });
+    const call = (prisma.fatoDfe.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where.dataEmissao).toEqual({
+      gte: new Date("2026-05-01T00:00:00Z"),
+      lt: FIM,
+    });
+    expect(call.where).not.toHaveProperty("empresaId");
+  });
+
+  it("a série de compras também recorta por período e não por empresa", async () => {
+    const prisma = base() as unknown as Parameters<typeof queryComprasSerie>[0];
+    await queryComprasSerie(prisma, { periodoDe: "2026-05-01", periodoAte: "2026-06-30" });
+    const call = (prisma.fatoDfe.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where.dataEmissao).toEqual({
+      gte: new Date("2026-05-01T00:00:00Z"),
+      lt: FIM,
+    });
+    expect(call.where).not.toHaveProperty("empresaId");
+  });
+
+  it("a necessidade de compra recorta a DEMANDA pelo período do pedido; o saldo continua sendo a foto do agora", async () => {
+    const prisma = base() as unknown as Parameters<typeof queryNecessidadeCompra>[0];
+    await queryNecessidadeCompra(prisma, 100, {
+      periodoDe: "2026-05-01",
+      periodoAte: "2026-06-30",
+    });
+    const pedidoCall = (prisma.fatoPedido.findMany as jest.Mock).mock.calls[0][0];
+    expect(pedidoCall.where.dataOrcamento).toEqual({
+      gte: new Date("2026-05-01T00:00:00Z"),
+      lt: FIM,
+    });
+    const saldoCall = (prisma.fatoEstoqueSaldo.findMany as jest.Mock).mock.calls[0][0];
+    expect(saldoCall.where).toEqual({ quantidade: { gt: 0 }, localId: { in: [1, 2, 3] } });
+  });
+
+  it("o estoque disponível recorta a DEMANDA pelo período do pedido; o saldo não", async () => {
+    const prisma = base() as unknown as Parameters<
+      typeof queryEstoqueDisponivelDiretoria
+    >[0];
+    await queryEstoqueDisponivelDiretoria(prisma, {
+      periodoDe: "2026-05-01",
+      periodoAte: "2026-06-30",
+    });
+    const pedidoCall = (prisma.fatoPedido.findMany as jest.Mock).mock.calls[0][0];
+    expect(pedidoCall.where.dataOrcamento).toEqual({
+      gte: new Date("2026-05-01T00:00:00Z"),
+      lt: FIM,
+    });
+    const saldoCall = (prisma.fatoEstoqueSaldo.findMany as jest.Mock).mock.calls[0][0];
+    expect(saldoCall.where).toEqual({ quantidade: { gt: 0 }, localId: { in: [1, 2, 3] } });
+  });
+
+  // A demanda do pedido TEM empresa, mas o saldo NÃO. Recortar só um lado da subtração
+  // (disponível = saldo do grupo menos demanda de uma empresa) fabricaria disponibilidade
+  // que não existe. Enquanto o saldo não tiver empresa, a conta é do grupo inteiro.
+  it("o pedido da conta de disponível/necessidade NÃO é recortado por empresa (o saldo não é)", async () => {
+    const prisma = base() as unknown as Parameters<
+      typeof queryEstoqueDisponivelDiretoria
+    >[0];
+    await queryEstoqueDisponivelDiretoria(prisma, {});
+    const pedidoCall = (prisma.fatoPedido.findMany as jest.Mock).mock.calls[0][0];
+    expect(pedidoCall.where).not.toHaveProperty("empresaId");
+  });
+
+  it("o valor em estoque é foto do agora: nem período nem empresa entram no where do saldo", async () => {
+    const prisma = base() as unknown as Parameters<typeof queryIndicadoresEstoque>[0];
+    await queryIndicadoresEstoque(prisma);
+    const call = (prisma.fatoEstoqueSaldo.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where).toEqual({ quantidade: { gt: 0 }, localId: { in: [1, 2, 3] } });
   });
 });

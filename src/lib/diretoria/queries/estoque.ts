@@ -7,9 +7,29 @@
 //     esconderia estoque que existe fisicamente hoje);
 //   - COMPRA (fato_compra) e NOTA DE ENTRADA (fato_dfe) são documentos com data, ou seja,
 //     histórico: levam o piso do corte, sempre, mesmo sem período informado.
+//
+// FILTROS GLOBAIS DA DIRETORIA (período + empresa) nesta tela, e por que cada consulta
+// recebe ou não cada um deles:
+//
+//   PERÍODO. Só onde existe DOCUMENTO COM DATA. Estoque é a foto de agora: "valor em
+//   estoque de maio" não existe no cache (o saldo é o de hoje), então saldo, catálogo,
+//   donuts, seriais e idade média ficam FORA do recorte de período. Já compra (fato_compra,
+//   por dataOrcamento), nota de entrada (fato_dfe, por dataEmissao) e a demanda que gera a
+//   necessidade de compra (fato_pedido, por dataOrcamento) são documentos datados: esses
+//   recortam.
+//
+//   EMPRESA. Só onde a coluna existe no fato. Conferido no banco de produção: fato_compra e
+//   fato_pedido têm empresa_id (100% preenchido); fato_estoque_saldo, fato_serial_saldo e
+//   fato_dfe NÃO têm a coluna. Consequência honesta, que a tela precisa avisar ao usuário:
+//   valor em estoque, catálogo, donuts, seriais e as notas de entrada (compras por
+//   fornecedor e a série de compras) são sempre do GRUPO INTEIRO, não dá para separar por
+//   empresa. Onde a conta mistura saldo com pedido (estoque disponível e necessidade de
+//   compra), o recorte por empresa também fica de fora de propósito: filtrar só a demanda e
+//   comparar com o saldo do grupo fabricaria disponibilidade que não existe.
 
 import type { PrismaClient } from "@/generated/prisma/client";
-import { clampDateAoCorte, corteAtualDate, janelaClampada } from "@/lib/corte-dados";
+import { clampDateAoCorte, janelaClampada } from "@/lib/corte-dados";
+import { buildEmpresaWhere } from "@/lib/metrics/_shared/empresa";
 import { diasRestantes, statusPrazo, type StatusPrazo } from "@/lib/diretoria/cores";
 import { VENDA_FUTURA } from "@/lib/fiscal/regras/venda-futura-policy";
 import { getIndiceEstoque, aplicarIndice } from "@/lib/indice-estoque";
@@ -19,6 +39,38 @@ import {
   localIdsPorClassificacao,
   whereLocal,
 } from "@/lib/estoque/locais-por-classificacao";
+
+/**
+ * Filtros globais da Diretoria aplicáveis a esta tela. O `empresaId` só tem efeito nas
+ * consultas cujo fato tem a coluna de empresa (ordem de compra); veja o cabeçalho.
+ */
+export interface FiltrosEstoque {
+  periodoDe?: string;
+  periodoAte?: string;
+  /** Recorte por empresa do grupo (empresaId do fato); undefined = grupo inteiro. */
+  empresaId?: number;
+}
+
+/**
+ * Consultas que só recortam por data: o fato existe (documento datado), mas não carrega
+ * empresa. Tipar assim, em vez de aceitar `FiltrosEstoque` e ignorar o `empresaId`, deixa a
+ * limitação visível para quem chama, em vez de fingir um filtro que não acontece.
+ */
+export type FiltrosPeriodo = Pick<FiltrosEstoque, "periodoDe" | "periodoAte">;
+
+/**
+ * Recorte de período de um campo de data, já grampeado à data de início das análises
+ * (mesmo helper e mesmas garantias das queries de Vendas): período ausente não é "tudo", é
+ * "do corte em diante", e a borda final é exclusiva (o último dia entra inteiro).
+ */
+function periodoWhere(
+  de: string | undefined,
+  ate: string | undefined,
+  campo: string,
+): Record<string, unknown> {
+  const j = janelaClampada(de, ate);
+  return { [campo]: { gte: j.gte, lt: j.lt } };
+}
 
 export interface IndicadoresEstoque {
   /** O número do KPI: valor a custo DIVIDIDO pelo índice configurado (Diretoria > Vendas). */
@@ -362,11 +414,12 @@ export interface CompraFornecedor {
  */
 export async function queryComprasPorFornecedor(
   prisma: PrismaClient,
-  filtros: { periodoDe?: string; periodoAte?: string } = {},
+  filtros: FiltrosPeriodo = {},
 ): Promise<{ linhas: CompraFornecedor[]; valorGeral: number }> {
-  const j = janelaClampada(filtros.periodoDe, filtros.periodoAte);
+  // Sem empresa: fato_dfe não tem empresa_id (conferido em produção). A nota de entrada é
+  // sempre a do grupo inteiro , a tela precisa dizer isso, não fingir o recorte.
   const rows = await prisma.fatoDfe.findMany({
-    where: { dataEmissao: { gte: j.gte, lt: j.lt } },
+    where: periodoWhere(filtros.periodoDe, filtros.periodoAte, "dataEmissao"),
     select: { fornecedorNome: true, vrNf: true },
   });
   const map = new Map<string, { notas: number; valorTotal: number }>();
@@ -454,11 +507,11 @@ export interface ComprasSerie {
  */
 export async function queryComprasSerie(
   prisma: PrismaClient,
-  filtros: { periodoDe?: string; periodoAte?: string } = {},
+  filtros: FiltrosPeriodo = {},
 ): Promise<ComprasSerie> {
-  const j = janelaClampada(filtros.periodoDe, filtros.periodoAte);
+  // Mesma limitação da matriz por fornecedor: fato_dfe não tem empresa, só data.
   const rows = await prisma.fatoDfe.findMany({
-    where: { dataEmissao: { gte: j.gte, lt: j.lt } },
+    where: periodoWhere(filtros.periodoDe, filtros.periodoAte, "dataEmissao"),
     select: { dataEmissao: true, vrNf: true },
   });
   const dia = new Map<string, { valor: number; notas: number }>();
@@ -507,13 +560,21 @@ export interface ResumoCompras {
  * Ordem de compra é documento com data: os acumulados (comprado/pago/a pagar) só contam
  * ordens a partir da data de início das análises, o mesmo critério já aplicado nos títulos
  * financeiros. Sem isso, uma OC velha do Odoo inflava o KPI e a matriz por fornecedor.
+ *
+ * Recorta pelos DOIS filtros globais: período (data do orçamento da OC) e empresa
+ * (fato_compra.empresa_id existe e vem preenchido).
  */
 export async function queryResumoCompras(
   prisma: PrismaClient,
   hoje: Date,
+  filtros: FiltrosEstoque = {},
 ): Promise<ResumoCompras> {
   const rows = await prisma.fatoCompra.findMany({
-    where: { cancelada: false, dataOrcamento: { gte: corteAtualDate() } },
+    where: {
+      cancelada: false,
+      ...periodoWhere(filtros.periodoDe, filtros.periodoAte, "dataOrcamento"),
+      ...buildEmpresaWhere(filtros.empresaId),
+    },
     select: {
       fornecedorNome: true,
       vrNf: true,
@@ -573,6 +634,11 @@ export interface IndicadoresAvancados {
  * corte for mais recente que hoje-30, a janela encolhe e a demanda diária passa a ser
  * dividida pelos dias REALMENTE cobertos (senão a demanda ficaria subestimada e a cobertura
  * inflada). Saldo e idade média continuam sem piso: são a foto do estoque de agora.
+ *
+ * Não recebe os filtros globais da tela, e é de propósito: cobertura e giro são o saldo de
+ * HOJE dividido pelo ritmo de venda dos últimos 30 dias, então nem o período (mudaria a
+ * definição do indicador) nem a empresa (o saldo não tem empresa; recortar só a demanda
+ * inflaria a cobertura e afundaria o giro) cabem aqui.
  */
 export async function queryIndicadoresAvancadosEstoque(
   prisma: PrismaClient,
@@ -674,12 +740,15 @@ export async function queryComprasAtivas(
   prisma: PrismaClient,
   hoje: Date,
   limit = 50,
+  filtros: FiltrosEstoque = {},
 ): Promise<ComprasAtivas> {
   const rows = await prisma.fatoCompra.findMany({
     where: {
       recebida: false,
       cancelada: false,
-      dataOrcamento: { gte: corteAtualDate() },
+      // Os dois filtros globais valem aqui: a OC tem data e tem empresa.
+      ...periodoWhere(filtros.periodoDe, filtros.periodoAte, "dataOrcamento"),
+      ...buildEmpresaWhere(filtros.empresaId),
     },
     orderBy: [{ vrNf: "desc" }],
     select: {
@@ -732,7 +801,7 @@ export interface EstoqueDisponivelLinha {
  */
 export async function queryEstoqueDisponivelDiretoria(
   prisma: PrismaClient,
-  filtros: { limite?: number } = {},
+  filtros: FiltrosPeriodo & { limite?: number } = {},
 ): Promise<{
   linhas: EstoqueDisponivelLinha[];
   produtos: number;
@@ -769,13 +838,16 @@ export async function queryEstoqueDisponivelDiretoria(
   // politica de venda futura estiver ligada, inclui tambem o simples faturamento
   // (venda futura ja faturada, reservada ate a remessa) , ENGATILHADO.
   //
-  // Diferente do saldo, o PEDIDO é documento com data: só compromete estoque se for
-  // posterior à data de início das análises. Sem esse piso, um pedido velho preso em
-  // "ABERTA" subtraía saldo e fabricava "disponível negativo" (e unidades a comprar) que
-  // não existem.
+  // Diferente do saldo, o PEDIDO é documento com data: só compromete estoque se estiver
+  // dentro do período analisado (e nunca antes da data de início das análises). Sem esse
+  // piso, um pedido velho preso em "ABERTA" subtraía saldo e fabricava "disponível
+  // negativo" (e unidades a comprar) que não existem.
+  //
+  // Sem recorte por empresa de propósito: o pedido tem empresa, o saldo não. Filtrar só a
+  // demanda e subtrair do saldo do grupo mostraria disponibilidade que não existe.
   const abertos = await prisma.fatoPedido.findMany({
     where: {
-      dataOrcamento: { gte: corteAtualDate() },
+      ...periodoWhere(filtros.periodoDe, filtros.periodoAte, "dataOrcamento"),
       ...(VENDA_FUTURA.RESERVA_ESTOQUE_ATE_REMESSA
         ? { OR: [{ bucketDemanda: "ABERTA" }, { categoriaOperacao: "simples_faturamento" }] }
         : { bucketDemanda: "ABERTA" }),
@@ -884,6 +956,7 @@ export interface NecessidadeCompraLinha {
 export async function queryNecessidadeCompra(
   prisma: PrismaClient,
   limite = 100,
+  filtros: FiltrosPeriodo = {},
 ): Promise<{
   linhas: NecessidadeCompraLinha[];
   produtosEmFalta: number;
@@ -907,9 +980,12 @@ export async function queryNecessidadeCompra(
       },
     }),
     custoPorProduto(prisma),
+    // A DEMANDA recorta por período (data do pedido); o SALDO acima, não (é a foto de
+    // hoje). Empresa fica de fora pelo mesmo motivo do estoque disponível: o pedido tem
+    // empresa, o saldo não, e recortar só um lado da subtração daria uma falta irreal.
     prisma.fatoPedido.findMany({
       where: {
-        dataOrcamento: { gte: corteAtualDate() },
+        ...periodoWhere(filtros.periodoDe, filtros.periodoAte, "dataOrcamento"),
         ...(VENDA_FUTURA.RESERVA_ESTOQUE_ATE_REMESSA
           ? {
               OR: [

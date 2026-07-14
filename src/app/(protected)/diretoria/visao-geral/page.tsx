@@ -15,8 +15,7 @@ import {
 import { queryIndicadoresDemandas } from "@/lib/diretoria/queries/pedidos";
 import { queryIndicadoresEstoque, queryEstoquePorFamilia } from "@/lib/diretoria/queries/estoque";
 import { queryContasAReceber, queryContasAPagar } from "@/lib/reports/queries/financeiro";
-import { DiretoriaPeriodBar } from "@/components/diretoria/diretoria-period-bar";
-import { DiretoriaEmpresaSelect } from "@/components/diretoria/diretoria-empresa-select";
+import { DiretoriaFiltros } from "@/components/diretoria/diretoria-filtros";
 import { listarEmpresasDoFato } from "@/lib/metrics/_shared/empresa";
 import { FreshnessBadge } from "@/components/diretoria/freshness-badge";
 import { ultimaSyncIso } from "@/lib/diretoria/freshness";
@@ -135,10 +134,7 @@ export default async function DiretoriaVisaoGeralPage({
         actions={<FreshnessBadge iso={freshIso} />}
       />
       <div className="flex flex-col gap-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <DiretoriaPeriodBar />
-          <DiretoriaEmpresaSelect empresas={opcoesEmpresa} />
-        </div>
+        <DiretoriaFiltros empresas={opcoesEmpresa} />
         <VisaoGeralScreen data={data} />
       </div>
     </PageShell>

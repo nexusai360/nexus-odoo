@@ -25,6 +25,10 @@ import {
 import { SyncNowButton } from "@/components/diretoria/sync-now-button";
 import { FreshnessBadge } from "@/components/diretoria/freshness-badge";
 import { ultimaSyncIso } from "@/lib/diretoria/freshness";
+import { DiretoriaFiltros } from "@/components/diretoria/diretoria-filtros";
+import { listarEmpresasDoFato } from "@/lib/metrics/_shared/empresa";
+import { opcoesDeEmpresa } from "@/lib/diretoria/empresa-opcoes";
+import { resolverPeriodoDir } from "@/lib/diretoria/periodo";
 import { type EstoqueData } from "@/components/diretoria/estoque/estoque-screen";
 import { EstoqueMontavel } from "@/components/diretoria/estoque/estoque-montavel";
 import { carregarLayout } from "@/lib/diretoria/builder/layout-repo";
@@ -32,10 +36,40 @@ import type { BlocoLayout } from "@/lib/diretoria/builder/layout";
 
 export const dynamic = "force-dynamic";
 
-export default async function DiretoriaEstoquePage() {
+function isoDia(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+export default async function DiretoriaEstoquePage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const user = await requireDiretoriaArea("estoque");
   await aquecerCorte();
+  const sp = await searchParams;
+  const param = (k: string) => (Array.isArray(sp[k]) ? sp[k]?.[0] : sp[k]) as string | undefined;
   const hoje = new Date();
+
+  const periodo = resolverPeriodoDir(
+    { periodo: param("periodo"), de: param("de"), ate: param("ate") },
+    hoje,
+  );
+  const empresas = await listarEmpresasDoFato(prisma);
+  const empresaParam = Number(param("empresa"));
+  const empresaSel = Number.isFinite(empresaParam)
+    ? empresas.find((e) => e.empresaId === empresaParam)
+    : undefined;
+
+  // O que o periodo recorta AQUI: compras (documento datado) e a demanda que entra na
+  // necessidade de compra. O SALDO nao entra: estoque e foto do agora, "valor em estoque em
+  // maio" nao existe no cache. Ver o cabecalho de queries/estoque.ts.
+  const f = {
+    periodoDe: isoDia(periodo.de),
+    periodoAte: isoDia(periodo.ate),
+    empresaId: empresaSel?.empresaId,
+  };
+  const fPeriodo = { periodoDe: f.periodoDe, periodoAte: f.periodoAte };
 
   const [
     indicadores, porLocal, porFamilia, porMarca, catalogo,
@@ -47,13 +81,13 @@ export default async function DiretoriaEstoquePage() {
     queryEstoquePorFamilia(prisma),
     queryEstoquePorMarca(prisma),
     queryCatalogoEstoque(prisma, 500),
-    queryComprasPorFornecedor(prisma, {}),
-    queryComprasAtivas(prisma, hoje, 200),
-    queryResumoCompras(prisma, hoje),
+    queryComprasPorFornecedor(prisma, fPeriodo),
+    queryComprasAtivas(prisma, hoje, 200, f),
+    queryResumoCompras(prisma, hoje, f),
     queryIndicadoresAvancadosEstoque(prisma, hoje),
     querySeriais(prisma, 200),
     queryEstoqueDemonstracao(prisma),
-    queryNecessidadeCompra(prisma, 100),
+    queryNecessidadeCompra(prisma, 100, fPeriodo),
   ]);
   const [comprasSerie, granular, estoqueDisponivel] = await Promise.all([
     queryComprasSerie(prisma),
@@ -132,6 +166,14 @@ export default async function DiretoriaEstoquePage() {
             <FreshnessBadge iso={freshIso} />
             {podeSync ? <SyncNowButton area="estoque" /> : null}
           </div>
+        }
+      />
+      <DiretoriaFiltros
+        empresas={opcoesDeEmpresa(empresas)}
+        aviso={
+          empresaSel
+            ? "O estoque (valor, seriais, catálogo e necessidade de compra) é sempre do grupo inteiro: o saldo do Odoo não guarda a empresa dona. O recorte por empresa vale para as compras. O período recorta as compras e a demanda, nunca o saldo, que é a foto de agora."
+            : "O período recorta as compras e a demanda. O saldo em estoque é sempre a foto de agora, não do período."
         }
       />
       <EstoqueMontavel data={data} layoutsPorAba={layoutsPorAba} podeEditarGlobal={podeEditarGlobal} />
