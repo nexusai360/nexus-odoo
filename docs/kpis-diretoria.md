@@ -43,6 +43,26 @@ nota só é faturamento quando:
 Antes (regra por natureza/CFOP) o número inflava ~74%: nem a natureza nem o CFOP separam
 "venda" de "venda interna", porque as duas usam CFOP de venda.
 
+### Modo sombra: a regra nova de receita roda em paralelo (dono, 2026-07-13)
+
+A partir do PR desta entrega, o worker calcula a receita pelas **duas** regras: a de sempre
+(a palavra "venda" no nome da operação) e a nova (a **natureza da operação**, que a perícia
+mostrou ser a lógica correta, em `docs/pericia-classificacao-receita-2026-07-13.md`).
+
+**Quem manda no número continua sendo a regra antiga.** A coluna `is_venda_externa`, que a
+plataforma inteira lê (dashboard, Relatórios 1.0 e 2.0, KPIs, Nex, MCP), recebe sempre a
+decisão da regra antiga. A trava é estrutural: não existe caminho no código em que a regra
+nova mude um número exibido. Conferido contra produção: 9.677 de 9.677 notas com decisão
+idêntica, faturamento igual ao centavo.
+
+A regra nova só **observa**, em três colunas próprias (`venda_por_natureza`,
+`classificacao_divergente`, `natureza_desconhecida`), e o placar entre as duas aparece em
+**Configuração > Classificação fiscal**: hoje, **99,90% de acerto e 2 divergências** (duas
+notas complementares de preço, R$ 4.527,04, que a regra nova enxerga e a antiga não).
+
+Quando o placar estiver limpo o bastante, a troca pode ser feita com prova. Enquanto isso,
+**natureza de operação desconhecida vira alerta na tela**, nunca silêncio.
+
 ### Venda futura , a receita é a REMESSA, nunca o simples faturamento (dono, 2026-07-13)
 
 A venda futura tem duas notas: a de **simples faturamento** (CFOP 5922/6922), que cobra o

@@ -2409,8 +2409,19 @@ model FatoNotaFiscal {
   vrIbpt               Decimal   @default(0) @map("vr_ibpt") @db.Decimal(18, 2)
   vrIcmsProprio        Decimal   @default(0) @map("vr_icms_proprio") @db.Decimal(18, 2)
   vrDesconto           Decimal   @default(0) @map("vr_desconto") @db.Decimal(18, 2)
-  // Coluna derivada (materializada pelo builder de classificacao):
+  // Coluna derivada (materializada pelo builder de classificacao). E a UNICA que a
+  // plataforma le (diretoria, relatorios 1.0/2.0, KPIs, Nex, MCP). Recebe a DECISAO, que
+  // por enquanto e sempre a regra ANTIGA (nome da operacao contem "venda").
   isVendaExterna       Boolean?  @map("is_venda_externa")
+  // MODO SOMBRA (dono, 2026-07-13). A regra NOVA (natureza da operacao) roda ao lado e so
+  // OBSERVA: nenhuma destas colunas altera numero exibido. Servem para medir os acertos e
+  // decidir a virada com prova. Ver src/lib/fiscal/regras/classificacao-receita.ts e o laudo
+  // docs/pericia-classificacao-receita-2026-07-13.md.
+  vendaPorNatureza     Boolean?  @map("venda_por_natureza")
+  classificacaoDivergente Boolean? @map("classificacao_divergente")
+  // Nota candidata a receita cuja natureza nao esta no catalogo. Vira ALERTA , foi o
+  // silencio que deixou R$ 538 mil da venda futura sumirem por quatro meses.
+  naturezaDesconhecida Boolean?  @map("natureza_desconhecida")
   atualizadoEm         DateTime  @default(now()) @map("atualizado_em")
 
   @@index([dataEmissao])
@@ -2419,6 +2430,8 @@ model FatoNotaFiscal {
   @@index([chave])
   @@index([isVendaExterna])
   @@index([operacaoId])
+  @@index([classificacaoDivergente])
+  @@index([naturezaDesconhecida])
   @@map("fato_nota_fiscal")
 }
 
