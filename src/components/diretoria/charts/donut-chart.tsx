@@ -24,6 +24,14 @@ const PALETA = [
 
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+/** Valor curto para a legenda (R$ 3,7 mi). O valor cheio aparece no hover, como nos KPIs. */
+function compacto(v: number): string {
+  const abs = Math.abs(v);
+  if (abs >= 1_000_000) return `R$ ${(v / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} mi`;
+  if (abs >= 1_000) return `R$ ${(v / 1_000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} mil`;
+  return brl.format(v);
+}
+
 function arco(cx: number, cy: number, r: number, a0: number, a1: number): string {
   const p = (a: number) => [cx + r * Math.cos(a), cy + r * Math.sin(a)];
   const [x0, y0] = p(a0);
@@ -92,7 +100,11 @@ export function DonutChart({
       !vertical && "sm:flex-row sm:items-center",
     )}>
       <div className="relative shrink-0">
-        <svg viewBox="0 0 180 180" className={cn(vertical ? "h-[230px] w-[230px]" : "h-[180px] w-[180px]")}>
+        <svg
+          viewBox="0 0 180 180"
+          className={cn(vertical ? "h-[230px] w-[230px]" : "h-[180px] w-[180px]")}
+          onMouseLeave={() => setHover(null)}
+        >
           {segs.map((s) => {
             const dim =
               hover != null
@@ -106,7 +118,6 @@ export function DonutChart({
                 opacity={dim ? 0.32 : 1}
                 style={{ transition: "opacity .15s", cursor: clicavel && s.label !== "Outros" ? "pointer" : "default" }}
                 onMouseEnter={() => setHover(s.i)}
-                onMouseLeave={() => setHover(null)}
                 onClick={() => handleSelect(s.label)}
               />
             );
@@ -122,10 +133,13 @@ export function DonutChart({
         </svg>
       </div>
       <div className={cn("flex min-w-0 flex-col gap-1.5 self-stretch", vertical ? "w-full" : "flex-1")}>
-      <ul className={cn(
-        "min-w-0 overflow-auto text-sm",
-        vertical ? "grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2" : "flex flex-col gap-1.5",
-      )}>
+      <ul
+        className={cn(
+          "min-w-0 overflow-auto text-sm",
+          vertical ? "grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2" : "flex flex-col gap-1.5",
+        )}
+        onMouseLeave={() => setHover(null)}
+      >
         {segs.map((s) => {
           const sel = selecionado != null && selecionado !== "" && s.label === selecionado;
           const podeClicar = clicavel && s.label !== "Outros";
@@ -144,7 +158,6 @@ export function DonutChart({
                 cursor: podeClicar ? "pointer" : "default",
               }}
               onMouseEnter={() => setHover(s.i)}
-              onMouseLeave={() => setHover(null)}
               onClick={() => handleSelect(s.label)}
               onKeyDown={(e) => {
                 if (podeClicar && (e.key === "Enter" || e.key === " ")) {
@@ -155,10 +168,18 @@ export function DonutChart({
             >
               <span className="flex min-w-0 items-center gap-2">
                 <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: s.cor }} />
-                <span className={cn("truncate", sel && "font-semibold text-foreground")}>{s.label}</span>
+                <span
+                  className={cn("truncate", sel && "font-semibold text-foreground")}
+                  title={s.label}
+                >
+                  {s.label}
+                </span>
               </span>
-              <span className="shrink-0 tabular-nums text-muted-foreground">
-                {formatValor(s.valor)} · {(s.frac * 100).toFixed(1)}%
+              <span
+                className="shrink-0 tabular-nums text-muted-foreground"
+                title={formatValor(s.valor)}
+              >
+                {compacto(s.valor)} · {(s.frac * 100).toFixed(1)}%
               </span>
             </li>
           );

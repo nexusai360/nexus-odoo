@@ -51,14 +51,24 @@ describe("localIdsPorClassificacao", () => {
     expect(filtro).toEqual({ ids: null, classificacaoIndisponivel: true });
   });
 
-  it("distingue 'fato vazio' de 'classificacao sem nenhum local'", async () => {
-    // O fato existe (389 locais), mas nenhum e de demonstracao: aqui a lista vazia e
-    // a resposta correta, e filtrar por ela e o comportamento certo.
+  it("nenhum local em demonstracao e resposta legitima: filtra vazio", async () => {
+    // Aqui a lista vazia e a verdade (nao ha equipamento em demonstracao), e a tela deve
+    // mostrar vazio. Nao filtrar faria o painel de demonstracao exibir o estoque INTEIRO.
     const prisma = prismaFake(389, []);
 
     const filtro = await localIdsPorClassificacao(prisma, "demonstracao");
 
     expect(filtro).toEqual({ ids: [], classificacaoIndisponivel: false });
+  });
+
+  it("nenhum deposito FISICO e anomalia: nao filtra e avisa", async () => {
+    // Com o fato populado, "zero depositos fisicos" so acontece se o Odoo parar de expor
+    // os campos que identificam um deposito , e o estoque iria a R$ 0 em silencio.
+    const prisma = prismaFake(389, []);
+
+    const filtro = await localIdsPorClassificacao(prisma, "fisico");
+
+    expect(filtro).toEqual({ ids: null, classificacaoIndisponivel: true });
   });
 });
 

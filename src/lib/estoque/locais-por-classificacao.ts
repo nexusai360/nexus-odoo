@@ -61,10 +61,17 @@ export async function localIdsPorClassificacao(
     }),
   ]);
 
-  // Fato vazio (primeiro deploy, worker ainda nao rodou) OU nenhum local fisico (o Odoo
-  // parou de expor os campos que classificam o deposito, e todo local virou "fora"). Nos
-  // dois casos, filtrar zeraria o KPI em silencio , preferimos o numero antigo com aviso.
-  if (total === 0 || locais.length === 0) {
+  // Fato vazio: o worker ainda nao rodou. Filtrar por lista vazia zeraria o KPI em
+  // silencio , preferimos o numero antigo COM aviso.
+  if (total === 0) {
+    return { ids: null, classificacaoIndisponivel: true };
+  }
+
+  // Nenhum deposito fisico, com o fato populado, e anomalia: significa que o Odoo parou de
+  // expor os campos que identificam um deposito de verdade, e TODO local virou "fora". O
+  // estoque iria a R$ 0 sem explicacao. So vale para o fisico , "nenhum local em
+  // demonstracao" e uma resposta legitima (e a tela deve mostrar vazio, nao tudo).
+  if (locais.length === 0 && classificacao === "fisico") {
     return { ids: null, classificacaoIndisponivel: true };
   }
 
