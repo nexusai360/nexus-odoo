@@ -11,6 +11,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { janelaClampada } from "@/lib/corte-dados";
 import { atendimentoSincronizado } from "@/lib/diretoria/atendimento-status";
 import { siglaDeUf } from "@/lib/diretoria/uf";
+import { buildEmpresaWhere } from "@/lib/metrics/_shared/empresa";
 
 export interface FiltrosDemandas {
   ufs?: string[];
@@ -18,6 +19,8 @@ export interface FiltrosDemandas {
   periodoDe?: string;
   /** Fim da janela (AAAA-MM-DD). Ausente = janela aberta até hoje. */
   periodoAte?: string;
+  /** Recorte por empresa do grupo (empresaId do fato); undefined = grupo inteiro. */
+  empresaId?: number;
 }
 
 export async function ufPorParticipante(
@@ -60,7 +63,9 @@ interface PedidoAbertoRow {
  * não há data de documento que prove que ele pertence à janela analisada.
  *
  * Como TUDO no módulo (B2, B4, B6, B6b, B7 e o mapa da visão geral) sai daqui, o piso
- * aplicado neste ponto vale para todos eles.
+ * aplicado neste ponto vale para todos eles. Idem para o recorte por empresa do grupo
+ * (`fato_pedido.empresa_id`, preenchido em 100% das linhas): item e histórico do pedido são
+ * lidos por `pedidoId` dentro deste universo, então herdam o recorte sem filtro próprio.
  */
 async function carregarAbertas(
   prisma: PrismaClient,
@@ -68,7 +73,11 @@ async function carregarAbertas(
 ): Promise<PedidoAbertoRow[]> {
   const j = janelaClampada(filtros.periodoDe, filtros.periodoAte);
   const pedidos = await prisma.fatoPedido.findMany({
-    where: { bucketDemanda: "ABERTA", dataOrcamento: { gte: j.gte, lt: j.lt } },
+    where: {
+      bucketDemanda: "ABERTA",
+      ...buildEmpresaWhere(filtros.empresaId),
+      dataOrcamento: { gte: j.gte, lt: j.lt },
+    },
     select: {
       odooId: true,
       numero: true,

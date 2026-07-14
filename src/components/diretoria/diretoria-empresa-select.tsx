@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { normalizarNomeEmpresa } from "@/lib/diretoria/nome-empresa";
 
 export interface EmpresaOpcao {
   empresaId: number;
@@ -39,12 +40,17 @@ export function DiretoriaEmpresaSelect({ empresas }: { empresas: EmpresaOpcao[] 
 
   // `items` é o que faz o gatilho mostrar o RÓTULO da empresa (base-ui mapeia value→label);
   // sem ele o Select exibiria o valor cru ("8").
+  // A sigla vem do Odoo capitalizada como palavra comum ("Jht DF Comércio"); aqui ela volta a
+  // ser marca (JHT, JDS, IJHT...). Ver lib/diretoria/nome-empresa.ts.
   const items = [
     { value: EMPRESA_TODAS, label: "Todas as empresas" },
-    ...empresas.map((e) => ({
-      value: String(e.empresaId),
-      label: e.detalhe ? `${e.nome} · ${e.detalhe}` : e.nome,
-    })),
+    ...empresas.map((e) => {
+      const nome = normalizarNomeEmpresa(e.nome);
+      return {
+        value: String(e.empresaId),
+        label: e.detalhe ? `${nome} · ${e.detalhe}` : nome,
+      };
+    }),
   ];
 
   function aplicar(valor: string) {
@@ -79,7 +85,18 @@ export function DiretoriaEmpresaSelect({ empresas }: { empresas: EmpresaOpcao[] 
             <SelectValue placeholder="Todas as empresas" />
           </span>
         </SelectTrigger>
-        <SelectContent>
+        {/* O menu abria PARA CIMA e cortado. Culpa do `alignItemWithTrigger` (padrão do
+            base-ui): ele tenta alinhar o item JÁ SELECIONADO com o gatilho, então quanto mais
+            embaixo da lista estivesse a empresa escolhida, mais a lista subia. Desligado, o
+            menu se comporta como todo dropdown da plataforma: abre embaixo, ancorado à
+            esquerda, e só sobe se não couber na tela. */}
+        <SelectContent
+          side="bottom"
+          align="start"
+          sideOffset={6}
+          alignItemWithTrigger={false}
+          className="max-h-[22rem] w-[var(--anchor-width)] min-w-[17rem]"
+        >
           {items.map((i) => (
             <SelectItem key={i.value} value={i.value}>
               {i.label}

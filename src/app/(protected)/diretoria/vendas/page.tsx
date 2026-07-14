@@ -16,6 +16,9 @@ import {
 } from "@/lib/diretoria/queries/vendas";
 import { SyncNowButton } from "@/components/diretoria/sync-now-button";
 import { FreshnessBadge } from "@/components/diretoria/freshness-badge";
+import { DiretoriaFiltros } from "@/components/diretoria/diretoria-filtros";
+import { listarEmpresasDoFato } from "@/lib/metrics/_shared/empresa";
+import { opcoesDeEmpresa } from "@/lib/diretoria/empresa-opcoes";
 import { ultimaSyncIso } from "@/lib/diretoria/freshness";
 import { type VendasData } from "@/components/diretoria/vendas/vendas-screen";
 import { VendasMontavel } from "@/components/diretoria/vendas/vendas-montavel";
@@ -43,10 +46,20 @@ export default async function DiretoriaVendasPage({
     new Date(),
   );
   const ufs = await userUfs(user);
+
+  // Recorte por empresa (searchParam `empresa`). So aceita id que exista no fato: URL
+  // adulterada cai no grupo inteiro em vez de quebrar a tela.
+  const empresas = await listarEmpresasDoFato(prisma);
+  const empresaParam = Number(param("empresa"));
+  const empresaSel = Number.isFinite(empresaParam)
+    ? empresas.find((e) => e.empresaId === empresaParam)
+    : undefined;
+
   const filtros = {
     periodoDe: isoDia(periodo.de),
     periodoAte: isoDia(periodo.ate),
     ufs,
+    empresaId: empresaSel?.empresaId,
   };
 
   const [indicadores, porUf, porMarca, formasPagamento, modais, margem] = await Promise.all([
@@ -112,6 +125,10 @@ export default async function DiretoriaVendasPage({
             {podeSync ? <SyncNowButton area="vendas" /> : null}
           </div>
         }
+      />
+      <DiretoriaFiltros
+        empresas={opcoesDeEmpresa(empresas)}
+        aviso="O período recorta as notas (faturamento) e os pedidos (modalidades). O estoque, quando aparecer, é sempre a foto de agora."
       />
       <VendasMontavel data={data} layoutsPorAba={layoutsPorAba} podeEditarGlobal={podeEditarGlobal} />
     </PageShell>

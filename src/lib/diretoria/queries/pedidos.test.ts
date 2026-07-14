@@ -159,6 +159,51 @@ describe("queryDemandasMaisParadas (B7)", () => {
   });
 });
 
+// Recorte por empresa do grupo. Como todo o módulo sai de carregarAbertas, o filtro
+// aplicado lá vale para as 5 consultas da tela (e para o mapa da visão geral).
+describe("recorte por empresa na demanda em aberta", () => {
+  const whereDe = (p: ReturnType<typeof makePrisma>) =>
+    (p.fatoPedido.findMany as jest.Mock).mock.calls[0][0].where;
+
+  it("sem empresa, não filtra empresa (grupo inteiro)", async () => {
+    const p = makePrisma([], []);
+    await queryDemandasPorUf(p, {});
+    expect(whereDe(p).empresaId).toBeUndefined();
+    expect("empresaId" in whereDe(p)).toBe(false);
+  });
+
+  it("com empresa, filtra fato_pedido pela empresa escolhida", async () => {
+    const p = makePrisma([], []);
+    await queryDemandasPorUf(p, { empresaId: 7 });
+    expect(whereDe(p).empresaId).toBe(7);
+  });
+
+  it("o recorte por empresa vale para as demais consultas do módulo (B2, B6, B6b, B7)", async () => {
+    for (const roda of [
+      (p: ReturnType<typeof makePrisma>) => queryIndicadoresDemandas(p, hoje, { empresaId: 7 }),
+      (p: ReturnType<typeof makePrisma>) => queryDemandasPendentes(p, hoje, { empresaId: 7 }),
+      (p: ReturnType<typeof makePrisma>) => queryDemandaPorEtapa(p, { empresaId: 7 }),
+      (p: ReturnType<typeof makePrisma>) => queryDemandasMaisParadas(p, hoje, { empresaId: 7 }),
+    ]) {
+      const p = makePrisma([], []);
+      await roda(p);
+      expect(whereDe(p).empresaId).toBe(7);
+    }
+  });
+
+  it("empresa e período convivem no mesmo where", async () => {
+    const p = makePrisma([], []);
+    await queryDemandasPorUf(p, {
+      empresaId: 3,
+      periodoDe: "2026-06-01",
+      periodoAte: "2026-06-30",
+    });
+    expect(whereDe(p).empresaId).toBe(3);
+    expect(whereDe(p).dataOrcamento.lt).toEqual(new Date("2026-07-01T00:00:00Z"));
+    expect(whereDe(p).bucketDemanda).toBe("ABERTA");
+  });
+});
+
 // Pedido é documento com data: TUDO no módulo sai de carregarAbertas, então o piso da data
 // de início das análises é verificado ali, uma vez, para as 5 queries.
 describe("data de início das análises na demanda em aberta", () => {
