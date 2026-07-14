@@ -20,12 +20,38 @@ function fakeRawTable() {
 }
 
 describe("syncIncremental", () => {
-  it("filtra por write_date quando há lastIncrementalAt", async () => {
+  it("filtra por write_date recuando a MARGEM de seguranca a partir do lastIncrementalAt", async () => {
     const client = fakeClientSinglePage([]);
     const raw = fakeRawTable();
-    await syncIncremental(client, raw as never, "res.partner", new Date("2026-05-01T00:00:00Z"));
+    await syncIncremental(client, raw as never, "res.partner", new Date("2026-05-01T12:00:00Z"));
     const domain = (client as never as { searchReadPage: jest.Mock }).searchReadPage.mock.calls[0][1];
-    expect(domain).toEqual([["write_date", ">", "2026-05-01 00:00:00"]]);
+    // 15 min para tras: fecha a janela de commit do Odoo (ver MARGEM_SEGURANCA_MS).
+    expect(domain).toEqual([["write_date", ">", "2026-05-01 11:45:00"]]);
+  });
+
+  // O BUG QUE ISTO TRAVA (perícia de 2026-07-13, 158 itens perdidos em producao):
+  // o Odoo carimba `write_date` no INICIO da transacao e so torna a linha visivel no
+  // COMMIT. Quando alguem salva uma nota com 30 itens, os itens nascem com write_date de
+  // T, mas so aparecem para o search_read em T+alguns segundos. Se o ciclo le nesse
+  // intervalo, ele NAO ve os itens , e como a marca d'agua avanca para o inicio do ciclo,
+  // o proximo ciclo pede `write_date > inicio`, que ja passou do write_date deles.
+  // Eles nunca mais sao buscados: o buraco e PERMANENTE (a reconciliacao so olha o que
+  // sumiu do Odoo, nunca o que falta no cache).
+  it("busca o registro que ficou preso na janela de commit do Odoo", async () => {
+    const inicioDoCicloAnterior = new Date("2026-07-03T21:30:00Z");
+    // Item criado com write_date 40s ANTES do ciclo anterior comecar, mas que so ficou
+    // visivel depois que aquele ciclo ja tinha lido. Sem margem, ele some para sempre.
+    const itemPreso = { id: 258508, name: "item que o commit atrasou", write_date: "2026-07-03 21:29:20" };
+    const client = fakeClientSinglePage([itemPreso]);
+    const raw = fakeRawTable();
+
+    const res = await syncIncremental(client, raw as never, "sped.documento.item", inicioDoCicloAnterior);
+
+    const [, domain] = (client as never as { searchReadPage: jest.Mock }).searchReadPage.mock.calls[0];
+    const [, , limite] = (domain as [string, string, string][])[0];
+    expect(limite < "2026-07-03 21:29:20").toBe(true); // a janela alcanca o item preso
+    expect(res.count).toBe(1);
+    expect(raw.upsert).toHaveBeenCalledTimes(1); // e ele volta para o cache (upsert = idempotente)
   });
 
   it("usa domínio vazio (backfill) quando lastIncrementalAt é null", async () => {

@@ -1,6 +1,6 @@
 // Corte TECNICO da ingestao (T2a) , fixo, independente da data de inicio das analises.
 import { describe, it, expect } from "@jest/globals";
-import { corteDomain, CORTE_INGESTAO_ISO } from "./corte";
+import { corteDomain, corteDomainHerdado, CORTE_INGESTAO_ISO } from "./corte";
 
 describe("corteDomain", () => {
   it("o corte da ingestao e FIXO em 2026-01-01 (nao e a data da tela)", () => {
@@ -26,5 +26,30 @@ describe("corteDomain", () => {
   });
   it("modelo desconhecido gera vazia", () => {
     expect(corteDomain("nao.existe")).toEqual([]);
+  });
+});
+
+describe("corteDomainHerdado , o corte que o filho herda do pai", () => {
+  it("modelo com data propria: usa o campo dele", () => {
+    expect(corteDomainHerdado("sped.documento")).toEqual([["data_emissao", ">=", "2026-01-01"]]);
+  });
+
+  // Sem isto, o reconcile perguntaria ao Odoo "quais itens existem?" e receberia os 233.563
+  // do modelo inteiro (contra 59.804 dentro do corte), despejando ~172 mil linhas pre-corte
+  // no cache. Medido no Odoo de producao em 2026-07-13.
+  it("FILHO sem data propria: herda a data do pai por dot-notation", () => {
+    expect(corteDomainHerdado("sped.documento.item")).toEqual([
+      ["documento_id.data_emissao", ">=", "2026-01-01"],
+    ]);
+  });
+
+  it("NETO: encadeia ate o avo", () => {
+    expect(corteDomainHerdado("sped.documento.item.rastreabilidade")).toEqual([
+      ["item_id.documento_id.data_emissao", ">=", "2026-01-01"],
+    ]);
+  });
+
+  it("modelo mestre (sem corte nenhum): dominio vazio", () => {
+    expect(corteDomainHerdado("sped.participante")).toEqual([]);
   });
 });
