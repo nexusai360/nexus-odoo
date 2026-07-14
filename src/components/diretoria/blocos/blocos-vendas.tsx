@@ -71,12 +71,24 @@ function RankingEstados({ d }: { d: VendasData }) {
 // C-05 , Modalidades de operação: BARRAS horizontais. Os nomes de operação são
 // MUITO longos (ex.: "VENDA DE MERCADORIA ADQUIRIDA OU RECEBIDA DE TERCEIROS") e
 // se sobrepunham no eixo. Encurtamos o rótulo (1 linha) e damos altura/folga.
+// A BASE AQUI E O PEDIDO, NAO A NOTA, e isso precisa estar escrito. Em julho/2026 o card
+// soma R$ 12,7 mi (pedidos abertos no mes) enquanto o faturamento e R$ 7,58 mi (notas
+// emitidas). Quem lia "vendas" nos dois lugares achava, com razao, que o sistema se
+// contradizia. Sao perguntas diferentes: quanto foi VENDIDO (pedido) e quanto foi FATURADO.
 function ModalidadesVendas({ d }: { d: VendasData }) {
   const itens = d.modalidades.map((m) => ({
     nome: m.modalidade,
     valor: m.valorTotal,
   }));
-  return <RankingCards itens={itens} max={10} rotuloValor="vendas" />;
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-xs text-muted-foreground">
+        Soma o valor dos <span className="font-medium text-foreground">pedidos</span> abertos no
+        período, pela operação fiscal. Não é o faturamento: faturamento é nota emitida.
+      </p>
+      <RankingCards itens={itens} max={10} rotuloValor="em pedidos" />
+    </div>
+  );
 }
 
 // C-07 , Formas de pagamento, em três visões.
@@ -99,7 +111,16 @@ function DonutPagamento({ d }: { d: VendasData }) {
     linhas: v.linhas.map((l) => ({ chave: l.formaPagamento, valorTotal: l.valorTotal })),
   }));
 
-  return <DistribuicaoDinamica dimensoes={dimensoes} />;
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-xs text-muted-foreground">
+        Soma <span className="font-medium text-foreground">títulos financeiros</span> a receber do
+        período, não notas. Pago é o que já entrou; A receber ainda vai vencer; Carteira em
+        aberto é pedido fechado cuja nota ainda não saiu.
+      </p>
+      <DistribuicaoDinamica dimensoes={dimensoes} />
+    </div>
+  );
 }
 
 // C-09 , Distribuição dinâmica (marca / estado / pagamento).
