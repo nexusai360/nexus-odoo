@@ -1,5 +1,39 @@
 # STATUS — nexus-odoo
 
+> ## 2026-07-13 (A RECEITA DA VENDA FUTURA SUMIA , corrigido em produção; laudo pendente de decisão)
+>
+> **O dono relatou o faturamento travado em R$ 7,2 mi.** Não era sync nem cache (a nota que
+> ele emitiu às 15:03 estava no dashboard às 15:14). Era a regra: o faturamento identifica
+> venda pela palavra **"venda"** no nome da operação fiscal, e as **duas** notas da venda
+> futura não têm essa palavra ("Simples Faturamento para Entrega Futura 5922/6922" e
+> "Remessa de Mercadoria Originada de Encomenda 5117/6117"). A receita **não entrava nem na
+> cobrança nem na entrega**: sumia. **R$ 538 mil em silêncio desde 16/03.**
+>
+> **Decisão do dono (13/07), final para o assunto:** a receita da venda futura é a **REMESSA
+> (5117/6117)**. O simples faturamento (5922/6922) **nunca** conta no mês em que sai.
+>
+> **Em produção (PR #187, deploy validado):** as 9 remessas entraram e os 5 meses se
+> corrigiram sozinhos no ciclo do worker. mar R$ 5.659.933,37 | abr R$ 14.719.313,13 |
+> mai R$ 16.196.434,18 | jun R$ 18.603.497,24 | jul R$ 7.467.977,71.
+>
+> ### PRÓXIMA AÇÃO , decisão do dono sobre o laudo
+>
+> **`docs/pericia-classificacao-receita-2026-07-13.md`** (branch `docs/pericia-classificacao-receita`).
+> Perícia pedida por ele: dá para largar a palavra "venda" e classificar pela lógica fiscal?
+> **Dá, e a chave NÃO é o CFOP: é a NATUREZA DA OPERAÇÃO.** Bate **centavo a centavo** com o
+> faturamento de hoje (905 notas, R$ 62.647.155,63, **zero perdidas**) e ainda recupera a nota
+> complementar (R$ 2.697,98). **CFOP puro perderia R$ 684.340,18** de receita real. Proposta:
+> classificar por natureza (ids 1, 47, 107, 36, 31) + **alerta de natureza desconhecida**
+> (o item que impede o próximo prejuízo silencioso). **Nada implementado , aguardando o dono.**
+>
+> **Achado paralelo e grave (§6 do laudo): o cache PERDE itens de nota fiscal.** 8 notas, 152
+> itens que existem no Odoo e nunca chegaram ao cache. A marca d'água do sync avança para o
+> início do ciclo, mas o Odoo carimba `write_date` no início da transação e só torna visível
+> no commit: quem cai nessa janela **nunca mais é buscado**, e a reconciliação diária só olha
+> o que sumiu do Odoo, nunca o que falta no cache. Não afeta o faturamento (o `vr_nf` vem do
+> cabeçalho), mas contamina margem/curva ABC por item. Conserto: margem de segurança na marca
+> d'água + reconciliação nos dois sentidos.
+
 > ## 2026-07-13 (DATA DE INÍCIO DAS ANÁLISES + 3 ERROS DE NÚMERO , tudo em produção)
 >
 > Perícia da plataforma inteira contra a configuração **"Analisar dados a partir de"**
