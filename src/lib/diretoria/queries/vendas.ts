@@ -6,6 +6,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 
 import { corteAtualDate, janelaClampada } from "@/lib/corte-dados";
 import { siglaDeUf } from "@/lib/diretoria/uf";
+import { ufPorParticipante } from "@/lib/diretoria/queries/pedidos";
 import { buildEmpresaWhere } from "@/lib/metrics/_shared/empresa";
 
 export interface FiltrosVendas {
@@ -52,55 +53,134 @@ export interface LinhaFormaPagamento {
 }
 
 /**
- * C10 , Formas de pagamento no período. Agrega o valor das parcelas por forma de
- * pagamento (`formaPagamentoNome`), filtrando por `dataVencimento`. Parcelas sem
- * forma definida entram como "Não informado".
+ * C-07 , Formas de pagamento, em três visões.
  *
- * Dois pisos, porque a parcela é um título de um DOCUMENTO: o vencimento é grampeado à
- * data de início das análises (janela), e a parcela só conta se o PEDIDO de origem também
- * for de dentro da janela coberta. Sem o piso pelo documento, uma parcela de pedido antigo
- * que vence dentro do período entraria no gráfico , o corte é sobre o documento, não sobre
- * o vencimento. Parcela sem pedido de origem fica de fora (não há documento para datar).
+ * TROCA DE FONTE. Esta consulta lia a PARCELA do pedido, onde a forma de pagamento é um
+ * campo opcional e vinha vazia em 24% dos casos , daí o balde "Não informado" de R$ 23
+ * mi, o segundo maior do gráfico. Não era um problema de negócio: era a fonte errada.
+ *
+ * O documento de cobrança de verdade é o TÍTULO FINANCEIRO, e nele a forma de pagamento
+ * está preenchida em 5.536 de 5.537 títulos (99,98%). O "Não informado" vira um único
+ * título de R$ 31 mil , um resíduo real de cadastro, acionável.
+ *
+ * As três visões respondem perguntas diferentes, e antes estavam somadas num número só:
+ *
+ *   - PAGO: a nota foi emitida e o título já foi quitado. É a receita que entrou.
+ *   - A RECEBER: a nota foi emitida, a parcela ainda vai vencer (boleto, cartão
+ *     parcelado). A venda aconteceu; o dinheiro vem depois.
+ *   - CARTEIRA EM ABERTO: o pedido foi fechado com o cliente e a cobrança já está
+ *     programada, mas a NOTA AINDA NÃO SAIU. Como a receita só é reconhecida na nota,
+ *     isso ainda não é faturamento , é venda contratada esperando a entrega.
+ *
+ * Recorte pela data do DOCUMENTO (não pelo vencimento) e valor pelo `vr_documento` , é a
+ * única combinação que reproduz os números conferidos contra o cache.
  */
+export type VisaoPagamento = "pago" | "a_receber" | "carteira";
+
+export interface ResumoVisaoPagamento {
+  linhas: LinhaFormaPagamento[];
+  valorGeral: number;
+  titulos: number;
+  /** Títulos ainda provisórios no Odoo (não efetivados). Hoje são 15 de 5.537. */
+  provisorios: number;
+}
+
 export async function queryFormasPagamento(
   prisma: PrismaClient,
   filtros: FiltrosVendas,
-): Promise<{ linhas: LinhaFormaPagamento[]; valorGeral: number }> {
-  const pedidos = await prisma.fatoPedido.findMany({
-    where: { dataOrcamento: { gte: corteAtualDate() } },
-    select: { odooId: true },
-  });
-  const rows = await prisma.fatoPedidoParcela.findMany({
+): Promise<Record<VisaoPagamento, ResumoVisaoPagamento>> {
+  const titulos = await prisma.fatoFinanceiroTitulo.findMany({
     where: {
-      ...periodoWhere(filtros.periodoDe, filtros.periodoAte, "dataVencimento"),
-      pedidoId: { in: pedidos.map((p) => p.odooId) },
+      tipo: "a_receber",
+      ...periodoWhere(filtros.periodoDe, filtros.periodoAte, "dataDocumento"),
+      ...(filtros.empresaId ? { empresaId: filtros.empresaId } : {}),
     },
-    select: { formaPagamentoNome: true, valor: true },
+    select: {
+      notaFiscalId: true,
+      vrSaldo: true,
+      vrDocumento: true,
+      formaPagamentoNome: true,
+      provisorio: true,
+      participanteId: true,
+    },
   });
 
-  const map = new Map<string, { quantidade: number; valorTotal: number }>();
-  let valorGeral = 0;
-  for (const r of rows) {
-    const key = r.formaPagamentoNome ?? "Não informado";
-    const v = Number(r.valor);
-    const cur = map.get(key);
+  // Recorte por UF do cliente, como as demais consultas de vendas. Sem isto, um usuário
+  // restrito a um estado via o grupo inteiro , era um furo de acesso, não só de número.
+  const ufs = filtros.ufs && filtros.ufs.length ? new Set(filtros.ufs) : null;
+  const ufDe = ufs
+    ? await ufPorParticipante(
+        prisma,
+        [
+          ...new Set(
+            titulos
+              .map((t) => t.participanteId)
+              .filter((x): x is number => x != null),
+          ),
+        ],
+      )
+    : null;
+
+  const vazio = (): {
+    map: Map<string, { quantidade: number; valorTotal: number }>;
+    valorGeral: number;
+    titulos: number;
+    provisorios: number;
+  } => ({ map: new Map(), valorGeral: 0, titulos: 0, provisorios: 0 });
+
+  const acc: Record<VisaoPagamento, ReturnType<typeof vazio>> = {
+    pago: vazio(),
+    a_receber: vazio(),
+    carteira: vazio(),
+  };
+
+  for (const t of titulos) {
+    if (ufDe) {
+      const uf = t.participanteId != null ? ufDe.get(t.participanteId) ?? "??" : "??";
+      if (!ufs!.has(uf)) continue;
+    }
+
+    const temNota = t.notaFiscalId != null;
+    const saldo = Number(t.vrSaldo ?? 0);
+    const visao: VisaoPagamento = !temNota
+      ? "carteira"
+      : saldo <= 0
+        ? "pago"
+        : "a_receber";
+
+    const alvo = acc[visao];
+    const forma = t.formaPagamentoNome ?? "Não informado";
+    const v = Number(t.vrDocumento ?? 0);
+    const cur = alvo.map.get(forma);
     if (cur) {
       cur.quantidade += 1;
       cur.valorTotal += v;
     } else {
-      map.set(key, { quantidade: 1, valorTotal: v });
+      alvo.map.set(forma, { quantidade: 1, valorTotal: v });
     }
-    valorGeral += v;
+    alvo.valorGeral += v;
+    alvo.titulos += 1;
+    if (t.provisorio) alvo.provisorios += 1;
   }
 
-  const linhas = [...map.entries()]
-    .map(([formaPagamento, v]) => ({ formaPagamento, ...v }))
-    .sort(
-      (a, b) =>
-        b.valorTotal - a.valorTotal || a.formaPagamento.localeCompare(b.formaPagamento),
-    );
+  const finaliza = (a: ReturnType<typeof vazio>): ResumoVisaoPagamento => ({
+    linhas: [...a.map.entries()]
+      .map(([formaPagamento, v]) => ({ formaPagamento, ...v }))
+      .sort(
+        (x, y) =>
+          y.valorTotal - x.valorTotal ||
+          x.formaPagamento.localeCompare(y.formaPagamento),
+      ),
+    valorGeral: a.valorGeral,
+    titulos: a.titulos,
+    provisorios: a.provisorios,
+  });
 
-  return { linhas, valorGeral };
+  return {
+    pago: finaliza(acc.pago),
+    a_receber: finaliza(acc.a_receber),
+    carteira: finaliza(acc.carteira),
+  };
 }
 
 /**

@@ -9,6 +9,12 @@ function makePrisma() {
     fatoBuildState: { findMany: jest.fn() },
     syncState: { findMany: jest.fn() },
     fatoEstoqueSaldo: { findMany: jest.fn() },
+    // Sem o fato de locais construido, o filtro por classificacao nao filtra (fail-safe):
+    // o teste segue medindo o numero da arvore inteira, como antes.
+    fatoEstoqueLocal: {
+      count: jest.fn().mockResolvedValue(0),
+      findMany: jest.fn().mockResolvedValue([]),
+    },
   };
 }
 
@@ -23,7 +29,7 @@ describe("estoque_valor_armazem", () => {
   it("devolve estado:'preparando' quando FatoBuildState ausente", async () => {
     const ctx = makeCtx();
     (ctx.prisma.fatoBuildState.findMany as jest.Mock).mockResolvedValue([]);
-    const result = await estoqueValorArmazem.handler({}, ctx);
+    const result = await estoqueValorArmazem.handler({} as never, ctx);
     expect(result).toEqual({ estado: "preparando" });
   });
 
@@ -40,7 +46,7 @@ describe("estoque_valor_armazem", () => {
       { localNome: "Galpão A » Próprio", produtoId: 1, vrSaldo: 1000 },
       { localNome: "Virtual", produtoId: 2, vrSaldo: 400 },
     ]);
-    const result = await estoqueValorArmazem.handler({}, ctx);
+    const result = await estoqueValorArmazem.handler({} as never, ctx);
     expect(result).toMatchObject({ estado: "ok" });
     if (result.estado !== "preparando") {
       expect(result.dados.linhas).toHaveLength(2);

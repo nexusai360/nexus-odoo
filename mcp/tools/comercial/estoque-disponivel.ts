@@ -20,6 +20,8 @@ const linhaSchema = z.object({
   produtoNome: z.string().nullable(),
   saldo: z.number(),
   demanda: z.number(),
+  demandaValorVenda: z.number(),
+  demandaValorCusto: z.number(),
   disponivel: z.number(),
 });
 
@@ -27,6 +29,10 @@ const dados = z.object({
   total: z.number().int(),
   negativos: z.number().int(),
   linhas: z.array(linhaSchema),
+  /** Quando o job de atendimento completou pela ultima vez (null = nunca rodou). */
+  atendimento_sincronizado_em: z.string().nullable(),
+  /** true = demanda provisoria (caiu na quantidade cheia porque o job nao rodou). */
+  parcial: z.boolean().optional(),
   _RESPOSTA: z.string().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
 });
@@ -49,13 +55,28 @@ const outputSchema = z.union([
 type Input = z.infer<typeof inputSchema>;
 type Output = z.infer<typeof outputSchema>;
 
+/** Renomeia o status do atendimento para o contrato do envelope (snake_case). */
+function shape(d: Awaited<ReturnType<typeof queryEstoqueDisponivel>>) {
+  const { atendimentoSincronizadoEm, parcial, ...resto } = d;
+  return {
+    ...resto,
+    atendimento_sincronizado_em: atendimentoSincronizadoEm,
+    ...(parcial ? { parcial: true } : {}),
+  };
+}
+
+const AVISO_PARCIAL =
+  "Valor provisório: o atendimento ainda não sincronizou hoje, então a demanda conta o " +
+  "pedido inteiro (inclusive o que já foi entregue) e a falta pode estar exagerada.";
+
 export const comercialEstoqueDisponivel: ToolEntry<Input, Output> = {
   id: "comercial_estoque_disponivel",
   dominio: "comercial",
   descricao:
-    "Estoque disponivel por produto = saldo em estoque menos o comprometido em " +
-    "demanda aberta. Fica NEGATIVO quando ha mais demanda que saldo (precisa " +
-    "comprar). Use para 'estoque disponivel de X', 'o que precisa comprar', " +
+    "Estoque disponivel por produto = saldo do estoque PRÓPRIO menos o que falta " +
+    "entregar da demanda aberta (não o pedido inteiro). Fica NEGATIVO quando ha mais " +
+    "demanda que saldo (precisa comprar). Traz também o valor dessa demanda a preço de " +
+    "venda e a custo. Use para 'estoque disponivel de X', 'o que precisa comprar', " +
     "'produtos com estoque negativo'. Aceita busca por produto e recorte de negativos.",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
@@ -64,21 +85,22 @@ export const comercialEstoqueDisponivel: ToolEntry<Input, Output> = {
     const envelope = await withFreshness(
       ctx.prisma,
       ["fato_estoque_saldo", "fato_pedido_item", "fato_pedido"],
-      () => queryEstoqueDisponivel(ctx.prisma, input),
+      async () => shape(await queryEstoqueDisponivel(ctx.prisma, input)),
     );
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
 
     const n = (v: number) => Math.round(v).toLocaleString("pt-BR");
     const primeiro = d.linhas[0];
-    const resposta =
+    let resposta =
       d.total === 0
         ? "Nenhum produto encontrado para esse filtro."
         : input.produto && primeiro
-          ? `${primeiro.produtoNome}: saldo ${n(primeiro.saldo)}, demanda ${n(primeiro.demanda)}, ` +
+          ? `${primeiro.produtoNome}: saldo ${n(primeiro.saldo)}, falta entregar ${n(primeiro.demanda)}, ` +
             `disponivel ${n(primeiro.disponivel)}${primeiro.disponivel < 0 ? " (precisa comprar)" : ""}.`
           : `${d.negativos} produtos com estoque negativo (precisam de compra). ` +
             `Mostrando ${d.linhas.length} com menor disponibilidade.`;
+    if (d.parcial) resposta = `${resposta} ${AVISO_PARCIAL}`;
 
     return {
       ...envelope,

@@ -22,6 +22,10 @@ import {
   pedeAntesDoCorte,
 } from "@/lib/corte-dados";
 import { limparNomeLocal } from "@/lib/reports/local-nome";
+import {
+  whereLocalDoEscopo,
+  type EscopoLocal,
+} from "@/lib/estoque/locais-por-classificacao";
 // tsconfig raiz usa moduleResolution:"bundler" (Next/Turbopack), mcp/tsconfig
 // usa "nodenext". Em runtime ambos resolvem este caminho corretamente; sem
 // extensao para o Turbopack aceitar. O tsc do MCP reclama na compilacao mas
@@ -38,6 +42,15 @@ import { searchProductByNameWithMetaCanonical } from "./_search-helpers";
 //
 // MOVIMENTO (fato_estoque_movimento) e HISTORICO (documento com data): entradas/saidas,
 // top movimentados e a reconstrucao do comparativo TEM que respeitar o piso.
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Classificacao de local (fisico | demonstracao | todos)
+//
+// A arvore de locais do Odoo tem tres raizes e so a "Proprio" e estoque da casa. Quem
+// consulta escolhe o escopo; aqui o padrao e "todos" (a arvore inteira) porque este
+// nucleo tambem serve os relatorios antigos, que nasceram sem esse recorte. As tools do
+// agente Nex passam "fisico" por padrao, para falar o mesmo numero que a diretoria.
 // ---------------------------------------------------------------------------
 
 /** Where de periodo do fato de movimento, ja grampeado a data de inicio das analises. */
@@ -143,7 +156,13 @@ export interface SaldoProdutoData {
  */
 export async function querySaldoProduto(
   prisma: PrismaClient,
-  filtros: { armazemId?: number; familiaId?: number; termo?: string },
+  filtros: {
+    armazemId?: number;
+    familiaId?: number;
+    termo?: string;
+    /** Escopo da arvore de locais. Sem valor, a arvore inteira (compatibilidade). */
+    classificacao?: EscopoLocal;
+  },
 ): Promise<SaldoProdutoData> {
   // Busca tolerante a acento: quando vier `termo`, usa helper SQL com unaccent
   // + fallback pg_trgm e filtra os fatos pelos produtoIds retornados, em vez
@@ -169,11 +188,17 @@ export async function querySaldoProduto(
     }
   }
 
+  // Escopo da arvore de locais. Um armazem pedido explicitamente manda: quem pergunta
+  // "o saldo no armazem X" quer o X, seja ele qual for na arvore.
+  const escopo = filtros.armazemId
+    ? {}
+    : await whereLocalDoEscopo(prisma, filtros.classificacao ?? "todos");
+
   // groupBy não suporta _count(distinct), então buscamos os dados brutos e
   // agregamos em JS , dataset cabe confortavelmente em memória.
   const rows = await prisma.fatoEstoqueSaldo.findMany({
     where: {
-      ...(filtros.armazemId ? { localId: filtros.armazemId } : {}),
+      ...(filtros.armazemId ? { localId: filtros.armazemId } : escopo),
       ...(filtros.familiaId ? { familiaId: filtros.familiaId } : {}),
       ...(produtoIdsFiltro ? { produtoId: { in: produtoIdsFiltro } } : {}),
     },
@@ -339,7 +364,11 @@ export async function queryValorArmazem(
   // data->>'nome_completo', match por PREFIXO , o localNome do fato e rotulo
   // limpo, sem hierarquia). Ex.: ["Próprio"] = so estoque fisico;
   // ["Terceiros / Demonstração"] = equipamentos em demonstracao.
-  filtro?: { prefixosArvore?: string[] },
+  filtro?: {
+    prefixosArvore?: string[];
+    /** Escopo da arvore de locais. Ignorado quando vem `prefixosArvore`. */
+    classificacao?: EscopoLocal;
+  },
 ): Promise<{ kpis: { valorTotal: number; numArmazens: number }; linhasBruto: { armazem: string; valor: number; numProdutos: number }[] }> {
   let localIds: number[] | undefined;
   const prefixos = (filtro?.prefixosArvore ?? []).filter((p) => p.trim().length > 1);
@@ -354,8 +383,21 @@ export async function queryValorArmazem(
       return { kpis: { valorTotal: 0, numArmazens: 0 }, linhasBruto: [] };
     }
   }
+
+  // Pedir um ramo da arvore pelo nome ("Terceiros / Demonstração") e pedir uma
+  // classificacao sao duas formas de dizer a mesma coisa. Se as duas viessem juntas, a
+  // intersecao poderia dar zero sem ninguem entender por que; entao o ramo explicito
+  // manda, e a classificacao vale para a consulta sem ramo.
+  const escopo =
+    localIds !== undefined
+      ? {}
+      : await whereLocalDoEscopo(prisma, filtro?.classificacao ?? "todos");
+
   const rows = await prisma.fatoEstoqueSaldo.findMany({
-    where: { vrSaldo: { gt: 0 }, ...(localIds ? { localId: { in: localIds } } : {}) },
+    where: {
+      vrSaldo: { gt: 0 },
+      ...(localIds ? { localId: { in: localIds } } : escopo),
+    },
     select: { localNome: true, produtoId: true, vrSaldo: true },
   });
 
@@ -678,15 +720,19 @@ export interface ConcentracaoData {
  */
 export async function queryConcentracao(
   prisma: PrismaClient,
+  filtros: { classificacao?: EscopoLocal } = {},
 ): Promise<{ familiasBruto: { rotulo: string; valor: number }[]; marcasBruto: { rotulo: string; valor: number }[] }> {
+  const escopo = await whereLocalDoEscopo(prisma, filtros.classificacao ?? "todos");
+  const where = { vrSaldo: { gt: 0 }, ...escopo };
+
   const porFamilia = await prisma.fatoEstoqueSaldo.groupBy({
     by: ["familiaNome"],
-    where: { vrSaldo: { gt: 0 } },
+    where,
     _sum: { vrSaldo: true },
   });
   const porMarca = await prisma.fatoEstoqueSaldo.groupBy({
     by: ["marcaNome"],
-    where: { vrSaldo: { gt: 0 } },
+    where,
     _sum: { vrSaldo: true },
   });
 

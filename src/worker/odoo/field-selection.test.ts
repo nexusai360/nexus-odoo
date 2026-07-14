@@ -100,3 +100,63 @@ describe("getModelFields", () => {
     expect(fields).not.toContain("arquivo");
   });
 });
+
+describe("extraFields , campos computados que o negocio precisa", () => {
+  it("inclui os campos computados declarados no catalogo", async () => {
+    // sped.documento.item declara `quantidade_a_atender_pedido` e
+    // `quantidade_atendida_pedido` , computados (store=false), mas sao a unica fonte
+    // de "quanto deste pedido ainda falta entregar".
+    const client = fakeClient({
+      id: { type: "integer", store: true },
+      quantidade: { type: "monetary", store: true },
+      quantidade_a_atender_pedido: { type: "monetary", store: false },
+      quantidade_atendida_pedido: { type: "monetary", store: false },
+      outro_computado: { type: "char", store: false },
+    });
+
+    const fields = await getModelFields(client, "sped.documento.item");
+
+    expect(fields).toContain("quantidade_a_atender_pedido");
+    expect(fields).toContain("quantidade_atendida_pedido");
+    // Os demais computados continuam de fora: so entra o que o catalogo pediu.
+    expect(fields).not.toContain("outro_computado");
+  });
+
+  it("nao pede campo que o modelo do Odoo nao tem", async () => {
+    // Se o Odoo mudar e o campo sumir, pedi-lo faria o RPC inteiro falhar.
+    const client = fakeClient({
+      id: { type: "integer", store: true },
+      quantidade: { type: "monetary", store: true },
+    });
+
+    const fields = await getModelFields(client, "sped.documento.item");
+
+    expect(fields).not.toContain("quantidade_a_atender_pedido");
+    expect(fields).toEqual(["id", "quantidade"]);
+  });
+
+  it("nao duplica campo que ja era armazenado", async () => {
+    const client = fakeClient({
+      id: { type: "integer", store: true },
+      quantidade_a_atender_pedido: { type: "monetary", store: true },
+      quantidade_atendida_pedido: { type: "monetary", store: false },
+    });
+
+    const fields = await getModelFields(client, "sped.documento.item");
+
+    expect(
+      fields.filter((f) => f === "quantidade_a_atender_pedido"),
+    ).toHaveLength(1);
+  });
+
+  it("modelo sem extraFields continua sem nenhum computado", async () => {
+    const client = fakeClient({
+      id: { type: "integer", store: true },
+      computado: { type: "char", store: false },
+    });
+
+    const fields = await getModelFields(client, "res.partner");
+
+    expect(fields).toEqual(["id"]);
+  });
+});

@@ -50,12 +50,24 @@ export async function getModelFields(
   // alguns módulos customizados do Odoo, mas é sempre necessário).
   if (!fields.includes("id")) fields.unshift("id");
 
+  const entry = MODEL_CATALOG.find((e) => e.odooModel === model);
+
   // Exclusão por modelo: remove campos sensíveis/blobs declarados no catálogo
   // (ex.: senha e arquivo de sped.certificado). Controla só o que é copiado
   // para o nosso cache , não altera nada no Odoo.
-  const exclude = MODEL_CATALOG.find((e) => e.odooModel === model)?.excludeFields;
-  const finalFields =
+  const exclude = entry?.excludeFields;
+  let finalFields =
     exclude && exclude.length ? fields.filter((f) => !exclude.includes(f)) : fields;
+
+  // Campos computados que o negócio precisa (store=false, por isso não vieram no
+  // filtro acima). Só os que o catálogo declara explicitamente, e só os que o modelo
+  // realmente tem , se o Odoo mudar e o campo sumir, não pedimos um campo inexistente
+  // (o RPC inteiro falharia).
+  const extras = entry?.extraFields;
+  if (extras?.length) {
+    const novos = extras.filter((f) => f in meta && !finalFields.includes(f));
+    finalFields = [...finalFields, ...novos];
+  }
 
   cache.set(model, finalFields);
   return finalFields;

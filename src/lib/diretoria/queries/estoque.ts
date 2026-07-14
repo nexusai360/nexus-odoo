@@ -13,6 +13,12 @@ import { clampDateAoCorte, corteAtualDate, janelaClampada } from "@/lib/corte-da
 import { diasRestantes, statusPrazo, type StatusPrazo } from "@/lib/diretoria/cores";
 import { VENDA_FUTURA } from "@/lib/fiscal/regras/venda-futura-policy";
 import { getIndiceEstoque, aplicarIndice } from "@/lib/indice-estoque";
+import { atendimentoSincronizado } from "@/lib/diretoria/atendimento-status";
+import type { ClassificacaoLocal } from "@/lib/estoque/classificacao-local";
+import {
+  localIdsPorClassificacao,
+  whereLocal,
+} from "@/lib/estoque/locais-por-classificacao";
 
 export interface IndicadoresEstoque {
   /** O número do KPI: valor a custo DIVIDIDO pelo índice configurado (Diretoria > Vendas). */
@@ -50,14 +56,17 @@ export async function queryIndicadoresEstoque(
   prisma: PrismaClient,
 ): Promise<IndicadoresEstoque> {
   const indice = await getIndiceEstoque(prisma);
+  // Só o que é da empresa e está em casa. Sem este filtro, o KPI somava também o
+  // estoque Virtual (R$ 10,2 mi) e o que está em poder de Terceiros (R$ 6,1 mi).
+  const fisico = await localIdsPorClassificacao(prisma, "fisico");
 
   // Só o saldo POSITIVO: zerado não é estoque, e negativo é furo de inventário.
   const rows = await prisma.fatoEstoqueSaldo.findMany({
-    where: { quantidade: { gt: 0 } },
+    where: { quantidade: { gt: 0 }, ...whereLocal(fisico) },
     select: { quantidade: true, produtoId: true, localId: true },
   });
   const linhasNegativas = await prisma.fatoEstoqueSaldo.count({
-    where: { quantidade: { lt: 0 } },
+    where: { quantidade: { lt: 0 }, ...whereLocal(fisico) },
   });
 
   const produtoIds = [
@@ -120,22 +129,38 @@ async function agrupaSaldo(
   prisma: PrismaClient,
   campo: "localNome" | "familiaNome" | "marcaNome",
   semNome: string,
+  classificacao: ClassificacaoLocal = "fisico",
 ): Promise<{ linhas: LinhaAgrupada[]; valorGeral: number }> {
+  const filtro = await localIdsPorClassificacao(prisma, classificacao);
   // Valorizacao a CUSTO (quantidade x preco_custo), a mesma do KPI , senao o donut e o
   // card da mesma tela contariam o estoque por criterios diferentes.
   const [rows, custos] = await Promise.all([
     prisma.fatoEstoqueSaldo.findMany({
       // Mesma regra do KPI: so o saldo POSITIVO (zerado nao e estoque, negativo e furo).
-      where: { quantidade: { gt: 0 } },
-      select: { [campo]: true, quantidade: true, produtoId: true },
+      where: { quantidade: { gt: 0 }, ...whereLocal(filtro) },
+      select: {
+        [campo]: true,
+        quantidade: true,
+        produtoId: true,
+        localId: true,
+      },
     }),
     custoPorProduto(prisma),
   ]);
-  const map = new Map<string, { quantidade: number; valorTotal: number }>();
+
+  // Agrupa por local_id quando o corte e por local: existem DOIS locais com o nome
+  // identico ("Proprio / INATIVO"), e agrupar pelo texto os fundiria numa linha so.
+  // O nome continua sendo o rotulo; a identidade e o id.
+  const porLocal = campo === "localNome";
+  const map = new Map<
+    string,
+    { rotulo: string; quantidade: number; valorTotal: number }
+  >();
   let valorGeral = 0;
   for (const r of rows) {
-    const chave = (r as Record<string, unknown>)[campo] as string | null;
-    const k = chave ?? semNome;
+    const nome = (r as Record<string, unknown>)[campo] as string | null;
+    const rotulo = nome ?? semNome;
+    const k = porLocal ? String(r.localId ?? "sem-local") : rotulo;
     const qtd = Number(r.quantidade ?? 0);
     const v = qtd * (r.produtoId != null ? custos.get(r.produtoId) ?? 0 : 0);
     const cur = map.get(k);
@@ -143,19 +168,28 @@ async function agrupaSaldo(
       cur.quantidade += qtd;
       cur.valorTotal += v;
     } else {
-      map.set(k, { quantidade: qtd, valorTotal: v });
+      map.set(k, { rotulo, quantidade: qtd, valorTotal: v });
     }
     valorGeral += v;
   }
-  const linhas = [...map.entries()]
-    .map(([chave, v]) => ({ chave, ...v }))
+  const linhas = [...map.values()]
+    .map((v) => ({
+      chave: v.rotulo,
+      quantidade: v.quantidade,
+      valorTotal: v.valorTotal,
+    }))
     .sort((a, b) => b.valorTotal - a.valorTotal || a.chave.localeCompare(b.chave));
   return { linhas, valorGeral };
 }
 
-/** A2 , Estoque por local (valor por armazém/local). */
+/** A2 , Estoque por local (valor por armazém/local). Só o estoque físico. */
 export function queryEstoquePorLocal(prisma: PrismaClient) {
   return agrupaSaldo(prisma, "localNome", "Sem local");
+}
+
+/** Estoque parado na casa do cliente (demonstração). Não é vendável. */
+export function queryEstoqueDemonstracao(prisma: PrismaClient) {
+  return agrupaSaldo(prisma, "localNome", "Sem local", "demonstracao");
 }
 
 /** A5 , Distribuição do estoque por família. */
@@ -169,56 +203,56 @@ export function queryEstoquePorMarca(prisma: PrismaClient) {
 }
 
 export interface SerialLinha {
-  serial: string | null;
+  serial: string;
   produto: string | null;
   local: string | null;
+  saldo: number;
   valorCusto: number;
-  chegada: string | null;
-  saida: string | null;
-  idadeDias: number | null;
 }
 
 /**
- * A6 , Lista de seriais (em estoque = sem data de saída), com idade em dias.
- * Foto do estoque de agora: a data de início das análises não se aplica. `dataCompra` aqui
- * é a idade de um item que ESTÁ no armazém hoje, não um documento do histórico , grampear
- * esconderia justamente o item parado há mais tempo, que é o ponto do relatório.
+ * A6 , Seriais que estão em estoque, com o local onde estão e o saldo.
+ *
+ * Antes esta tela lia `fato_serial`, o cadastro de lote/série do Odoo: listava todo
+ * serial já registrado e não sabia onde ele estava. Dos 3.828 que aparecia como "em
+ * estoque", **100% tinham local nulo** , a fonte só preenche o local de quem já saiu. Era
+ * uma lista de números, sem saldo e sem lugar.
+ *
+ * Agora lê `fato_serial_saldo`, que nasce da rastreabilidade do saldo de hoje e casa
+ * serial + local + saldo. Só entra quem tem saldo positivo (zerado já saiu, negativo é
+ * furo de inventário), e o padrão é mostrar só o que está em casa.
+ *
+ * Foto do agora: a data de início das análises não se aplica (não há documento com data
+ * para filtrar , o que está no armazém hoje está no armazém hoje).
  */
 export async function querySeriais(
   prisma: PrismaClient,
-  hoje: Date,
-  limit = 50,
+  limit = 200,
+  classificacao: ClassificacaoLocal = "fisico",
 ): Promise<{ linhas: SerialLinha[]; total: number }> {
-  // "Em estoque" = SEM data de saída. O `where` não tinha esse filtro, embora o título e a
-  // idade em dias dependam dele: em produção, 4.984 dos 8.860 seriais já haviam saído, e a
-  // tela contava todos , o total aparecia com mais que o dobro do real (3.876). É o mesmo
-  // critério que `queryIndicadoresAvancadosEstoque` já usava para a idade média.
-  const emEstoque = { serial: { not: null }, dataSaida: null };
-  const total = await prisma.fatoSerial.count({ where: emEstoque });
-  const rows = await prisma.fatoSerial.findMany({
-    where: emEstoque,
-    orderBy: [{ dataCompra: "desc" }],
-    take: limit,
-    select: {
-      serial: true,
-      produtoNome: true,
-      localNome: true,
-      valorCusto: true,
-      dataCompra: true,
-      dataSaida: true,
-    },
-  });
-  const MS = 86_400_000;
+  const where = { classificacao };
+  const [total, rows] = await Promise.all([
+    prisma.fatoSerialSaldo.count({ where }),
+    prisma.fatoSerialSaldo.findMany({
+      where,
+      orderBy: [{ localNome: "asc" }, { produtoNome: "asc" }, { serial: "asc" }],
+      take: limit,
+      select: {
+        serial: true,
+        produtoNome: true,
+        localNome: true,
+        saldo: true,
+        valorCusto: true,
+      },
+    }),
+  ]);
+
   const linhas = rows.map((r) => ({
     serial: r.serial,
     produto: r.produtoNome,
     local: r.localNome,
+    saldo: Number(r.saldo ?? 0),
     valorCusto: Number(r.valorCusto ?? 0),
-    chegada: r.dataCompra ? r.dataCompra.toISOString().slice(0, 10) : null,
-    saida: r.dataSaida ? r.dataSaida.toISOString().slice(0, 10) : null,
-    idadeDias: r.dataCompra
-      ? Math.floor((hoje.getTime() - r.dataCompra.getTime()) / MS)
-      : null,
   }));
   return { linhas, total };
 }
@@ -250,9 +284,10 @@ export async function queryCatalogoEstoque(
   // Valorizacao a CUSTO (quantidade x preco_custo), a MESMA do KPI e do donut. O `vr_saldo`
   // que vem do Odoo e valorizado por outro criterio: usa-lo aqui fazia a mesma tela mostrar
   // dois valores diferentes para o mesmo estoque.
+  const fisico = await localIdsPorClassificacao(prisma, "fisico");
   const [rows, custos] = await Promise.all([
     prisma.fatoEstoqueSaldo.findMany({
-      where: { quantidade: { gt: 0 } },
+      where: { quantidade: { gt: 0 }, ...whereLocal(fisico) },
       select: {
         produtoId: true,
         produtoNome: true,
@@ -375,9 +410,10 @@ export async function queryEstoqueGranular(
   // A CUSTO, igual ao KPI e ao catalogo: e sobre estas linhas que o construtor recomputa os
   // indicadores quando o usuario cruza filtros. Se aqui fosse `vr_saldo`, o mesmo card mudaria
   // de valor so por causa do filtro.
+  const fisico = await localIdsPorClassificacao(prisma, "fisico");
   const [rows, custos] = await Promise.all([
     prisma.fatoEstoqueSaldo.findMany({
-      where: { quantidade: { gt: 0 } },
+      where: { quantidade: { gt: 0 }, ...whereLocal(fisico) },
       select: { produtoId: true, produtoNome: true, familiaNome: true, marcaNome: true, localNome: true, quantidade: true },
     }),
     custoPorProduto(prisma),
@@ -546,19 +582,31 @@ export async function queryIndicadoresAvancadosEstoque(
   const desde30 = clampDateAoCorte(new Date(hoje.getTime() - 30 * MS));
   const diasJanela = Math.max(1, Math.round((hoje.getTime() - desde30.getTime()) / MS));
 
-  const [saldos, custos, vendidos, seriais] = await Promise.all([
-    prisma.fatoEstoqueSaldo.findMany({ where: { quantidade: { gt: 0 } }, select: { quantidade: true, produtoId: true } }),
+  const fisico = await localIdsPorClassificacao(prisma, "fisico");
+  const [saldos, custos, vendidos, seriaisSaldo] = await Promise.all([
+    prisma.fatoEstoqueSaldo.findMany({ where: { quantidade: { gt: 0 }, ...whereLocal(fisico) }, select: { quantidade: true, produtoId: true } }),
     // Mesma valorizacao a CUSTO do KPI: o giro e a cobertura sao lidos lado a lado com ele.
     custoPorProduto(prisma),
     prisma.fatoNotaFiscalItem.findMany({
       where: { entradaSaida: "1", dataEmissao: { gte: desde30, lte: hoje } },
       select: { quantidade: true },
     }),
-    prisma.fatoSerial.findMany({
-      where: { dataSaida: null, dataCompra: { not: null } },
-      select: { dataCompra: true },
+    // Os seriais que ESTÃO em estoque, pela mesma fonte que a tabela A-06 usa , senão a
+    // idade média seria calculada sobre uma lista de seriais e a tela mostraria outra.
+    // A data de compra só existe no cadastro de lote/série, então cruzamos as duas: a
+    // rastreabilidade diz quem está em casa, o cadastro diz desde quando.
+    prisma.fatoSerialSaldo.findMany({
+      where: { classificacao: "fisico" },
+      select: { serial: true },
     }),
   ]);
+  const seriaisEmCasa = seriaisSaldo.map((s) => s.serial);
+  const seriais = seriaisEmCasa.length
+    ? await prisma.fatoSerial.findMany({
+        where: { serial: { in: seriaisEmCasa }, dataCompra: { not: null } },
+        select: { dataCompra: true },
+      })
+    : [];
 
   let estoqueQtd = 0;
   let valorEstoque = 0;
@@ -696,7 +744,12 @@ export async function queryEstoqueDisponivelDiretoria(
   // Saldo físico agregado por produto. FOTO do agora (fato_estoque_saldo não tem data de
   // documento): a data de início das análises não se aplica aqui , o que está no armazém
   // hoje está no armazém hoje, independente de quando entrou.
+  const fisico = await localIdsPorClassificacao(prisma, "fisico");
+  // Mesma regra do KPI e da necessidade de compra: so o saldo POSITIVO. Antes esta query
+  // somava tambem as linhas negativas (furo de inventario), o que rebaixava o saldo do
+  // produto e fabricava "disponivel negativo" que nao existia.
   const saldos = await prisma.fatoEstoqueSaldo.findMany({
+    where: { quantidade: { gt: 0 }, ...whereLocal(fisico) },
     select: { produtoId: true, produtoNome: true, quantidade: true },
   });
   const saldoMap = new Map<number, { nome: string | null; q: number }>();
@@ -730,22 +783,45 @@ export async function queryEstoqueDisponivelDiretoria(
     select: { odooId: true },
   });
   const ids = abertos.map((a) => a.odooId);
+  const status = await atendimentoSincronizado(prisma);
   const itens = ids.length
     ? await prisma.fatoPedidoItem.findMany({
         where: { pedidoId: { in: ids } },
-        select: { produtoId: true, quantidade: true },
+        select: {
+          produtoId: true,
+          produtoNome: true,
+          quantidade: true,
+          quantidadeAAtender: true,
+        },
       })
     : [];
   const demMap = new Map<number, number>();
+  const nomeDemanda = new Map<number, string | null>();
   for (const it of itens) {
     if (it.produtoId == null) continue;
-    demMap.set(it.produtoId, (demMap.get(it.produtoId) ?? 0) + Number(it.quantidade ?? 0));
+    // O que compromete o estoque é o que falta ENTREGAR, não o que foi pedido. Um pedido
+    // 90% entregue travava 100% do estoque, e o "disponível" ficava negativo à toa.
+    const cheia = Number(it.quantidade ?? 0);
+    // Piso em zero: o Odoo devolve "a atender" NEGATIVO quando entregaram mais do que
+    // foi pedido (o pedido 2305 pediu 2 e recebeu 3). Entregar a mais nao devolve
+    // mercadoria ao estoque, entao isso nao e demanda negativa , sem o piso, o excesso
+    // de um pedido abatia a falta de outro e a necessidade de compra saia menor.
+    const compromete = Math.max(
+      0,
+      status.ok ? Number(it.quantidadeAAtender ?? 0) : cheia,
+    );
+    demMap.set(it.produtoId, (demMap.get(it.produtoId) ?? 0) + compromete);
+    if (!nomeDemanda.has(it.produtoId)) nomeDemanda.set(it.produtoId, it.produtoNome);
   }
 
   const linhas: EstoqueDisponivelLinha[] = [];
   let negativos = 0;
   let unidadesAComprar = 0;
-  for (const [produtoId, { nome, q }] of saldoMap) {
+  const todosProdutos = new Set([...saldoMap.keys(), ...demMap.keys()]);
+  for (const produtoId of todosProdutos) {
+    const saldo = saldoMap.get(produtoId);
+    const q = saldo?.q ?? 0;
+    const nome = saldo?.nome ?? nomeDemanda.get(produtoId) ?? null;
     const demanda = demMap.get(produtoId) ?? 0;
     const disponivel = q - demanda;
     if (disponivel < 0) {
@@ -757,8 +833,176 @@ export async function queryEstoqueDisponivelDiretoria(
   linhas.sort((a, b) => a.disponivel - b.disponivel || (b.demanda - a.demanda));
   return {
     linhas: linhas.slice(0, limite),
-    produtos: saldoMap.size,
+    produtos: todosProdutos.size,
     negativos,
     unidadesAComprar,
+  };
+}
+
+export interface SaldoPorDeposito {
+  local: string;
+  saldo: number;
+}
+
+export interface NecessidadeCompraLinha {
+  produtoId: number;
+  produto: string | null;
+  /** Quanto ainda falta entregar dos pedidos em aberto. */
+  demanda: number;
+  /** Quanto existe nos depósitos próprios. */
+  saldoFisico: number;
+  /** O que falta comprar: demanda menos saldo (nunca negativo). */
+  falta: number;
+  /** Custo estimado da compra (falta x preço de custo). */
+  custoEstimado: number;
+  /** Onde a mercadoria que existe está , para decidir entre transferir e comprar. */
+  porDeposito: SaldoPorDeposito[];
+}
+
+/**
+ * A14 , Necessidade de compra.
+ *
+ * O que os clientes já pediram e ainda não recebemos, menos o que temos em casa:
+ *
+ *     falta(produto) = max(0, demanda_a_atender - saldo_fisico)
+ *
+ * A demanda é a mesma "demanda em aberta" canônica da plataforma (a regra definida com a
+ * Mariane: pedido de venda a cliente externo, aprovado, ainda sem NF ao consumidor final),
+ * mas contando o que **falta entregar**, não o que foi pedido.
+ *
+ * O saldo é só o dos depósitos próprios , o que está em poder de terceiros ou em local
+ * virtual não pode atender pedido nenhum.
+ *
+ * A conta é NACIONAL: a operação transfere mercadoria entre as filiais, então quem decide
+ * a compra olha o grupo inteiro. O drill-down por depósito existe para o time ver ONDE a
+ * mercadoria está e escolher entre transferir e comprar.
+ *
+ * Não há estoque mínimo nesta conta porque o Odoo do cliente não tem esse parâmetro
+ * preenchido (`fato_estoque_min_max` está vazia). Lead time e mercadoria em trânsito
+ * ficaram para uma segunda onda.
+ */
+export async function queryNecessidadeCompra(
+  prisma: PrismaClient,
+  limite = 100,
+): Promise<{
+  linhas: NecessidadeCompraLinha[];
+  produtosEmFalta: number;
+  unidadesAComprar: number;
+  custoTotalEstimado: number;
+  atendimentoSincronizado: boolean;
+}> {
+  const [fisico, status] = await Promise.all([
+    localIdsPorClassificacao(prisma, "fisico"),
+    atendimentoSincronizado(prisma),
+  ]);
+
+  const [saldos, custos, abertos] = await Promise.all([
+    prisma.fatoEstoqueSaldo.findMany({
+      where: { quantidade: { gt: 0 }, ...whereLocal(fisico) },
+      select: {
+        produtoId: true,
+        produtoNome: true,
+        quantidade: true,
+        localNome: true,
+      },
+    }),
+    custoPorProduto(prisma),
+    prisma.fatoPedido.findMany({
+      where: {
+        dataOrcamento: { gte: corteAtualDate() },
+        ...(VENDA_FUTURA.RESERVA_ESTOQUE_ATE_REMESSA
+          ? {
+              OR: [
+                { bucketDemanda: "ABERTA" },
+                { categoriaOperacao: "simples_faturamento" },
+              ],
+            }
+          : { bucketDemanda: "ABERTA" }),
+      },
+      select: { odooId: true },
+    }),
+  ]);
+
+  // Saldo por produto, e onde ele está.
+  const saldoMap = new Map<
+    number,
+    { nome: string | null; total: number; porLocal: Map<string, number> }
+  >();
+  for (const s of saldos) {
+    if (s.produtoId == null) continue;
+    const q = Number(s.quantidade ?? 0);
+    const cur = saldoMap.get(s.produtoId) ?? {
+      nome: s.produtoNome,
+      total: 0,
+      porLocal: new Map<string, number>(),
+    };
+    cur.total += q;
+    const local = s.localNome ?? "Sem local";
+    cur.porLocal.set(local, (cur.porLocal.get(local) ?? 0) + q);
+    if (!cur.nome && s.produtoNome) cur.nome = s.produtoNome;
+    saldoMap.set(s.produtoId, cur);
+  }
+
+  // Demanda por produto: o que falta entregar dos pedidos em aberto.
+  const ids = abertos.map((a) => a.odooId);
+  const itens = ids.length
+    ? await prisma.fatoPedidoItem.findMany({
+        where: { pedidoId: { in: ids } },
+        select: {
+          produtoId: true,
+          produtoNome: true,
+          quantidade: true,
+          quantidadeAAtender: true,
+        },
+      })
+    : [];
+
+  const demanda = new Map<number, { nome: string | null; q: number }>();
+  for (const it of itens) {
+    if (it.produtoId == null) continue;
+    const cheia = Number(it.quantidade ?? 0);
+    const falta = status.ok ? Number(it.quantidadeAAtender ?? 0) : cheia;
+    if (falta <= 0) continue;
+    const cur = demanda.get(it.produtoId);
+    if (cur) cur.q += falta;
+    else demanda.set(it.produtoId, { nome: it.produtoNome, q: falta });
+  }
+
+  const linhas: NecessidadeCompraLinha[] = [];
+  let unidadesAComprar = 0;
+  let custoTotalEstimado = 0;
+
+  for (const [produtoId, dem] of demanda) {
+    const saldo = saldoMap.get(produtoId);
+    const saldoFisico = saldo?.total ?? 0;
+    const falta = dem.q - saldoFisico;
+    if (falta <= 0) continue; // o que já temos em casa não precisa ser comprado
+
+    const custoUnit = custos.get(produtoId) ?? 0;
+    const custoEstimado = falta * custoUnit;
+    unidadesAComprar += falta;
+    custoTotalEstimado += custoEstimado;
+
+    linhas.push({
+      produtoId,
+      produto: dem.nome ?? saldo?.nome ?? null,
+      demanda: dem.q,
+      saldoFisico,
+      falta,
+      custoEstimado,
+      porDeposito: [...(saldo?.porLocal ?? new Map())]
+        .map(([local, s]) => ({ local, saldo: s }))
+        .sort((a, b) => b.saldo - a.saldo),
+    });
+  }
+
+  linhas.sort((a, b) => b.falta - a.falta || b.custoEstimado - a.custoEstimado);
+
+  return {
+    linhas: linhas.slice(0, limite),
+    produtosEmFalta: linhas.length,
+    unidadesAComprar,
+    custoTotalEstimado,
+    atendimentoSincronizado: status.ok,
   };
 }

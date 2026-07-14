@@ -4,11 +4,10 @@
 // MESMOS componentes ricos de Estoque (donut com centro, barras interativas,
 // ranking de cards, distribuição dinâmica, mapa do Brasil, tabela rica).
 
-import { useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { CircleDollarSign, ShoppingBag, Receipt, Percent } from "lucide-react";
 
 import { KpiButton } from "@/components/diretoria/kit/kpi-button";
-import { DonutChart } from "@/components/diretoria/charts/donut-chart";
 import { InteractiveBarChart } from "@/components/charts/interactive/bar-chart";
 import { RankingCards } from "@/components/diretoria/charts/ranking-cards";
 import { DistribuicaoDinamica } from "@/components/diretoria/charts/distribuicao-dinamica";
@@ -72,40 +71,35 @@ function RankingEstados({ d }: { d: VendasData }) {
 // C-05 , Modalidades de operação: BARRAS horizontais. Os nomes de operação são
 // MUITO longos (ex.: "VENDA DE MERCADORIA ADQUIRIDA OU RECEBIDA DE TERCEIROS") e
 // se sobrepunham no eixo. Encurtamos o rótulo (1 linha) e damos altura/folga.
-function encurtar(s: string, max = 26): string {
-  const t = s.trim();
-  return t.length > max ? `${t.slice(0, max - 1)}…` : t;
-}
 function ModalidadesVendas({ d }: { d: VendasData }) {
-  const data = d.modalidades.slice(0, 8).map((m) => ({ name: encurtar(m.modalidade), valor: m.valorTotal }));
-  return (
-    <InteractiveBarChart
-      data={data}
-      series={[{ key: "valor", label: "Valor", color: getColorByIndex(5) }]}
-      layout="horizontal"
-      height={340}
-      yAxisWidth={200}
-      showLegend={false}
-      formatValue={(v) => brlCompacto(v)}
-      ariaLabel="Valor por modalidade de operação"
-    />
-  );
+  const itens = d.modalidades.map((m) => ({
+    nome: m.modalidade,
+    valor: m.valorTotal,
+  }));
+  return <RankingCards itens={itens} max={10} rotuloValor="vendas" />;
 }
 
-// C-07 , Formas de pagamento: DONUT clássico com LEGENDA LATERAL (bolinha + valor
-// + %) e clique numa fatia para destacar/filtrar.
+// C-07 , Formas de pagamento, em três visões.
+//
+// O gráfico somava três coisas diferentes num número só: o que já foi pago, o que ainda
+// vai vencer e o que nem virou nota. São perguntas distintas, então viraram dimensões do
+// mesmo seletor que a plataforma já usa em toda a diretoria (Família/Marca/Local):
+//
+//   Pago               a nota saiu e o título foi quitado. A receita que entrou.
+//   A receber          a nota saiu, a parcela ainda vai vencer (boleto, cartão parcelado).
+//   Carteira em aberto o pedido está fechado com o cliente, mas a nota ainda não saiu.
 function DonutPagamento({ d }: { d: VendasData }) {
-  const [sel, setSel] = useState<string | null>(null);
-  const data = d.formasPagamento.linhas.map((l) => ({ label: l.formaPagamento, valor: l.valorTotal }));
-  return (
-    <DonutChart
-      data={data}
-      formatValor={(v) => brl.format(v)}
-      onSelect={(label) => setSel(label || null)}
-      selecionado={sel}
-      vertical
-    />
-  );
+  const dimensoes = [
+    { chave: "pago", rotulo: "Pago", linhas: d.formasPagamento.pago.linhas },
+    { chave: "a_receber", rotulo: "A receber", linhas: d.formasPagamento.a_receber.linhas },
+    { chave: "carteira", rotulo: "Carteira em aberto", linhas: d.formasPagamento.carteira.linhas },
+  ].map((v) => ({
+    chave: v.chave,
+    rotulo: v.rotulo,
+    linhas: v.linhas.map((l) => ({ chave: l.formaPagamento, valorTotal: l.valorTotal })),
+  }));
+
+  return <DistribuicaoDinamica dimensoes={dimensoes} />;
 }
 
 // C-09 , Distribuição dinâmica (marca / estado / pagamento).
@@ -115,7 +109,7 @@ function DistribuicaoVendas({ d }: { d: VendasData }) {
       dimensoes={[
         { chave: "marca", rotulo: "Marca", linhas: d.porMarca.linhas.map((l) => ({ chave: l.marca, valorTotal: l.valorTotal })) },
         { chave: "uf", rotulo: "Estado", linhas: d.porUf.linhas.map((l) => ({ chave: rotuloUf(l.uf), valorTotal: l.valorTotal })) },
-        { chave: "pagamento", rotulo: "Pagamento", linhas: d.formasPagamento.linhas.map((l) => ({ chave: l.formaPagamento, valorTotal: l.valorTotal })) },
+        { chave: "pagamento", rotulo: "Pagamento", linhas: d.formasPagamento.pago.linhas.map((l) => ({ chave: l.formaPagamento, valorTotal: l.valorTotal })) },
       ]}
     />
   );

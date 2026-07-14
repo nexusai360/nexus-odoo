@@ -19,6 +19,8 @@ import {
   queryComprasSerie,
   queryEstoqueGranular,
   queryEstoqueDisponivelDiretoria,
+  queryEstoqueDemonstracao,
+  queryNecessidadeCompra,
 } from "@/lib/diretoria/queries/estoque";
 import { SyncNowButton } from "@/components/diretoria/sync-now-button";
 import { FreshnessBadge } from "@/components/diretoria/freshness-badge";
@@ -38,6 +40,7 @@ export default async function DiretoriaEstoquePage() {
   const [
     indicadores, porLocal, porFamilia, porMarca, catalogo,
     comprasFornecedor, comprasAtivas, resumoCompras, avancados, seriais,
+    demonstracao, necessidadeCompra,
   ] = await Promise.all([
     queryIndicadoresEstoque(prisma),
     queryEstoquePorLocal(prisma),
@@ -48,7 +51,9 @@ export default async function DiretoriaEstoquePage() {
     queryComprasAtivas(prisma, hoje, 200),
     queryResumoCompras(prisma, hoje),
     queryIndicadoresAvancadosEstoque(prisma, hoje),
-    querySeriais(prisma, hoje, 200),
+    querySeriais(prisma, 200),
+    queryEstoqueDemonstracao(prisma),
+    queryNecessidadeCompra(prisma, 100),
   ]);
   const [comprasSerie, granular, estoqueDisponivel] = await Promise.all([
     queryComprasSerie(prisma),
@@ -73,6 +78,8 @@ export default async function DiretoriaEstoquePage() {
     comprasSerie,
     granular,
     estoqueDisponivel,
+    demonstracao,
+    necessidadeCompra,
   };
 
   const podeEditarGlobal = user.platformRole === "super_admin" || user.platformRole === "admin";
@@ -86,7 +93,9 @@ export default async function DiretoriaEstoquePage() {
     estoque: [
       { componenteId: "A-02", ordem: 0, largura: 4, altura: 5, x: 0, y: 0 },
       { componenteId: "A-05", ordem: 1, largura: 4, altura: 5, x: 4, y: 0 },
-      { componenteId: "A-12", ordem: 2, largura: 8, altura: 6, x: 0, y: 5 },
+      { componenteId: "A-14", ordem: 2, largura: 8, altura: 6, x: 0, y: 5 },
+      { componenteId: "A-13", ordem: 3, largura: 8, altura: 5, x: 0, y: 11 },
+      { componenteId: "A-12", ordem: 4, largura: 8, altura: 6, x: 0, y: 16 },
     ],
     distribuicao: [
       { componenteId: "A-11", ordem: 0, largura: 8, altura: 5, x: 0, y: 0 },

@@ -13,9 +13,12 @@ import {
   resolverPaginacao,
   montarPaginacaoMeta,
 } from "../../lib/paginacao.js";
+import { classificacaoInputShape, rotuloClassificacao } from "../../lib/classificacao.js";
+import { whereLocalDoEscopo } from "@/lib/estoque/locais-por-classificacao.js";
 
 const inputSchema = z.object({
   termo: z.string().min(1).max(120),
+  ...classificacaoInputShape,
   ...paginacaoInputShape,
 });
 
@@ -63,14 +66,16 @@ export const estoqueLocaisPorProduto: ToolEntry<Input, Output> = {
   id: "estoque_locais_por_produto",
   dominio: "estoque",
   descricao:
-    "Lista todos os armazens/locais onde um produto tem saldo, com saldo por " +
-    "local. Use para 'quais armazens tem o produto X', 'onde esta o saldo de Y'. " +
-    "Aceita termo (nome ou codigo).",
+    "Lista os armazens/locais onde um produto tem saldo, com saldo por local. Use para " +
+    "'quais armazens tem o produto X', 'onde esta o saldo de Y'. Aceita termo (nome ou " +
+    "codigo). Por padrao lista so os locais do estoque proprio; para ver tambem " +
+    "demonstracao e terceiros, passe classificacao='todos'.",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
     const { limit, offset } = resolverPaginacao(input);
+    const classificacao = input.classificacao ?? "fisico";
     const envelope = await withFreshness(
       ctx.prisma,
       ["fato_estoque_saldo", "fato_produto"],
@@ -95,7 +100,14 @@ export const estoqueLocaisPorProduto: ToolEntry<Input, Output> = {
         // a pagina de linhas vem limitada por take/skip no SQL. O where
         // exige localId nao-nulo para que count, pagina e agregado fiquem
         // sobre o mesmo conjunto (linhas sem local nao sao exibiveis).
-        const where = { produtoId: produto.odooId, localId: { not: null } };
+        // O escopo entra no MESMO where do count, da pagina e do agregado: sem isso o
+        // "saldo total" seria de uma arvore e a lista de locais, de outra.
+        const escopo = await whereLocalDoEscopo(ctx.prisma, classificacao);
+        const where = {
+          produtoId: produto.odooId,
+          localId: { not: null },
+          ...escopo,
+        };
         const [rows, totalLocais, agg] = await Promise.all([
           ctx.prisma.fatoEstoqueSaldo.findMany({
             where,
@@ -156,6 +168,7 @@ export const estoqueLocaisPorProduto: ToolEntry<Input, Output> = {
         produtoNome: envelope.dados.produtoNome ?? "",
         saldoTotal: envelope.dados.saldoTotal,
         totalLocais: envelope.dados.totalLocais,
+        escopoLocais: rotuloClassificacao(classificacao),
         saldoProprio: porCategoria.proprio,
         saldoDemonstracao: porCategoria.demonstracao,
         saldoTerceiros: porCategoria.terceiros,

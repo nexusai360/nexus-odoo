@@ -11,6 +11,7 @@ import {
   montarPaginacaoMeta,
 } from "../../lib/paginacao.js";
 import { humanizeName } from "@/lib/agent/text-normalize.js";
+import { classificacaoInputShape, rotuloClassificacao } from "../../lib/classificacao.js";
 
 const inputSchema = z.object({
   armazemId: z.number().int().positive().optional(),
@@ -18,6 +19,7 @@ const inputSchema = z.object({
   /** Filtra por nome do produto (busca parcial) , use para perguntas sobre
    * o saldo de um produto específico. Aceita o nome ou o código do produto. */
   termo: z.string().min(1).max(120).optional(),
+  ...classificacaoInputShape,
   ...paginacaoInputShape,
 });
 
@@ -163,16 +165,19 @@ export const estoqueSaldoProduto: ToolEntry<Input, Output> = {
   descricao:
     "Saldo de estoque por produto: unidades e valor a custo, com nº de " +
     "localizações. Para o saldo de um produto específico, passe `termo` com " +
-    "o nome ou o código do produto.",
+    "o nome ou o código do produto. Por padrão conta só o estoque próprio; use " +
+    "`classificacao` para 'demonstracao' ou 'todos' os locais.",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
     const { limit, offset } = resolverPaginacao(input);
+    const classificacao = input.classificacao ?? "fisico";
     const envelope = await withFreshness(
       ctx.prisma,
       ["fato_estoque_saldo", "fato_produto"],
-      async () => shape(await querySaldoProduto(ctx.prisma, input)),
+      async () =>
+        shape(await querySaldoProduto(ctx.prisma, { ...input, classificacao })),
     );
     if (envelope.estado === "preparando") return envelope;
 
@@ -227,6 +232,7 @@ export const estoqueSaldoProduto: ToolEntry<Input, Output> = {
         totalProdutos: k.totalProdutos,
         valorTotal: k.valorTotal,
         produtosNegativos: k.produtosNegativos,
+        escopoLocais: rotuloClassificacao(classificacao),
         termo: input.termo ?? "",
         produtoPrincipal: principal?.nome ?? "",
         saldoPrincipal: principal?.saldo ?? 0,

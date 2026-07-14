@@ -5,7 +5,7 @@ import { getModelFields } from "../odoo/field-selection";
 import { corteDomain } from "./corte";
 
 /** Tamanho padrão de cada página buscada do Odoo. */
-const PAGE_SIZE = 500;
+export const PAGE_SIZE = 500;
 
 /** Tamanho do lote de createMany no backfill. */
 const BATCH_SIZE = 1000;

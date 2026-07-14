@@ -2068,6 +2068,63 @@ model SyncState {
   @@map("sync_state")
 }
 
+/// Locais de estoque do Odoo, com a classificação que separa o estoque que existe
+/// dentro de casa do que não é nosso.
+///
+/// A árvore tem três raízes (Próprio, Terceiros, Virtual) e a diretoria somava as três:
+/// o KPI mostrava R$ 50,25 mi quando o estoque físico real era R$ 31,42 mi. A regra não
+/// é uma lista de nomes , o próprio Odoo distingue um depósito de verdade dos demais
+/// locais da árvore Própria (showroom, assistência técnica, razão social, inativos)
+/// pelos campos abaixo. Ver src/lib/estoque/classificacao-local.ts.
+model FatoEstoqueLocal {
+  odooId              Int      @id @map("odoo_id")
+  nome                String?
+  nomeCompleto        String?  @map("nome_completo")
+  /// 'S' sintético (nó de árvore) | 'A' analítico.
+  tipo                String?
+  nivel               Int?
+  localSuperiorId     Int?     @map("local_superior_id")
+  estoqueEmMaos       Boolean  @default(false) @map("estoque_em_maos")
+  calculaExtratoSaldo Boolean  @default(false) @map("calcula_extrato_saldo")
+  temProprietario     Boolean  @default(false) @map("tem_proprietario")
+  /// fisico | demonstracao | fora
+  classificacao       String
+  atualizadoEm        DateTime @default(now()) @map("atualizado_em")
+
+  @@index([classificacao])
+  @@map("fato_estoque_local")
+}
+
+/// Seriais que EXISTEM em estoque hoje, com o local onde estão e o saldo.
+///
+/// O `fato_serial` antigo lista todo serial já cadastrado e não sabe onde ele está: dos
+/// 3.828 "em estoque", 100% tinham local nulo (a fonte só preenche o local de quem já
+/// saiu). A tela mostrava uma lista de números sem saldo e sem lugar.
+///
+/// A fonte certa já estava no cache e ninguém lia: `raw_estoque_saldo_rastreabilidade_hoje`,
+/// que casa serial + local + saldo. Aqui ela vira fato, com a classificação do local
+/// junto (físico, demonstração ou fora), para a tela poder mostrar só o que está em casa.
+model FatoSerialSaldo {
+  id            String   @id @default(uuid()) @db.Uuid
+  odooId        Int      @unique @map("odoo_id")
+  serial        String
+  produtoId     Int?     @map("produto_id")
+  produtoNome   String?  @map("produto_nome")
+  localId       Int?     @map("local_id")
+  localNome     String?  @map("local_nome")
+  /// fisico | demonstracao | fora (vem de fato_estoque_local)
+  classificacao String
+  saldo         Decimal  @db.Decimal(18, 4)
+  valorCusto    Decimal? @map("valor_custo") @db.Decimal(18, 2)
+  atualizadoEm  DateTime @default(now()) @map("atualizado_em")
+
+  @@index([classificacao])
+  @@index([localId])
+  @@index([produtoId])
+  @@index([serial])
+  @@map("fato_serial_saldo")
+}
+
 /// Saldo de estoque por produto/local, enriquecido com valor e classificação.
 model FatoEstoqueSaldo {
   id           String   @id @default(uuid()) @db.Uuid
@@ -2233,6 +2290,15 @@ model FatoFinanceiroTitulo {
   dataPagamento    DateTime? @map("data_pagamento")
   situacao         String?
   situacaoSimples  String?   @map("situacao_simples")
+  /// Como a cobrança foi combinada (boleto, PIX, cartão...). Vem do título financeiro, o
+  /// documento de cobrança de verdade , preenchido em 99,98% deles. O painel de formas de
+  /// pagamento lia a PARCELA do pedido, onde o campo é opcional e vinha vazio em 24% dos
+  /// casos: só isso já produzia um balde "Não informado" de R$ 23 mi.
+  formaPagamentoNome String? @map("forma_pagamento_nome")
+  /// Lançamento provisório no Odoo (ainda não efetivado). Hoje são 15 de 5.537.
+  provisorio       Boolean   @default(false)
+  /// Empresa do grupo dona do título , sem ela o painel não respeita o filtro de empresa.
+  empresaId        Int?      @map("empresa_id")
   vrDocumento      Decimal   @default(0) @map("vr_documento") @db.Decimal(18, 2)
   vrSaldo          Decimal   @default(0) @map("vr_saldo") @db.Decimal(18, 2)
   vrTotal          Decimal   @default(0) @map("vr_total") @db.Decimal(18, 2)
@@ -2326,6 +2392,15 @@ model FatoPedidoItem {
   localReservaId Int?     @map("local_reserva_id")
   vrProdutos     Decimal  @default(0) @map("vr_produtos") @db.Decimal(18, 2)
   vrCusto        Decimal  @default(0) @map("vr_custo") @db.Decimal(18, 2)
+  /// Quanto desta linha ainda falta entregar, e quanto já foi entregue. Vêm de campos
+  /// COMPUTADOS do Odoo, mantidos pelo job de atendimento (src/worker/sync/atendimento.ts).
+  ///
+  /// NULO de propósito enquanto o job não rodou. Zero significaria "nada a entregar" e
+  /// faria todo pedido aparecer com valor R$ 0,00; nulo significa "ainda não sei", e as
+  /// consultas caem no valor cheio com aviso, uniformemente. Ver
+  /// src/lib/diretoria/atendimento-status.ts.
+  quantidadeAAtender Decimal? @map("quantidade_a_atender") @db.Decimal(18, 4)
+  quantidadeAtendida Decimal? @map("quantidade_atendida") @db.Decimal(18, 4)
   atualizadoEm   DateTime @default(now()) @map("atualizado_em")
 
   @@index([pedidoId])

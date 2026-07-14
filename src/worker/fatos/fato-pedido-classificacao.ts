@@ -103,7 +103,8 @@ export async function classificarPedidosDoRaw(
              (i.data->'pedido_id'->>0)::int as pedido_id,
              substring((i.data->'cfop_id'->>1) from '^[0-9]{4}') as cfop
       from raw_sped_documento_item i
-      where jsonb_typeof(i.data->'pedido_id') = 'array'
+      where coalesce(i.raw_deleted, false) = false
+        and jsonb_typeof(i.data->'pedido_id') = 'array'
       order by (i.data->'pedido_id'->>0)::int, (i.data->>'quantidade')::numeric desc nulls last
     )
     select (p.data->>'id')::int as odoo_id,
@@ -192,7 +193,8 @@ export async function rebuildFatoPedidoClassificacao(prisma: PrismaClient): Prom
              (i.data->'pedido_id'->>0)::int as pedido_id,
              substring((i.data->'cfop_id'->>1) from '^[0-9]{4}') as cfop
       from raw_sped_documento_item i
-      where jsonb_typeof(i.data->'pedido_id') = 'array'
+      where coalesce(i.raw_deleted, false) = false
+        and jsonb_typeof(i.data->'pedido_id') = 'array'
       order by (i.data->'pedido_id'->>0)::int, (i.data->>'quantidade')::numeric desc nulls last
     )
     select f.odoo_id, f.etapa_id, f.participante_id, f.participante_nome, it.cfop

@@ -13,6 +13,12 @@ function makePrisma() {
     fatoBuildState: { findMany: jest.fn() },
     syncState: { findMany: jest.fn() },
     fatoEstoqueSaldo: { findMany: jest.fn() },
+    // Sem o fato de locais construido, o filtro por classificacao nao filtra (fail-safe):
+    // o teste segue medindo o numero da arvore inteira, como antes.
+    fatoEstoqueLocal: {
+      count: jest.fn().mockResolvedValue(0),
+      findMany: jest.fn().mockResolvedValue([]),
+    },
   };
 }
 

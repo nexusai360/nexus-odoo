@@ -5,6 +5,10 @@
 // do cache (queries/vendas.ts). ui-ux-pro-max: Data-Dense Dashboard dark+violeta,
 // mapa coroplético com tooltip que segue o cursor, donuts clicáveis, KPIs.
 
+import type {
+  VisaoPagamento,
+  ResumoVisaoPagamento,
+} from "@/lib/diretoria/queries/vendas";
 import { useMemo, useState } from "react";
 import {
   TrendingUp, Map as MapIcon, Tag, CreditCard, DollarSign, ShoppingBag,
@@ -37,7 +41,7 @@ export interface VendasData {
   margem: MargemEstimada;
   porUf: { linhas: LinhaUf[]; valorGeral: number };
   porMarca: { linhas: LinhaMarca[]; valorGeral: number };
-  formasPagamento: { linhas: LinhaFormaPagamento[]; valorGeral: number };
+  formasPagamento: Record<VisaoPagamento, ResumoVisaoPagamento>;
   modalidades: LinhaModalidade[];
   maiorPedido: MaiorPedido | null;
 }
@@ -222,7 +226,7 @@ function AbaMarcas({ data }: { data: VendasData }) {
 // ===========================================================================
 const CORES_PGTO = ["#34d399", "#60a5fa", "#a78bfa", "#f59e0b", "#f472b6", "#22d3ee"];
 function AbaPagamentos({ data }: { data: VendasData }) {
-  const { formasPagamento } = data;
+  const formasPagamento = data.formasPagamento.pago;
   const total = formasPagamento.valorGeral || 1;
   return (
     <div className="flex flex-col gap-4">

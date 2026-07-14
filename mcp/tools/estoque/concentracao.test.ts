@@ -9,6 +9,12 @@ function makePrisma() {
     fatoBuildState: { findMany: jest.fn() },
     syncState: { findMany: jest.fn() },
     fatoEstoqueSaldo: { groupBy: jest.fn() },
+    // Sem o fato de locais construido, o filtro por classificacao nao filtra (fail-safe):
+    // o teste segue medindo o numero da arvore inteira, como antes.
+    fatoEstoqueLocal: {
+      count: jest.fn().mockResolvedValue(0),
+      findMany: jest.fn().mockResolvedValue([]),
+    },
   };
 }
 
@@ -23,7 +29,7 @@ describe("estoque_concentracao", () => {
   it("devolve estado:'preparando' quando FatoBuildState ausente", async () => {
     const ctx = makeCtx();
     (ctx.prisma.fatoBuildState.findMany as jest.Mock).mockResolvedValue([]);
-    const result = await estoqueConcentracao.handler({}, ctx);
+    const result = await estoqueConcentracao.handler({} as never, ctx);
     expect(result).toEqual({ estado: "preparando" });
   });
 
@@ -44,7 +50,7 @@ describe("estoque_concentracao", () => {
       .mockResolvedValueOnce([
         { marcaNome: "Matrix", _sum: { vrSaldo: 1000 } },
       ]);
-    const result = await estoqueConcentracao.handler({}, ctx);
+    const result = await estoqueConcentracao.handler({} as never, ctx);
     expect(result).toMatchObject({ estado: "ok" });
     if (result.estado !== "preparando") {
       expect(result.dados.familia).toHaveLength(2); // lista completa, sem agruparTopN
@@ -70,7 +76,7 @@ describe("estoque_concentracao", () => {
       .mockResolvedValueOnce([
         { marcaNome: "Matrix", _sum: { vrSaldo: 1000 } },
       ]);
-    const result = await estoqueConcentracao.handler({}, ctx);
+    const result = await estoqueConcentracao.handler({} as never, ctx);
     // Deve ser "ok", não "vazio" , paridade com dashboard
     expect(result).toMatchObject({ estado: "ok" });
     if (result.estado !== "preparando") {
