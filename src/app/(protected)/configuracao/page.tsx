@@ -1,5 +1,6 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Settings } from "lucide-react";
+import { Settings, Scale, ArrowRight } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { getSyncConfig, getSyncState, getFatosState } from "@/lib/actions/sync-config";
 import { getDiretoriaConfig } from "@/lib/actions/diretoria-config";
@@ -45,6 +46,29 @@ export default async function ConfiguracaoPage() {
       {/* Acesso fino aos submenus de Relatorios 2.0 (paineis/meus/construtor) */}
       <div className="mt-6">
         <Relatorios2AccessCard initial={acessoRel2} />
+      </div>
+
+      {/* Modo sombra da classificacao de receita: a regra nova roda em paralelo e so observa.
+          A tela mostra o placar entre as duas regras, para decidir a virada com prova. */}
+      <div className="mt-6">
+        <Link
+          href="/configuracao/classificacao-fiscal"
+          className="group flex items-center justify-between rounded-2xl border border-white/5 bg-white/[0.02] px-5 py-4 transition-colors hover:border-white/10 hover:bg-white/[0.04]"
+        >
+          <span className="flex items-center gap-3">
+            <Scale className="size-5 text-white/50" aria-hidden />
+            <span className="flex flex-col">
+              <span className="text-sm font-medium text-white/90">Classificação fiscal</span>
+              <span className="text-xs text-white/50">
+                Placar da regra nova de receita, que roda em paralelo à que vale hoje
+              </span>
+            </span>
+          </span>
+          <ArrowRight
+            className="size-4 text-white/30 transition-transform group-hover:translate-x-0.5 group-hover:text-white/60"
+            aria-hidden
+          />
+        </Link>
       </div>
     </PageShell>
   );

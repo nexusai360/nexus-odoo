@@ -12,7 +12,7 @@ import type { PrismaClient } from "../../generated/prisma/client";
 import { relId, relNome, type OdooM2O } from "./odoo-relational";
 import { markFatoBuilt } from "./fato-build-state";
 import { carregarParticipantesGrupo, ehNotaIntragrupo } from "../../lib/fiscal/grupo";
-import { notaEhVendaExterna } from "../../lib/fiscal/regras";
+import { classificaReceita } from "../../lib/fiscal/regras/classificacao-receita";
 
 export interface FatoNotaFiscalRow {
   odooId: number;
@@ -90,6 +90,45 @@ export function mapNotaFiscalRow(raw: Record<string, unknown>): FatoNotaFiscalRo
   };
 }
 
+/** Abaixo disto, a regra nova está claramente quebrada (e não apenas divergindo em casos
+ *  de borda). O dono pediu explicitamente esse gatilho: "ainda mais se o valor da busca por
+ *  esse novo modelo for zero ou muito abaixo, você já usa sempre o valor da busca pelo nome". */
+const PISO_SANIDADE_NATUREZA = 0.9;
+
+interface LinhaClassificada {
+  vrNf: number;
+  isVendaExterna: boolean;
+  vendaPorNatureza: boolean;
+}
+
+/**
+ * GUARDA-CORPO agregado do modo sombra.
+ *
+ * A trava contra prejuízo já é estrutural (`is_venda_externa` recebe SEMPRE a regra antiga,
+ * então nenhum número pode se mover por causa da regra nova). Este alerta serve para o outro
+ * lado: avisar que a regra NOVA desabou, antes de alguém propor virar a chave.
+ *
+ * Dispara quando a natureza reconhece ZERO receita havendo receita pelo nome, ou quando ela
+ * fica abaixo de 90% do total do nome. Um catálogo de naturezas desatualizado (operação nova
+ * cadastrada na Tauga) apareceria exatamente assim.
+ */
+export function alertaGuardaCorpo(linhas: LinhaClassificada[]): void {
+  const totalNome = linhas.reduce((s, l) => s + (l.isVendaExterna ? l.vrNf : 0), 0);
+  const totalNatureza = linhas.reduce((s, l) => s + (l.vendaPorNatureza ? l.vrNf : 0), 0);
+  if (totalNome <= 0) return;
+
+  const razao = totalNatureza / totalNome;
+  if (razao < PISO_SANIDADE_NATUREZA) {
+    const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    console.warn(
+      `[classificacao-receita] GUARDA-CORPO: a regra por NATUREZA caiu para ` +
+        `${(razao * 100).toFixed(1)}% da regra por NOME (${fmt(totalNatureza)} contra ` +
+        `${fmt(totalNome)}). O numero exibido esta protegido (quem manda e o nome), mas o ` +
+        `catalogo de naturezas provavelmente esta desatualizado. Ver o painel de divergencias.`,
+    );
+  }
+}
+
 /** Reconstrói fato_nota_fiscal a partir de raw_sped_documento.
  * Filtra rawDeleted=false. Transação: deleteMany + createMany + markFatoBuilt.
  * Timeout estendido: com a base real (~47 mil documentos) o createMany passa
@@ -107,21 +146,31 @@ export async function rebuildFatoNotaFiscal(prisma: PrismaClient): Promise<numbe
   const participantesGrupo = await carregarParticipantesGrupo(prisma);
   const mapped = rawRows.map((r) => {
     const row = mapNotaFiscalRow(r.data as Record<string, unknown>);
+    // MODO SOMBRA: as duas regras correm juntas. `decisao` (= a regra do NOME) é o que a
+    // plataforma enxerga; o resto é observação para o painel de divergências. Ver
+    // classificacao-receita.ts e o laudo docs/pericia-classificacao-receita-2026-07-13.md.
+    const c = classificaReceita({
+      entradaSaida: row.entradaSaida,
+      situacaoNfe: row.situacaoNfe,
+      modelo: row.modelo,
+      operacaoNome: row.operacaoNome,
+      finalidadeNfe: row.finalidadeNfe,
+      naturezaOperacaoId: row.naturezaOperacaoId,
+      intragrupo: ehNotaIntragrupo(
+        { participanteId: row.participanteId, participanteNome: row.participanteNome },
+        participantesGrupo,
+      ),
+    });
     return {
       ...row,
-      isVendaExterna: notaEhVendaExterna({
-        entradaSaida: row.entradaSaida,
-        situacaoNfe: row.situacaoNfe,
-        modelo: row.modelo,
-        operacaoNome: row.operacaoNome,
-        finalidadeNfe: row.finalidadeNfe,
-        intragrupo: ehNotaIntragrupo(
-          { participanteId: row.participanteId, participanteNome: row.participanteNome },
-          participantesGrupo,
-        ),
-      }),
+      isVendaExterna: c.decisao,
+      vendaPorNatureza: c.porNatureza,
+      classificacaoDivergente: c.divergente,
+      naturezaDesconhecida: c.naturezaDesconhecida,
     };
   });
+
+  alertaGuardaCorpo(mapped);
 
   await prisma.$transaction(
     async (tx) => {
