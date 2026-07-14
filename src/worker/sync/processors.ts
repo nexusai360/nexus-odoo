@@ -160,7 +160,15 @@ export async function processReconcileCycle(
       markError,
       markNoAccess,
       runner: async (model) => {
-        await reconcileModel(ctx.client, rawDelegate(ctx.prisma, model) as never, model);
+        const r = await reconcileModel(ctx.client, rawDelegate(ctx.prisma, model) as never, model);
+        // O reparo não pode ser silencioso: se a reconciliação está inserindo faltante todo
+        // dia, é sinal de que a ingestão voltou a perder registro, e alguém precisa ver isso.
+        if (r.inseridosFaltantes || r.ressuscitados) {
+          console.warn(
+            `[reconcile] ${model}: ${r.inseridosFaltantes} faltante(s) trazido(s) do Odoo, ` +
+              `${r.ressuscitados} ressuscitado(s), ${r.marcadosDeletados} marcado(s) como deletado(s)`,
+          );
+        }
         const count = await rawDelegateCount(ctx.prisma, model);
         return { count };
       },

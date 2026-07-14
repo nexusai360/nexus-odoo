@@ -20,7 +20,7 @@
 // entrar sempre; quitados antigos reimportados por write_date sao inofensivos (saldo 0) e o
 // purge periodico os remove.
 
-import { MODEL_CATALOG } from "../catalog/model-catalog";
+import { MODEL_CATALOG, rawTableFor } from "../catalog/model-catalog";
 
 /** Ate onde o worker puxa historico do Odoo. Constante tecnica, nunca configuravel na tela. */
 export const CORTE_INGESTAO_ISO = "2026-01-01";
@@ -29,10 +29,55 @@ export const CORTE_INGESTAO_ISO = "2026-01-01";
 export const CORTE_DADOS_ISO = CORTE_INGESTAO_ISO;
 
 const POR_MODELO = new Map(MODEL_CATALOG.map((e) => [e.odooModel, e]));
+const POR_TABELA_RAW = new Map(MODEL_CATALOG.map((e) => [rawTableFor(e.odooModel), e]));
 
 /** Clausula de dominio Odoo do corte de ingestao para o modelo (vazia se nao corta). */
 export function corteDomain(odooModel: string): Array<[string, string, string]> {
   const entry = POR_MODELO.get(odooModel);
   if (!entry?.corte) return [];
   return [[entry.corte.odoo, ">=", CORTE_INGESTAO_ISO]];
+}
+
+/**
+ * Corte de ingestao do modelo INCLUINDO o herdado do pai (ou do avo), via dot-notation do
+ * dominio Odoo (`documento_id.data_emissao`, `item_id.documento_id.data_emissao`).
+ *
+ * Para que serve, e por que NAO da para usar o `corteDomain` puro aqui: um filho como
+ * `sped.documento.item` nao tem data propria , o corte dele e o do documento pai
+ * (`cortePai` no catalogo). Como `corteDomain` devolve clausula VAZIA para esses modelos,
+ * quem perguntar ao Odoo "quais existem" recebe o modelo INTEIRO: 233.563 itens, sendo que
+ * so 59.804 estao dentro do corte.
+ *
+ * Isso e inofensivo para DETECTAR EXCLUSAO (um conjunto amplo demais so evita marcar coisa
+ * viva como deletada). Mas e desastroso para BUSCAR O QUE FALTA no cache: sem o corte
+ * herdado, a reconciliacao despejaria ~172 mil registros pre-corte no banco, contrariando a
+ * regra de ingestao e derrubando o worker por memoria. Dai esta funcao existir separada.
+ */
+export function corteDomainHerdado(odooModel: string): Array<[string, string, string]> {
+  const entry = POR_MODELO.get(odooModel);
+  if (!entry) return [];
+  if (entry.corte) return [[entry.corte.odoo, ">=", CORTE_INGESTAO_ISO]];
+  if (!entry.cortePai) return [];
+
+  const pai = POR_TABELA_RAW.get(entry.cortePai.tabelaRawPai);
+  if (!pai) return [];
+
+  // Pai com data propria: `<fk>.<campo_do_pai>`.
+  if (pai.corte) {
+    return [[`${entry.cortePai.fkRaw}.${pai.corte.odoo}`, ">=", CORTE_INGESTAO_ISO]];
+  }
+  // Pai intermediario (ex.: rastreabilidade -> item -> documento): encadeia ate o avo.
+  if (pai.cortePai) {
+    const avo = POR_TABELA_RAW.get(pai.cortePai.tabelaRawPai);
+    if (avo?.corte) {
+      return [
+        [
+          `${entry.cortePai.fkRaw}.${pai.cortePai.fkRaw}.${avo.corte.odoo}`,
+          ">=",
+          CORTE_INGESTAO_ISO,
+        ],
+      ];
+    }
+  }
+  return [];
 }

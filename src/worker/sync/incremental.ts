@@ -10,6 +10,26 @@ const PAGE_SIZE = 500;
 /** Tamanho do lote de createMany no backfill. */
 const BATCH_SIZE = 1000;
 
+/**
+ * MARGEM DE SEGURANÇA da marca d'água , 15 minutos.
+ *
+ * Por que ela existe (perícia de 2026-07-13, 158 itens perdidos em produção): o Odoo
+ * carimba o `write_date` no INÍCIO da transação, mas a linha só fica VISÍVEL para o
+ * `search_read` quando a transação faz COMMIT. Salvar uma nota com 30 itens leva segundos:
+ * os itens nascem com `write_date = T` e só aparecem em `T + alguns segundos`.
+ *
+ * Se o ciclo lê nesse intervalo, ele não vê os itens. E como a marca d'água avança para o
+ * início do ciclo, o ciclo seguinte pede `write_date > início`, que JÁ PASSOU do
+ * `write_date` deles. Eles nunca mais são buscados , o buraco é permanente, e a
+ * reconciliação não salva (ela só marca o que sumiu do Odoo, nunca busca o que falta aqui).
+ *
+ * Recuar a janela 15 minutos fecha essa fresta com folga de ordens de grandeza sobre a
+ * duração real de uma transação. O custo é reprocessar o que mudou nos últimos 15 min de
+ * cada ciclo, e o custo é baixo: a escrita é `upsert` (idempotente , reescreve a mesma
+ * linha com o mesmo conteúdo, não duplica nada).
+ */
+export const MARGEM_SEGURANCA_MS = 15 * 60 * 1000;
+
 /** Interface mínima de uma tabela raw Prisma (prisma.rawXxx). */
 export interface RawDelegate {
   upsert(args: {
@@ -60,12 +80,15 @@ export async function syncIncremental(
   // Capturada ANTES do search_read: o próximo ciclo filtra por write_date >
   // cycleStart, então registros escritos durante o pull entram no próximo ciclo.
   const cycleStart = new Date();
+  // A janela recua MARGEM_SEGURANCA_MS para alcançar quem ficou preso na janela de commit
+  // do Odoo (write_date carimbado no início da transação, linha visível só no commit).
+  const desde = since ? new Date(since.getTime() - MARGEM_SEGURANCA_MS) : null;
   // Limpa 2026+ (T2a): clausula de corte por data de negocio e PERMANENTE e
   // entra em AMBOS os ramos (write_date nao segura registro antigo editado;
   // o backfill since=null e o ramo critico , reimportaria o historico).
   const domain = [
     ...corteDomain(odooModel),
-    ...(since ? [["write_date", ">", odooDatetime(since)]] : []),
+    ...(desde ? [["write_date", ">", odooDatetime(desde)]] : []),
   ];
   const fields = await getModelFields(client, odooModel);
   const isBackfill = since === null;
