@@ -32,8 +32,22 @@ function compacto(v: number): string {
   return brl.format(v);
 }
 
+/** Uma volta inteira. Abaixo disto a fatia é um arco normal; a partir daqui, é o círculo. */
+const VOLTA_COMPLETA = 2 * Math.PI - 1e-6;
+
 function arco(cx: number, cy: number, r: number, a0: number, a1: number): string {
   const p = (a: number) => [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+
+  // FATIA DE 100%: o ponto inicial e o final do arco coincidem, e o SVG entende ponto de
+  // partida igual ao de chegada como "não desenhe nada" , o gráfico sumia da tela. É o que
+  // deixava a tela de pagamentos vazia quando sobrava uma única forma de pagamento.
+  // Um círculo completo não cabe num arco só: precisa de dois arcos de meia volta.
+  if (a1 - a0 >= VOLTA_COMPLETA) {
+    const [xa, ya] = p(a0);
+    const [xb, yb] = p(a0 + Math.PI);
+    return `M ${xa} ${ya} A ${r} ${r} 0 1 1 ${xb} ${yb} A ${r} ${r} 0 1 1 ${xa} ${ya} Z`;
+  }
+
   const [x0, y0] = p(a0);
   const [x1, y1] = p(a1);
   const largeArc = a1 - a0 > Math.PI ? 1 : 0;
