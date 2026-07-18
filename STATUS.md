@@ -1,5 +1,33 @@
 # STATUS , ponto de retomada
 
+> ## 2026-07-18 , BRANCH `feat/diretoria-entregas-estoque` (NÃO mergeada , aguarda o dono)
+>
+> Frente pedida na reunião do dono com a logística. Ciclo completo: perícia (4 frentes) →
+> plano v1 → 2 reviews adversariais → v3 → execução por ondas com TDD e E2E real. **Modo
+> autônomo, sem PR/merge (decisão do dono: só no fim de tudo).** tsc 0, 4273 testes verdes.
+>
+> **PRONTO E VALIDADO (screenshots dark + E2E contra o cache):**
+> - **Relatório de Entregas Parciais** (sub-aba nova em Pedidos & Entregas): 3 KPIs (total do
+>   pedido · falta entregar venda · falta entregar custo) + tabela por item (nº, cliente, UF,
+>   cidade, produto, família, marca, operação/modalidade, etapa, qtd/valor a atender, status
+>   liberado/bloqueado, forma de pagamento). Reconcilia com o card por construção (função
+>   `aAtenderDoItem` compartilhada). Toggle "incluir anteriores ao corte".
+> - **Card "Valor em estoque" da Visão Geral** invertido: custo puro (R$ 29,8 mi) em destaque.
+> - **Sigla da UF** no centro de cada estado do mapa.
+> - A receber/A pagar VERIFICADOS (já vêm do título, nada a mudar).
+>
+> **PENDENTE DO DONO/COLEGA (não é esquecimento , o cache não tem o dado):**
+> 1. **Regra de "bloqueado"**: implementada na versão simples (só nota fiscal vencida). O dono
+>    vai verificar e passar o veredito. Flag `BLOQUEIO_SO_NOTA_EMITIDA` isolada.
+> 2. **"Nº do pedido do mérito"**: sem campo no cache (candidatos: chamado_cliente_id/cotacao_id).
+> 3. **Estoque , demonstração em 2 blocos, DSTOCK e "transferência = próprio"**: o cache não tem
+>    os locais descritos (JDSDEMO não existe; DSTOCK ambíguo; sem `usage` para trânsito).
+>    De-para real + perguntas em `docs/superpowers/research/2026-07-18-estoque-locais-pendencias.md`.
+>
+> Plano/progresso: `docs/superpowers/plans/2026-07-18-diretoria-entregas-parciais-estoque-*`.
+
+---
+
 > **Atualizado em 2026-07-14 (madrugada). TUDO O QUE SEGUE ESTA EM PRODUCAO E VALIDADO.**
 > Nenhuma branch aberta, nenhum PR pendente, nenhuma worktree viva. Repositorio limpo: so `main`.
 

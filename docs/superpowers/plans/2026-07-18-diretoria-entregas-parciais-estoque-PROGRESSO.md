@@ -18,9 +18,9 @@
 - [x] **ONDA 0 , investigação** (achados em `research/2026-07-18-onda0-achados.md`). Chave: dado de atendimento defasado no local (qaa NULL) → reconciliação por reúso de função; DSTOCK/transferência viram pendência do colega (não auto-detectáveis).
 - [x] **ONDA A , backend relatório**: TA.0 função `aAtenderDoItem` compartilhada (card<->relatório); TA.1-4 `queryEntregasParciais` (por item, 3 KPIs, status bloqueio por cliente, forma de pgto da PARCELA). E2E real: 342 pedidos, reconcilia com o card (custo idêntico), forma pgto 2482 linhas, cidade 4635. Achado corrigido: forma vem da parcela (título ABERTA tem 0%).
 - [x] **ONDA B , UI relatório**: sub-aba "Entregas parciais" (blocos B-08 KPIs 3 visões + B-09 tabela), reuso de KpiButton/DataTable/construtor + toggle de corte. Validação VISUAL real (screenshot dark): KPIs com base declarada, custo bate com o card B-01, 609 linhas, sort/busca/export. Teste temporal frágil corrigido. **PR 1 (relatório) COMPLETO.**
-- [ ] **ONDA C , estoque real/demo (TC.1..TC.7)** ← PRÓXIMA (guiada pela T0.2)
-- [ ] ONDA D , mapa UF + verificação financeira (TD.1..TD.3)
-- [ ] ONDA E , verificação e fechamento (TE.1..TE.4)
+- [~] **ONDA C , estoque**: TC.1 (card a custo puro na Visão Geral) FEITO e validado. TC.2/TC.3/TC.4 (transferência, DSTOCK, demo 2 blocos) **BLOQUEADOS: dependem do colega** , o cache não tem os locais descritos (JDSDEMO não existe; DSTOCK ambíguo; sem campo `usage` para trânsito). De-para real + perguntas em `research/2026-07-18-estoque-locais-pendencias.md`.
+- [x] **ONDA D**: TD.1 sigla da UF no mapa (validada visual). TD.2 A receber/A pagar , VERIFICADO: já vêm do título financeiro (nada a corrigir).
+- [x] **ONDA E , fechamento**: tsc 0, jest 4273 verdes, auto-perícia OK, docs atualizados. Dev derrubado.
 
 ## Log
 - 2026-07-18: plano fechado, decisões do dono registradas (D-a grampeado+toggle, D-b simples/pendente, D-c custo puro). Iniciando Onda 0.
