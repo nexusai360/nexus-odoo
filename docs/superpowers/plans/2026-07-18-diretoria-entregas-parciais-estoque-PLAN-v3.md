@@ -35,10 +35,10 @@ Lote 2 (fora daqui): desmembramento de kits (BOM).
 ## 3. Decisões travadas com o dono (2026-07-18)
 - Relatório com **as três visões** de valor. · **Sub-aba "Entregas parciais"** em Pedidos & Entregas. · 1º lote = Entregas parciais + estoque real/demo + KPIs A receber/A pagar; kits no lote 2.
 
-## 4. Decisões a CONFIRMAR com o dono (defaults seguros adotados)
-- **D-a) Corte no relatório** `[R1:C1/C2]`: default **GRAMPEADO** (respeita a regra durável). O KPI de custo só reconcilia com o card no escopo idêntico (corte+empresa+UF). Toggle "incluir anteriores à data de análise" existe como 2ª visão rotulada, **default off**. Não remover o corte sem o "ok" dele.
-- **D-b) Grão de "bloqueado"** `[R1:A7]`: default **por CLIENTE** (qualquer título `a_receber` vencido em aberto do cliente, carteira incluída). Confirmar se carteira vencida conta ou só nota emitida.
-- **D-c) Card de estoque invertido** `[R1:B16]`: default custo puro (29,8) em cima, índice (0,95→31,4) embaixo. Confirmar, pois 31,4 é o número "oficial" replicado em outras telas.
+## 4. Decisões do dono (respostas 2026-07-18)
+- **D-a) Corte no relatório** `[R1:C1/C2]` , **CONFIRMADO**: **GRAMPEADO por default** (respeita a regra durável; bate com o card no escopo corte+empresa+UF) **+ toggle "incluir pedidos anteriores à data de análise"** como 2ª visão rotulada, default off. TB.6 entra (não é mais só "melhoria da review").
+- **D-b) Grão de "bloqueado"** `[R1:A7]` , **EM ABERTO, default adotado**: **por CLIENTE, qualquer título `a_receber` vencido em aberto, carteira incluída** (visão mais rigorosa). Confirmar com o dono ao executar TA.2 se ele prefere "só nota emitida vencida".
+- **D-c) Card de estoque invertido** `[R1:B16]` , **CONFIRMADO**: **custo puro (R$ 29,8 mi) como número principal**, índice (0,95 → R$ 31,4 mi) na linha secundária. Nota: diverge do número "oficial" de outras telas; registrar no `kpis-diretoria.md` que o card da Visão Geral mostra o custo puro em destaque de propósito (decisão do dono).
 
 ## 5. Decisões menores
 - **"Nº do mérito"**: T0.1 investiga raw `sped.documento.referenciado`. Não há campo no `fato_pedido`. Se só no raw → coluna **pendente** (expor = fato+schema+resync, fora do Lote 1). `[R1:B14]`
