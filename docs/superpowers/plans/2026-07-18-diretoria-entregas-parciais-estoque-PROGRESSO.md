@@ -17,9 +17,8 @@
 - [x] Perícia (4 frentes) + Plano v1→2 reviews→v3 (commits 3591fa5a, a0e39c60)
 - [x] **ONDA 0 , investigação** (achados em `research/2026-07-18-onda0-achados.md`). Chave: dado de atendimento defasado no local (qaa NULL) → reconciliação por reúso de função; DSTOCK/transferência viram pendência do colega (não auto-detectáveis).
 - [x] **ONDA A , backend relatório**: TA.0 função `aAtenderDoItem` compartilhada (card<->relatório); TA.1-4 `queryEntregasParciais` (por item, 3 KPIs, status bloqueio por cliente, forma de pgto da PARCELA). E2E real: 342 pedidos, reconcilia com o card (custo idêntico), forma pgto 2482 linhas, cidade 4635. Achado corrigido: forma vem da parcela (título ABERTA tem 0%).
-- [ ] **ONDA B , UI relatório (TB.1..TB.7)** ← PRÓXIMA
-- [ ] ONDA B , UI relatório (TB.1..TB.7)
-- [ ] ONDA C , estoque real/demo (TC.1..TC.7)
+- [x] **ONDA B , UI relatório**: sub-aba "Entregas parciais" (blocos B-08 KPIs 3 visões + B-09 tabela), reuso de KpiButton/DataTable/construtor + toggle de corte. Validação VISUAL real (screenshot dark): KPIs com base declarada, custo bate com o card B-01, 609 linhas, sort/busca/export. Teste temporal frágil corrigido. **PR 1 (relatório) COMPLETO.**
+- [ ] **ONDA C , estoque real/demo (TC.1..TC.7)** ← PRÓXIMA (guiada pela T0.2)
 - [ ] ONDA D , mapa UF + verificação financeira (TD.1..TD.3)
 - [ ] ONDA E , verificação e fechamento (TE.1..TE.4)
 

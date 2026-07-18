@@ -28,6 +28,7 @@ import type {
   DemandaEtapa,
   DemandaParada,
 } from "@/lib/diretoria/queries/pedidos";
+import type { EntregasParciaisData } from "@/lib/diretoria/queries/entregas-parciais";
 
 export interface PedidosData {
   indicadores: IndicadoresDemandas;
@@ -39,6 +40,8 @@ export interface PedidosData {
   pendentes: { linhas: DemandaLinha[] };
   porEtapa: DemandaEtapa[];
   maisParadas: DemandaParada[];
+  /** Relatório de Entregas Parciais (aba própria). */
+  entregasParciais: EntregasParciaisData;
 }
 
 const ABAS = [

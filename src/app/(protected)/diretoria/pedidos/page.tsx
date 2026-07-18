@@ -12,6 +12,7 @@ import {
   queryDemandaPorEtapa,
   queryDemandasMaisParadas,
 } from "@/lib/diretoria/queries/pedidos";
+import { queryEntregasParciais } from "@/lib/diretoria/queries/entregas-parciais";
 import { queryContasAReceber } from "@/lib/reports/queries/financeiro";
 import { SyncNowButton } from "@/components/diretoria/sync-now-button";
 import { FreshnessBadge } from "@/components/diretoria/freshness-badge";
@@ -63,14 +64,17 @@ export default async function DiretoriaPedidosPage({
     empresaId: empresaSel?.empresaId,
   };
 
-  const [indicadores, porUf, pendentes, porEtapa, maisParadas, aReceber] = await Promise.all([
-    queryIndicadoresDemandas(prisma, hoje, f),
-    queryDemandasPorUf(prisma, f),
-    queryDemandasPendentes(prisma, hoje, f),
-    queryDemandaPorEtapa(prisma, f),
-    queryDemandasMaisParadas(prisma, hoje, { ...f, limite: 50 }),
-    queryContasAReceber(prisma, {}, hoje),
-  ]);
+  const incluiAntigos = param("entregas_todos") === "1";
+  const [indicadores, porUf, pendentes, porEtapa, maisParadas, aReceber, entregasParciais] =
+    await Promise.all([
+      queryIndicadoresDemandas(prisma, hoje, f),
+      queryDemandasPorUf(prisma, f),
+      queryDemandasPendentes(prisma, hoje, f),
+      queryDemandaPorEtapa(prisma, f),
+      queryDemandasMaisParadas(prisma, hoje, { ...f, limite: 50 }),
+      queryContasAReceber(prisma, {}, hoje),
+      queryEntregasParciais(prisma, hoje, { ...f, ignorarCorteDados: incluiAntigos }),
+    ]);
 
   const podeSync = await canDiretoria(user, "diretoria.sync.force");
   const freshIso = await ultimaSyncIso(prisma);
@@ -83,6 +87,7 @@ export default async function DiretoriaPedidosPage({
     pendentes,
     porEtapa: porEtapa.linhas,
     maisParadas: maisParadas.linhas,
+    entregasParciais,
   };
 
   const podeEditarGlobal = user.platformRole === "super_admin" || user.platformRole === "admin";
@@ -97,6 +102,10 @@ export default async function DiretoriaPedidosPage({
     pendentes: [
       { componenteId: "B-04", ordem: 0, largura: 8, altura: 6, x: 0, y: 0 },
       { componenteId: "B-07", ordem: 1, largura: 8, altura: 6, x: 0, y: 6 },
+    ],
+    entregas: [
+      { componenteId: "B-08", ordem: 0, largura: 8, altura: 3, x: 0, y: 0 },
+      { componenteId: "B-09", ordem: 1, largura: 8, altura: 8, x: 0, y: 3 },
     ],
   };
   const abasIds = Object.keys(PADROES_ABA);

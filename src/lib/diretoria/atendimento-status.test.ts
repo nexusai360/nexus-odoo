@@ -14,7 +14,8 @@ function prismaFake(estado: { ultimoBuildAt: Date } | null): PrismaClient {
 
 describe("atendimentoSincronizado", () => {
   it("confirma que da para confiar nas colunas de atendimento", async () => {
-    const em = new Date("2026-07-13T21:00:00Z");
+    // Relativo a agora (validade 48h): data fixa tornava o teste frágil com o tempo.
+    const em = new Date(Date.now() - 60_000);
     const prisma = prismaFake({ ultimoBuildAt: em });
 
     expect(await atendimentoSincronizado(prisma)).toEqual({ ok: true, em });

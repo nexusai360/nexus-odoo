@@ -120,6 +120,8 @@ export const CATALOGO: ComponenteCatalogo[] = [
   comp({ id: "B-05", nome: "Ranking de estados (demandas)", dominio: "B", tipo: "widget", fonteDado: "real" }),
   comp({ id: "B-06", nome: "Demanda por etapa", dominio: "B", tipo: "grafico", fonteDado: "real" }),
   comp({ id: "B-07", nome: "Demandas mais paradas", dominio: "B", tipo: "tabela", fonteDado: "real" }),
+  comp({ id: "B-08", nome: "Entregas parciais , indicadores", dominio: "B", tipo: "kpi", fonteDado: "real" }),
+  comp({ id: "B-09", nome: "Entregas parciais , tabela", dominio: "B", tipo: "tabela", fonteDado: "real" }),
 ];
 
 const PORID = new Map(CATALOGO.map((c) => [c.id, c]));
