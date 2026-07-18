@@ -196,6 +196,11 @@ negativo não é estoque: agora fica fora do valor e aparece como gap (`linhasNe
 **dividido** por ele, e é esse resultado que vira o KPI. O valor a custo puro continua visível
 no rodapé do card, para conferir a conta sem sair da tela.
 
+> **Exceção , card da VISÃO GERAL (decisão do dono, 2026-07-18):** ali o número principal é o
+> **valor a CUSTO puro (R$ 29,8 mi)** e o rodapé mostra `índice 0,95 → R$ 31,4 mi`. Ou seja, na
+> Visão Geral a hierarquia é invertida em relação à tela de Estoque (que mantém os R$ 31,4 mi
+> em destaque). É a mesma conta, só muda qual dos dois números fica grande.
+
 **Só o estoque que é NOSSO e está EM CASA** (regra nova, 2026-07-13). A árvore de locais do
 Odoo tem três raízes, e o KPI somava as três:
 

@@ -7,6 +7,30 @@ import { cn } from "@/lib/utils";
 import { SEM_UF } from "@/lib/diretoria/uf";
 import { BRAZIL_VIEWBOX, UF_PATHS } from "./uf-data";
 
+// Posição da sigla de cada estado: centroide dos vértices do path (os paths são só M/L,
+// coordenadas absolutas), e um tamanho de fonte proporcional ao menor lado do estado , para
+// a letrinha caber em estados pequenos (DF, SE) sem esmagar os grandes. Calculado uma vez.
+const UF_LABELS = UF_PATHS.map((p) => {
+  const nums = p.path.match(/-?\d+(?:\.\d+)?/g)?.map(Number) ?? [];
+  let sx = 0, sy = 0, n = 0;
+  let minx = Infinity, miny = Infinity, maxx = -Infinity, maxy = -Infinity;
+  for (let i = 0; i + 1 < nums.length; i += 2) {
+    const x = nums[i], y = nums[i + 1];
+    sx += x; sy += y; n += 1;
+    if (x < minx) minx = x;
+    if (x > maxx) maxx = x;
+    if (y < miny) miny = y;
+    if (y > maxy) maxy = y;
+  }
+  const menor = Math.min(maxx - minx, maxy - miny);
+  return {
+    uf: p.uf,
+    cx: n ? sx / n : 0,
+    cy: n ? sy / n : 0,
+    fonte: Math.max(7, Math.min(15, menor * 0.42)),
+  };
+});
+
 export interface BrazilMapDatum {
   uf: string;
   valor: number;
@@ -235,6 +259,28 @@ export function BrazilMap({
                   );
                 });
               })()}
+              {/* Sigla da UF no centro de cada estado. Contorno (paintOrder) para legibilidade
+                  sobre qualquer cor do heatmap, nos dois temas. Não intercepta o mouse. */}
+              {UF_LABELS.map((l) => (
+                <text
+                  key={`sigla-${l.uf}`}
+                  x={l.cx}
+                  y={l.cy}
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  fontSize={l.fonte}
+                  className="pointer-events-none select-none font-semibold"
+                  style={{
+                    fill: "var(--foreground)",
+                    stroke: "var(--background)",
+                    strokeWidth: l.fonte * 0.16,
+                    paintOrder: "stroke",
+                    opacity: 0.82,
+                  }}
+                >
+                  {l.uf}
+                </text>
+              ))}
             </svg>
 
             {/* Pseudo-estado "Sem UF": clientes sem estado resolvido. Fica um

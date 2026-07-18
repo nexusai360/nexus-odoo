@@ -76,15 +76,15 @@ export function VisaoGeralScreen({ data }: { data: VisaoGeralData }) {
           )}
         />
         <KpiButton rotulo="A pagar" valor={brlCompacto(data.aPagar)} valorCompleto={brl.format(data.aPagar)} icone={Wallet} tone="warning" hint={doGrupo("Fornecedores em aberto")} />
-        {/* O valor a custo aparece no rodapé: o KPI é ele dividido pelo índice, e o usuário
-            precisa conseguir conferir a conta sem sair da tela. */}
+        {/* Decisão do dono (2026-07-18): o número principal é o valor A CUSTO puro; o índice
+            e o valor ajustado ficam no rodapé, para conferir a conta sem sair da tela. */}
         <KpiButton
           rotulo="Valor em estoque"
-          valor={brlCompacto(data.valorEstoque)}
-          valorCompleto={brl.format(data.valorEstoque)}
+          valor={brlCompacto(data.valorEstoqueACusto)}
+          valorCompleto={brl.format(data.valorEstoqueACusto)}
           icone={Boxes}
           hint={doGrupo(
-            `${brlCompacto(data.valorEstoqueACusto)} a custo ÷ ${data.indiceEstoque.toLocaleString("pt-BR")}`,
+            `índice ${data.indiceEstoque.toLocaleString("pt-BR")} → ${brlCompacto(data.valorEstoque)}`,
           )}
         />
         <KpiButton rotulo="Demandas a entregar" valor={num.format(data.demandasTotal)} icone={Truck} tone={data.demandasAtrasadas > 0 ? "danger" : "info"} hint={doGrupo(`${num.format(data.demandasAtrasadas)} atrasadas`)} />
