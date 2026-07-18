@@ -15,8 +15,8 @@
 
 ## Estado das ondas
 - [x] Perícia (4 frentes) + Plano v1→2 reviews→v3 (commits 3591fa5a, a0e39c60)
-- [ ] **ONDA 0 , investigação contra o banco real** (T0.1..T0.5) ← EM ANDAMENTO
-- [ ] ONDA A , backend relatório (TA.0..TA.4)
+- [x] **ONDA 0 , investigação** (achados em `research/2026-07-18-onda0-achados.md`). Chave: dado de atendimento defasado no local (qaa NULL) → reconciliação por reúso de função; DSTOCK/transferência viram pendência do colega (não auto-detectáveis).
+- [ ] **ONDA A , backend relatório (TA.0..TA.4)** ← EM ANDAMENTO
 - [ ] ONDA B , UI relatório (TB.1..TB.7)
 - [ ] ONDA C , estoque real/demo (TC.1..TC.7)
 - [ ] ONDA D , mapa UF + verificação financeira (TD.1..TD.3)

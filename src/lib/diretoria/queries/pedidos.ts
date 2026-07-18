@@ -9,6 +9,7 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 
 import { janelaClampada } from "@/lib/corte-dados";
+import { aAtenderDoItem } from "@/lib/diretoria/atendimento-item";
 import { atendimentoSincronizado } from "@/lib/diretoria/atendimento-status";
 import { siglaDeUf } from "@/lib/diretoria/uf";
 import { buildEmpresaWhere } from "@/lib/metrics/_shared/empresa";
@@ -129,26 +130,19 @@ async function enriquecerComAAtender(
     prisma.fatoProduto.findMany({ select: { odooId: true, precoCusto: true } }),
   ]);
 
-  const custoDe = new Map(
+  const custoMap = new Map(
     produtos.map((p) => [p.odooId, Number(p.precoCusto ?? 0)]),
   );
+  const custoDe = (id: number): number | undefined => custoMap.get(id);
   const acc = new Map<
     number,
     { custo: number; venda: number; qtd: number; semCusto: number; semProduto: number }
   >();
 
   for (const it of itens) {
-    const cheia = Number(it.quantidade ?? 0);
-    // Sem o job, "a atender" é desconhecido , cai na quantidade cheia, uniformemente.
-    // Piso em zero: o Odoo devolve "a atender" NEGATIVO quando entregaram MAIS do que foi
-    // pedido. Sem o piso, o excesso de um pedido abate a falta de outro e o valor a
-    // entregar sai menor do que é (e um pedido pode até aparecer com valor negativo).
-    const aAtender = Math.max(
-      0,
-      status.ok ? Number(it.quantidadeAAtender ?? 0) : cheia,
-    );
-    const custoUnit = it.produtoId != null ? custoDe.get(it.produtoId) : undefined;
-    const precoUnit = cheia > 0 ? Number(it.vrProdutos ?? 0) / cheia : 0;
+    // Mesma regra usada pelo Relatório de Entregas Parciais (grão-item): peça compartilhada
+    // em `atendimento-item.ts`, para o card e o relatório somarem exatamente o mesmo.
+    const linha = aAtenderDoItem(it, custoDe, status.ok);
 
     const cur = acc.get(it.pedidoId) ?? {
       custo: 0,
@@ -157,11 +151,11 @@ async function enriquecerComAAtender(
       semCusto: 0,
       semProduto: 0,
     };
-    cur.qtd += aAtender;
-    cur.custo += aAtender * (custoUnit ?? 0);
-    cur.venda += aAtender * precoUnit;
-    if (it.produtoId == null) cur.semProduto += 1;
-    else if (custoUnit == null || custoUnit <= 0) cur.semCusto += 1;
+    cur.qtd += linha.aAtender;
+    cur.custo += linha.custoLinha;
+    cur.venda += linha.vendaLinha;
+    if (linha.semProduto) cur.semProduto += 1;
+    else if (linha.semCusto) cur.semCusto += 1;
     acc.set(it.pedidoId, cur);
   }
 
