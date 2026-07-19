@@ -29,15 +29,25 @@
 > bloqueados agora são legíveis. Valores: EM TRANSFERENCIA R$ 2,21 mi (→ físico/próprio), JDS DEMO
 > 14 locais ~R$ 4,58 mi (→ demonstração "nossos"), intercompany 285 R$ 2,34 mi (avaliar). Perícia+
 > plano das 2 frentes: `docs/superpowers/research/2026-07-19-plan4-6-estoque-classificacao-e-historico.md`.
-> - **Frente A (classificação):** regra `classificarLocal` JÁ pronta (EM TRANSFERENCIA→físico, JDS
->   DEMO→demonstração; +3 testes). FALTA: re-sync do estoque no dev (traz os 16 locais ao cache) +
->   validar E2E + intercompany 285 + KPIs + 4 pontas + conferir id 414 (era "deletado", estava
->   bloqueado). Virtual (produção ~R$ 9,7 mi) fica fora do disponível.
-> - **Frente B (histórico temporal , NOVO, pedido enfático do dono):** guardar preços E saldos com
->   data/hora a cada ciclo (~10 min) p/ histórico de preço e movimentação (quem entrou/saiu), no
->   cache. Já existe `FatoEstoqueSaldoSnapshot` (só DIÁRIO, sem preço). Construir: histórico de preço
->   (append por mudança) + movimentação por ciclo (avaliar ingerir `estoque.extrato`). Metodologia
->   por PLAN. Transcrição bruta da reunião: `docs/superpowers/research/2026-07-19-reuniao-transcricao-BRUTA.md`.
+> - **Frente A (classificação) , FECHADA e periciada.** Re-sync dos SALDOS (o cache tinha a foto de
+>   14/07, anterior à liberação: os 16 locais existiam em `fato_estoque_local` sem UMA linha de
+>   saldo; 4.193 → 4.622) via `scripts/resync-estoque.ts`. Intercompany: filho DIRETO de "Terceiros"
+>   com dono do próprio grupo vira físico, dono reconhecido por `sped.participante.eh_empresa` +
+>   `tipo_pessoa = J`. **A perícia pegou bug real:** a regra promovia NOVE locais, não um , oito são
+>   espelhos de razão social (`estoque_em_maos = false`), hoje zerados, que inflariam o KPI em
+>   silêncio no primeiro lançamento errado. Corrigido: intercompany e raiz "Próprio" são dois
+>   caminhos para a MESMA porta (guarda mercadoria de verdade). Físicos 26 → 18.
+>   E2E `scripts/e2e/e2e-estoque-classificacao.ts`, 4 pontas: KPI a custo R$ 34,59 mi (R$ 36,41 mi
+>   com índice), demonstração R$ 2,67 mi nossos + R$ 1,70 mi cliente, armazém R$ 33,99 mi com
+>   trânsito (R$ 2,33 mi) e intercompany (R$ 3,86 mi) dentro. Virtual segue fora do disponível.
+> - **Frente B (histórico temporal , NOVO, pedido enfático do dono) , EM SPEC.** Guardar preços E
+>   saldos com data/hora por ciclo. Spec v1:
+>   `docs/superpowers/specs/2026-07-19-historico-temporal-preco-saldo-SPEC-v1.md` (2 reviews
+>   adversariais sequenciais → v3 → plano → TDD). **A perícia do dado derrubou duas premissas:**
+>   (1) `fato_estoque_movimento` JÁ EXISTE (22.787 linhas do `estoque.extrato`, com data/local/
+>   sentido/documento) , não há o que ingerir; (2) `fato_preco` tem 12.009 linhas em 7 tabelas
+>   (custo inclusive), não só as ~2,9 mil de venda. Transcrição bruta:
+>   `docs/superpowers/research/2026-07-19-reuniao-transcricao-BRUTA.md`.
 >
 > ---
 >
