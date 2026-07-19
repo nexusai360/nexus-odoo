@@ -61,6 +61,18 @@ tabela". Consultável no NOSSO cache, sem ir ao Odoo.
 **Regra durável a respeitar:** a data de início das análises FILTRA a leitura (nunca faxina); o
 histórico ACUMULA (append-only), nunca apaga. Corte técnico da ingestão é separado.
 
+## Perícia do dado da Frente B (medido no cache, 2026-07-19)
+
+- **Preços de venda:** ~2.963 linhas (Venda Padrão tab 3 = 2.805; Venda Smart tab 5 = 158). Pequeno,
+  muda raramente, tem coluna `atualizado_em`. → **append-por-mudança é o certo** (snapshot completo
+  por ciclo daria ~2,9k × 144 ciclos/dia = ~425k linhas/dia, desperdício). Tabela nova
+  `fato_preco_snapshot` grava (capturadoEm, tabelaId, produtoId, valor) só quando o valor difere do
+  último registrado para aquele (produto,tabela).
+- **`estoque.extrato` (movimentação):** 233.554 linhas no raw , é a espinha real do "quem
+  entrou/saiu" (data, local, contrapartida, documento). Pesado; avaliar corte/ingestão incremental.
+- **`fato_estoque_saldo_snapshot`:** só 8 dias (19/06 a 14/07), granularidade diária. A Frente B
+  acrescenta granularidade por ciclo via append-por-mudança de saldo (não snapshot cheio por ciclo).
+
 ## Metodologia (por PLAN, inegociável)
 
 Cada frente: perícia do dado (feita, este doc) → spec v1 → 2 reviews adversariais sequenciais → v3
