@@ -37,30 +37,65 @@ export interface FatoListaMaterialItemRow {
   quantidade: number;
   tipoItem: string | null;
   listaId: number | null;
+  listaDataAtivacao: Date | null;
+  listaInativa: boolean;
 }
 
-/** Mapeia uma linha da BOM. Retorna null quando não há pai ou componente (linha inútil). */
+/** Ativacao de uma lista (header). null/false do Odoo viram null/nao-inativa. */
+export interface AtivacaoLista {
+  dataAtivacao: Date | null;
+  inativa: boolean;
+}
+
+function parseDataOdoo(v: unknown): Date | null {
+  if (typeof v !== "string" || v.length < 8) return null; // Odoo manda `false` (bool) p/ vazio
+  const d = new Date(`${v.replace(" ", "T")}Z`);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/**
+ * Mapeia uma linha da BOM. Retorna null quando não há pai ou componente (linha inútil).
+ * `ativacaoPorLista` (do header raw_sped_produto_lista_material) traz a ativação da lista.
+ */
 export function mapListaMaterialRow(
   raw: Record<string, unknown>,
+  ativacaoPorLista?: Map<number, AtivacaoLista>,
 ): FatoListaMaterialItemRow | null {
   const pai = relId(raw.produto_produzido_id);
   const comp = relId(raw.produto_id);
   if (pai == null || comp == null) return null;
+  const listaId = relId(raw.lista_id);
+  const ativ = listaId != null ? ativacaoPorLista?.get(listaId) : undefined;
   return {
     produtoPaiId: pai,
     componenteProdutoId: comp,
     componenteNome: relNome(raw.produto_id),
     quantidade: toNum(raw.quantidade),
     tipoItem: typeof raw.tipo_item === "string" ? raw.tipo_item : null,
-    listaId: relId(raw.lista_id),
+    listaId,
+    listaDataAtivacao: ativ?.dataAtivacao ?? null,
+    listaInativa: ativ?.inativa ?? false,
   };
 }
 
 export async function rebuildFatoListaMaterial(prisma: PrismaClient): Promise<number> {
+  // Header das listas (raw_sped_produto_lista_material): ativacao por lista (odoo_id).
+  const headers = await prisma.$queryRaw<{ data: Record<string, unknown> }[]>`
+    SELECT data FROM raw_sped_produto_lista_material WHERE raw_deleted = false`;
+  const ativacaoPorLista = new Map<number, AtivacaoLista>();
+  for (const h of headers) {
+    const id = Number(h.data.id);
+    if (!Number.isFinite(id)) continue;
+    ativacaoPorLista.set(id, {
+      dataAtivacao: parseDataOdoo(h.data.data_ativacao),
+      inativa: parseDataOdoo(h.data.data_inativacao) != null,
+    });
+  }
+
   const rawRows = await prisma.$queryRaw<{ data: Record<string, unknown> }[]>`
     SELECT data FROM raw_sped_produto_lista_material_item WHERE raw_deleted = false`;
   const mapped = rawRows
-    .map((r) => mapListaMaterialRow(r.data))
+    .map((r) => mapListaMaterialRow(r.data, ativacaoPorLista))
     .filter((r): r is FatoListaMaterialItemRow => r != null);
 
   await prisma.$transaction(

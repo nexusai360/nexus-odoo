@@ -17,6 +17,27 @@ describe("mapListaMaterialRow", () => {
     expect(r.listaId).toBe(42);
   });
 
+  it("preenche a ativacao da lista a partir do Map do header", () => {
+    const ativacao = new Map([
+      [42, { dataAtivacao: new Date("2025-11-24T00:00:00Z"), inativa: false }],
+    ]);
+    const r = mapListaMaterialRow(
+      { produto_produzido_id: [1, "pai"], produto_id: [2, "comp"], lista_id: [42, "L"] },
+      ativacao,
+    )!;
+    expect(r.listaDataAtivacao).toEqual(new Date("2025-11-24T00:00:00Z"));
+    expect(r.listaInativa).toBe(false);
+  });
+
+  it("lista sem entrada no Map: ativacao null, nao inativa", () => {
+    const r = mapListaMaterialRow(
+      { produto_produzido_id: [1, "pai"], produto_id: [2, "comp"], lista_id: [99, "L"] },
+      new Map(),
+    )!;
+    expect(r.listaDataAtivacao).toBeNull();
+    expect(r.listaInativa).toBe(false);
+  });
+
   it("descarta linha sem pai ou sem componente", () => {
     expect(mapListaMaterialRow({ produto_produzido_id: false, produto_id: [1, "x"] })).toBeNull();
     expect(mapListaMaterialRow({ produto_produzido_id: [1, "x"], produto_id: false })).toBeNull();

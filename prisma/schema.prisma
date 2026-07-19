@@ -2427,6 +2427,10 @@ model FatoListaMaterialItem {
   quantidade          Decimal  @default(0) @db.Decimal(18, 4)
   tipoItem            String?  @map("tipo_item")
   listaId             Int?     @map("lista_id")
+  // Ativacao da LISTA (do header raw_sped_produto_lista_material), para resolver kits com
+  // multiplas BOMs: preferir lista ativada e nao-inativada. null = nunca ativada.
+  listaDataAtivacao   DateTime? @map("lista_data_ativacao")
+  listaInativa        Boolean   @default(false) @map("lista_inativa")
   atualizadoEm        DateTime @default(now()) @map("atualizado_em")
 
   @@index([produtoPaiId])
