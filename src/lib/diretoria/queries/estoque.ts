@@ -45,6 +45,7 @@ import {
   localIdsPorClassificacao,
   whereLocal,
 } from "@/lib/estoque/locais-por-classificacao";
+import { subtipoDemonstracao } from "@/lib/estoque/subtipo-demonstracao";
 
 /**
  * Filtros globais da Diretoria aplicáveis a esta tela. O `empresaId` só tem efeito nas
@@ -245,9 +246,77 @@ export function queryEstoquePorLocal(prisma: PrismaClient) {
   return agrupaSaldo(prisma, "localNome", "Sem local");
 }
 
-/** Estoque parado na casa do cliente (demonstração). Não é vendável. */
-export function queryEstoqueDemonstracao(prisma: PrismaClient) {
-  return agrupaSaldo(prisma, "localNome", "Sem local", "demonstracao");
+/** Demonstração separada em 2 sub-tipos, para o painel comparar lado a lado. */
+export interface EstoqueDemonstracaoAgrupado {
+  /** Soma dos dois grupos (mantém o card global "Valor em demonstração"). */
+  valorGeral: number;
+  /** Nossos depósitos de demonstração (showroom + JDSDEMO), raiz "Próprio". */
+  nossos: { linhas: LinhaAgrupada[]; valorGeral: number };
+  /** Em cliente (com nota de demonstração), raiz "Terceiros". */
+  cliente: { linhas: LinhaAgrupada[]; valorGeral: number };
+}
+
+/**
+ * Estoque de demonstração em 2 blocos (reunião do dono, 2026-07-19): os NOSSOS depósitos
+ * de demo (JDSDEMO/showroom, raiz "Próprio") em cima, e o que está EM CLIENTE (com nota,
+ * raiz "Terceiros") embaixo. Valoriza a CUSTO, a mesma base do card e do KPI de estoque.
+ * O sub-tipo de cada local vem de `subtipoDemonstracao` (fonte única).
+ */
+export async function queryEstoqueDemonstracao(
+  prisma: PrismaClient,
+): Promise<EstoqueDemonstracaoAgrupado> {
+  const [locais, custos] = await Promise.all([
+    prisma.fatoEstoqueLocal.findMany({
+      where: { classificacao: "demonstracao" },
+      select: { odooId: true, nomeCompleto: true },
+    }),
+    custoPorProduto(prisma),
+  ]);
+  const subtipoPorLocal = new Map<number, "nosso" | "cliente">(
+    locais.map((l) => [l.odooId, subtipoDemonstracao(l.nomeCompleto, l.odooId)]),
+  );
+  const localIds = locais.map((l) => l.odooId);
+  // Mesma regra do KPI: só o saldo POSITIVO (zerado não é estoque, negativo é furo).
+  const rows = localIds.length
+    ? await prisma.fatoEstoqueSaldo.findMany({
+        where: { quantidade: { gt: 0 }, localId: { in: localIds } },
+        select: { localNome: true, quantidade: true, produtoId: true, localId: true },
+      })
+    : [];
+
+  // Agrega por local (id é a identidade; nome é rótulo) dentro de cada sub-tipo.
+  const acc = {
+    nosso: new Map<string, { rotulo: string; quantidade: number; valorTotal: number }>(),
+    cliente: new Map<string, { rotulo: string; quantidade: number; valorTotal: number }>(),
+  };
+  for (const r of rows) {
+    // Fail-safe: local sem sub-tipo conhecido cai em "cliente" (nunca infla o bloco "nosso").
+    const sub = r.localId != null ? subtipoPorLocal.get(r.localId) ?? "cliente" : "cliente";
+    const rotulo = r.localNome ?? "Sem local";
+    const k = String(r.localId ?? "sem-local");
+    const qtd = Number(r.quantidade ?? 0);
+    const v = qtd * (r.produtoId != null ? custos.get(r.produtoId) ?? 0 : 0);
+    const map = acc[sub];
+    const cur = map.get(k);
+    if (cur) {
+      cur.quantidade += qtd;
+      cur.valorTotal += v;
+    } else {
+      map.set(k, { rotulo, quantidade: qtd, valorTotal: v });
+    }
+  }
+  const monta = (
+    map: Map<string, { rotulo: string; quantidade: number; valorTotal: number }>,
+  ): { linhas: LinhaAgrupada[]; valorGeral: number } => {
+    const linhas = [...map.values()]
+      .map((v) => ({ chave: v.rotulo, quantidade: v.quantidade, valorTotal: v.valorTotal }))
+      .sort((a, b) => b.valorTotal - a.valorTotal || a.chave.localeCompare(b.chave));
+    const valorGeral = linhas.reduce((s, l) => s + l.valorTotal, 0);
+    return { linhas, valorGeral };
+  };
+  const nossos = monta(acc.nosso);
+  const cliente = monta(acc.cliente);
+  return { valorGeral: nossos.valorGeral + cliente.valorGeral, nossos, cliente };
 }
 
 /** A5 , Distribuição do estoque por família. */

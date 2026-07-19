@@ -517,49 +517,95 @@ function FragmentLinha({
   );
 }
 
-/** A-13 , Estoque em demonstração: o que está na casa do cliente, não vendável. */
+/** A-13 , Estoque em demonstração, em 2 blocos: os NOSSOS depósitos de demo (JDSDEMO)
+ * em cima e o que está EM CLIENTE (com nota) embaixo, para comparar lado a lado. */
 function EstoqueDemonstracao({ d }: { d: EstoqueData }) {
-  const linhas = d.demonstracao.linhas.map((l) => ({
+  const colunasDe = (rotuloLocal: string): ColumnDef<{ local: string; quantidade: number; valorTotal: number }>[] => [
+    { key: "local", header: rotuloLocal, tipo: "texto" },
+    { key: "quantidade", header: "Unidades", tipo: "numero" },
+    { key: "valorTotal", header: "Valor a custo", tipo: "moeda" },
+  ];
+  const nossos = d.demonstracao.nossos.linhas.map((l) => ({
     local: nomeLimpo(l.chave) || DASH,
     quantidade: l.quantidade,
     valorTotal: l.valorTotal,
   }));
-  const colunas: ColumnDef<(typeof linhas)[number]>[] = [
-    { key: "local", header: "Cliente / local", tipo: "texto" },
-    { key: "quantidade", header: "Unidades", tipo: "numero" },
-    { key: "valorTotal", header: "Valor a custo", tipo: "moeda" },
-  ];
+  const cliente = d.demonstracao.cliente.linhas.map((l) => ({
+    local: nomeLimpo(l.chave) || DASH,
+    quantidade: l.quantidade,
+    valorTotal: l.valorTotal,
+  }));
   return (
-    <div className="flex h-full flex-col gap-3">
-      <div className="grid grid-cols-2 gap-2.5">
+    <div className="flex h-full flex-col gap-4">
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
         <KpiButton
-          rotulo="Valor em demonstração"
+          rotulo="Total em demonstração"
           valor={brlCompacto(d.demonstracao.valorGeral)}
           valorCompleto={brl.format(d.demonstracao.valorGeral)}
           icone={Boxes}
-          hint="Não entra no estoque"
+          hint="Não entra no estoque vendável"
         />
         <KpiButton
-          rotulo="Locais"
-          valor={num.format(linhas.length)}
+          rotulo="Nossa (JDSDEMO)"
+          valor={brlCompacto(d.demonstracao.nossos.valorGeral)}
+          valorCompleto={brl.format(d.demonstracao.nossos.valorGeral)}
           icone={Warehouse}
           tone="info"
-          hint="Clientes com equipamento"
+          hint="Depósitos de demonstração nossos"
+        />
+        <KpiButton
+          rotulo="Em cliente"
+          valor={brlCompacto(d.demonstracao.cliente.valorGeral)}
+          valorCompleto={brl.format(d.demonstracao.cliente.valorGeral)}
+          icone={Warehouse}
+          tone="info"
+          hint="Com nota, na casa do cliente"
         />
       </div>
-      <p className="text-xs text-[var(--muted-foreground)]">
-        Equipamento posicionado na casa do cliente. Não entra no valor do estoque nem está
-        disponível para venda.
-      </p>
-      <DataTable
-        columns={colunas}
-        rows={linhas}
-        searchable
-        compactoInicial
-        alturaFluida
-        exportFilename="estoque-demonstracao"
-        estado={linhas.length === 0 ? "vazio" : "ok"}
-      />
+
+      {/* Bloco 1: nossos depósitos de demonstração (JDSDEMO), raiz Próprio. */}
+      <section className="flex flex-col gap-2">
+        <h4 className="text-sm font-medium text-[var(--foreground)]">
+          Demonstração nossa (JDSDEMO)
+        </h4>
+        <p className="text-xs text-[var(--muted-foreground)]">
+          Nossos depósitos de demonstração, sem nota. Equipamento nosso posicionado para mostruário.
+        </p>
+        {nossos.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--card)] px-4 py-6 text-center text-xs text-[var(--muted-foreground)]">
+            Sem estoque de demonstração em depósito nosso no momento. Locais próprios de demonstração
+            (JDSDEMO) com saldo aparecem aqui.
+          </div>
+        ) : (
+          <DataTable
+            columns={colunasDe("Nosso local")}
+            rows={nossos}
+            searchable
+            compactoInicial
+            alturaFluida
+            exportFilename="demonstracao-nossa"
+            estado="ok"
+          />
+        )}
+      </section>
+
+      {/* Bloco 2: em cliente (com nota de demonstração), raiz Terceiros. */}
+      <section className="flex flex-col gap-2">
+        <h4 className="text-sm font-medium text-[var(--foreground)]">Em cliente (com nota)</h4>
+        <p className="text-xs text-[var(--muted-foreground)]">
+          Equipamento posicionado na casa do cliente, com nota de demonstração. Não está disponível
+          para venda.
+        </p>
+        <DataTable
+          columns={colunasDe("Cliente / local")}
+          rows={cliente}
+          searchable
+          compactoInicial
+          alturaFluida
+          exportFilename="demonstracao-em-cliente"
+          estado={cliente.length === 0 ? "vazio" : "ok"}
+        />
+      </section>
     </div>
   );
 }

@@ -12,6 +12,7 @@ import {
   queryEstoqueGranular,
   queryEstoqueDisponivelDiretoria,
   queryNecessidadeCompra,
+  queryEstoqueDemonstracao,
 } from "./estoque";
 
 /** Data de início das análises vigente nos testes (padrão da plataforma). */
@@ -99,6 +100,65 @@ describe("queryIndicadoresEstoque (A4)", () => {
     const r = await queryIndicadoresEstoque(prisma);
     expect(r.valorTotal).toBe(0);
     expect(r.produtosSemCusto).toBe(1);
+  });
+});
+
+describe("queryEstoqueDemonstracao (A-13, 2 blocos)", () => {
+  it("separa nossos (JDSDEMO/showroom, raiz Próprio) de em cliente (Terceiros), a custo", async () => {
+    const prisma = {
+      fatoEstoqueLocal: {
+        findMany: jest.fn().mockResolvedValue([
+          { odooId: 35, nomeCompleto: "Próprio / Showroom" },
+          { odooId: 414, nomeCompleto: "Próprio / JDS DEMO SÃO PAULO" },
+          { odooId: 260, nomeCompleto: "Terceiros / Demonstração / Academia X" },
+        ]),
+      },
+      fatoProduto: {
+        findMany: jest.fn().mockResolvedValue([
+          { odooId: 1, precoCusto: 100 },
+          { odooId: 2, precoCusto: 50 },
+        ]),
+      },
+      fatoEstoqueSaldo: {
+        findMany: jest.fn().mockResolvedValue([
+          { localNome: "Showroom", quantidade: 2, produtoId: 1, localId: 35 }, // nosso: 200
+          { localNome: "JDS DEMO SP", quantidade: 1, produtoId: 2, localId: 414 }, // nosso: 50
+          { localNome: "Academia X", quantidade: 4, produtoId: 1, localId: 260 }, // cliente: 400
+        ]),
+      },
+    } as unknown as Parameters<typeof queryEstoqueDemonstracao>[0];
+
+    const r = await queryEstoqueDemonstracao(prisma);
+    expect(r.nossos.valorGeral).toBe(250); // 200 + 50
+    expect(r.cliente.valorGeral).toBe(400);
+    expect(r.valorGeral).toBe(650); // soma dos 2 grupos == card global
+    expect(r.nossos.linhas).toHaveLength(2);
+    expect(r.cliente.linhas).toHaveLength(1);
+    // só busca os locais de demonstração no fato
+    const call = (prisma.fatoEstoqueLocal.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where).toEqual({ classificacao: "demonstracao" });
+  });
+
+  it("grupo nossos vazio quando não há saldo em depósito próprio (estado real hoje)", async () => {
+    const prisma = {
+      fatoEstoqueLocal: {
+        findMany: jest.fn().mockResolvedValue([
+          { odooId: 260, nomeCompleto: "Terceiros / Demonstração / Academia X" },
+        ]),
+      },
+      fatoProduto: { findMany: jest.fn().mockResolvedValue([{ odooId: 1, precoCusto: 100 }]) },
+      fatoEstoqueSaldo: {
+        findMany: jest.fn().mockResolvedValue([
+          { localNome: "Academia X", quantidade: 4, produtoId: 1, localId: 260 },
+        ]),
+      },
+    } as unknown as Parameters<typeof queryEstoqueDemonstracao>[0];
+
+    const r = await queryEstoqueDemonstracao(prisma);
+    expect(r.nossos.linhas).toHaveLength(0);
+    expect(r.nossos.valorGeral).toBe(0);
+    expect(r.cliente.valorGeral).toBe(400);
+    expect(r.valorGeral).toBe(400);
   });
 });
 
