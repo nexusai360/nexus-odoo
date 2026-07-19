@@ -2,7 +2,17 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development ou superpowers:executing-plans. Steps usam checkbox (`- [ ]`).
 
-**Versão:** v2 (review adversarial #1 aplicada; aguarda review #2 → v3)
+**Versão:** v3 (FINAL , reviews #1 e #2 aplicadas; pronto para execução TDD)
+
+**Mudanças v2 → v3 (após review #2, que achou o problema central do M6):**
+- **M6 reescrito , Mercos é 1:N, não 1:1 (premissa falsa da v2 corrigida):** medido no cache, 115 de 646 números de Mercos (18%) aparecem em >1 pedido do Odoo (um Mercos vira ROM/transferência/entregas parciais , o domínio desta branch). Ex.: Mercos 46605 → 8 pedidos; Mercos 2213 → 2. Um `findFirst` devolveria 1 pedido arbitrário em silêncio. Agora: busca por Mercos usa `findMany`, com **precedência do match exato de `numeroMercos`** sobre o `contains` do número Odoo (senão um alvo de 4 dígitos casaria por substring o miolo NNNN de um PV alheio , colisão que CRESCE conforme a sequência PV do ano avança). Se N>1 pedidos casam o Mercos, a tool retorna a LISTA dos números Odoo; se N=1, a situação daquele; se 0, cai no `numero contains` antigo.
+- **Teste do M6** passa a inspecionar `findMany.mock.calls[0][0].where` (padrão de `comercial.test.ts:53`) e a stubbar os `$queryRaw` de itens/trilha, senão o teste não prova o `where` e/ou estoura.
+- **M4** nomeia explicitamente o bloco `entregasParciais` (blocos-pedidos.tsx tem 3 tabelas com header "Número"/"Pedido"; a coluna vai só na de entregas parciais).
+- **Critério de aceite** do E2E: `>= ~794 e crescente` (o builder materializa só `rawDeleted=false`; a base cresce).
+- **M2 commit** sem "(+indice)" (resíduo do v1; a task já decidiu sem índice).
+- **NÃO aplicar `(?<![a-z])` antes de "mercos" (L2 da review):** blindaria "comercos"/"e-mercos" (0 casos no dado) mas perderia o `PEDIDOMERCOS:45110` real (1 caso desejado, tem "O" antes). Trade-off ruim; mantido o regex sem lookbehind, risco latente registrado.
+
+**Mudanças v1 → v2 (após review #1):**
 
 **Mudanças v1 → v2 (após review #1):**
 - **Regex corrigido (bug crítico):** `\b` antes de "mercos" NÃO barra "mercosul" (a fronteira fica antes do "m"; "mercosul" começa numa fronteira). O regex do v1 quebraria o próprio teste. Novo regex: `/mercos(?!ul)[^0-9]{0,10}([0-9]{4,7})/i` , o lookahead negativo `(?!ul)` barra "mercosul", `{4,7}` cobre crescimento do CRM sem falso positivo. Medido: 794/797, distribuição {4:34, 5:760}, zero mercosul. Sem o `\b`, também pega "PEDIDOMERCOS:45110" (grudado).
@@ -156,7 +166,7 @@ Run: `npx prisma migrate deploy` (confirmar coluna via information_schema) e `np
 
 ```bash
 git add prisma/schema.prisma prisma/migrations
-git commit -m "M2: coluna aditiva numero_mercos no fato_pedido (+indice)"
+git commit -m "M2: coluna aditiva numero_mercos no fato_pedido"
 ```
 
 ## Task M3: Builder materializa o número Mercos
@@ -201,7 +211,7 @@ Importar `extrairNumeroMercos`. Adicionar `numeroMercos: string | null;` a `Fato
 
 - [ ] **Step 4: Run test + E2E**
 
-Run: `npx jest src/worker/fatos/fato-pedido.test.ts` (PASS). E2E contra o cache (após popular): confirmar **794** pedidos com `numero_mercos` não-nulo, 4-5 dígitos (medido com o regex final).
+Run: `npx jest src/worker/fatos/fato-pedido.test.ts` (PASS). E2E contra o cache (após popular): confirmar **>= ~794** pedidos com `numero_mercos` não-nulo (o builder só materializa `rawDeleted=false`; a base cresce), 4-5 dígitos, zero de 1-3 ou >5 dígitos, zero "mercosul".
 ```bash
 docker exec nexus-odoo-db-1 psql -U nexus -d nexus_odoo_l1 -tAc \
   "SELECT count(*) FILTER (WHERE numero_mercos IS NOT NULL) AS com, count(*) AS total FROM fato_pedido;"
@@ -235,7 +245,7 @@ Run: `npx jest entregas-parciais`.
 
 - [ ] **Step 3: Implement**
 
-`select: { numeroMercos: true, ... }`; tipo `numeroMercos: string | null`; montagem `numeroMercos: p.numeroMercos ?? null`. Na UI (`blocos-pedidos.tsx`): `mercos: l.numeroMercos ?? DASH` no map e coluna `{ key: "mercos", header: "Nº Mercos", tipo: "texto" }` (posicionar logo após "Pedido").
+Em `entregas-parciais.ts`: `select: { numeroMercos: true, ... }` (o `findMany` próprio da query, linhas 153-165, que já traz `modalidadeFrete`); tipo `numeroMercos: string | null`; montagem `numeroMercos: p.numeroMercos ?? null`. Na UI, APENAS no componente da tabela de entregas parciais (`TabelaEntregasParciais`, que lê `d.entregasParciais`, header "Pedido" , NÃO os blocos `pendentes`/`maisParadas`): `mercos: l.numeroMercos ?? DASH` no map e coluna `{ key: "mercos", header: "Nº Mercos", tipo: "texto" }` logo após "Pedido".
 
 - [ ] **Step 4: Run tests**
 
@@ -279,47 +289,115 @@ git add src/lib/agent/bi-schema-reference.ts src/lib/agent/router/domain-vocabul
 git commit -m "M5: numero do Mercos nas pontas do Nex (BI + vocab + tool pedido_situacao)"
 ```
 
-## Task M6: Busca reversa , `pedido_situacao` também casa pelo número do Mercos
+## Task M6: Busca reversa , `pedido_situacao` acha pelo número do Mercos (tratando 1:N)
 
 **Files:**
-- Modify: `src/lib/reports/queries/comercial.ts` (`queryPedidoSituacao`, o `where` do `findFirst`)
+- Modify: `src/lib/reports/queries/comercial.ts` (`queryPedidoSituacao`: tipo de retorno + lógica de match)
+- Modify: `mcp/tools/comercial/pedido-situacao.ts` (schema + resposta do caso "vários pedidos")
 - Test: `src/lib/reports/queries/comercial.test.ts`
 
 **Interfaces:**
 - Consumes: `FatoPedido.numeroMercos`.
+- Produces: novo campo no retorno `multiplosMercos: { numeroMercos: string; pedidos: string[] } | null`.
 
-> **Por que (goal do plano):** "cruzar o pedido do Odoo com o do Mercos" é bidirecional. Hoje `queryPedidoSituacao` casa só pelo número do Odoo (`fatoPedido.numero`). Fazer o `where` casar TAMBÉM por `numeroMercos` deixa "situação do pedido Mercos 43203" funcionar para qualquer usuário do Nex, sem tool nova nem depender do `bi_consulta_avancada` (admin). Baixo custo: um OR no where.
+> **Por que assim (review #2):** o número do Mercos é **1:N** com pedidos do Odoo (18% dos Mercos têm >1 pedido; um Mercos vira ROM/transferência/entregas). Um `findFirst` devolveria 1 pedido arbitrário em silêncio , inaceitável. E `numero contains alvo` casaria por substring o miolo NNNN de um PV alheio (colisão crescente). Solução: quando o alvo parece um número Mercos (4-7 dígitos puros), buscar `numeroMercos` exato PRIMEIRO; N>1 → listar os pedidos; N=1 → situação dele; N=0 → cair no `numero contains` antigo.
 
 - [ ] **Step 1: Write the failing test**
 
-Em `comercial.test.ts`, um caso onde o input `numero` é um número de Mercos (ex.: "43203") e o `findFirst` retorna o pedido cujo `numeroMercos="43203"`. Assertar que `encontrado=true`. (Confirmar que o mock reflete o `where` com OR.)
+Em `comercial.test.ts`, dois casos (seguindo o padrão de mock existente, que stubba `fatoPedido.findFirst`/`findMany`, `fatoPedidoHistorico.findMany` e `$queryRaw`):
+```typescript
+it("busca por número de Mercos com 1 pedido devolve a situação dele", async () => {
+  const mockPrisma = {
+    fatoPedido: {
+      findMany: jest.fn().mockResolvedValue([
+        { odooId: 1, numero: "PV-2037/26", numeroMercos: "43203", etapaNome: "Sep",
+          bucketDemanda: "ABERTA", categoriaOperacao: "venda", operacaoNome: "Venda",
+          modalidadeFrete: "0", empresaNome: "Matrix", participanteNome: "A", vendedorNome: "Ana",
+          vrProdutos: "1000.00", dataOrcamento: new Date("2026-04-02T00:00:00Z"),
+          dataAprovacao: null, dataPrevista: null, pendenciaEtapa: null },
+      ]),
+      findFirst: jest.fn(),
+    },
+    fatoPedidoHistorico: { findMany: jest.fn().mockResolvedValue([]) },
+    $queryRaw: jest.fn().mockResolvedValue([]),
+  } as unknown as import("@/generated/prisma/client").PrismaClient;
+
+  const r = await queryPedidoSituacao(mockPrisma, { numero: "43203" });
+  // buscou por numeroMercos exato, nao por contains do numero Odoo
+  expect((mockPrisma.fatoPedido.findMany as jest.Mock).mock.calls[0][0].where)
+    .toEqual({ numeroMercos: "43203" });
+  expect(r.encontrado).toBe(true);
+  expect(r.pedido?.numero).toBe("PV-2037/26");
+  expect(r.multiplosMercos).toBeNull();
+});
+
+it("busca por Mercos com vários pedidos devolve a LISTA, não escolhe um", async () => {
+  const mockPrisma = {
+    fatoPedido: {
+      findMany: jest.fn().mockResolvedValue([
+        { odooId: 1, numero: "PV-0473/26", numeroMercos: "2213", dataOrcamento: new Date("2026-04-02T00:00:00Z") },
+        { odooId: 2, numero: "PV-2536/26", numeroMercos: "2213", dataOrcamento: new Date("2026-05-02T00:00:00Z") },
+      ]),
+      findFirst: jest.fn(),
+    },
+    fatoPedidoHistorico: { findMany: jest.fn() },
+    $queryRaw: jest.fn(),
+  } as unknown as import("@/generated/prisma/client").PrismaClient;
+
+  const r = await queryPedidoSituacao(mockPrisma, { numero: "2213" });
+  expect(r.encontrado).toBe(false);
+  expect(r.pedido).toBeNull();
+  expect(r.multiplosMercos).toEqual({ numeroMercos: "2213", pedidos: ["PV-0473/26", "PV-2536/26"] });
+});
+```
 
 - [ ] **Step 2: Run/verify fail**
 
-Run: `npx jest comercial`.
+Run: `npx jest comercial` , FAIL (`multiplosMercos` inexistente / busca por contains).
 
-- [ ] **Step 3: Implement the OR in the where**
+- [ ] **Step 3: Implement the precedence + 1:N**
 
-Trocar `where: { numero: { contains: alvo, mode: "insensitive" } }` por:
+No tipo de retorno de `queryPedidoSituacao`, adicionar `multiplosMercos: { numeroMercos: string; pedidos: string[] } | null` (e retorná-lo `null` em todos os returns existentes). No início da função, antes do `findFirst` atual:
 ```typescript
-where: {
-  OR: [
-    { numero: { contains: alvo, mode: "insensitive" } },
-    { numeroMercos: alvo },
-  ],
-},
+const alvo = filtros.numero.trim();
+// Precedencia da busca reversa por Mercos: se o alvo parece um numero de Mercos
+// (4-7 digitos puros), casa numeroMercos EXATO primeiro. Mercos e 1:N com pedidos do
+// Odoo, entao tratamos a lista; e a precedencia evita o `contains` casar o miolo NNNN
+// de um PV alheio por substring.
+if (/^[0-9]{4,7}$/.test(alvo)) {
+  const porMercos = await prisma.fatoPedido.findMany({
+    where: { numeroMercos: alvo },
+    orderBy: { dataOrcamento: "desc" },
+  });
+  if (porMercos.length > 1) {
+    return {
+      encontrado: false, foraDaJanela: false, pedido: null, trilha: [], itens: [],
+      pendencia: null,
+      multiplosMercos: { numeroMercos: alvo, pedidos: porMercos.map((p) => p.numero ?? "?") },
+    };
+  }
+  if (porMercos.length === 1) {
+    // segue o fluxo normal usando porMercos[0] como `pedido` (mesma logica de trilha/itens
+    // que hoje roda sobre o resultado do findFirst): reaproveitar, atribuindo pedido = porMercos[0].
+  }
+  // porMercos.length === 0: cai no fluxo antigo (numero contains), abaixo.
+}
 ```
-(match exato no Mercos , é um id; `contains` no número do Odoo mantém o comportamento atual.)
+Refatorar para que, quando `porMercos.length === 1`, o `pedido` usado no restante da função seja `porMercos[0]` (extrair o "corpo" que monta trilha/itens/pendencia numa função interna que recebe o pedido, para não duplicar). Manter o `findFirst` por `numero contains` apenas para o caso 0-hit de Mercos ou alvo não-numérico.
 
-- [ ] **Step 4: Run tests + rebuild mcp**
+- [ ] **Step 4: Tool , caso "vários pedidos"**
 
-Run: `npx jest comercial` (PASS) + `npx tsc --noEmit` + (já rebuildado no M5, ou `docker compose up -d --build mcp`).
+Em `pedido-situacao.ts`: adicionar `multiplosMercos` ao schema de saída (`z.object({ numeroMercos: z.string(), pedidos: z.array(z.string()) }).nullable()`), e no formatador, quando `multiplosMercos != null`, responder algo como: `O numero de Mercos ${n.numeroMercos} corresponde a ${n.pedidos.length} pedidos no Odoo: ${n.pedidos.join(", ")}. Consulte um deles pelo numero do pedido.`
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Run tests + rebuild mcp**
+
+Run: `npx jest comercial pedido-situacao` (PASS) + `npx tsc --noEmit` + `docker compose up -d --build mcp`.
+
+- [ ] **Step 6: Commit**
 
 ```bash
-git add src/lib/reports/queries/comercial.ts src/lib/reports/queries/comercial.test.ts
-git commit -m "M6: pedido_situacao acha o pedido tambem pelo numero do Mercos (busca reversa)"
+git add src/lib/reports/queries/comercial.ts src/lib/reports/queries/comercial.test.ts mcp/tools/comercial/pedido-situacao.ts
+git commit -m "M6: busca reversa por Mercos tratando 1:N (lista quando varios, precedencia sobre contains)"
 ```
 
 ---
@@ -339,7 +417,14 @@ git commit -m "M6: pedido_situacao acha o pedido tambem pelo numero do Mercos (b
 - **Busca reversa:** Task M6 , `pedido_situacao` casa também por `numeroMercos`.
 - **4 pontas:** relatório de entregas (Diretoria) + Nex (pedido_situacao/BI/vocab). Reports 1.0/2.0 não têm relatório de pedido-por-número hoje (igual ao PLAN 1); herdam do fato quando tiverem. `comercial-cotacao.ts` (fato_cotacao) não é alvo.
 
-## Pontos abertos para a review adversarial #2
+## Decisões fechadas (v3, pela review #2)
 
-1. Confirmar que o regex JS `mercos(?!ul)...` roda igual no builder e não tem edge com flag global/estado (usar `.exec` em regex sem `g` é seguro; a review #2 confirma).
-2. M6: o `OR` no `where` do `findFirst` com `orderBy dataOrcamento desc` , quando o input casa tanto um `numero` do Odoo quanto um `numeroMercos` de OUTRO pedido, qual vem? (colisão improvável: números Odoo têm formato "PV-NNNN/AA"; Mercos são 4-7 dígitos puros. Confirmar que não há pedido Odoo cujo `numero` seja 4-7 dígitos puros que colida com um Mercos.)
+- **Regex:** `mercos(?!ul)[^0-9]{0,10}([0-9]{4,7})` , confirmado em Node (mercosul→null, PEDIDOMERCOS grudado→ok, mercos.→ok). 794/797. Sem lookbehind (perderia PEDIDOMERCOS real).
+- **Estado do regex:** sem flag `g`, `.exec` seguro (review #2 confirmou).
+- **M6 (busca reversa) é 1:N:** precedência do `numeroMercos` exato (alvo 4-7 dígitos puros) sobre o `contains`; N>1 → lista; N=1 → situação; N=0 → contains antigo. Resolve a colisão por substring (crescente) e não escolhe pedido arbitrário.
+- **Zero pedido Odoo com `numero` puramente numérico** (todos "PREFIXO-NNNN/AA"), mas o `contains` casaria o miolo , por isso a precedência do match exato.
+
+## Riscos latentes registrados (não bloqueiam; documentados)
+
+- **"comercos"/"e-mercos" + dígitos** viraria número falso (0 casos hoje). Não blindado com `(?<![a-z])` porque isso perderia o `PEDIDOMERCOS:45110` real.
+- **Input "Mercos 43203" (com texto)** não casa a busca reversa (`numeroMercos` exato). O agente da F5 extrai o número puro antes de chamar a tool; aceitável.
