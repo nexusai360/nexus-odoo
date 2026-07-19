@@ -1,9 +1,25 @@
 # STATUS , ponto de retomada
 
-> ## 🔜 PRÓXIMA SESSÃO , PLAN 3 (rateio de valor dos kits, Fase 2)
+> ## 🔜 PRÓXIMA SESSÃO , PLAN 3 (composição de valor dos kits) , em PLANEJAMENTO
 >
-> **PLAN 1 e PLAN 2 COMPLETOS e committados (2026-07-19), sem PR/merge.** Cada um: v1 → 2 reviews
-> adversariais sequenciais → v3 → tasks TDD → perícia da onda → verde (tsc 0, jest 4311).
+> **PLAN 1 e PLAN 2 COMPLETOS, verdes, committados, sem PR/merge.** PLAN 3 EM CURSO (planejamento):
+> - **Dono aprovou** o painel de composição de valor dos kits (doc `docs/superpowers/research/2026-07-19-plan3-decisao-dono-kits-valor.md`).
+> - **Perícia completa FEITA** (`docs/superpowers/research/2026-07-19-plan3-pericia-completa-valor-kits.md`):
+>   DÁ para ratear por tabela de venda (Padrão id3/Smart id5) + valor real de venda. NÃO dá por
+>   cliente/período/série (campos vazios na Tauga, gap de ingestão, fora da reunião , NÃO perseguir).
+>   Achado bônus: 4 kits com múltiplas BOMs; a Fase 1 duplica componente (só 1281 vivo, latente).
+> - **PLAN `docs/superpowers/plans/2026-07-19-plan3-composicao-valor-kits.md`**: v1 → review #1 (pegou
+>   2 regressões ALTA) → **v2 pronta** → **review #2 disparada (agent)**.
+> - **RETOMAR:** se a review #2 voltou, aplicar → v3 → executar tasks TDD (V1 desmembrarValor;
+>   W1-W3 resolverBom/mini-infra BOM que corrige a Fase 1 SEM zerar os 18 kits de lista única;
+>   X1 queryComposicaoKit base=tabela, peso 0 não infla; Y1-Y5 painel Diretoria ui-ux-pro-max;
+>   Z1 tool Nex) → perícia da onda. Regras já fechadas na v2: valor-ref por tabela (venda real só
+>   n>=5 mediana); rateio por custo; contrato em centavos; desempate por listaId (chute declarado).
+> - **Depois:** PLAN 4 (infra estoque: usage do stock.location) e PLAN 5 (job de atendimento).
+>
+> ---
+>
+> **PLAN 1 e PLAN 2 (entregues):** cada um v1 → 2 reviews adversariais → v3 → TDD → perícia (tsc 0, jest 4311).
 >
 > **PLAN 2 (Nº do Mercos) entregue:** coluna `numero_mercos` no `fato_pedido` (parseada do
 > `obs` com `src/lib/fiscal/regras/numero-mercos.ts`, regex `mercos(?!ul)[^0-9\n]{0,10}([0-9]{4,7})(?![0-9])`).
