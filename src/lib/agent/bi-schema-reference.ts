@@ -101,6 +101,59 @@ TABLE fato_estoque_saldo_snapshot (
   capturado_em  TIMESTAMPTZ
 );
 
+-- Historico temporal de PRECO (append-por-mudanca): uma linha por (tabela_id, produto_id,
+-- quantidade_minima) sempre que o valor muda. E SERIE DE MUDANCA, nao de amostra: para "o
+-- preco na data X", pegue o ultimo registro com capturado_em <= X (nao um registro DAQUELE
+-- dia). evento='baixa' com valor NULL = a regra deixou de existir (NULL != 0). vigente=true
+-- marca a ultima linha de cada chave.
+TABLE fato_preco_historico (
+  id                UUID PRIMARY KEY,
+  rodada_id         UUID,             -- lote da captura (fato_captura_rodada)
+  capturado_em      TIMESTAMP,        -- quando o valor foi observado
+  tabela_id         INT,
+  tabela_nome       TEXT,
+  produto_id        INT,
+  produto_nome      TEXT,
+  quantidade_minima NUMERIC(18,4),    -- faz parte da chave (faixa de quantidade)
+  valor             NUMERIC(18,4),    -- NULL quando evento='baixa'
+  evento            TEXT,             -- 'mudanca' | 'baixa'
+  vigente           BOOLEAN           -- true = ultima linha desta chave
+);
+
+-- Historico temporal de SALDO (append-por-mudanca): uma linha por (produto_id, local_id)
+-- sempre que quantidade OU vr_saldo mudam. Mesma logica de serie de mudanca do preco.
+TABLE fato_estoque_saldo_historico (
+  id            UUID PRIMARY KEY,
+  rodada_id     UUID,
+  capturado_em  TIMESTAMP,
+  produto_id    INT,
+  produto_nome  TEXT,
+  local_id      INT,
+  local_nome    TEXT,
+  quantidade    NUMERIC(18,4),        -- NULL quando evento='baixa'
+  vr_saldo      NUMERIC(18,2),        -- NULL quando evento='baixa'
+  familia_id    INT,
+  familia_nome  TEXT,
+  marca_id      INT,
+  marca_nome    TEXT,
+  unidade       TEXT,
+  evento        TEXT,                 -- 'mudanca' | 'baixa'
+  vigente       BOOLEAN
+);
+
+-- Registro de cada rodada de captura (preco/saldo). Serve para saber quando NAO houve
+-- observacao (worker fora do ar): status='recusada' e uma rodada barrada pela guarda; um gap
+-- grande entre capturado_em consecutivos = ausencia. Nao some no dinheiro; e metadado.
+TABLE fato_captura_rodada (
+  id                UUID PRIMARY KEY,
+  serie             TEXT,             -- 'preco' | 'saldo'
+  capturado_em      TIMESTAMP,
+  linhas_observadas INT,
+  linhas_gravadas   INT,
+  status            TEXT,             -- 'base' | 'ok' | 'recusada'
+  motivo            TEXT
+);
+
 -- Movimentos de entrada/saída por produto
 TABLE fato_estoque_movimento (
   odoo_id          INT PRIMARY KEY,

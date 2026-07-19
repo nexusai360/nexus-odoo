@@ -7,15 +7,25 @@ const ROOT = path.resolve(__dirname, "../../..");
 const read = (rel: string) => fs.readFileSync(path.join(ROOT, rel), "utf8");
 
 describe("FATO_CATALOG , drift contra as fontes de verdade", () => {
-  it("cobre exatamente os fatos do schema (menos fato_build_state e fato_estoque_saldo_snapshot)", () => {
+  it("cobre exatamente os fatos do schema (menos os fatos sem builder de sync-rebuild)", () => {
     const schema = read("prisma/schema.prisma");
-    // fato_estoque_saldo_snapshot NAO e um fato de sync-rebuild (nao tem builder
-    // no registry); e populado pelo job diario de manutencao do worker
-    // (capturarSnapshotEstoqueDiario). Por isso fica fora do FATO_CATALOG, como
-    // o fato_build_state (que e estado interno, nao um fato de negocio).
+    // Ficam FORA do FATO_CATALOG os fatos que NAO sao de sync-rebuild (nao tem builder no
+    // registry):
+    // - fato_build_state: estado interno, nao um fato de negocio;
+    // - fato_estoque_saldo_snapshot: foto diaria, populada pelo job de manutencao;
+    // - fato_preco_historico / fato_estoque_saldo_historico / fato_captura_rodada: series
+    //   append-por-mudanca da Frente B, capturadas acopladas ao ciclo (captura-preco/saldo),
+    //   nao reconstruidas por um builder do FATO_BUILDERS.
+    const SEM_BUILDER = new Set([
+      "fato_build_state",
+      "fato_estoque_saldo_snapshot",
+      "fato_preco_historico",
+      "fato_estoque_saldo_historico",
+      "fato_captura_rodada",
+    ]);
     const fatosSchema = [...schema.matchAll(/@@map\("(fato_[a-z_]+)"\)/g)]
       .map((m) => m[1])
-      .filter((f) => f !== "fato_build_state" && f !== "fato_estoque_saldo_snapshot")
+      .filter((f) => !SEM_BUILDER.has(f))
       .sort();
     const fatosCatalogo = FATO_CATALOG.map((f) => f.nome).sort();
     expect(fatosCatalogo).toEqual(fatosSchema);
