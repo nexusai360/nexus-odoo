@@ -27,5 +27,6 @@ export function createMockContext() {
       findUnique: jest.fn(),
       findFirst: jest.fn(),
     },
+    $queryRawUnsafe: jest.fn(),
   };
 }
