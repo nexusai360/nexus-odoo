@@ -36,10 +36,10 @@ import { getIndiceEstoque, aplicarIndice } from "@/lib/indice-estoque";
 import { atendimentoSincronizado } from "@/lib/diretoria/atendimento-status";
 import {
   desmembrarDemanda,
-  type ComponenteBom,
   type ItemDemanda,
   type DemandaComponente,
 } from "@/lib/estoque/desmembrar-kit";
+import { montarBomPorPai, type LinhaBomComPai } from "@/lib/estoque/resolver-bom";
 import type { ClassificacaoLocal } from "@/lib/estoque/classificacao-local";
 import {
   localIdsPorClassificacao,
@@ -1035,19 +1035,24 @@ async function desmembrarDemandaParaCompra(
           componenteProdutoId: true,
           componenteNome: true,
           quantidade: true,
+          listaId: true,
+          listaDataAtivacao: true,
+          listaInativa: true,
         },
       })
     : [];
-  const bomPorPai = new Map<number, ComponenteBom[]>();
-  for (const b of bomRows) {
-    const arr = bomPorPai.get(b.produtoPaiId) ?? [];
-    arr.push({
-      componenteProdutoId: b.componenteProdutoId,
-      componenteNome: b.componenteNome,
-      quantidade: Number(b.quantidade),
-    });
-    bomPorPai.set(b.produtoPaiId, arr);
-  }
+  // Resolve a BOM ativa por kit: em kit multi-lista, escolhe a lista ativada e NÃO duplica o
+  // componente compartilhado (a Fase 1 empilhava todas as listas). Kit de lista única passa reto.
+  const linhasBom: LinhaBomComPai[] = bomRows.map((b) => ({
+    produtoPaiId: b.produtoPaiId,
+    componenteProdutoId: b.componenteProdutoId,
+    componenteNome: b.componenteNome,
+    quantidade: Number(b.quantidade),
+    listaId: b.listaId,
+    listaDataAtivacao: b.listaDataAtivacao,
+    listaInativa: b.listaInativa,
+  }));
+  const bomPorPai = montarBomPorPai(linhasBom);
 
   const saldoKit = new Map<number, number>();
   for (const id of kitIds) {

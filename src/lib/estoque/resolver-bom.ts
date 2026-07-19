@@ -80,3 +80,30 @@ export function resolverBom(linhas: LinhaBom[]): BomResolvida {
     multiplasListas: true,
   };
 }
+
+/** Linha crua da BOM já com o kit pai (para agrupar várias listas de vários kits de uma vez). */
+export interface LinhaBomComPai extends LinhaBom {
+  produtoPaiId: number;
+}
+
+/**
+ * Monta o mapa `produtoPaiId -> componentes resolvidos` que a necessidade de compra consome.
+ * Agrupa as linhas por kit pai e resolve cada kit com `resolverBom` (em multi-lista escolhe a
+ * lista ativa; lista única passa reto). Substitui o empilhamento cru da Fase 1, que somava TODAS
+ * as listas e duplicava o componente compartilhado nos kits multi-BOM (ex.: 1281 POWERMILL).
+ */
+export function montarBomPorPai(
+  linhas: LinhaBomComPai[],
+): Map<number, ComponenteResolvido[]> {
+  const porPai = new Map<number, LinhaBom[]>();
+  for (const l of linhas) {
+    const arr = porPai.get(l.produtoPaiId) ?? [];
+    arr.push(l);
+    porPai.set(l.produtoPaiId, arr);
+  }
+  const out = new Map<number, ComponenteResolvido[]>();
+  for (const [paiId, ls] of porPai) {
+    out.set(paiId, resolverBom(ls).componentes);
+  }
+  return out;
+}

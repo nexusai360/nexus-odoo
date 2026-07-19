@@ -1,5 +1,5 @@
 import { describe, it, expect } from "@jest/globals";
-import { resolverBom, type LinhaBom } from "./resolver-bom";
+import { resolverBom, montarBomPorPai, type LinhaBom, type LinhaBomComPai } from "./resolver-bom";
 
 function linha(over: Partial<LinhaBom>): LinhaBom {
   return {
@@ -79,5 +79,59 @@ describe("resolverBom", () => {
 
   it("lista vazia devolve vazio", () => {
     expect(resolverBom([]).componentes).toEqual([]);
+  });
+});
+
+function linhaPai(over: Partial<LinhaBomComPai>): LinhaBomComPai {
+  return {
+    produtoPaiId: 1281,
+    componenteProdutoId: 1,
+    componenteNome: "comp",
+    quantidade: 1,
+    listaId: 10,
+    listaDataAtivacao: null,
+    listaInativa: false,
+    ...over,
+  };
+}
+
+describe("montarBomPorPai (W3: necessidade de compra usa a BOM ativa)", () => {
+  it("kit multi-lista com componente compartilhado NAO duplica (escolhe a lista ativa, 1281)", () => {
+    const ativa = new Date("2026-07-03T00:00:00Z");
+    const map = montarBomPorPai([
+      // lista 161 (nunca ativada): componente 100 qtd 1
+      linhaPai({ componenteProdutoId: 100, quantidade: 1, listaId: 161, listaDataAtivacao: null }),
+      // lista 172 (ativada): componente 100 qtd 1 + componente 200 qtd 2
+      linhaPai({ componenteProdutoId: 100, quantidade: 1, listaId: 172, listaDataAtivacao: ativa }),
+      linhaPai({ componenteProdutoId: 200, quantidade: 2, listaId: 172, listaDataAtivacao: ativa }),
+    ]);
+    const comps = map.get(1281)!;
+    // Antes (Fase 1 empilhava tudo): componente 100 apareceria com qtd 2 (duplicado). Agora só a
+    // lista 172: 100 (qtd 1, nao 2) + 200 (qtd 2).
+    expect(comps).toHaveLength(2);
+    expect(comps.find((c) => c.componenteProdutoId === 100)!.quantidade).toBe(1);
+    expect(comps.find((c) => c.componenteProdutoId === 200)!.quantidade).toBe(2);
+  });
+
+  it("kit de lista unica mantem a MESMA contagem de componentes (Fase 1 intacta, 131 kits)", () => {
+    const map = montarBomPorPai([
+      linhaPai({ produtoPaiId: 500, componenteProdutoId: 100, listaId: 10 }),
+      linhaPai({ produtoPaiId: 500, componenteProdutoId: 200, listaId: 10 }),
+    ]);
+    expect(map.get(500)).toHaveLength(2);
+  });
+
+  it("agrupa varios kits pais independentemente", () => {
+    const map = montarBomPorPai([
+      linhaPai({ produtoPaiId: 1, componenteProdutoId: 100, listaId: 10 }),
+      linhaPai({ produtoPaiId: 2, componenteProdutoId: 200, listaId: 20 }),
+    ]);
+    expect(map.size).toBe(2);
+    expect(map.get(1)).toHaveLength(1);
+    expect(map.get(2)).toHaveLength(1);
+  });
+
+  it("lista vazia devolve mapa vazio", () => {
+    expect(montarBomPorPai([]).size).toBe(0);
   });
 });
