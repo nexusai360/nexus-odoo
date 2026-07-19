@@ -374,8 +374,11 @@ export async function queryValorArmazem(
   const prefixos = (filtro?.prefixosArvore ?? []).filter((p) => p.trim().length > 1);
   if (prefixos.length > 0) {
     const conds = prefixos.map((_, i) => `data->>'nome_completo' ILIKE $${i + 1}`).join(" OR ");
+    // raw_deleted = false: nao considerar locais soft-deletados (ex.: o id 414, criado e
+    // removido no Odoo). Parenteses ao redor do OR sao obrigatorios: sem eles, a precedencia
+    // "A OR B AND raw_deleted=false" deixaria passar um deletado que casa o 1o prefixo.
     const ids = await prisma.$queryRawUnsafe<{ odoo_id: number }[]>(
-      `SELECT odoo_id FROM raw_estoque_local WHERE ${conds}`,
+      `SELECT odoo_id FROM raw_estoque_local WHERE (${conds}) AND raw_deleted = false`,
       ...prefixos.map((p) => `${p}%`),
     );
     localIds = ids.map((r) => r.odoo_id);

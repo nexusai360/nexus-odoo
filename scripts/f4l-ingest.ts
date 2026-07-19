@@ -16,7 +16,7 @@ async function main(): Promise<void> {
   await processSnapshotCycle({ prisma, client }, MODEL_CATALOG);
   console.log(`[ingest] snapshot ok (${((Date.now() - inicio) / 1000).toFixed(0)}s)`);
   console.log(`[ingest] incremental (carga fria — pull completo)`);
-  await processIncrementalCycle({ prisma, client }, MODEL_CATALOG);
+  await processIncrementalCycle({ prisma, client }, MODEL_CATALOG, undefined, "ondemand");
   console.log(`[ingest] incremental ok — total ${((Date.now() - inicio) / 1000).toFixed(0)}s`);
   await prisma.$disconnect();
 }

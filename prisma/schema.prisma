@@ -2175,6 +2175,75 @@ model FatoEstoqueSaldoSnapshot {
   @@map("fato_estoque_saldo_snapshot")
 }
 
+/// Historico temporal de PRECO (append-por-mudanca). Uma linha por (tabela, produto,
+/// quantidade_minima) sempre que o valor muda; evento='baixa' com valor NULL quando a regra
+/// some do fato. `vigente` marca a ultima linha de cada chave.
+/// ATENCAO: o indice UNICO PARCIAL `fato_preco_historico_vigente_key` (WHERE vigente) existe
+/// SO na migration (SQL cru); o Prisma 7 nao o modela. NAO remover num `migrate dev` de outra
+/// worktree , ele garante um-vigente-por-chave e a leitura O(chaves) da captura.
+model FatoPrecoHistorico {
+  id               String   @id @default(uuid()) @db.Uuid
+  rodadaId         String   @map("rodada_id") @db.Uuid
+  capturadoEm      DateTime @map("capturado_em")
+  tabelaId         Int      @map("tabela_id")
+  tabelaNome       String?  @map("tabela_nome")
+  produtoId        Int      @map("produto_id")
+  produtoNome      String?  @map("produto_nome")
+  quantidadeMinima Decimal  @map("quantidade_minima") @db.Decimal(18, 4)
+  valor            Decimal? @db.Decimal(18, 4)
+  evento           String
+  vigente          Boolean
+
+  @@index([tabelaId, produtoId, quantidadeMinima, capturadoEm])
+  @@index([capturadoEm])
+  @@index([rodadaId])
+  @@map("fato_preco_historico")
+}
+
+/// Historico temporal de SALDO (append-por-mudanca). Uma linha por (produto, local) sempre que
+/// quantidade OU vrSaldo mudam; evento='baixa' com valores NULL quando some do fato.
+/// ATENCAO: indice UNICO PARCIAL `fato_estoque_saldo_historico_vigente_key` (WHERE vigente) so
+/// na migration (SQL cru); NAO remover em `migrate dev` de outra worktree.
+model FatoEstoqueSaldoHistorico {
+  id          String   @id @default(uuid()) @db.Uuid
+  rodadaId    String   @map("rodada_id") @db.Uuid
+  capturadoEm DateTime @map("capturado_em")
+  produtoId   Int      @map("produto_id")
+  produtoNome String?  @map("produto_nome")
+  localId     Int      @map("local_id")
+  localNome   String?  @map("local_nome")
+  quantidade  Decimal? @db.Decimal(18, 4)
+  vrSaldo     Decimal? @map("vr_saldo") @db.Decimal(18, 2)
+  familiaId   Int?     @map("familia_id")
+  familiaNome String?  @map("familia_nome")
+  marcaId     Int?     @map("marca_id")
+  marcaNome   String?  @map("marca_nome")
+  unidade     String?
+  evento      String
+  vigente     Boolean
+
+  @@index([produtoId, localId, capturadoEm])
+  @@index([capturadoEm])
+  @@index([rodadaId])
+  @@map("fato_estoque_saldo_historico")
+}
+
+/// Registro de cada rodada de captura (preco/saldo). Serve para: (1) responder "entre X e Y
+/// nao houve observacao" (worker fora do ar) em vez de afirmar estabilidade; (2) expurgo
+/// cirurgico de um lote falso pelo rodada_id. status: base | ok | recusada.
+model FatoCapturaRodada {
+  id               String   @id @default(uuid()) @db.Uuid
+  serie            String
+  capturadoEm      DateTime @map("capturado_em")
+  linhasObservadas Int      @map("linhas_observadas")
+  linhasGravadas   Int      @map("linhas_gravadas")
+  status           String
+  motivo           String?
+
+  @@index([serie, capturadoEm])
+  @@map("fato_captura_rodada")
+}
+
 /// Movimento de estoque (entrada/saída). Derivado de raw_estoque_extrato
 /// por rebuild completo. odooId é PK porque o builder recria a tabela inteira.
 model FatoEstoqueMovimento {
@@ -2352,6 +2421,13 @@ model FatoPedido {
   etapaFinaliza    Boolean   @default(false) @map("etapa_finaliza")
   operacaoId       Int?      @map("operacao_id")
   operacaoNome     String?   @map("operacao_nome")
+  // Modalidade de frete (codigo NF-e modFrete: 0 CIF, 1 FOB, 2 terceiros, 3/4 proprio,
+  // 9 sem frete). Campo proprio, distinto da operacao fiscal. Rotulo via modalidade-frete.ts.
+  modalidadeFrete  String?   @map("modalidade_frete")
+  // Numero de referencia do pedido no Mercos (CRM de vendas externo), parseado do obs
+  // pelo builder (numero-mercos.ts). 4-5 digitos. Sem indice (tabela pequena, rebuild total
+  // por ciclo). E 1:N com pedidos do Odoo (um Mercos pode virar varios documentos).
+  numeroMercos     String?   @map("numero_mercos")
   participanteId   Int?      @map("participante_id")
   participanteNome String?   @map("participante_nome")
   vendedorId       Int?      @map("vendedor_id")
@@ -2406,6 +2482,29 @@ model FatoPedidoItem {
   @@index([pedidoId])
   @@index([produtoId])
   @@map("fato_pedido_item")
+}
+
+/// Lista de Material (BOM) do Odoo (sped.produto.lista.material.item): 1 linha por COMPONENTE de
+/// um kit. Usado para desmembrar a demanda de um kit vendido nos seus componentes (análise de
+/// compra). Ligação pelo PAI direto: produto_pai_id = produto_produzido_id do item (casa 1:1 com o
+/// cabeçalho da BOM; recupera kits sem lista_material_id preenchido). Desmembramento é de 1 nível.
+model FatoListaMaterialItem {
+  id                  Int      @id @default(autoincrement())
+  produtoPaiId        Int      @map("produto_pai_id")
+  componenteProdutoId Int      @map("componente_produto_id")
+  componenteNome      String?  @map("componente_nome")
+  quantidade          Decimal  @default(0) @db.Decimal(18, 4)
+  tipoItem            String?  @map("tipo_item")
+  listaId             Int?     @map("lista_id")
+  // Ativacao da LISTA (do header raw_sped_produto_lista_material), para resolver kits com
+  // multiplas BOMs: preferir lista ativada e nao-inativada. null = nunca ativada.
+  listaDataAtivacao   DateTime? @map("lista_data_ativacao")
+  listaInativa        Boolean   @default(false) @map("lista_inativa")
+  atualizadoEm        DateTime @default(now()) @map("atualizado_em")
+
+  @@index([produtoPaiId])
+  @@index([componenteProdutoId])
+  @@map("fato_lista_material_item")
 }
 
 model FatoPedidoParcela {

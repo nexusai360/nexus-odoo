@@ -9,6 +9,7 @@ import { diasAtraso } from "../../../../mcp/lib/dias-atraso";
 import { VENDA_FUTURA } from "@/lib/fiscal/regras/venda-futura-policy";
 import { corteAtualDate, janelaClampada } from "@/lib/corte-dados";
 import { atendimentoSincronizado } from "@/lib/diretoria/atendimento-status";
+import { rotuloModalidadeFrete } from "@/lib/fiscal/regras/modalidade-frete";
 import {
   whereLocalDoEscopo,
   type EscopoLocal,
@@ -305,6 +306,10 @@ export async function queryPedidoSituacao(
     bucketDemanda: string | null;
     categoriaOperacao: string | null;
     operacaoNome: string | null;
+    /** Modalidade de frete (CIF/FOB/terceiros/próprio), rótulo do código NF-e modFrete. */
+    modalidadeFrete: string | null;
+    /** Número de referência do pedido no Mercos (CRM externo), ou null. */
+    numeroMercos: string | null;
     empresaNome: string | null;
     participanteNome: string | null;
     vendedorNome: string | null;
@@ -329,20 +334,51 @@ export async function queryPedidoSituacao(
   }[];
   /** O que falta para o pedido avançar, derivado dos gatilhos da etapa atual. */
   pendencia: string | null;
+  /**
+   * Quando o alvo é um número de Mercos que corresponde a VÁRIOS pedidos do Odoo
+   * (o Mercos é 1:N), devolve a lista dos números Odoo em vez de escolher um.
+   */
+  multiplosMercos: { numeroMercos: string; pedidos: string[] } | null;
 }> {
   const alvo = filtros.numero.trim();
-  const pedido = await prisma.fatoPedido.findFirst({
-    where: { numero: { contains: alvo, mode: "insensitive" } },
-    orderBy: { dataOrcamento: "desc" },
-  });
+  // Busca reversa por Mercos: se o alvo parece um número de Mercos (4-7 dígitos puros),
+  // casa numeroMercos EXATO primeiro. O Mercos é 1:N com pedidos do Odoo, então tratamos a
+  // lista; a precedência evita o `contains` casar o miolo NNNN de um PV alheio por substring.
+  let pedido: Awaited<ReturnType<typeof prisma.fatoPedido.findFirst>> = null;
+  if (/^[0-9]{4,7}$/.test(alvo)) {
+    // Respeita a data de início das análises: pedidos pré-corte não entram na lista nem
+    // fazem a busca cair no ramo "vários pedidos" indevidamente (regra durável nº1).
+    const porMercos = await prisma.fatoPedido.findMany({
+      where: { numeroMercos: alvo, dataOrcamento: { gte: corteAtualDate() } },
+      orderBy: { dataOrcamento: "desc" },
+    });
+    if (porMercos.length > 1) {
+      return {
+        encontrado: false,
+        foraDaJanela: false,
+        pedido: null,
+        trilha: [],
+        itens: [],
+        pendencia: null,
+        multiplosMercos: { numeroMercos: alvo, pedidos: porMercos.map((p) => p.numero ?? "?") },
+      };
+    }
+    pedido = porMercos[0] ?? null;
+  }
   if (!pedido) {
-    return { encontrado: false, foraDaJanela: false, pedido: null, trilha: [], itens: [], pendencia: null };
+    pedido = await prisma.fatoPedido.findFirst({
+      where: { numero: { contains: alvo, mode: "insensitive" } },
+      orderBy: { dataOrcamento: "desc" },
+    });
+  }
+  if (!pedido) {
+    return { encontrado: false, foraDaJanela: false, pedido: null, trilha: [], itens: [], pendencia: null, multiplosMercos: null };
   }
   // Drill nominal, mas continua sendo documento com data: pedido anterior à data de
   // início das análises não é considerado pela plataforma. O orderBy desc já traz o
   // match mais recente, então só caímos aqui quando TODOS os candidatos são pré-corte.
   if (pedido.dataOrcamento && pedido.dataOrcamento < corteAtualDate()) {
-    return { encontrado: false, foraDaJanela: true, pedido: null, trilha: [], itens: [], pendencia: null };
+    return { encontrado: false, foraDaJanela: true, pedido: null, trilha: [], itens: [], pendencia: null, multiplosMercos: null };
   }
 
   const historico = await prisma.fatoPedidoHistorico.findMany({
@@ -413,6 +449,8 @@ export async function queryPedidoSituacao(
       bucketDemanda: pedido.bucketDemanda,
       categoriaOperacao: pedido.categoriaOperacao,
       operacaoNome: pedido.operacaoNome,
+      modalidadeFrete: rotuloModalidadeFrete(pedido.modalidadeFrete),
+      numeroMercos: pedido.numeroMercos,
       empresaNome: pedido.empresaNome,
       participanteNome: pedido.participanteNome,
       vendedorNome: pedido.vendedorNome,
@@ -428,6 +466,7 @@ export async function queryPedidoSituacao(
     })),
     itens,
     pendencia,
+    multiplosMercos: null,
   };
 }
 

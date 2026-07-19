@@ -1,4 +1,22 @@
+// Mocka os builders e as capturas: estes testes exercem a orquestracao do ciclo (pool, gate
+// de origem), nao os builders reais. Sem o mock, runBuilders rodaria os ~30 FATO_BUILDERS
+// contra o prisma fake e o status de fato_preco/fato_estoque_saldo seria nao-deterministico.
+jest.mock("../fatos/registry", () => ({
+  runBuilders: jest.fn().mockResolvedValue([
+    { nome: "fato_preco", ok: true, linhas: 1 },
+    { nome: "fato_estoque_saldo", ok: true, linhas: 1 },
+  ]),
+}));
+jest.mock("../fatos/captura-preco", () => ({
+  capturarPreco: jest.fn().mockResolvedValue({ rodadaId: "x", status: "ok", gravadas: 0 }),
+}));
+jest.mock("../fatos/captura-saldo", () => ({
+  capturarSaldo: jest.fn().mockResolvedValue({ rodadaId: "y", status: "ok", gravadas: 0 }),
+}));
+
 import { processIncrementalCycle, processSnapshotCycle, processReconcileCycle } from "./processors";
+import { capturarPreco } from "../fatos/captura-preco";
+import { capturarSaldo } from "../fatos/captura-saldo";
 
 // Helper: constrói um prisma fake com rawDelegate que possui count() retornando `tableTotal`.
 function makePrisma(tableTotal = 42, options: { syncStateFindUnique?: object } = {}) {
@@ -70,9 +88,30 @@ describe("processIncrementalCycle", () => {
     expect(countFn).toBeDefined();
     void TABLE_TOTAL; // evita lint "unused"
   });
+
+  it("captura o historico de preco no cron", async () => {
+    (capturarPreco as jest.Mock).mockClear();
+    const { prisma } = makePrisma();
+    await processIncrementalCycle({ prisma, client: {} as never }, [], jest.fn() as never, "cron");
+    expect(capturarPreco).toHaveBeenCalledTimes(1);
+  });
+
+  it("NAO captura o historico de preco no ondemand (clique da Diretoria)", async () => {
+    (capturarPreco as jest.Mock).mockClear();
+    const { prisma } = makePrisma();
+    await processIncrementalCycle({ prisma, client: {} as never }, [], jest.fn() as never, "ondemand");
+    expect(capturarPreco).not.toHaveBeenCalled();
+  });
 });
 
 describe("processSnapshotCycle", () => {
+  it("captura o historico de saldo apos o rebuild", async () => {
+    (capturarSaldo as jest.Mock).mockClear();
+    const { prisma } = makePrisma();
+    await processSnapshotCycle({ prisma, client: {} as never }, [], jest.fn() as never);
+    expect(capturarSaldo).toHaveBeenCalledTimes(1);
+  });
+
   it("roda snapshot e estatico, ignora incremental", async () => {
     const vistos: string[] = [];
     const fakeRun = jest.fn(async (_deps: unknown, model: string) => {

@@ -180,6 +180,18 @@ describe("queryValorArmazem", () => {
     const result = await queryValorArmazem(mockPrisma as never);
     expect(result.linhasBruto[0]!.valor).toBeGreaterThan(result.linhasBruto[1]!.valor);
   });
+
+  it("filtra raw_deleted no caminho de prefixo, com parênteses ao redor do OR", async () => {
+    mockPrisma.$queryRawUnsafe.mockResolvedValue([{ odoo_id: 11 }]);
+    mockPrisma.fatoEstoqueSaldo.findMany.mockResolvedValue([]);
+    await queryValorArmazem(mockPrisma as never, {
+      prefixosArvore: ["Próprio", "Terceiros / Demonstração"],
+    });
+    const sql = mockPrisma.$queryRawUnsafe.mock.calls[0]![0] as string;
+    // o OR dos prefixos tem que estar entre parênteses, senão a precedência OR/AND
+    // deixaria passar um local deletado que casa o 1º prefixo.
+    expect(sql).toMatch(/WHERE \(.*ILIKE.*OR.*ILIKE.*\) AND raw_deleted = false/);
+  });
 });
 
 describe("queryEntradasSaidas", () => {

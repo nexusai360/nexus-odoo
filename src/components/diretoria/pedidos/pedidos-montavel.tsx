@@ -5,7 +5,7 @@
 // chave "pedidos:<aba>".
 
 import { useState } from "react";
-import { Pencil, Check, TrendingUp, Map as MapIcon, ListChecks } from "lucide-react";
+import { Pencil, Check, TrendingUp, Map as MapIcon, ListChecks, PackageOpen } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -18,6 +18,7 @@ const ABAS = [
   { id: "visao", label: "Visão geral", icon: TrendingUp },
   { id: "mapa", label: "Mapa", icon: MapIcon },
   { id: "pendentes", label: "Pendentes", icon: ListChecks },
+  { id: "entregas", label: "Entregas parciais", icon: PackageOpen },
 ] as const;
 
 export function PedidosMontavel({

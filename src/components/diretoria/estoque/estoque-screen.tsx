@@ -31,9 +31,10 @@ import type {
   SerialLinha, CompraFornecedor, CompraAtivaLinha, ComprasAtivas,
   ResumoCompras, FornecedorResumo, IndicadoresAvancados, ComprasSerie,
   LinhaEstoqueGranular, EstoqueDisponivelLinha,
-  NecessidadeCompraLinha,
+  NecessidadeCompraLinha, EstoqueDemonstracaoAgrupado,
 } from "@/lib/diretoria/queries/estoque";
 import type { StatusPrazo } from "@/lib/diretoria/cores";
+import type { KitResumo } from "@/lib/reports/queries/composicao-kit";
 
 // ---------------------------------------------------------------------------
 // Formatação
@@ -60,7 +61,7 @@ export interface EstoqueData {
   porMarca: { linhas: LinhaAgrupada[]; valorGeral: number };
   catalogo: CatalogoEstoque;
   seriais: { linhas: SerialLinha[]; total: number };
-  demonstracao: { linhas: LinhaAgrupada[]; valorGeral: number };
+  demonstracao: EstoqueDemonstracaoAgrupado;
   necessidadeCompra: {
     linhas: NecessidadeCompraLinha[];
     produtosEmFalta: number;
@@ -81,6 +82,8 @@ export interface EstoqueData {
     negativos: number;
     unidadesAComprar: number;
   };
+  /** A15 , kits (unidade "kit" com BOM) para o seletor de composição de valor. */
+  listaKits: KitResumo[];
 }
 
 // ---------------------------------------------------------------------------

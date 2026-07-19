@@ -32,7 +32,7 @@ async function main(): Promise<void> {
   await client.authenticate();
 
   console.log(`[l1b] sync incremental: ${L1B.length} modelos de referência`);
-  await processIncrementalCycle({ prisma, client }, L1B);
+  await processIncrementalCycle({ prisma, client }, L1B, undefined, "ondemand");
 
   // Contagem (amostra) raw vs Odoo
   const amostra: { model: string; count: () => Promise<number> }[] = [

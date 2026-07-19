@@ -196,6 +196,11 @@ negativo não é estoque: agora fica fora do valor e aparece como gap (`linhasNe
 **dividido** por ele, e é esse resultado que vira o KPI. O valor a custo puro continua visível
 no rodapé do card, para conferir a conta sem sair da tela.
 
+> **Exceção , card da VISÃO GERAL (decisão do dono, 2026-07-18):** ali o número principal é o
+> **valor a CUSTO puro (R$ 29,8 mi)** e o rodapé mostra `índice 0,95 → R$ 31,4 mi`. Ou seja, na
+> Visão Geral a hierarquia é invertida em relação à tela de Estoque (que mantém os R$ 31,4 mi
+> em destaque). É a mesma conta, só muda qual dos dois números fica grande.
+
 **Só o estoque que é NOSSO e está EM CASA** (regra nova, 2026-07-13). A árvore de locais do
 Odoo tem três raízes, e o KPI somava as três:
 
@@ -425,3 +430,43 @@ no próprio card** o que somam e o que não somam.
 dizer de onde vem. Card que mostra dinheiro sem dizer a base é card que vai ser lido como
 faturamento.
 
+
+---
+
+## Histórico temporal de preço e de saldo (Frente B, 2026-07-19)
+
+O dono pediu, na reunião de 2026-07-19, para guardar com data e hora a variação de **preço**
+e de **saldo** ao longo do tempo, consultável no nosso cache sem ir ao Odoo. Isso vive em
+três tabelas novas: `fato_preco_historico`, `fato_estoque_saldo_historico` e
+`fato_captura_rodada`. As consultas são `serieDePreco`, `serieDeSaldo` e `movimentacao`, em
+`src/lib/estoque/serie-historico.ts` (fonte única das 4 pontas).
+
+**É uma série de MUDANÇA, não de amostra.** Não gravamos uma foto por ciclo (seriam ~1,7
+milhão de linhas de preço e ~197 mil de saldo por dia, quase tudo repetição). Gravamos só a
+linha que mudou desde a última. Consequência prática: "qual era o preço em 3 de julho" se
+responde pegando o **último registro até** aquela data, não um registro **daquela** data.
+
+**Baixa não é zero.** Quando uma chave some do fato (um preço deixa de existir, um produto
+sai de um local), gravamos uma linha `evento = 'baixa'` com valor/quantidade **NULL**. Zero é
+um estado válido e diferente de "não existe mais". Quando a chave volta, gravamos uma
+`mudanca` (ressurreição).
+
+**A data de início das análises tem dois papéis aqui, e confundi-los quebra a consulta.** A
+**janela exibida** (`de`/`ate`) é grampeada ao corte com `clampIsoAoCorte`, como toda consulta
+do projeto. Mas o **carry-forward** (o valor vigente no início da janela) é leitura de
+**estado**, não de fato analisado, e **alcança antes do corte de propósito**: sem isso, todo
+preço estável há meses (a maioria não muda desde antes do corte) faria o gráfico começar no
+ar. Não "corrija" o carry-forward para respeitar o corte em nome da regra de faxina, essa é a
+regra, e está aqui escrita por isso.
+
+**"Não mudou" não é "não observamos".** Se o worker fica fora do ar, não há mudança gravada,
+mas também não houve observação. `fato_captura_rodada` registra cada rodada (base/ok/recusada),
+e as consultas devolvem as **lacunas** do período (rodadas recusadas + ausências inferidas de
+um gap maior que 2x o intervalo nominal entre rodadas). A série nunca afirma estabilidade que
+não foi verificada.
+
+**Guarda contra pull parcial.** Se uma rodada veria mais baixas que o teto (50 chaves), ela é
+**recusada** e não grava nada, para um sync parcial do Odoo não registrar centenas de
+desaparecimentos falsos e permanentes. Se a queda é real e persistente (3 recusas seguidas com
+contagem estável), a série destrava numa nova base, para uma baixa legítima de estoque não
+travar tudo para sempre.

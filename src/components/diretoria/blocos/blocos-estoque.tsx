@@ -21,6 +21,7 @@ import { InteractiveBarChart } from "@/components/charts/interactive/bar-chart";
 import { getColorByIndex } from "@/components/charts/colors";
 import type { PeriodKey } from "@/lib/datetime-core";
 import { brl, brlCompacto, num, pct1, DASH, nomeLimpo } from "@/components/diretoria/kit/format";
+import { ComposicaoKitBloco } from "@/components/diretoria/blocos/composicao-kit-bloco";
 import type { EstoqueData } from "@/components/diretoria/estoque/estoque-screen";
 
 /** Painel rico de drill-down: grade de cartões rótulo/valor (ref. Detalhes da
@@ -444,8 +445,10 @@ function NecessidadeCompra({ d }: { d: EstoqueData }) {
       </div>
 
       <p className="text-xs text-[var(--muted-foreground)]">
-        A conta é do grupo inteiro, porque a mercadoria é transferida entre as filiais.
-        Clique numa linha para ver em qual depósito está o que já existe.
+        Os kits são desmembrados nos seus componentes (pela lista de material), então a
+        necessidade aparece no grão do que se compra de verdade. Kit sem lista cadastrada fica
+        marcado e entra como ele mesmo. A conta é do grupo inteiro, porque a mercadoria é
+        transferida entre as filiais. Clique numa linha para ver em qual depósito está o que já existe.
       </p>
     </div>
   );
@@ -466,7 +469,17 @@ function FragmentLinha({
         onClick={onToggle}
         className="cursor-pointer border-b border-[var(--border)] transition-colors hover:bg-[var(--muted)]/40"
       >
-        <td className="px-2 py-2">{nomeLimpo(linha.produto) || DASH}</td>
+        <td className="px-2 py-2">
+          {nomeLimpo(linha.produto) || DASH}
+          {linha.semBom ? (
+            <span
+              className="ml-2 inline-flex items-center rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-500 ring-1 ring-inset ring-amber-500/20"
+              title="Kit sem lista de material cadastrada: não foi desmembrado em componentes; entra como o próprio kit."
+            >
+              kit sem lista
+            </span>
+          ) : null}
+        </td>
         <td className="px-2 py-2 text-right tabular-nums">{linha.demanda}</td>
         <td className="px-2 py-2 text-right tabular-nums text-[var(--muted-foreground)]">
           {linha.saldoFisico}
@@ -505,49 +518,95 @@ function FragmentLinha({
   );
 }
 
-/** A-13 , Estoque em demonstração: o que está na casa do cliente, não vendável. */
+/** A-13 , Estoque em demonstração, em 2 blocos: os NOSSOS depósitos de demo (JDSDEMO)
+ * em cima e o que está EM CLIENTE (com nota) embaixo, para comparar lado a lado. */
 function EstoqueDemonstracao({ d }: { d: EstoqueData }) {
-  const linhas = d.demonstracao.linhas.map((l) => ({
+  const colunasDe = (rotuloLocal: string): ColumnDef<{ local: string; quantidade: number; valorTotal: number }>[] => [
+    { key: "local", header: rotuloLocal, tipo: "texto" },
+    { key: "quantidade", header: "Unidades", tipo: "numero" },
+    { key: "valorTotal", header: "Valor a custo", tipo: "moeda" },
+  ];
+  const nossos = d.demonstracao.nossos.linhas.map((l) => ({
     local: nomeLimpo(l.chave) || DASH,
     quantidade: l.quantidade,
     valorTotal: l.valorTotal,
   }));
-  const colunas: ColumnDef<(typeof linhas)[number]>[] = [
-    { key: "local", header: "Cliente / local", tipo: "texto" },
-    { key: "quantidade", header: "Unidades", tipo: "numero" },
-    { key: "valorTotal", header: "Valor a custo", tipo: "moeda" },
-  ];
+  const cliente = d.demonstracao.cliente.linhas.map((l) => ({
+    local: nomeLimpo(l.chave) || DASH,
+    quantidade: l.quantidade,
+    valorTotal: l.valorTotal,
+  }));
   return (
-    <div className="flex h-full flex-col gap-3">
-      <div className="grid grid-cols-2 gap-2.5">
+    <div className="flex h-full flex-col gap-4">
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
         <KpiButton
-          rotulo="Valor em demonstração"
+          rotulo="Total em demonstração"
           valor={brlCompacto(d.demonstracao.valorGeral)}
           valorCompleto={brl.format(d.demonstracao.valorGeral)}
           icone={Boxes}
-          hint="Não entra no estoque"
+          hint="Não entra no estoque vendável"
         />
         <KpiButton
-          rotulo="Locais"
-          valor={num.format(linhas.length)}
+          rotulo="Nossa (JDSDEMO)"
+          valor={brlCompacto(d.demonstracao.nossos.valorGeral)}
+          valorCompleto={brl.format(d.demonstracao.nossos.valorGeral)}
           icone={Warehouse}
           tone="info"
-          hint="Clientes com equipamento"
+          hint="Depósitos de demonstração nossos"
+        />
+        <KpiButton
+          rotulo="Em cliente"
+          valor={brlCompacto(d.demonstracao.cliente.valorGeral)}
+          valorCompleto={brl.format(d.demonstracao.cliente.valorGeral)}
+          icone={Warehouse}
+          tone="info"
+          hint="Com nota, na casa do cliente"
         />
       </div>
-      <p className="text-xs text-[var(--muted-foreground)]">
-        Equipamento posicionado na casa do cliente. Não entra no valor do estoque nem está
-        disponível para venda.
-      </p>
-      <DataTable
-        columns={colunas}
-        rows={linhas}
-        searchable
-        compactoInicial
-        alturaFluida
-        exportFilename="estoque-demonstracao"
-        estado={linhas.length === 0 ? "vazio" : "ok"}
-      />
+
+      {/* Bloco 1: nossos depósitos de demonstração (JDSDEMO), raiz Próprio. */}
+      <section className="flex flex-col gap-2">
+        <h4 className="text-sm font-medium text-[var(--foreground)]">
+          Demonstração nossa (JDSDEMO)
+        </h4>
+        <p className="text-xs text-[var(--muted-foreground)]">
+          Nossos depósitos de demonstração, sem nota. Equipamento nosso posicionado para mostruário.
+        </p>
+        {nossos.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-[var(--border)] bg-[var(--card)] px-4 py-6 text-center text-xs text-[var(--muted-foreground)]">
+            Sem estoque de demonstração em depósito nosso no momento. Locais próprios de demonstração
+            (JDSDEMO) com saldo aparecem aqui.
+          </div>
+        ) : (
+          <DataTable
+            columns={colunasDe("Nosso local")}
+            rows={nossos}
+            searchable
+            compactoInicial
+            alturaFluida
+            exportFilename="demonstracao-nossa"
+            estado="ok"
+          />
+        )}
+      </section>
+
+      {/* Bloco 2: em cliente (com nota de demonstração), raiz Terceiros. */}
+      <section className="flex flex-col gap-2">
+        <h4 className="text-sm font-medium text-[var(--foreground)]">Em cliente (com nota)</h4>
+        <p className="text-xs text-[var(--muted-foreground)]">
+          Equipamento posicionado na casa do cliente, com nota de demonstração. Não está disponível
+          para venda.
+        </p>
+        <DataTable
+          columns={colunasDe("Cliente / local")}
+          rows={cliente}
+          searchable
+          compactoInicial
+          alturaFluida
+          exportFilename="demonstracao-em-cliente"
+          estado={cliente.length === 0 ? "vazio" : "ok"}
+        />
+      </section>
     </div>
   );
 }
@@ -606,6 +665,7 @@ export function renderBlocoEstoque(
     case "A-12": return <EstoqueDisponivel d={d} />;
     case "A-13": return <EstoqueDemonstracao d={d} />;
     case "A-14": return <NecessidadeCompra d={d} />;
+    case "A-15": return <ComposicaoKitBloco kits={d.listaKits} />;
     case "A-07": return <ComprasAtivas d={d} />;
     case "A-08": return <MatrizFornecedor d={d} />;
     case "A-10": return <SerieTemporalCompras serie={d.comprasSerie} periodo={periodo} customRange={customRange} />;

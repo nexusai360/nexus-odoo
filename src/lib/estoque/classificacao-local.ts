@@ -25,6 +25,13 @@ export interface LocalBruto {
   estoqueEmMaos: boolean;
   calculaExtratoSaldo: boolean;
   temProprietario: boolean;
+  /**
+   * O dono do local (`proprietario_local_id`) e uma empresa do PROPRIO grupo, e nao um
+   * terceiro de verdade. No Odoo isso vem do participante marcado `eh_empresa`. Opcional:
+   * quem nao informa fica com o comportamento antigo (o local de Terceiros continua fora),
+   * que e o lado seguro.
+   */
+  proprietarioEhEmpresaDoGrupo?: boolean;
 }
 
 /** Separador da hierarquia no `nome_completo` do Odoo. */
@@ -32,6 +39,9 @@ const SEPARADOR = " / ";
 
 /** Raiz da arvore do estoque proprio. */
 const RAIZ_PROPRIO = "Próprio";
+
+/** Raiz da arvore de mercadoria em poder de terceiros. */
+const RAIZ_TERCEIROS = "Terceiros";
 
 /** Prefixo da subarvore de demonstracao (filha de Terceiros). */
 const PREFIXO_DEMONSTRACAO = "Terceiros / Demonstração";
@@ -49,11 +59,51 @@ export function classificarLocal(local: LocalBruto): ClassificacaoLocal {
   if (nomeCompleto.startsWith(PREFIXO_DEMONSTRACAO)) return "demonstracao";
 
   const raiz = nomeCompleto.split(SEPARADOR)[0];
-  const ehDepositoReal =
-    raiz === RAIZ_PROPRIO &&
-    local.estoqueEmMaos &&
-    local.calculaExtratoSaldo &&
-    local.temProprietario;
+  // JDSDEMO nosso: local de demonstracao PROPRIO (sob "Proprio"), sem nota de
+  // demonstracao, identificado por "JDS DEMO"/"demo" no nome. Regra da reuniao
+  // (dono, 2026-07-19): "tudo que tem demonstracao no nome vai para demonstracao;
+  // mais o JDSDEMO (nossos depositos de demo), exclusivamente". Testado ANTES do
+  // deposito real, senao um JDSDEMO com estoque em maos cairia em "fisico".
+  if (raiz === RAIZ_PROPRIO && /\bjds\s*demo\b|\bdemo\b/i.test(nomeCompleto)) {
+    return "demonstracao";
+  }
 
-  return ehDepositoReal ? "fisico" : "fora";
+  // Em transferencia: mercadoria NOSSA em transito entre depositos proprios (documentos TRANSF-*,
+  // ex. Matriz DF -> Filial SE). Decisao do dono (reuniao 2026-07-19, transcricao bruta): "esta em
+  // transferencia, entra como estoque proprio, com contagem de proprio". O local "EM TRANSFERENCIA"
+  // (Odoo id 446) HOJE e invisivel ao usuario de integracao por uma record rule do Odoo ("Local de
+  // estoque - Empresas permitidas - acesso limitado"), entao ainda NAO chega ao cache; esta regra ja
+  // fica pronta para quando o acesso for liberado e o local passar a sincronizar. Classificado por
+  // NOME (o id pode variar entre ambientes). "Transporte(s)" de cliente nao casa (transporte, nao
+  // transferencia). Testado ANTES do deposito real (o local nem esta sob "Proprio").
+  if (/transfer[eê]ncia/i.test(nomeCompleto)) return "fisico";
+
+  // Intercompany: local pendurado direto em "Terceiros" cujo DONO e uma das empresas do
+  // proprio grupo (JDS / JHT / JIB / KS / CS / JMF). A mercadoria trocou de CNPJ dentro de
+  // casa; nao virou estoque de terceiro. Decisao do dono (reuniao 2026-07-19): "e terceiro,
+  // mas e nosso , conta como proprio". Caso real: o local 285 (R$ 3,86 mi), Jds Matriz DF
+  // guardando mercadoria da Jht SP.
+  //
+  // Tres restricoes deliberadas:
+  // - so o filho DIRETO de "Terceiros" (dois segmentos). As subarvores , `Demonstração`
+  //   (ja tratada acima) e `Feira`/`Patrimônio` , sao equipamento posicionado fora, nao
+  //   deposito, mesmo quando o dono e do grupo.
+  // - o dono e reconhecido pelo cadastro do Odoo (`sped.participante.eh_empresa`), nao por
+  //   texto de CNPJ no nome do local, que muda de formato e ja veio com caractere invisivel.
+  // - e guarda mercadoria de verdade: os mesmos tres criterios do deposito proprio. Ha oito
+  //   locais intercompany que o Odoo NAO marca como estoque em maos (40, 43, 283, 287, 291,
+  //   364, 422, 460): sao espelhos de razao social. Sem esta exigencia, um lancamento errado
+  //   em qualquer um deles inflaria o KPI em silencio.
+  const guardaMercadoria =
+    local.estoqueEmMaos && local.calculaExtratoSaldo && local.temProprietario;
+
+  const segmentos = nomeCompleto.split(SEPARADOR);
+  const ehIntercompany =
+    segmentos.length === 2 &&
+    segmentos[0] === RAIZ_TERCEIROS &&
+    local.proprietarioEhEmpresaDoGrupo === true;
+
+  const ehDepositoReal = raiz === RAIZ_PROPRIO || ehIntercompany;
+
+  return ehDepositoReal && guardaMercadoria ? "fisico" : "fora";
 }

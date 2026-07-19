@@ -19,6 +19,8 @@ const pedidoSchema = z
     bucketDemanda: z.string().nullable(),
     categoriaOperacao: z.string().nullable(),
     operacaoNome: z.string().nullable(),
+    modalidadeFrete: z.string().nullable(),
+    numeroMercos: z.string().nullable(),
     empresaNome: z.string().nullable(),
     participanteNome: z.string().nullable(),
     vendedorNome: z.string().nullable(),
@@ -52,6 +54,10 @@ const dados = z.object({
   itens: z.array(itemSchema),
   /** O que falta para avançar, derivado dos gatilhos da etapa atual. */
   pendencia: z.string().nullable(),
+  /** Quando o número buscado é um Mercos com vários pedidos no Odoo (1:N). */
+  multiplosMercos: z
+    .object({ numeroMercos: z.string(), pedidos: z.array(z.string()) })
+    .nullable(),
   _RESPOSTA: z.string().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
 });
@@ -101,6 +107,21 @@ export const comercialPedidoSituacao: ToolEntry<Input, Output> = {
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
 
+    // Número de Mercos com vários pedidos no Odoo (1:N): lista, não escolhe um.
+    if (d.multiplosMercos) {
+      const m = d.multiplosMercos;
+      return {
+        ...envelope,
+        estado: "ok" as const,
+        dados: {
+          ...d,
+          _RESPOSTA:
+            `O numero de Mercos ${m.numeroMercos} corresponde a ${m.pedidos.length} pedidos no Odoo: ` +
+            `${m.pedidos.join(", ")}. Consulte um deles pelo numero do pedido.`,
+        },
+      };
+    }
+
     if (!d.encontrado || !d.pedido) {
       return {
         ...envelope,
@@ -146,6 +167,8 @@ export const comercialPedidoSituacao: ToolEntry<Input, Output> = {
 
     const resposta =
       `${p.numero} (${p.operacaoNome ?? "sem operacao"}, ${brl(p.valorProdutos)}` +
+      `${p.modalidadeFrete ? `, frete ${p.modalidadeFrete}` : ""}` +
+      `${p.numeroMercos ? `, Mercos ${p.numeroMercos}` : ""}` +
       `${p.participanteNome ? `, cliente ${p.participanteNome}` : ""}). ` +
       `Esta ${parado} na etapa "${p.etapaNome ?? "?"}" (${situacao}).` +
       `${aprov ? ` Aprovado em ${aprov}.` : ""}` +

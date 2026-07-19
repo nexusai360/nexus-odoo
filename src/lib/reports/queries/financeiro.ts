@@ -455,7 +455,7 @@ export async function queryTitulosVencidos(
  * Mesma regra do faturamento: o que circula dentro do grupo nao e receita nem divida com
  * terceiro. Reusa a cascata de deteccao (whitelist -> cadastro -> CNPJ no nome).
  */
-async function filtrarTitulosExternos<
+export async function filtrarTitulosExternos<
   T extends { participanteId: number | null; participanteNome: string | null },
 >(prisma: PrismaClient, titulos: T[]): Promise<T[]> {
   const participantesGrupo = await carregarParticipantesGrupo(prisma);

@@ -83,6 +83,24 @@ describe("classificarLocal", () => {
         ),
       ).toBe("demonstracao");
     });
+
+    it("classifica o JDSDEMO nosso (raiz Proprio + 'demo' no nome) como demonstracao", () => {
+      // Regra da reuniao: nossos depositos de demonstracao (sem nota), sob "Proprio",
+      // com "JDS DEMO"/"demo" no nome, vao para demonstracao, nao para fisico.
+      expect(
+        classificarLocal(
+          local({ odooId: 414, nomeCompleto: "Próprio / JDS DEMO SÃO PAULO" }),
+        ),
+      ).toBe("demonstracao");
+    });
+
+    it("reconhece JDSDEMO sem espaco no nome", () => {
+      expect(
+        classificarLocal(
+          local({ odooId: 998, nomeCompleto: "Próprio / JDSDEMO Interlagos" }),
+        ),
+      ).toBe("demonstracao");
+    });
   });
 
   describe("fora , nao entra no valor de estoque", () => {
@@ -189,6 +207,133 @@ describe("classificarLocal", () => {
       expect(
         classificarLocal(local({ odooId: 999, nomeCompleto: "Próprios / Outro" })),
       ).toBe("fora");
+    });
+  });
+
+  describe("em transferencia , mercadoria nossa em transito (decisao do dono, reuniao 2026-07-19)", () => {
+    it("classifica 'EM TRANSFERENCIA' como fisico (conta como proprio), sem estoque em maos/proprietario", () => {
+      // O local 446 e invisivel hoje (record rule do Odoo); quando liberado, vira assim no cache.
+      expect(
+        classificarLocal(
+          local({
+            odooId: 446,
+            nomeCompleto: "EM TRANSFERÊNCIA",
+            estoqueEmMaos: false,
+            calculaExtratoSaldo: false,
+            temProprietario: false,
+          }),
+        ),
+      ).toBe("fisico");
+    });
+
+    it("pega a transferencia mesmo se o nome vier sob uma raiz", () => {
+      expect(
+        classificarLocal(local({ odooId: 446, nomeCompleto: "Próprio / Em Transferência" })),
+      ).toBe("fisico");
+    });
+
+    it("NAO confunde 'Transporte(s)' de cliente com transferencia (fica fora)", () => {
+      expect(
+        classificarLocal(
+          local({
+            odooId: 249,
+            nomeCompleto: "Terceiros / Jds Comércio - 333 Transportes Ltda",
+            estoqueEmMaos: false,
+            calculaExtratoSaldo: false,
+            temProprietario: false,
+          }),
+        ),
+      ).toBe("fora");
+    });
+  });
+
+  describe("intercompany , mercadoria entre empresas do proprio grupo (decisao do dono, reuniao 2026-07-19)", () => {
+    /** O local 285 real: filho direto de Terceiros, dono = Jht SP (empresa do grupo). */
+    function intercompany(over: Partial<LocalBruto> = {}): LocalBruto {
+      return local({
+        odooId: 285,
+        nomeCompleto:
+          "Terceiros / Jds Comércio - Matriz DF 18.282.961/0001-00 - Jht SP Comércio - Matriz DF 34.161.829/0001-98 - Jht SP Comércio de Produtos e Equipamentos Esportivos Ltda [34.161.829/0001-98]",
+        proprietarioEhEmpresaDoGrupo: true,
+        ...over,
+      });
+    }
+
+    it("classifica como fisico o local de Terceiros cujo dono e empresa do grupo", () => {
+      // "Terceiro, mas e nosso": a mercadoria trocou de CNPJ dentro do grupo, nao saiu de casa.
+      expect(classificarLocal(intercompany())).toBe("fisico");
+    });
+
+    it("mantem fora o local de Terceiros de um cliente de verdade", () => {
+      expect(
+        classificarLocal(
+          intercompany({
+            odooId: 249,
+            nomeCompleto: "Terceiros / Jds Comércio - Condominio Manhattan",
+            proprietarioEhEmpresaDoGrupo: false,
+          }),
+        ),
+      ).toBe("fora");
+    });
+
+    it("nao vale para as subarvores de Terceiros (Feira, Patrimonio): la a mercadoria esta em evento, nao em deposito", () => {
+      expect(
+        classificarLocal(
+          intercompany({
+            odooId: 380,
+            nomeCompleto: "Terceiros / Feira / Jds Comércio - Matriz DF",
+          }),
+        ),
+      ).toBe("fora");
+    });
+
+    it("demonstracao vence intercompany (equipamento no cliente continua demonstracao)", () => {
+      // Locais de demonstracao cujo dono e uma empresa do grupo existem (ex.: 391, filial BA).
+      // Eles sao demonstracao, nao estoque vendavel.
+      expect(
+        classificarLocal(
+          intercompany({
+            odooId: 391,
+            nomeCompleto:
+              "Terceiros / Demonstração / Jds Comércio - Matriz DF - Jht SP Comércio - Filial BA",
+          }),
+        ),
+      ).toBe("demonstracao");
+    });
+
+    it("a raiz 'Terceiros' sozinha nunca vira fisico", () => {
+      expect(
+        classificarLocal(
+          intercompany({ odooId: 2, nomeCompleto: "Terceiros" }),
+        ),
+      ).toBe("fora");
+    });
+
+    it("exige os mesmos criterios de deposito real: o espelho de razao social continua fora", () => {
+      // Caso real (locais 40, 43, 283, 287, 291, 364, 422, 460): locais intercompany que o
+      // Odoo NAO marca como estoque em maos. Sao espelhos de razao social, nao deposito.
+      // Sem esta exigencia, um lancamento errado num deles inflaria o KPI em silencio.
+      expect(
+        classificarLocal(
+          intercompany({ odooId: 43, estoqueEmMaos: false }),
+        ),
+      ).toBe("fora");
+      expect(
+        classificarLocal(
+          intercompany({ odooId: 40, calculaExtratoSaldo: false }),
+        ),
+      ).toBe("fora");
+      expect(
+        classificarLocal(
+          intercompany({ odooId: 291, temProprietario: false }),
+        ),
+      ).toBe("fora");
+    });
+
+    it("sem a informacao do dono, o local de Terceiros continua fora (fail-closed)", () => {
+      const semInfo = intercompany();
+      delete semInfo.proprietarioEhEmpresaDoGrupo;
+      expect(classificarLocal(semInfo)).toBe("fora");
     });
   });
 });

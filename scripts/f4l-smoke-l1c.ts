@@ -20,7 +20,7 @@ async function main(): Promise<void> {
 
   const catalog = MODEL_CATALOG.filter((e) => L1C.includes(e.odooModel));
   console.log("[l1c] sync incremental:", catalog.map((c) => c.odooModel).join(", "));
-  await processIncrementalCycle({ prisma, client }, catalog);
+  await processIncrementalCycle({ prisma, client }, catalog, undefined, "ondemand");
 
   // 1. Contagem raw vs Odoo
   const counts: Record<string, () => Promise<number>> = {

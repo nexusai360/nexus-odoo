@@ -13,6 +13,7 @@ import type { PrismaClient } from "../../generated/prisma/client";
 import { relId, relNome, type OdooM2O } from "./odoo-relational";
 import { markFatoBuilt } from "./fato-build-state";
 import { classificarPedidosDoRaw } from "./fato-pedido-classificacao";
+import { extrairNumeroMercos } from "../../lib/fiscal/regras/numero-mercos";
 
 // Constantes da discovery O.1
 const CAMPO_ETAPA_FINAL = "finaliza_pedido_confirmando";
@@ -27,6 +28,8 @@ export interface FatoPedidoRow {
   etapaFinaliza: boolean;
   operacaoId: number | null;
   operacaoNome: string | null;
+  modalidadeFrete: string | null;
+  numeroMercos: string | null;
   participanteId: number | null;
   participanteNome: string | null;
   vendedorId: number | null;
@@ -56,6 +59,11 @@ export function mapPedidoRow(
     etapaFinaliza: etapaId !== null ? (etapaFinalizaMap.get(etapaId) ?? false) : false,
     operacaoId: relId(raw.operacao_id as OdooM2O),
     operacaoNome: relNome(raw.operacao_id as OdooM2O),
+    modalidadeFrete:
+      typeof raw.modalidade_frete === "string" && raw.modalidade_frete.length > 0
+        ? raw.modalidade_frete
+        : null,
+    numeroMercos: extrairNumeroMercos(typeof raw.obs === "string" ? raw.obs : null),
     participanteId: relId(raw.participante_id as OdooM2O),
     participanteNome: relNome(raw.participante_id as OdooM2O),
     vendedorId: relId(raw.vendedor_id as OdooM2O),

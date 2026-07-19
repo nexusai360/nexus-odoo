@@ -22,6 +22,7 @@ import {
   queryEstoqueDemonstracao,
   queryNecessidadeCompra,
 } from "@/lib/diretoria/queries/estoque";
+import { queryListaKits } from "@/lib/reports/queries/composicao-kit";
 import { SyncNowButton } from "@/components/diretoria/sync-now-button";
 import { FreshnessBadge } from "@/components/diretoria/freshness-badge";
 import { ultimaSyncIso } from "@/lib/diretoria/freshness";
@@ -89,10 +90,11 @@ export default async function DiretoriaEstoquePage({
     queryEstoqueDemonstracao(prisma),
     queryNecessidadeCompra(prisma, 100, fPeriodo),
   ]);
-  const [comprasSerie, granular, estoqueDisponivel] = await Promise.all([
+  const [comprasSerie, granular, estoqueDisponivel, listaKits] = await Promise.all([
     queryComprasSerie(prisma),
     queryEstoqueGranular(prisma),
     queryEstoqueDisponivelDiretoria(prisma, { limite: 300 }),
+    queryListaKits(prisma),
   ]);
 
   const podeSync = await canDiretoria(user, "diretoria.sync.force");
@@ -114,6 +116,7 @@ export default async function DiretoriaEstoquePage({
     estoqueDisponivel,
     demonstracao,
     necessidadeCompra,
+    listaKits,
   };
 
   const podeEditarGlobal = user.platformRole === "super_admin" || user.platformRole === "admin";
@@ -128,8 +131,9 @@ export default async function DiretoriaEstoquePage({
       { componenteId: "A-02", ordem: 0, largura: 4, altura: 5, x: 0, y: 0 },
       { componenteId: "A-05", ordem: 1, largura: 4, altura: 5, x: 4, y: 0 },
       { componenteId: "A-14", ordem: 2, largura: 8, altura: 6, x: 0, y: 5 },
-      { componenteId: "A-13", ordem: 3, largura: 8, altura: 5, x: 0, y: 11 },
-      { componenteId: "A-12", ordem: 4, largura: 8, altura: 6, x: 0, y: 16 },
+      { componenteId: "A-15", ordem: 3, largura: 8, altura: 6, x: 0, y: 11 },
+      { componenteId: "A-13", ordem: 4, largura: 8, altura: 5, x: 0, y: 17 },
+      { componenteId: "A-12", ordem: 5, largura: 8, altura: 6, x: 0, y: 22 },
     ],
     distribuicao: [
       { componenteId: "A-11", ordem: 0, largura: 8, altura: 5, x: 0, y: 0 },

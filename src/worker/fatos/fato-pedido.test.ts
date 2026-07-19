@@ -101,4 +101,35 @@ describe("mapPedidoRow", () => {
     const result = mapPedidoRow(raw as Record<string, unknown>, ETAPA_FINALIZA_MAP);
     expect(result.tipo).toBe("");
   });
+
+  it("materializa o código cru de modalidade_frete", () => {
+    const raw = { ...rawBase, modalidade_frete: "1" };
+    const result = mapPedidoRow(raw as Record<string, unknown>, ETAPA_FINALIZA_MAP);
+    expect(result.modalidadeFrete).toBe("1");
+  });
+
+  it("modalidadeFrete null quando ausente ou vazia", () => {
+    const semCampo = mapPedidoRow(rawBase, ETAPA_FINALIZA_MAP);
+    expect(semCampo.modalidadeFrete).toBeNull();
+    const vazia = mapPedidoRow(
+      { ...rawBase, modalidade_frete: "" } as Record<string, unknown>,
+      ETAPA_FINALIZA_MAP,
+    );
+    expect(vazia.modalidadeFrete).toBeNull();
+  });
+
+  it("materializa o número do Mercos a partir do obs", () => {
+    const raw = { ...rawBase, obs: "PEDIDO MERCOS: 43203" };
+    const result = mapPedidoRow(raw as Record<string, unknown>, ETAPA_FINALIZA_MAP);
+    expect(result.numeroMercos).toBe("43203");
+  });
+
+  it("numeroMercos null quando o obs não tem Mercos ou está ausente", () => {
+    expect(mapPedidoRow(rawBase, ETAPA_FINALIZA_MAP).numeroMercos).toBeNull();
+    const comObs = mapPedidoRow(
+      { ...rawBase, obs: "Pedido normal sem referencia" } as Record<string, unknown>,
+      ETAPA_FINALIZA_MAP,
+    );
+    expect(comObs.numeroMercos).toBeNull();
+  });
 });

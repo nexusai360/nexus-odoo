@@ -1169,3 +1169,19 @@ um worker atrasado não apagar o lock de outro.
 Não se limpa o lock no boot de propósito: o worker não distingue lock órfão de lock de outra
 réplica viva; apagar no boot funcionaria hoje (`replicas=1`) e viraria bug no dia de uma segunda
 réplica. O `scripts/_prod-redis-lock.py --destravar` continua existindo como paliativo manual.
+
+### 5. Estoque de demonstração: valorização e golden divergem (pré-existente, PLAN 1 B4)
+Achados de perícia do PLAN 1 (2026-07-19), registrados para não se perderem. NÃO são bug
+do PLAN 1, são dívidas pré-existentes de baixa urgência (nenhuma muda número hoje):
+
+- **Valorização custo vs vr_saldo.** A Diretoria valoriza o estoque a CUSTO
+  (`quantidade × preco_custo`, decisão canônica), enquanto o Nex/BI valoriza a `vr_saldo`.
+  Para demonstração, medido: Diretoria R$ 1,56 mi (custo) vs Nex R$ 2,29 mi (vr_saldo). São
+  perguntas de valor diferentes, não um erro. Se um dia a diretoria quiser o MESMO R$ nas duas
+  pontas, é preciso escolher uma base única (grande, fora do escopo do PLAN 1).
+- **Golden `demo-03` desatualizado.** O golden `estoque_valor_armazem` (demonstração) tem
+  `valor` congelado R$ 1.855.763,50, mas o `fonteOuroSql` vivo (`sum(vr_saldo)` sob
+  `Terceiros / Demonstração%`) dá R$ 2.295.436,54 hoje. O `golden-gate.test.ts` só valida
+  higiene (não compara valor), então a suíte fica verde; a E2E (`E2E=1`) acusaria. Revisar o
+  `valor` na próxima rodada de auditoria do Nex. Não foi tocado no PLAN 1 (mexer no golden não
+  agrega e a tool de prefixo não casa `Terceiros/Demonstração` + `Próprio/JDSDEMO` juntos).

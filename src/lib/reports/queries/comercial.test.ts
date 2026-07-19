@@ -557,6 +557,8 @@ describe("CORTE , piso da data de início das análises nas consultas de pedido"
           bucketDemanda: "ABERTA",
           categoriaOperacao: "venda",
           operacaoNome: "Venda",
+          modalidadeFrete: "0",
+          numeroMercos: "43203",
           empresaNome: "Matrix",
           participanteNome: "Cliente A",
           vendedorNome: "Ana",
@@ -575,5 +577,57 @@ describe("CORTE , piso da data de início das análises nas consultas de pedido"
     expect(r.encontrado).toBe(true);
     expect(r.foraDaJanela).toBe(false);
     expect(r.pedido?.numero).toBe("PV-2037/26");
+    // modalidade de frete traduzida do código NF-e (0 -> CIF)
+    expect(r.pedido?.modalidadeFrete).toBe("CIF (remetente)");
+    // número do Mercos exposto no pedido
+    expect(r.pedido?.numeroMercos).toBe("43203");
+  });
+
+  it("busca por número de Mercos com 1 pedido devolve a situação dele (precedência do Mercos)", async () => {
+    const mockPrisma = {
+      fatoPedido: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            odooId: 1, numero: "PV-2037/26", numeroMercos: "43203", etapaNome: "Sep",
+            bucketDemanda: "ABERTA", categoriaOperacao: "venda", operacaoNome: "Venda",
+            modalidadeFrete: "0", empresaNome: "Matrix", participanteNome: "A", vendedorNome: "Ana",
+            vrProdutos: "1000.00", dataOrcamento: new Date("2026-04-02T00:00:00Z"),
+            dataAprovacao: null, dataPrevista: null, pendenciaEtapa: null,
+          },
+        ]),
+        findFirst: jest.fn(),
+      },
+      fatoPedidoHistorico: { findMany: jest.fn().mockResolvedValue([]) },
+      $queryRaw: jest.fn().mockResolvedValue([]),
+    } as unknown as import("@/generated/prisma/client").PrismaClient;
+
+    const r = await queryPedidoSituacao(mockPrisma, { numero: "43203" });
+    // buscou por numeroMercos exato + corte de dados, nao por contains do numero Odoo
+    const whereMercos = (mockPrisma.fatoPedido.findMany as jest.Mock).mock.calls[0][0].where;
+    expect(whereMercos.numeroMercos).toBe("43203");
+    expect(whereMercos.dataOrcamento?.gte).toBeInstanceOf(Date); // respeita o corte
+    expect((mockPrisma.fatoPedido.findFirst as jest.Mock)).not.toHaveBeenCalled();
+    expect(r.encontrado).toBe(true);
+    expect(r.pedido?.numero).toBe("PV-2037/26");
+    expect(r.multiplosMercos).toBeNull();
+  });
+
+  it("busca por Mercos com vários pedidos devolve a LISTA, não escolhe um", async () => {
+    const mockPrisma = {
+      fatoPedido: {
+        findMany: jest.fn().mockResolvedValue([
+          { odooId: 1, numero: "PV-0473/26", numeroMercos: "2213", dataOrcamento: new Date("2026-04-02T00:00:00Z") },
+          { odooId: 2, numero: "PV-2536/26", numeroMercos: "2213", dataOrcamento: new Date("2026-05-02T00:00:00Z") },
+        ]),
+        findFirst: jest.fn(),
+      },
+      fatoPedidoHistorico: { findMany: jest.fn() },
+      $queryRaw: jest.fn(),
+    } as unknown as import("@/generated/prisma/client").PrismaClient;
+
+    const r = await queryPedidoSituacao(mockPrisma, { numero: "2213" });
+    expect(r.encontrado).toBe(false);
+    expect(r.pedido).toBeNull();
+    expect(r.multiplosMercos).toEqual({ numeroMercos: "2213", pedidos: ["PV-0473/26", "PV-2536/26"] });
   });
 });

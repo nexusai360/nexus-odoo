@@ -1,5 +1,202 @@
 # STATUS , ponto de retomada
 
+> ## 🔜 PRÓXIMA SESSÃO , PLAN 4 (infra estoque: usage do stock.location)
+>
+> **PLAN 1, PLAN 2 e PLAN 3 COMPLETOS, verdes, committados, sem PR/merge (PR #196 aberto).**
+>
+> **PLAN 3 (composição de valor dos kits) , ENTREGUE e periciado (tsc 0, jest 4347).**
+> Plano: `docs/superpowers/plans/2026-07-19-plan3-composicao-valor-kits.md`. Entregas:
+> - **V1** `src/lib/estoque/desmembrar-valor.ts`: rateio proporcional, fechamento por maior resto (soma exata).
+> - **W1** colunas `lista_data_ativacao`/`lista_inativa` no `fato_lista_material_item` + builder lê o header raw.
+> - **W2** `src/lib/estoque/resolver-bom.ts`: escolhe lista ativa só em multi-lista; lista única passa reto.
+> - **W3** `montarBomPorPai` na necessidade de compra (`estoque.ts`): corrige duplicação de componente em
+>   kits multi-lista (1281). E2E: 131 kits lista única intactos, 4 multi-lista (431/607/1281/21287) resolvidos.
+> - **X1** `src/lib/reports/queries/composicao-kit.ts` (`queryComposicaoKit` + `queryListaKits`): base = preço
+>   de tabela (Venda Padrão id3, fallback Smart id5); venda real só n>=5 (mediana). Peso = qtd × custo, base
+>   UNIFORME (não mistura custo com venda). Cobertura incompleta não rateia. Sanitiza travessão do ERP.
+> - **Y** painel na Diretoria (bloco A-15): seletor de kit + barra estrutura vs painel + tabela de componentes
+>   (custo/venda/rateado/%), badge Matrix/acessório, aviso de cobertura. Server Action `carregarComposicaoKit`.
+> - **Z** tool Nex `estoque_composicao_kit` (+ BI schema + vocabulário + snapshot 129 tools).
+> - **Perícia adversarial (Opus):** 0 bugs críticos; 4 achados menores CORRIGIDOS (base uniforme, seletor
+>   inclui kits "unid", barra por valor exato, custo=0 documentado). Fechamento comprovado contra dado real.
+> - **Ao dono:** o painel vale ~12% a 39% do kit (estrutura vs painel), NÃO zero como o Excel manual do time.
+>   Ex.: 894 estrutura 61,2%/painel 38,8%; 1281 estrutura 88,1%/painel 11,9%.
+> - **Gaps documentados (fora do escopo, decisão do dono):** preço por cliente/período/série não existe no
+>   cache (campos vazios na Tauga); margem só aproximada (custo é snapshot de hoje).
+>
+> **PLAN 4/6 (estoque: classificação + histórico) , EM CURSO, acesso DESTRAVADO (2026-07-19).**
+> O dono liberou o usuário `joaozanini` (id 11) nas 18 empresas do grupo: os 16 locais antes
+> bloqueados agora são legíveis. Valores: EM TRANSFERENCIA R$ 2,21 mi (→ físico/próprio), JDS DEMO
+> 14 locais ~R$ 4,58 mi (→ demonstração "nossos"), intercompany 285 R$ 2,34 mi (avaliar). Perícia+
+> plano das 2 frentes: `docs/superpowers/research/2026-07-19-plan4-6-estoque-classificacao-e-historico.md`.
+> - **Frente A (classificação) , FECHADA e periciada.** Re-sync dos SALDOS (o cache tinha a foto de
+>   14/07, anterior à liberação: os 16 locais existiam em `fato_estoque_local` sem UMA linha de
+>   saldo; 4.193 → 4.622) via `scripts/resync-estoque.ts`. Intercompany: filho DIRETO de "Terceiros"
+>   com dono do próprio grupo vira físico, dono reconhecido por `sped.participante.eh_empresa` +
+>   `tipo_pessoa = J`. **A perícia pegou bug real:** a regra promovia NOVE locais, não um , oito são
+>   espelhos de razão social (`estoque_em_maos = false`), hoje zerados, que inflariam o KPI em
+>   silêncio no primeiro lançamento errado. Corrigido: intercompany e raiz "Próprio" são dois
+>   caminhos para a MESMA porta (guarda mercadoria de verdade). Físicos 26 → 18.
+>   E2E `scripts/e2e/e2e-estoque-classificacao.ts`, 4 pontas: KPI a custo R$ 34,59 mi (R$ 36,41 mi
+>   com índice), demonstração R$ 2,67 mi nossos + R$ 1,70 mi cliente, armazém R$ 33,99 mi com
+>   trânsito (R$ 2,33 mi) e intercompany (R$ 3,86 mi) dentro. Virtual segue fora do disponível.
+> - **Frente B (histórico temporal , NOVO, pedido enfático do dono) , ENTREGUE e periciada.**
+>   Guardar preços E saldos com data/hora, série de mudança (append-por-mudança), consultável no
+>   cache. Ciclo completo: SPEC v1 → 2 reviews adversariais (11 + 9 achados) → SPEC v3; PLAN v1 →
+>   2 reviews (10 + 9 achados) → PLAN v3; 6 ondas TDD → perícia. Specs/plans:
+>   `docs/superpowers/{specs,plans}/2026-07-19-historico-temporal-preco-saldo-*`.
+>   - **3 tabelas novas** (`fato_preco_historico`, `fato_estoque_saldo_historico`,
+>     `fato_captura_rodada`), migration aditiva, **índices únicos parciais `WHERE vigente`** (SQL
+>     cru; garantem um-vigente-por-chave e leitura O(chaves)).
+>   - **Captura** (`captura-preco.ts`/`captura-saldo.ts`) acoplada ao ciclo: preço no incremental
+>     **cron** (gate `origem`, o clique da Diretoria não captura), saldo no snapshot. Dedup do par
+>     15049, guarda de sanidade (teto de baixas + rota de saída do dead-state), baixa (NULL) ≠
+>     zero, ressurreição, comparação por string decimal na escala real.
+>   - **Consultas** (`serie-historico.ts`, 4 pontas): `serieDePreco`/`serieDeSaldo` com
+>     carry-forward (alcança antes do corte de propósito) + lacunas de observação; `movimentacao`
+>     (lê `fato_estoque_movimento`, sinaliza `localSemExtrato`). BI schema documentado.
+>   - **Verde:** tsc (raiz+mcp), jest 4386, 3 E2E contra o cache real. Fatos de origem intactos.
+>   - **Perícia do dado** (derrubou 2 premissas): `fato_estoque_movimento` já existe (não há
+>     extrato a ingerir); `fato_preco` tem 12.009 linhas em 7 tabelas (custo inclusive).
+>   - **Falta (dono):** merge (PR #196) e deploy em produção. Transcrição:
+>     `docs/superpowers/research/2026-07-19-reuniao-transcricao-BRUTA.md`.
+>
+> ---
+>
+> **[HISTÓRICO] PLAN 4 v1 (premissa `usage`) foi REFUTADA e depois RESOLVIDA por permissão:**
+> Perícia: `docs/superpowers/research/2026-07-19-plan4-pericia-usage-stock-location.md`. Contra o Odoo
+> Tauga ao vivo: o modelo `estoque.local` (207 campos) NÃO tem o campo `usage` , só `tipo` (A/S =
+> analítico/sintético). Não há warehouse/customer/transit; só `proprietario_*` (que é `false` nos nós
+> Virtual/Terceiros dos R$ 16,3 mi). Os R$ 16,3 mi estão monolíticos nos nós raiz sintéticos, sem
+> granularidade. Logo "ingerir usage" é inexequível. 3 opções para o dono: (1) aceitar o estado atual
+> (Virtual/Terceiros em "fora", KPI honesto , recomendado); (2) a operação estrutura no Odoo e nós
+> reclassificamos via `proprietario_produto_id` (já provado na demonstração); (3) investigar `stock.move`
+> (PLAN próprio). `classificarLocal` atual já está correto. SEM código até o dono decidir.
+>
+> **PLAN 5 (job de atendimento) , ENTREGUE (código já existia; perícia comprovou).**
+> Perícia: `docs/superpowers/research/2026-07-19-plan5-pericia-job-atendimento.md`. O job
+> `syncAtendimento` + builder (`quantidade_a_atender_pedido`→`quantidade_a_atender`) + wiring
+> (04:00 BRT: sync→rebuild→marcador) já foram entregues no PR #189 e estão corretos. O campo estava
+> 100% NULL só no DEV (worker parado); o raw tinha o valor numérico em 19.316 itens. Rodei o rebuild:
+> 0→19.316 preenchidos (a atender real ~R$ 469 mi vs cheio ~R$ 512 mi). Produção já funciona sozinha.
+> NÃO há tarefa de código.
+>
+> ---
+>
+> **PLAN 1 e PLAN 2 (entregues):** cada um v1 → 2 reviews adversariais → v3 → TDD → perícia (tsc 0, jest 4311).
+>
+> **PLAN 2 (Nº do Mercos) entregue:** coluna `numero_mercos` no `fato_pedido` (parseada do
+> `obs` com `src/lib/fiscal/regras/numero-mercos.ts`, regex `mercos(?!ul)[^0-9\n]{0,10}([0-9]{4,7})(?![0-9])`).
+> E2E: 794 pedidos, 4-5 dígitos. Exposto nas 4 pontas: relatório de entregas (coluna "Nº Mercos"),
+> tool `pedido_situacao` + BI schema + vocabulário do Nex. **Busca reversa (M6):** `pedido_situacao`
+> acha pelo número do Mercos, tratando o **1:N** (o mesmo Mercos vira vários pedidos no Odoo: quando
+> N>1, lista os pedidos em vez de escolher um) e respeitando o corte de dados. Reviews adversariais
+> pegaram 2 bugs antes de virar código: o `\b` não barra "mercosul" (regex corrigido) e o Mercos ser
+> 1:N (não 1:1). Perícia da onda pegou 1 bug (busca reversa ignorava o corte), corrigido.
+> Plano: `docs/superpowers/plans/2026-07-19-plan2-numero-mercos.md`.
+>
+> **PLAN 3 , Rateio de valor dos kits (Fase 2), próximo:** função `desmembrarValor` proporcional ao
+> `preco_custo` de cada componente (fallback venda→tabela; fechamento por maior resto = soma exata).
+> Um só algoritmo cobre Matrix e acessório. Reportar ao dono: o custo diz que o painel vale ~14-25%
+> do kit Matrix, NÃO zero como no método manual do colega. Ver doc-mãe §4. Depois PLAN 4 (infra de
+> estoque: ingerir `usage` do stock.location) e PLAN 5 (job de atendimento).
+>
+> **Pendência de ambiente (PLAN 1 e 2):** validação visual por screenshot e E2E ao vivo do Nex não
+> feitos (containers mcp/worker/app parados; dev não no ar nesta worktree). Ao rodar dev/containers,
+> rebuildar (`docker compose build app` + `up -d --build mcp`) ANTES. Código e dado validados; o dono
+> valida a UI no fim. Dívida BAIXA registrada: teste do formatador da tool `pedido_situacao` (caso
+> multiplosMercos), hoje coberto indiretamente pela query.
+>
+> ---
+>
+> **PLAN 1 (ajustes finos):** plano `docs/superpowers/plans/2026-07-19-plan1-ajustes-finos.md`.
+>
+> **Entregue no PLAN 1 (tsc 0, jest 4301 verdes):**
+> - **Modalidade de frete** materializada no `fato_pedido` (código NF-e modFrete), de-para puro
+>   `src/lib/fiscal/regras/modalidade-frete.ts`, separada da operação fiscal. Nas 4 pontas:
+>   Diretoria (coluna própria "Modalidade" no relatório de entregas + C-05 rotulado "Operações
+>   fiscais"), relatório comercial/tool `pedido_situacao` (Nex), BI schema + vocabulário do Nex.
+>   E2E: 2461 pedidos, distribuição 1:1257 0:1042 9:136 2:24 3:2, zero nulos.
+> - **Regra JDSDEMO nosso** (Próprio + demo no nome → demonstração) em `classificacao-local.ts`.
+>   **Perícia refutou a premissa do doc-mãe:** o id 414 NÃO é bug de builder, é lixo deletado no
+>   Odoo (criado e removido em 76s, zero saldo). Não ressuscitado. `queryValorArmazem` blindada
+>   contra deletado; `porCategoria` do Nex passou a usar a fonte única (contava demo errado).
+> - **Demonstração em 2 blocos** no painel A-13: "nossa (JDSDEMO)" em cima (vazia hoje, estado
+>   acionável) e "em cliente" embaixo (R$ 1,56 mi a custo, 35 locais). Shape `{valorGeral,nossos,cliente}`.
+>
+> **PENDÊNCIAS HONESTAS do PLAN 1 (não são bug, ambiente):**
+> - Validação VISUAL por screenshot do painel 2 blocos NÃO foi capturada (o dev não está no ar
+>   nesta worktree; subir derrubaria a main). Código segue o design system e o dado foi conferido
+>   via SQL. O dono valida visualmente no fim.
+> - E2E ao vivo do Nex (smoke de modalidade) pendente: containers `mcp`/`worker`/`app` do
+>   nexus-odoo estão parados. Ao rodar o dev/containers, rebuildar (`docker compose build app`
+>   + `up -d --build mcp`) ANTES, senão o worker velho (imagem 2026-07-13) zeraria
+>   `modalidade_frete` e ignoraria B1/B4 no próximo cron. Em produção o CI builda do código novo.
+>
+> **PLAN 2 , Nº do Mercos (próximo):** parsear `raw_pedido_documento.data->>'obs'` (regex
+> `mercos[^0-9]{0,10}([0-9]{1,7})`, 827/2542 pedidos ~33%) → coluna `numero_mercos` no `fato_pedido`
+> (migration aditiva) → expor no relatório de entregas e nas 4 pontas. Depois PLAN 3 (rateio de
+> valor dos kits Fase 2), PLAN 4 (infra de estoque: usage do stock.location), PLAN 5 (job de atendimento).
+>
+> ---
+>
+> ## Perícia da reunião (base dos PLANS) , LER se precisar de contexto
+>
+> **LER PRIMEIRO, nesta ordem:**
+> 1. `docs/superpowers/research/2026-07-19-pericia-completa-reuniao.md` , O documento-mãe. Tem o
+>    de-para de tudo (existe/ajustar/novo/infra), as **decisões do dono (§10)**, a **lógica de
+>    estoque/demonstração exata da reunião (§11)** e o **escopo dos 5 PLANS (§12)**.
+> 2. `docs/superpowers/research/2026-07-19-reuniao-transcricao-pericia.md` , kits e valores.
+> 3. Os planos do Lote 1 e Lote 2 (`docs/superpowers/plans/2026-07-18-*`) , o que já foi feito.
+>
+> **Diretrizes inegociáveis (§10 do doc-mãe):** ERP Odoo = fonte da verdade; **consistência nas 4
+> pontas** (Diretoria, Relatórios 1.0, Relatórios 2.0, agente Nex bubble+WhatsApp) em TODA task.
+>
+> **Metodologia por PLAN:** PLAN v1 → review pesada (v1) → v2 → review mais profunda (v2) → v3 →
+> tasks bem descritas → testes → **perícia da onda** (conferir se entregou mesmo; se não, refazer)
+> → próxima. Sem spec (vai direto ao plan). **Sem PR/merge até o dono liberar.**
+>
+> **Ordem dos PLANS (§12):** 1) ajustes finos (modalidade_frete, JDS DEMO SP id 414, demo 2 blocos);
+> 2) Nº do Mercos (parsear obs → coluna); 3) rateio de valor dos kits (Fase 2, proporcional ao
+> custo); 4) INFRA de estoque (ingerir `usage` do stock.location → DSTOCK/trânsito); 5) job de
+> atendimento (quantidade_a_atender). Já ajustado nesta sessão: bloqueio = def. do ERP (nota OU
+> pedido faturado).
+>
+> ---
+>
+> ## 2026-07-18 , BRANCH `feat/diretoria-entregas-estoque` (NÃO mergeada , aguarda o dono)
+>
+> Frente pedida na reunião do dono com a logística. Ciclo completo: perícia (4 frentes) →
+> plano v1 → 2 reviews adversariais → v3 → execução por ondas com TDD e E2E real. **Modo
+> autônomo, sem PR/merge (decisão do dono: só no fim de tudo).** tsc 0, 4273 testes verdes.
+>
+> **PRONTO E VALIDADO (screenshots dark + E2E contra o cache):**
+> - **Relatório de Entregas Parciais** (sub-aba nova em Pedidos & Entregas): 3 KPIs (total do
+>   pedido · falta entregar venda · falta entregar custo) + tabela por item (nº, cliente, UF,
+>   cidade, produto, família, marca, operação/modalidade, etapa, qtd/valor a atender, status
+>   liberado/bloqueado, forma de pagamento). Reconcilia com o card por construção (função
+>   `aAtenderDoItem` compartilhada). Toggle "incluir anteriores ao corte".
+> - **Card "Valor em estoque" da Visão Geral** invertido: custo puro (R$ 29,8 mi) em destaque.
+> - **Sigla da UF** no centro de cada estado do mapa.
+> - A receber/A pagar VERIFICADOS (já vêm do título, nada a mudar).
+> - **Lote 2, Fase 1 (desmembramento de kits) COMPLETA**: fato da BOM (`fato_lista_material_item`,
+>   475 linhas) + a necessidade de compra passa a desmembrar kits nos componentes (abate kit
+>   montado, fallback honesto para kit sem BOM). E2E real: das 433 linhas, só 2 seguem como kit.
+>   Migration aditiva aplicada no dev (sem reset). **Fase 2 (rateio de valor Matrix/acessórios)
+>   segue pendente do dono.**
+>
+> **PENDENTE DO DONO/COLEGA (não é esquecimento , o cache não tem o dado):**
+> 1. **Regra de "bloqueado"**: implementada na versão simples (só nota fiscal vencida). O dono
+>    vai verificar e passar o veredito. Flag `BLOQUEIO_SO_NOTA_EMITIDA` isolada.
+> 2. **"Nº do pedido do mérito"**: sem campo no cache (candidatos: chamado_cliente_id/cotacao_id).
+> 3. **Estoque , demonstração em 2 blocos, DSTOCK e "transferência = próprio"**: o cache não tem
+>    os locais descritos (JDSDEMO não existe; DSTOCK ambíguo; sem `usage` para trânsito).
+>    De-para real + perguntas em `docs/superpowers/research/2026-07-18-estoque-locais-pendencias.md`.
+>
+> Plano/progresso: `docs/superpowers/plans/2026-07-18-diretoria-entregas-parciais-estoque-*`.
+
+---
+
 > **Atualizado em 2026-07-14 (madrugada). TUDO O QUE SEGUE ESTA EM PRODUCAO E VALIDADO.**
 > Nenhuma branch aberta, nenhum PR pendente, nenhuma worktree viva. Repositorio limpo: so `main`.
 

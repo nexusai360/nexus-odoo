@@ -400,6 +400,42 @@
       "examples": []
     },
     {
+      "id": "estoque_composicao_kit",
+      "operation": "read",
+      "module": "estoque",
+      "descricao": "Composição de valor de um kit: de que ele é feito (lista de material) e como o valor se distribui entre os componentes (estrutura vs painel), rateado pelo custo. Passe `termo` com o nome do kit (ou `kitId`). Use para 'do que é feito o kit X', 'composição do kit', 'quanto vale a estrutura/o painel do kit', 'quanto do valor do kit é a estrutura'. A base é o preço de tabela; peça `base: 'venda_real'` para usar a mediana das vendas reais (quando houver 5+).",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "termo",
+        "kitId",
+        "base"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "termo",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "kitId",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "base",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "tabela",
+            "venda_real"
+          ]
+        }
+      ],
+      "examples": []
+    },
+    {
       "id": "financeiro_saldo_contas",
       "operation": "read",
       "module": "financeiro",
@@ -4576,6 +4612,6 @@
       "examples": []
     }
   ],
-  "count": 128,
-  "generatedAt": "2026-07-13T22:27:53.788Z"
+  "count": 129,
+  "generatedAt": "2026-07-19T09:30:59.207Z"
 }

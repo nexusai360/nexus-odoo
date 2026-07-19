@@ -67,12 +67,16 @@ export const DOMAINS: ReadonlyArray<DomainEntry> = [
   {
     domain: "comercial",
     description:
-      "Pedidos de venda, propostas, cotacoes, vendas fechadas, faturamento por pedido, devolucoes, produtos vendidos por familia, top pedidos por valor, parcelas do pedido, tempo medio de fechamento, ticket medio, vendedor responsavel pelo pedido, historico de etapas do pedido, tempo gasto em cada etapa, pedidos parados/travados no fluxo de etapas (processo, nao financeiro), tabelas de preco e regras de preco (precos cadastrados por produto, familia ou participante, vigencia). Perguntas tipicas: quais os pedidos abertos, top 10 pedidos do mes, qual o ticket medio, parcelas que vencem, tempo medio para fechar pedido, quanto tempo o pedido X ficou em cada etapa, quais pedidos estao travados ha mais de N dias numa etapa, quantas regras de preco existem, quais as regras da tabela de preco X.",
+      "Pedidos de venda, propostas, cotacoes, vendas fechadas, faturamento por pedido, devolucoes, produtos vendidos por familia, top pedidos por valor, parcelas do pedido, tempo medio de fechamento, ticket medio, vendedor responsavel pelo pedido, historico de etapas do pedido, tempo gasto em cada etapa, pedidos parados/travados no fluxo de etapas (processo, nao financeiro), modalidade de frete do pedido (quem paga o frete: CIF por conta do remetente, FOB por conta do destinatario, terceiros, proprio, sem frete), numero de referencia do pedido no Mercos (CRM de vendas externo; achar o pedido do Odoo pelo numero do Mercos e vice-versa), tabelas de preco e regras de preco (precos cadastrados por produto, familia ou participante, vigencia). Perguntas tipicas: quais os pedidos abertos, top 10 pedidos do mes, qual o ticket medio, parcelas que vencem, tempo medio para fechar pedido, quanto tempo o pedido X ficou em cada etapa, quais pedidos estao travados ha mais de N dias numa etapa, qual a modalidade de frete do pedido, quantos pedidos sao CIF ou FOB, quantas regras de preco existem, quais as regras da tabela de preco X.",
     examples: [
       "quais os pedidos abertos?",
       "top 10 pedidos do mes",
       "quanto tempo o pedido 821 ficou em cada etapa?",
       "quais pedidos estao travados numa etapa?",
+      "qual a modalidade de frete do pedido 821?",
+      "quantos pedidos sao FOB e quantos CIF?",
+      "qual o pedido do Mercos 43203?",
+      "situacao do pedido Mercos 44142",
       "quantas regras de preco existem cadastradas?",
     ],
     forceIncludeOn: [
@@ -86,6 +90,12 @@ export const DOMAINS: ReadonlyArray<DomainEntry> = [
       /hist[oó]rico.{0,20}\betapas?/i,
       /pedido(s)?.{0,20}(parado|travado)/i,
       /(parado|travado)(s)?.{0,15}(no|na)?.{0,5}(fluxo|etapa)/i,
+      // Modalidade de frete do pedido (codigo NF-e modFrete). CIF/FOB/terceiros/proprio.
+      /modalidade\s+de\s+frete/i,
+      /\b(cif|fob)\b/i,
+      /quem\s+paga\s+o\s+frete/i,
+      // Numero do Mercos (CRM de vendas externo). "pedido do mercos NNNNN".
+      /\bmercos\b/i,
       // Coloquial de recebimento futuro (parcelas a vencer). Calibragem R24:
       // "quanto vai entrar essa semana?" -> comercial_parcelas_a_vencer.
       // Convive com o mesmo gatilho em financeiro (ambos sao ofertados).
@@ -144,12 +154,14 @@ export const DOMAINS: ReadonlyArray<DomainEntry> = [
   {
     domain: "estoque",
     description:
-      "Saldo de estoque, quanto temos ou quanto sobrou de um material, peca ou produto (cabos, discos, molas, pecas, equipamentos de academia), posicao por local, movimentacao, extrato de entrada e saida, locais (depositos, armazens), lote, serie, rastreabilidade, produto parado (sem giro), tempo em estoque, duracao em dias, busca de item por codigo de produto, divergencia de inventario. Perguntas tipicas: qual o saldo do produto X, tem quanto de cabo de aco, quanto sobrou de disco, o que temos do codigo 1000093102, produtos parados ha mais de 30 dias, posicao por deposito.",
+      "Saldo de estoque, quanto temos ou quanto sobrou de um material, peca ou produto (cabos, discos, molas, pecas, equipamentos de academia), posicao por local, movimentacao, extrato de entrada e saida, locais (depositos, armazens), lote, serie, rastreabilidade, produto parado (sem giro), tempo em estoque, duracao em dias, busca de item por codigo de produto, divergencia de inventario, composicao de valor dos kits (de que um kit e feito, sua lista de material, quanto do valor e a estrutura e quanto e o painel, rateio do valor pelo custo dos componentes). Perguntas tipicas: qual o saldo do produto X, tem quanto de cabo de aco, quanto sobrou de disco, o que temos do codigo 1000093102, produtos parados ha mais de 30 dias, posicao por deposito, do que e feito o kit Y, quanto vale a estrutura e o painel do kit.",
     examples: [
       "qual o saldo do produto mola espiral?",
       "tem quanto de cabo de aco?",
       "o que temos do codigo 1000093102",
       "produtos parados ha mais de 30 dias",
+      "do que e feito o kit powermill?",
+      "quanto do valor do kit e a estrutura e quanto e o painel?",
     ],
     forceIncludeOn: [
       /\bem estoque\b/i,
@@ -159,6 +171,11 @@ export const DOMAINS: ReadonlyArray<DomainEntry> = [
       /sem giro/i,
       /\bc[oó]digo\s*\d/i,
       /\bdep[oó]sito\b/i,
+      /\bcomposi[cç][aã]o\b/i,
+      /\blista de material\b/i,
+      /do que (e|é|e feito|é feito|se comp[oõ]e)/i,
+      /\b(estrutura|painel)\b.*\bkit\b/i,
+      /\bkit\b.*\b(estrutura|painel|composi|feito|componente)/i,
     ],
   },
   {
