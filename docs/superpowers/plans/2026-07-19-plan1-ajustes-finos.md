@@ -2,7 +2,15 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Versão:** v2 (review adversarial #1 aplicada; aguarda review #2 mais profunda → v3)
+**Versão:** v3 (FINAL , reviews adversariais #1 e #2 aplicadas; pronto para execução TDD)
+
+**Mudanças da v2 → v3 (após review adversarial #2):**
+- **A7 reescrita (premissa falsa corrigida):** `comercial.ts`/`comercial-cotacao.ts` NÃO expõem operação de pedido em Reports 1.0/2.0 (`comercial-cotacao` é sobre `fato_cotacao`, vazio, e vai só ao Nex; os relatórios de pedido de `comercial.ts` não mostram operação por pedido). Logo NÃO existe hoje relatório de pedido-por-operação em 1.0/2.0 para receber a modalidade. A7 passa a: mapear a modalidade na SAÍDA da tool `queryPedidoSituacao` (Nex, ponta 4, `findFirst` sem select já traz a row) + documentar que 1.0/2.0 herdam do fato quando ganharem tal relatório.
+- **B4 reescrita:** NÃO tocar `golden-nex.json` (o gate só valida higiene, não valor; casar prefixo Terceiros+Próprio é inviável na tool de prefixo; demo-03 já tem staleness pré-existente de vr_saldo, fora do escopo). O fix real é o `porCategoria` de `locais-por-produto.ts` (bug pré-existente que subconta demo por substring): a linha do envelope TEM `localId`, então trocar o agrupamento por substring por um Map `localId → {classificacao, raiz}` do fato, preservando os 4 baldes. Staleness do demo-03 vai para o RADAR.
+- **B2:** cravado `WHERE (${conds}) AND raw_deleted = false` (com parênteses; sem eles, a precedência `OR/AND` deixaria passar deletado que casa o 1º prefixo).
+- **C2 shape cravado:** `{ valorGeral: soma, nossos: {linhas, valorGeral}, cliente: {linhas, valorGeral} }`; atualizar `estoque-screen.tsx:63` em lockstep (senão `tsc` quebra). Grupo "nossos" tem 0 saldo hoje (showroom sem saldo) , estado vazio obrigatório.
+- **A3:** corrigida a atribuição: `raw_pedido_documento` = 2542 (1:1310, 0:1065, 9:141, 2:24, 3:2); o fato (join, 81 pedidos fora por filtro) = 2461 (1:1257, 0:1042, 9:136, 2:24, 3:2). O expected do E2E é sobre o FATO. Recomputar se o rebuild mudar o escopo.
+- **A5:** adicionado passo de confirmar se o bloco alimentado é C-05 ou C-06 (o comentário em `vendas.ts` diz "C6") antes de renomear o título.
 
 **Mudanças da v1 → v2 (após review adversarial #1):**
 - B1: corrigido erro de compilação (`const raiz` seria redeclarado); a regra JDSDEMO entra reusando a `raiz` já existente.
@@ -263,7 +271,7 @@ docker exec nexus-odoo-db-1 psql -U nexus -d nexus_odoo_l1 -tAc \
   "SELECT modalidade_frete, count(*) FROM fato_pedido GROUP BY 1 ORDER BY 2 DESC;"
 ```
 
-Expected (medido no raw, todos os 2461 pedidos têm a chave, zero sem-chave): os 5 códigos presentes `1:1257, 0:1042, 9:136, 2:24, 3:2`, **zero nulos** no fato para os pedidos com a chave, código `4` ausente hoje (mapeado para o futuro). Confirmar que a coluna não ficou tudo-nula.
+Expected (medido): o `raw_pedido_documento` tem 2542 registros (`1:1310, 0:1065, 9:141, 2:24, 3:2`); o `fato_pedido` é um subconjunto (81 pedidos ficam fora por filtro do builder, não staleness), então o fato deve mostrar `1:1257, 0:1042, 9:136, 2:24, 3:2` (total 2461), **zero nulos** entre os que têm a chave (todos têm), código `4` ausente hoje. Se o rebuild mudar o escopo do fato, recomputar os números em vez de cravar. Confirmar que a coluna não ficou tudo-nula.
 
 - [ ] **Step 6: Commit**
 
@@ -328,9 +336,13 @@ git commit -m "A4: coluna Modalidade separada de Operacao no relatorio de entreg
 **Interfaces:**
 - Nenhuma nova; só renomeia rótulo/comentário para não afirmar que operação fiscal é "modalidade".
 
+- [ ] **Step 0: Confirm which block the query feeds (C-05 or C-06)**
+
+`vendas.ts` comenta "C6" na função `queryModalidadesEMaiorPedido`, mas `catalogo.ts:112` rotula o id C-05. Antes de renomear, seguir a cadeia (catálogo → loader → `render-componente.tsx` → `vendas-screen.tsx`) e confirmar qual bloco visível é alimentado por essa query. Renomear o título do bloco CERTO.
+
 - [ ] **Step 1: Rename the misleading label**
 
-Em `catalogo.ts:112`, o título do C-05 passa de "Modalidades de operação (pedidos)" para "Operações fiscais (pedidos)". Em `vendas.ts`, ajustar apenas o **comentário** `:354` para deixar claro que agrupa por operação fiscal. **DECISÃO (review #1): manter a chave TS `modalidade` estável** (a interface `LinhaModalidade`, `blocos-vendas.tsx`, `render-componente.tsx`, `vendas-screen.tsx` dependem dela); mudar só o texto visível ao usuário evita quebra em cascata. A chave interna `modalidade` continua existindo; só o rótulo mente menos.
+Em `catalogo.ts` (o bloco confirmado no Step 0), o título passa de "Modalidades de operação (pedidos)" para "Operações fiscais (pedidos)". Em `vendas.ts`, ajustar apenas o **comentário** `:354` para deixar claro que agrupa por operação fiscal. **DECISÃO (review #1): manter a chave TS `modalidade` estável** (a interface `LinhaModalidade`, `blocos-vendas.tsx`, `render-componente.tsx`, `vendas-screen.tsx` dependem dela); mudar só o texto visível ao usuário evita quebra em cascata. A chave interna `modalidade` continua existindo; só o rótulo mente menos.
 
 - [ ] **Step 2: Adjust tests**
 
@@ -381,38 +393,39 @@ git add src/lib/agent/router/domain-vocabulary.ts src/lib/agent/bi-schema-refere
 git commit -m "A6: expor modalidade_frete ao Nex (BI schema + vocabulario)"
 ```
 
-### Task A7: Modalidade de frete no relatório de pedido comercial (pontas 2/3)
+### Task A7: Modalidade na tool `queryPedidoSituacao` do Nex (completa a ponta 4)
 
 **Files:**
-- Modify: `src/lib/reports/queries/comercial.ts` (a consulta de pedido que hoje retorna `operacaoNome` por pedido, ~linhas 307 e 415)
+- Modify: `src/lib/reports/queries/comercial.ts` (`queryPedidoSituacao`: tipo da linha ~307, montagem da saída ~415; NÃO há `select` , usa `findFirst` que traz a row inteira, ~334)
+- Test: `src/lib/reports/queries/comercial.test.ts` (se existir; senão adicionar ao teste de `pedido-situacao` da tool)
 
 **Interfaces:**
-- Consumes: `FatoPedido.modalidadeFrete`, `rotuloModalidadeFrete` (Task A1).
-- Produces: campo de modalidade na linha do relatório comercial (Relatórios 1.0/2.0 e a tool MCP que lê `comercial.ts`).
+- Consumes: `FatoPedido.modalidadeFrete` (já vem no `findFirst` sem select), `rotuloModalidadeFrete` (Task A1).
+- Produces: campo `modalidade` na saída de `queryPedidoSituacao` (a tool MCP `mcp/tools/comercial/pedido-situacao.ts`, ponta 4).
 
-> **Por que esta task existe (4 pontas):** a review adversarial #1 apontou que `comercial.ts` expõe `operacaoNome` por pedido e alimenta Relatórios 1.0, 2.0 e a tool MCP correspondente. Sem esta task, a modalidade só estaria na Diretoria e no BI do Nex, violando a diretriz das 4 pontas. Se o relatório comercial não tiver coluna de operação visível ao usuário (só interna), o executor confirma e, nesse caso, apenas garante o campo disponível no shape, documentando a decisão.
+> **Escopo corrigido pela review #2:** `queryPedidoSituacao` é o ÚNICO lugar, além da Diretoria, que expõe operação por pedido, e ela vai só ao Nex (ponta 4), não a Reports 1.0/2.0. Não existe hoje relatório de pedido-por-operação em 1.0/2.0 (os relatórios de `comercial.ts` , período/etapa/vendedor/atrasados , não mostram operação por pedido; `comercial-cotacao.ts` é sobre `fato_cotacao`, vazio). Portanto A7 completa a ponta 4 onde a operação já aparece. Reports 1.0/2.0 herdam a modalidade do `fato_pedido` no dia em que ganharem um relatório de pedido-por-operação , documentar isso, não inventar relatório novo (evita escopo a mais).
 
-- [ ] **Step 1: Locate the pedido-level select**
+- [ ] **Step 1: Confirm the shape**
 
-Abrir `comercial.ts`, achar o `select` do pedido (onde `operacaoNome` é lido, ~307/415) e a interface da linha retornada. Confirmar quais relatórios/tools consomem essa função (grep por importadores de `comercial.ts`).
+Abrir `queryPedidoSituacao` em `comercial.ts`. Confirmar: usa `prisma.fatoPedido.findFirst({ where, orderBy })` SEM `select` (a row inteira já traz `modalidadeFrete` após a Task A3). Localizar o tipo da linha de saída (~307) e onde `operacaoNome` é mapeado (~415).
 
 - [ ] **Step 2: Write the failing test**
 
-Adicionar teste em `comercial.test.ts` garantindo que a linha do pedido carrega a modalidade traduzida (via `rotuloModalidadeFrete`) quando `modalidadeFrete` está presente.
+Teste garantindo que a saída de `queryPedidoSituacao` carrega `modalidade` traduzida (via `rotuloModalidadeFrete`) a partir de `pedido.modalidadeFrete`.
 
-- [ ] **Step 3: Add modalidadeFrete to select + line**
+- [ ] **Step 3: Map modalidade in the output (no select to edit)**
 
-Adicionar `modalidadeFrete: true` ao select e `modalidade: rotuloModalidadeFrete(p.modalidadeFrete)` à linha (e ao tipo da linha).
+Adicionar `modalidade: string | null` ao tipo da linha e `modalidade: rotuloModalidadeFrete(pedido.modalidadeFrete)` na montagem da saída. Não há `select` para editar (a row inteira já vem).
 
 - [ ] **Step 4: Run tests + rebuild mcp**
 
-Run: `npx jest src/lib/reports/queries/comercial.test.ts` (PASS) e `docker compose up -d --build mcp`.
+Run: `npx jest src/lib/reports/queries/comercial.test.ts` (PASS) e `docker compose up -d --build mcp`. Smoke: perguntar ao Nex a situação de um pedido e conferir que a modalidade aparece.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add src/lib/reports/queries/comercial.ts src/lib/reports/queries/comercial.test.ts
-git commit -m "A7: modalidade de frete no relatorio de pedido comercial (4 pontas)"
+git commit -m "A7: modalidade na tool pedido_situacao do Nex (completa a ponta 4)"
 ```
 
 ---
@@ -521,9 +534,9 @@ Teste que garante que um local com `rawDeleted=true` NÃO aparece no resultado d
 Run: `npx jest src/lib/reports/queries/estoque.test.ts`
 Expected: FAIL (local deletado aparece).
 
-- [ ] **Step 3: Add the rawDeleted filter to the prefix SQL**
+- [ ] **Step 3: Add the rawDeleted filter to the prefix SQL (com parênteses)**
 
-Na query da linha ~376-381, acrescentar `AND raw_deleted = false` ao WHERE do `SELECT odoo_id FROM raw_estoque_local WHERE data->>'nome_completo' ILIKE $n`.
+Na query da linha ~376-381, o WHERE hoje é `conds.join(" OR ")` (múltiplos prefixos ILIKE, pois a tool aceita array `input.locais`). Adicionar o filtro respeitando a precedência: `WHERE (${conds}) AND raw_deleted = false`. **Sem os parênteses**, `A OR B AND raw_deleted=false` viraria `A OR (B AND deleted)` e um deletado que casa o 1º prefixo ainda passaria.
 
 - [ ] **Step 4: Run test + confirm no number change**
 
@@ -540,37 +553,45 @@ git add src/lib/reports/queries/estoque.ts src/lib/reports/queries/estoque.test.
 git commit -m "B2: queryValorArmazem filtra rawDeleted no caminho de prefixo (blindagem)"
 ```
 
-### Task B4: Alinhar os caminhos paralelos de classificação de demonstração (4 pontas)
+### Task B4: Alinhar o breakdown de `locais-por-produto` à fonte única (ponta 4)
 
 **Files:**
-- Modify: `mcp/tools/estoque/locais-por-produto.ts:161` (classifica demo por `nome.includes("demonstra")`)
-- Modify: `src/lib/agent/evals/golden/golden-nex.json` (SQL golden que usa `LIKE 'Terceiros / Demonstração%'`)
+- Modify: `mcp/tools/estoque/locais-por-produto.ts:157-166` (o `porCategoria` que agrupa saldo por substring do `localNome`)
+- Modify: `docs/RADAR.md` (registrar a staleness pré-existente do golden `demo-03` e a diferença de valorização custo vs vr_saldo)
 
-**Interfaces:** nenhuma nova; alinha 2 consumidores à regra da fonte única.
+**Interfaces:**
+- Consumes: `localId` (já presente em cada linha do envelope: `linhas[].localId`), classificação e raiz de `fato_estoque_local`.
 
-> **Por que (4 pontas):** a review #1 achou 2 caminhos que classificam demonstração por texto, divergentes da regra `classificarLocal`. Hoje batem por coincidência (showroom id 35 tem 0 saldo; 414 deletado), mas a regra JDSDEMO (B1) habilita um futuro JDSDEMO-Próprio ativo que esses caminhos não reconheceriam (`includes("demonstra")` não casa "JDS DEMO"; `LIKE 'Terceiros/...'` ignora raiz Próprio).
+> **Escopo corrigido pela review #2:** NÃO tocar `golden-nex.json`. O gate `golden-gate.test.ts` só valida higiene (não compara valor); o golden `demo-03` usa `vr_saldo` e um prefixo `Terceiros / Demonstração%` que a tool de prefixo não consegue casar junto com `Próprio / JDSDEMO`; e o `valor` congelado (1855763.5) já está defasado do vivo (2295436.54), staleness pré-existente. O bug REAL e corrigível é o `porCategoria`: agrupa por substring de `localNome`, então dos 129 locais demo só 1 tem "demonstra" no nome (os 128 de cliente têm nome de academia) , **já subconta demo hoje**, independente do PLAN 1. Como a linha do envelope tem `localId`, dá para classificar pela fonte única.
 
-- [ ] **Step 1: Align locais-por-produto.ts to the single source**
+- [ ] **Step 1: Write the failing test**
 
-Trocar o `nome.includes("demonstra")` por consulta à `classificacao` do `fato_estoque_local` (herança da fonte única), ou por um helper compartilhado que reproduza `classificarLocal`. Confirmar com teste que "JDS DEMO" agora é reconhecido.
+Teste da tool `estoque_locais_por_produto` garantindo que o `saldoDemonstracao` do destaque conta TODOS os locais classificados como demonstração no fato (não só os que têm "demonstra" no nome curto), e que um local "JDS DEMO" (raiz Próprio) contaria como demonstração.
 
-- [ ] **Step 2: Align the golden eval SQL**
+- [ ] **Step 2: Run test to verify it fails**
 
-Ajustar o SQL golden (`golden-nex.json:1220`) para refletir a regra completa de demonstração (incluir a raiz Próprio+demo, não só `Terceiros / Demonstração%`). Como golden é resposta esperada, atualizar o valor esperado se ele mudar; hoje não muda (0 saldo no Próprio-demo).
+Run: `npx jest mcp/tools/estoque/locais-por-produto.test.ts` (ou o teste correspondente da tool).
+Expected: FAIL (só 1 local conta como demo).
 
-- [ ] **Step 3: Run eval/tests**
+- [ ] **Step 3: Replace substring grouping with fact-based classification**
 
-Run: `npx jest -t "golden"` e o teste da tool. Expected: PASS.
+Carregar um Map `localId -> { classificacao, raiz }` de `fato_estoque_local` (a tool já tem `ctx.prisma`), onde `raiz = nomeCompleto.split(" / ")[0]`. Agrupar os 4 baldes preservando a semântica atual: `demonstracao` ← `classificacao==='demonstracao'`; `proprio` ← `classificacao==='fisico'`; para `classificacao==='fora'`, subdividir por raiz: `terceiros` ← raiz "Terceiros", `outros` ← demais. Assim os 4 baldes continuam existindo, mas demo passa a bater com a fonte única (e reconhece JDSDEMO).
 
-- [ ] **Step 4: Rebuild mcp**
+- [ ] **Step 4: Run test to verify it passes**
 
-Run: `docker compose up -d --build mcp`
+Run: `npx jest mcp/tools/estoque/locais-por-produto.test.ts`
+Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Register the pre-existing gaps in RADAR**
+
+Em `docs/RADAR.md`, registrar: (a) golden `demo-03` valoriza a `vr_saldo` e o `valor` congelado está defasado (staleness pré-existente, revisar na próxima rodada de auditoria do Nex); (b) a Diretoria valoriza estoque a custo e o Nex a `vr_saldo` (diferença de valorização pré-existente, não é bug do PLAN 1).
+
+- [ ] **Step 6: Rebuild mcp + commit**
 
 ```bash
-git add mcp/tools/estoque/locais-por-produto.ts src/lib/agent/evals/golden/golden-nex.json
-git commit -m "B4: alinha locais-por-produto e golden evals a regra unica de demonstracao"
+docker compose up -d --build mcp
+git add mcp/tools/estoque/locais-por-produto.ts mcp/tools/estoque/locais-por-produto.test.ts docs/RADAR.md
+git commit -m "B4: porCategoria de locais-por-produto usa a fonte unica (conta demo certo)"
 ```
 
 ### Task B3: Corrigir a premissa do doc-mãe sobre o id 414
@@ -667,7 +688,7 @@ git commit -m "C1: helper de sub-tipo de demonstracao (nosso x cliente)"
 
 **Interfaces:**
 - Consumes: `subtipoDemonstracao` (C1), `localIdsPorClassificacao(prisma, "demonstracao")`.
-- Produces: `{ nossos: { linhas; valorGeral }, cliente: { linhas; valorGeral } }` (formato exato definido na review; manter compat com o shape atual como soma).
+- Produces (shape CRAVADO): `{ valorGeral: number; nossos: { linhas: LinhaAgrupada[]; valorGeral: number }; cliente: { linhas: LinhaAgrupada[]; valorGeral: number } }`. O `valorGeral` de topo = soma dos dois grupos (preserva o card global que lê `demonstracao.valorGeral` em `blocos-estoque.tsx:537`). O tipo em `estoque-screen.tsx:63` DEVE ser atualizado no mesmo passo (lockstep), senão `tsc` quebra.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -680,7 +701,7 @@ Expected: FAIL.
 
 - [ ] **Step 3: Implement the split**
 
-Buscar os locais de demonstração e seus `nomeCompleto`/`odooId` (via `fato_estoque_local`), classificar cada localId por `subtipoDemonstracao`, e agregar o saldo em dois grupos. Reaproveitar a valorização a custo do `agrupaSaldo`. Retornar os dois grupos e um total (para o card do KPI global de demonstração continuar batendo).
+Buscar os locais de demonstração e seus `nomeCompleto`/`odooId` (via `fato_estoque_local` onde `classificacao='demonstracao'`), montar um Map `localId -> subtipoDemonstracao(nomeCompleto, odooId)`, e agregar o saldo (valorizado a custo, mesma regra do `agrupaSaldo`: `quantidade × preco_custo`, só saldo positivo) em dois grupos. Retornar o shape cravado `{ valorGeral, nossos, cliente }`, com `valorGeral = nossos.valorGeral + cliente.valorGeral`.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -716,13 +737,13 @@ git commit -m "C2: query de demonstracao separa nossos (JDSDEMO) x em cliente"
 
 Invocar `ui-ux-pro-max` para o layout dos 2 sub-blocos (mesmo painel, nossos em cima e em cliente embaixo, cada um com KPI de valor + tabela; comparação "tenho X de demonstração nossa e Y em cliente"). Design system: tokens semânticos, Lucide, sem emoji, dark+light, 375px.
 
-- [ ] **Step 2: Update the shape**
+- [ ] **Step 2: Update the shape (lockstep com a query)**
 
-Ajustar `EstoqueData.demonstracao` para carregar os 2 grupos (`nossos`, `cliente`) e o total.
+Ajustar o tipo `EstoqueData.demonstracao` em `estoque-screen.tsx:63` para o shape cravado `{ valorGeral, nossos: { linhas, valorGeral }, cliente: { linhas, valorGeral } }`. Fazer no MESMO commit da C2 para o `tsc` não quebrar. Conferir todos os leitores de `d.demonstracao` (o card em `blocos-estoque.tsx:537` lê `.valorGeral`, que continua existindo no topo).
 
 - [ ] **Step 3: Render 2 sub-blocks**
 
-Reescrever `EstoqueDemonstracao` para renderizar: um KPI-resumo (total + quebra nossos/cliente) e duas seções tituladas ("Demonstração nossa (JDSDEMO)" em cima, "Em cliente (com nota)" embaixo), cada uma com sua `DataTable`. Header da tabela "nossos" = "Nosso local"; da "cliente" = "Cliente / local". Estado vazio acionável em cada uma.
+Reescrever `EstoqueDemonstracao` para renderizar: um KPI-resumo (total `valorGeral` + quebra nossos/cliente) e duas seções tituladas ("Demonstração nossa (JDSDEMO)" em cima, "Em cliente (com nota)" embaixo), cada uma com sua `DataTable`. Header da tabela "nossos" = "Nosso local"; da "cliente" = "Cliente / local". **Estado vazio acionável obrigatório no bloco "nossos"** (hoje tem 0 saldo: showroom sem saldo e nenhum JDSDEMO ativo), com mensagem tipo "Sem estoque de demonstração em depósito nosso no momento".
 
 - [ ] **Step 4: E2E visual**
 
@@ -749,14 +770,11 @@ git commit -m "C3: painel de demonstracao em 2 blocos (nossos x em cliente)"
 
 ---
 
-## Pontos abertos para a review adversarial #2 (a serem resolvidos na v3)
+## Decisões fechadas (v3) , todos os pontos abertos resolvidos pelas 2 reviews
 
-Resolvidos na v2 pela review #1:
-- ~~A5 escopo~~: decidido , renomear só o TEXTO VISÍVEL (`catalogo.ts:112` + rótulos), manter a chave TS `modalidade` estável para não quebrar `blocos-vendas.tsx`/`render-componente.tsx`/`vendas-screen.tsx` em cascata (Step 1 da A5 já reflete).
-- ~~A6/A7 (4 pontas da modalidade)~~: decidido , BI+vocab no Nex (A6) e coluna no relatório comercial (A7). Sem tool dedicada (a reunião não pediu).
-- ~~B1 regex~~: confirmado por medição , só o 414 (deletado) casa; zero regressão nos 16 físicos. Regex mantido com âncora `\bjds\s*demo\b` + `\bdemo\b`.
-
-Ainda abertos para a review #2 decidir:
-1. **Frente C nas 4 pontas:** o split "nosso/cliente" é visão da Diretoria. A regra (o que é demonstração) já é consistente nas 4 pontas após B1/B4. Definir se o SUB-TIPO precisa ser exposto além da Diretoria (Reports/Nex) ou se basta a Diretoria (a reunião pediu o painel 2 blocos especificamente na visão de estoque). Recomendação atual: só Diretoria; confirmar na review #2.
-2. **C2 shape exato:** definir o formato de retorno (2 grupos + total) preservando o card global que lê `demonstracao.valorGeral` (`blocos-estoque.tsx:537`). Provável: manter `valorGeral` como soma dos 2 grupos + adicionar `nossos`/`cliente`.
-3. **B4 golden eval:** confirmar que mexer no `golden-nex.json` não desestabiliza a suíte de evals do Nex (rodada de auditoria). Se for arriscado, degradar para só documentar a divergência futura e alinhar `locais-por-produto.ts` (o caminho de código real), deixando o golden para quando um JDSDEMO ativo existir.
+- **A5 escopo:** renomear só o TEXTO VISÍVEL; chave TS `modalidade` estável (evita quebra em cascata). + confirmar C-05/C-06 antes (Step 0).
+- **A6/A7 (4 pontas da modalidade):** ponta 4 via BI+vocab (A6) e saída da tool `pedido_situacao` (A7). Reports 1.0/2.0 não têm relatório de pedido-por-operação hoje; herdam do `fato_pedido` quando tiverem (documentado, não inventar relatório). Diretoria via A4.
+- **B1 regex:** só o 414 (deletado) casa; zero regressão. Regex `\bjds\s*demo\b|\bdemo\b`.
+- **Frente C nas 4 pontas:** o split "nosso/cliente" é visão da Diretoria (a reunião pediu o painel 2 blocos na visão de estoque). A REGRA (o que é demonstração) já é consistente nas 4 pontas após B1/B4. O sub-tipo não precisa ser exposto além da Diretoria.
+- **C2 shape:** cravado `{ valorGeral, nossos, cliente }` com `estoque-screen.tsx:63` em lockstep.
+- **B4 golden:** NÃO tocar `golden-nex.json` (gate só valida higiene; casar prefixo é inviável; staleness pré-existente). Corrigir só o `porCategoria` (bug pré-existente, `localId` disponível) e registrar a staleness no RADAR.
