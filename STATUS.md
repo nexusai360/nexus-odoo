@@ -40,14 +40,26 @@
 >   E2E `scripts/e2e/e2e-estoque-classificacao.ts`, 4 pontas: KPI a custo R$ 34,59 mi (R$ 36,41 mi
 >   com índice), demonstração R$ 2,67 mi nossos + R$ 1,70 mi cliente, armazém R$ 33,99 mi com
 >   trânsito (R$ 2,33 mi) e intercompany (R$ 3,86 mi) dentro. Virtual segue fora do disponível.
-> - **Frente B (histórico temporal , NOVO, pedido enfático do dono) , EM SPEC.** Guardar preços E
->   saldos com data/hora por ciclo. Spec v1:
->   `docs/superpowers/specs/2026-07-19-historico-temporal-preco-saldo-SPEC-v1.md` (2 reviews
->   adversariais sequenciais → v3 → plano → TDD). **A perícia do dado derrubou duas premissas:**
->   (1) `fato_estoque_movimento` JÁ EXISTE (22.787 linhas do `estoque.extrato`, com data/local/
->   sentido/documento) , não há o que ingerir; (2) `fato_preco` tem 12.009 linhas em 7 tabelas
->   (custo inclusive), não só as ~2,9 mil de venda. Transcrição bruta:
->   `docs/superpowers/research/2026-07-19-reuniao-transcricao-BRUTA.md`.
+> - **Frente B (histórico temporal , NOVO, pedido enfático do dono) , ENTREGUE e periciada.**
+>   Guardar preços E saldos com data/hora, série de mudança (append-por-mudança), consultável no
+>   cache. Ciclo completo: SPEC v1 → 2 reviews adversariais (11 + 9 achados) → SPEC v3; PLAN v1 →
+>   2 reviews (10 + 9 achados) → PLAN v3; 6 ondas TDD → perícia. Specs/plans:
+>   `docs/superpowers/{specs,plans}/2026-07-19-historico-temporal-preco-saldo-*`.
+>   - **3 tabelas novas** (`fato_preco_historico`, `fato_estoque_saldo_historico`,
+>     `fato_captura_rodada`), migration aditiva, **índices únicos parciais `WHERE vigente`** (SQL
+>     cru; garantem um-vigente-por-chave e leitura O(chaves)).
+>   - **Captura** (`captura-preco.ts`/`captura-saldo.ts`) acoplada ao ciclo: preço no incremental
+>     **cron** (gate `origem`, o clique da Diretoria não captura), saldo no snapshot. Dedup do par
+>     15049, guarda de sanidade (teto de baixas + rota de saída do dead-state), baixa (NULL) ≠
+>     zero, ressurreição, comparação por string decimal na escala real.
+>   - **Consultas** (`serie-historico.ts`, 4 pontas): `serieDePreco`/`serieDeSaldo` com
+>     carry-forward (alcança antes do corte de propósito) + lacunas de observação; `movimentacao`
+>     (lê `fato_estoque_movimento`, sinaliza `localSemExtrato`). BI schema documentado.
+>   - **Verde:** tsc (raiz+mcp), jest 4386, 3 E2E contra o cache real. Fatos de origem intactos.
+>   - **Perícia do dado** (derrubou 2 premissas): `fato_estoque_movimento` já existe (não há
+>     extrato a ingerir); `fato_preco` tem 12.009 linhas em 7 tabelas (custo inclusive).
+>   - **Falta (dono):** merge (PR #196) e deploy em produção. Transcrição:
+>     `docs/superpowers/research/2026-07-19-reuniao-transcricao-BRUTA.md`.
 >
 > ---
 >
