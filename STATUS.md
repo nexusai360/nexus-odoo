@@ -24,7 +24,24 @@
 > - **Gaps documentados (fora do escopo, decisão do dono):** preço por cliente/período/série não existe no
 >   cache (campos vazios na Tauga); margem só aproximada (custo é snapshot de hoje).
 >
-> **PLAN 4 (infra estoque) , BLOQUEADO: premissa REFUTADA na perícia do dado (decisão do dono).**
+> **PLAN 4/6 (estoque: classificação + histórico) , EM CURSO, acesso DESTRAVADO (2026-07-19).**
+> O dono liberou o usuário `joaozanini` (id 11) nas 18 empresas do grupo: os 16 locais antes
+> bloqueados agora são legíveis. Valores: EM TRANSFERENCIA R$ 2,21 mi (→ físico/próprio), JDS DEMO
+> 14 locais ~R$ 4,58 mi (→ demonstração "nossos"), intercompany 285 R$ 2,34 mi (avaliar). Perícia+
+> plano das 2 frentes: `docs/superpowers/research/2026-07-19-plan4-6-estoque-classificacao-e-historico.md`.
+> - **Frente A (classificação):** regra `classificarLocal` JÁ pronta (EM TRANSFERENCIA→físico, JDS
+>   DEMO→demonstração; +3 testes). FALTA: re-sync do estoque no dev (traz os 16 locais ao cache) +
+>   validar E2E + intercompany 285 + KPIs + 4 pontas + conferir id 414 (era "deletado", estava
+>   bloqueado). Virtual (produção ~R$ 9,7 mi) fica fora do disponível.
+> - **Frente B (histórico temporal , NOVO, pedido enfático do dono):** guardar preços E saldos com
+>   data/hora a cada ciclo (~10 min) p/ histórico de preço e movimentação (quem entrou/saiu), no
+>   cache. Já existe `FatoEstoqueSaldoSnapshot` (só DIÁRIO, sem preço). Construir: histórico de preço
+>   (append por mudança) + movimentação por ciclo (avaliar ingerir `estoque.extrato`). Metodologia
+>   por PLAN. Transcrição bruta da reunião: `docs/superpowers/research/2026-07-19-reuniao-transcricao-BRUTA.md`.
+>
+> ---
+>
+> **[HISTÓRICO] PLAN 4 v1 (premissa `usage`) foi REFUTADA e depois RESOLVIDA por permissão:**
 > Perícia: `docs/superpowers/research/2026-07-19-plan4-pericia-usage-stock-location.md`. Contra o Odoo
 > Tauga ao vivo: o modelo `estoque.local` (207 campos) NÃO tem o campo `usage` , só `tipo` (A/S =
 > analítico/sintético). Não há warehouse/customer/transit; só `proprietario_*` (que é `false` nos nós
