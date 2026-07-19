@@ -557,6 +557,7 @@ describe("CORTE , piso da data de início das análises nas consultas de pedido"
           bucketDemanda: "ABERTA",
           categoriaOperacao: "venda",
           operacaoNome: "Venda",
+          modalidadeFrete: "0",
           empresaNome: "Matrix",
           participanteNome: "Cliente A",
           vendedorNome: "Ana",
@@ -575,5 +576,7 @@ describe("CORTE , piso da data de início das análises nas consultas de pedido"
     expect(r.encontrado).toBe(true);
     expect(r.foraDaJanela).toBe(false);
     expect(r.pedido?.numero).toBe("PV-2037/26");
+    // modalidade de frete traduzida do código NF-e (0 -> CIF)
+    expect(r.pedido?.modalidadeFrete).toBe("CIF (remetente)");
   });
 });

@@ -19,6 +19,7 @@ const pedidoSchema = z
     bucketDemanda: z.string().nullable(),
     categoriaOperacao: z.string().nullable(),
     operacaoNome: z.string().nullable(),
+    modalidadeFrete: z.string().nullable(),
     empresaNome: z.string().nullable(),
     participanteNome: z.string().nullable(),
     vendedorNome: z.string().nullable(),
@@ -146,6 +147,7 @@ export const comercialPedidoSituacao: ToolEntry<Input, Output> = {
 
     const resposta =
       `${p.numero} (${p.operacaoNome ?? "sem operacao"}, ${brl(p.valorProdutos)}` +
+      `${p.modalidadeFrete ? `, frete ${p.modalidadeFrete}` : ""}` +
       `${p.participanteNome ? `, cliente ${p.participanteNome}` : ""}). ` +
       `Esta ${parado} na etapa "${p.etapaNome ?? "?"}" (${situacao}).` +
       `${aprov ? ` Aprovado em ${aprov}.` : ""}` +

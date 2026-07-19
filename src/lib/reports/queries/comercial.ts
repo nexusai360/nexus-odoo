@@ -9,6 +9,7 @@ import { diasAtraso } from "../../../../mcp/lib/dias-atraso";
 import { VENDA_FUTURA } from "@/lib/fiscal/regras/venda-futura-policy";
 import { corteAtualDate, janelaClampada } from "@/lib/corte-dados";
 import { atendimentoSincronizado } from "@/lib/diretoria/atendimento-status";
+import { rotuloModalidadeFrete } from "@/lib/fiscal/regras/modalidade-frete";
 import {
   whereLocalDoEscopo,
   type EscopoLocal,
@@ -305,6 +306,8 @@ export async function queryPedidoSituacao(
     bucketDemanda: string | null;
     categoriaOperacao: string | null;
     operacaoNome: string | null;
+    /** Modalidade de frete (CIF/FOB/terceiros/próprio), rótulo do código NF-e modFrete. */
+    modalidadeFrete: string | null;
     empresaNome: string | null;
     participanteNome: string | null;
     vendedorNome: string | null;
@@ -413,6 +416,7 @@ export async function queryPedidoSituacao(
       bucketDemanda: pedido.bucketDemanda,
       categoriaOperacao: pedido.categoriaOperacao,
       operacaoNome: pedido.operacaoNome,
+      modalidadeFrete: rotuloModalidadeFrete(pedido.modalidadeFrete),
       empresaNome: pedido.empresaNome,
       participanteNome: pedido.participanteNome,
       vendedorNome: pedido.vendedorNome,
