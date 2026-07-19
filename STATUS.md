@@ -1,10 +1,35 @@
 # STATUS , ponto de retomada
 
-> ## 🔜 PRÓXIMA SESSÃO , PLAN 2 (Nº do Mercos)
+> ## 🔜 PRÓXIMA SESSÃO , PLAN 3 (rateio de valor dos kits, Fase 2)
 >
-> **PLAN 1 (ajustes finos) COMPLETO e committado (2026-07-19), sem PR/merge.** Ciclo cumprido:
-> plano v1 → 2 reviews adversariais sequenciais → v3 → 13 tasks TDD → perícia da onda → verde.
-> Plano em `docs/superpowers/plans/2026-07-19-plan1-ajustes-finos.md`.
+> **PLAN 1 e PLAN 2 COMPLETOS e committados (2026-07-19), sem PR/merge.** Cada um: v1 → 2 reviews
+> adversariais sequenciais → v3 → tasks TDD → perícia da onda → verde (tsc 0, jest 4311).
+>
+> **PLAN 2 (Nº do Mercos) entregue:** coluna `numero_mercos` no `fato_pedido` (parseada do
+> `obs` com `src/lib/fiscal/regras/numero-mercos.ts`, regex `mercos(?!ul)[^0-9\n]{0,10}([0-9]{4,7})(?![0-9])`).
+> E2E: 794 pedidos, 4-5 dígitos. Exposto nas 4 pontas: relatório de entregas (coluna "Nº Mercos"),
+> tool `pedido_situacao` + BI schema + vocabulário do Nex. **Busca reversa (M6):** `pedido_situacao`
+> acha pelo número do Mercos, tratando o **1:N** (o mesmo Mercos vira vários pedidos no Odoo: quando
+> N>1, lista os pedidos em vez de escolher um) e respeitando o corte de dados. Reviews adversariais
+> pegaram 2 bugs antes de virar código: o `\b` não barra "mercosul" (regex corrigido) e o Mercos ser
+> 1:N (não 1:1). Perícia da onda pegou 1 bug (busca reversa ignorava o corte), corrigido.
+> Plano: `docs/superpowers/plans/2026-07-19-plan2-numero-mercos.md`.
+>
+> **PLAN 3 , Rateio de valor dos kits (Fase 2), próximo:** função `desmembrarValor` proporcional ao
+> `preco_custo` de cada componente (fallback venda→tabela; fechamento por maior resto = soma exata).
+> Um só algoritmo cobre Matrix e acessório. Reportar ao dono: o custo diz que o painel vale ~14-25%
+> do kit Matrix, NÃO zero como no método manual do colega. Ver doc-mãe §4. Depois PLAN 4 (infra de
+> estoque: ingerir `usage` do stock.location) e PLAN 5 (job de atendimento).
+>
+> **Pendência de ambiente (PLAN 1 e 2):** validação visual por screenshot e E2E ao vivo do Nex não
+> feitos (containers mcp/worker/app parados; dev não no ar nesta worktree). Ao rodar dev/containers,
+> rebuildar (`docker compose build app` + `up -d --build mcp`) ANTES. Código e dado validados; o dono
+> valida a UI no fim. Dívida BAIXA registrada: teste do formatador da tool `pedido_situacao` (caso
+> multiplosMercos), hoje coberto indiretamente pela query.
+>
+> ---
+>
+> **PLAN 1 (ajustes finos):** plano `docs/superpowers/plans/2026-07-19-plan1-ajustes-finos.md`.
 >
 > **Entregue no PLAN 1 (tsc 0, jest 4301 verdes):**
 > - **Modalidade de frete** materializada no `fato_pedido` (código NF-e modFrete), de-para puro
