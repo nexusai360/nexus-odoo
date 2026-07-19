@@ -309,6 +309,27 @@ describe("classificarLocal", () => {
       ).toBe("fora");
     });
 
+    it("exige os mesmos criterios de deposito real: o espelho de razao social continua fora", () => {
+      // Caso real (locais 40, 43, 283, 287, 291, 364, 422, 460): locais intercompany que o
+      // Odoo NAO marca como estoque em maos. Sao espelhos de razao social, nao deposito.
+      // Sem esta exigencia, um lancamento errado num deles inflaria o KPI em silencio.
+      expect(
+        classificarLocal(
+          intercompany({ odooId: 43, estoqueEmMaos: false }),
+        ),
+      ).toBe("fora");
+      expect(
+        classificarLocal(
+          intercompany({ odooId: 40, calculaExtratoSaldo: false }),
+        ),
+      ).toBe("fora");
+      expect(
+        classificarLocal(
+          intercompany({ odooId: 291, temProprietario: false }),
+        ),
+      ).toBe("fora");
+    });
+
     it("sem a informacao do dono, o local de Terceiros continua fora (fail-closed)", () => {
       const semInfo = intercompany();
       delete semInfo.proprietarioEhEmpresaDoGrupo;

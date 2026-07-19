@@ -84,26 +84,26 @@ export function classificarLocal(local: LocalBruto): ClassificacaoLocal {
   // mas e nosso , conta como proprio". Caso real: o local 285 (R$ 3,86 mi), Jds Matriz DF
   // guardando mercadoria da Jht SP.
   //
-  // Duas restricoes deliberadas:
+  // Tres restricoes deliberadas:
   // - so o filho DIRETO de "Terceiros" (dois segmentos). As subarvores , `Demonstração`
   //   (ja tratada acima) e `Feira`/`Patrimônio` , sao equipamento posicionado fora, nao
   //   deposito, mesmo quando o dono e do grupo.
   // - o dono e reconhecido pelo cadastro do Odoo (`sped.participante.eh_empresa`), nao por
   //   texto de CNPJ no nome do local, que muda de formato e ja veio com caractere invisivel.
+  // - e guarda mercadoria de verdade: os mesmos tres criterios do deposito proprio. Ha oito
+  //   locais intercompany que o Odoo NAO marca como estoque em maos (40, 43, 283, 287, 291,
+  //   364, 422, 460): sao espelhos de razao social. Sem esta exigencia, um lancamento errado
+  //   em qualquer um deles inflaria o KPI em silencio.
+  const guardaMercadoria =
+    local.estoqueEmMaos && local.calculaExtratoSaldo && local.temProprietario;
+
   const segmentos = nomeCompleto.split(SEPARADOR);
-  if (
+  const ehIntercompany =
     segmentos.length === 2 &&
     segmentos[0] === RAIZ_TERCEIROS &&
-    local.proprietarioEhEmpresaDoGrupo === true
-  ) {
-    return "fisico";
-  }
+    local.proprietarioEhEmpresaDoGrupo === true;
 
-  const ehDepositoReal =
-    raiz === RAIZ_PROPRIO &&
-    local.estoqueEmMaos &&
-    local.calculaExtratoSaldo &&
-    local.temProprietario;
+  const ehDepositoReal = raiz === RAIZ_PROPRIO || ehIntercompany;
 
-  return ehDepositoReal ? "fisico" : "fora";
+  return ehDepositoReal && guardaMercadoria ? "fisico" : "fora";
 }
