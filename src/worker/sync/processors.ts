@@ -9,6 +9,8 @@ import { syncSnapshot } from "./snapshot";
 import { reconcileModel } from "./reconcile";
 import { rawDelegateKey } from "../jobs";
 import { runBuilders } from "../fatos/registry";
+import { capturarPreco } from "../fatos/captura-preco";
+import { capturarSaldo } from "../fatos/captura-saldo";
 
 export interface CycleContext {
   prisma: PrismaClient;
@@ -70,6 +72,10 @@ export async function processIncrementalCycle(
   ctx: CycleContext,
   catalog: readonly CatalogEntry[],
   runCycle: RunCycleFn = runModelCycle,
+  // origem: "cron" e o ciclo agendado (captura o historico de preco); "ondemand" e o sync por
+  // clique da Diretoria (rodarCicloEscopado), que NAO deve capturar , senao cada clique de cada
+  // diretor geraria uma rodada, e a captura roda a cadencia do dado, nao a do clique.
+  origem: "cron" | "ondemand" = "cron",
 ): Promise<void> {
   const incrementalEntries = catalog.filter((e) => e.mode === "incremental");
   await pool(incrementalEntries, INCREMENTAL_CONCURRENCY, async (entry) => {
@@ -99,7 +105,16 @@ export async function processIncrementalCycle(
     await runCycle(deps, entry.odooModel);
   });
   try {
-    await runBuilders(ctx.prisma, "incremental");
+    const status = await runBuilders(ctx.prisma, "incremental");
+    // Captura do historico de preco: so no cron, e so se o fato_preco foi reconstruido com
+    // sucesso nesta rodada (senao capturaria um fato encolhido por falha de builder).
+    if (origem === "cron" && status.find((s) => s.nome === "fato_preco")?.ok) {
+      try {
+        await capturarPreco(ctx.prisma);
+      } catch (err) {
+        console.error("[worker] captura de preco falhou:", err);
+      }
+    }
   } catch (err) {
     console.error("[worker] falha ao rodar builders incrementais:", err);
   }
@@ -135,7 +150,16 @@ export async function processSnapshotCycle(
     await runCycle(deps, entry.odooModel);
   }
 
-  await runBuilders(ctx.prisma, "snapshot");
+  const status = await runBuilders(ctx.prisma, "snapshot");
+  // Captura do historico de saldo apos o rebuild, so se o fato_estoque_saldo teve sucesso.
+  // O snapshot nunca roda sob demanda, entao nao precisa de gate de origem.
+  if (status.find((s) => s.nome === "fato_estoque_saldo")?.ok) {
+    try {
+      await capturarSaldo(ctx.prisma);
+    } catch (err) {
+      console.error("[worker] captura de saldo falhou:", err);
+    }
+  }
 }
 
 export async function processReconcileCycle(

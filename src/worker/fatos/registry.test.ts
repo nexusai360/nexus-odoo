@@ -74,4 +74,16 @@ describe("runBuilders", () => {
     logSpy.mockRestore();
     errorSpy.mockRestore();
   });
+
+  it("devolve o status por builder (ok e linhas)", async () => {
+    const builders = [
+      { nome: "fato_a", cycle: "incremental" as const, run: async () => 3 },
+      { nome: "fato_b", cycle: "incremental" as const, run: async () => { throw new Error("x"); } },
+    ];
+    const st = await runBuilders(prisma, "incremental", builders);
+    expect(st).toEqual([
+      { nome: "fato_a", ok: true, linhas: 3 },
+      { nome: "fato_b", ok: false, linhas: null },
+    ]);
+  });
 });

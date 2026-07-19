@@ -412,7 +412,7 @@ async function rodarCicloEscopado(models: string[]): Promise<void> {
   const client = clientFromEnv();
   await client.authenticate();
   const ctx = { prisma, client };
-  await processIncrementalCycle(ctx, escoparCatalogo(models));
+  await processIncrementalCycle(ctx, escoparCatalogo(models), undefined, "ondemand");
 }
 
 /**
