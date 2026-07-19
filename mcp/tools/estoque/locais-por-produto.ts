@@ -151,16 +151,32 @@ export const estoqueLocaisPorProduto: ToolEntry<Input, Output> = {
       limit,
       envelope.dados.linhas.length,
     );
-    // Onda humanizacao 2026-06-12: agrupamento por categoria de local PRONTO
-    // no destaque. Sem isso o modelo somava "proprio vs demonstracao" de
-    // cabeca e errava (disse 8 em demo quando eram 11 , conversa a395702f).
+    // Agrupamento por categoria de local usando a FONTE UNICA
+    // (fato_estoque_local.classificacao), nao substring do localNome. O nome curto
+    // subcontava demonstracao (locais de cliente tem nome de academia, nao "demonstra")
+    // e nao reconhecia "JDS DEMO". Cada linha ja traz localId, entao classificamos pelo fato.
+    const idsLinhas = envelope.dados.linhas
+      .map((l) => l.localId)
+      .filter((id): id is number => id != null);
+    const locaisMeta = idsLinhas.length
+      ? await ctx.prisma.fatoEstoqueLocal.findMany({
+          where: { odooId: { in: idsLinhas } },
+          select: { odooId: true, classificacao: true, nomeCompleto: true },
+        })
+      : [];
+    const metaPorLocal = new Map(
+      locaisMeta.map((m) => [
+        m.odooId,
+        { classificacao: m.classificacao, raiz: (m.nomeCompleto ?? "").split(" / ")[0] },
+      ]),
+    );
     const porCategoria = { proprio: 0, demonstracao: 0, terceiros: 0, outros: 0 };
     for (const l of envelope.dados.linhas) {
-      const nome = (l.localNome ?? "").toLowerCase();
       const saldo = Number(l.saldo ?? 0);
-      if (nome.includes("demonstra")) porCategoria.demonstracao += saldo;
-      else if (nome.includes("próprio") || nome.includes("proprio")) porCategoria.proprio += saldo;
-      else if (nome.includes("terceiro")) porCategoria.terceiros += saldo;
+      const meta = l.localId != null ? metaPorLocal.get(l.localId) : undefined;
+      if (meta?.classificacao === "demonstracao") porCategoria.demonstracao += saldo;
+      else if (meta?.classificacao === "fisico") porCategoria.proprio += saldo;
+      else if (meta?.raiz === "Terceiros") porCategoria.terceiros += saldo;
       else porCategoria.outros += saldo;
     }
     return enriquecerEnvelope(envelope, "estoque_locais_por_produto", {

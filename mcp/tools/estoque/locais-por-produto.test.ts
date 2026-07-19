@@ -103,6 +103,34 @@ describe("estoque_locais_por_produto , paginacao (alavanca 2b)", () => {
     }
   });
 
+  it("conta saldoDemonstracao pela classificacao do fato, nao pelo nome curto", async () => {
+    const ctx = makeCtx();
+    primeFreshness(ctx);
+    (ctx.prisma.fatoProduto.findFirst as jest.Mock).mockResolvedValue({ odooId: 102, nome: "Esteira" });
+    // Dois locais: um de demonstracao com nome de CLIENTE (sem "demonstra" no nome curto)
+    // e um deposito fisico. A regra antiga por substring somava 0 em demonstracao.
+    (ctx.prisma.fatoEstoqueSaldo.findMany as jest.Mock).mockResolvedValue([
+      { localId: 1, localNome: "Academia Cliente X", quantidade: 7 },
+      { localId: 2, localNome: "Galpão Matriz", quantidade: 3 },
+    ]);
+    (ctx.prisma.fatoEstoqueSaldo.count as jest.Mock).mockResolvedValue(2);
+    (ctx.prisma.fatoEstoqueSaldo.aggregate as jest.Mock).mockResolvedValue({ _sum: { quantidade: "10" } });
+    (ctx.prisma.fatoEstoqueLocal.findMany as jest.Mock).mockResolvedValue([
+      { odooId: 1, classificacao: "demonstracao", nomeCompleto: "Terceiros / Demonstração / Academia Cliente X" },
+      { odooId: 2, classificacao: "fisico", nomeCompleto: "Próprio / Galpão Matriz" },
+    ]);
+
+    const r = await estoqueLocaisPorProduto.handler({ termo: "esteira", limit: 10, offset: 0 } as never, ctx);
+    // classificou pela fonte unica: buscou os localIds da pagina no fato
+    const calls = (ctx.prisma.fatoEstoqueLocal.findMany as jest.Mock).mock.calls;
+    const metaCall = calls.find((c) => c[0]?.where?.odooId?.in)?.[0];
+    expect(metaCall.where.odooId.in).toEqual([1, 2]);
+    if (r.estado !== "preparando") {
+      expect(r.dados._DESTAQUE!.saldoDemonstracao).toBe(7);
+      expect(r.dados._DESTAQUE!.saldoProprio).toBe(3);
+    }
+  });
+
   it("default limit = 50 quando ausente", async () => {
     const ctx = makeCtx();
     primeFreshness(ctx);
