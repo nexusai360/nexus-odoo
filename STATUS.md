@@ -11,11 +11,12 @@
 > - **PLAN `docs/superpowers/plans/2026-07-19-plan3-composicao-valor-kits.md`**: v1 → review #1 (pegou
 >   2 regressões ALTA) → **v2 pronta** → **review #2 disparada (agent)**.
 > - **PLAN 3 v3 FINAL pronto** (2 reviews aplicadas). **EM EXECUÇÃO TDD:**
->   - ✅ **V1 feito** (`src/lib/estoque/desmembrar-valor.ts`, 6 testes verdes): função pura de rateio.
->   - **RETOMAR DE W1:** W1 (mini-infra: colunas `lista_data_ativacao`/`lista_inativa` no
->     `fato_lista_material_item` via migration aditiva + builder `fato-lista-material.ts` lendo o
->     HEADER `raw_sped_produto_lista_material`) → W2 (`resolverBom`: escolhe lista ativa SÓ em
->     multi-lista, all-inactive usa todas, lista única passa reto) → W3 (necessidade de compra usa
+>   - ✅ **V1 feito** (`src/lib/estoque/desmembrar-valor.ts`, 6 testes): função pura de rateio.
+>   - ✅ **W1 feito** (colunas `lista_data_ativacao`/`lista_inativa` no fato da BOM + builder lê o
+>     header; migration aplicada; E2E: 607→lista 3, 1281→lista 172 pela ativação).
+>   - ✅ **W2 feito** (`src/lib/estoque/resolver-bom.ts`, 8 testes): escolhe lista ativa só em
+>     multi-lista, lista única passa reto, all-inactive não zera.
+>   - **RETOMAR DE W3:** W3 (necessidade de compra `src/lib/diretoria/queries/estoque.ts` ~1030-1050 usa
 >     resolverBom, E2E: 131 kits lista única intactos, 1281 não duplica) → X1a-d (`queryComposicaoKit`
 >     base=tabela, venda real só n>=5 mediana, peso 0 não infla, contrato centavos) → Y1-Y5 (painel
 >     Diretoria/Estoque, ui-ux-pro-max, sanitizar em dash do ERP) → Z1a-c (tool Nex + BI + vocab) →
