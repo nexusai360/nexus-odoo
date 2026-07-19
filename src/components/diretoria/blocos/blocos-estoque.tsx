@@ -444,8 +444,10 @@ function NecessidadeCompra({ d }: { d: EstoqueData }) {
       </div>
 
       <p className="text-xs text-[var(--muted-foreground)]">
-        A conta é do grupo inteiro, porque a mercadoria é transferida entre as filiais.
-        Clique numa linha para ver em qual depósito está o que já existe.
+        Os kits são desmembrados nos seus componentes (pela lista de material), então a
+        necessidade aparece no grão do que se compra de verdade. Kit sem lista cadastrada fica
+        marcado e entra como ele mesmo. A conta é do grupo inteiro, porque a mercadoria é
+        transferida entre as filiais. Clique numa linha para ver em qual depósito está o que já existe.
       </p>
     </div>
   );
@@ -466,7 +468,17 @@ function FragmentLinha({
         onClick={onToggle}
         className="cursor-pointer border-b border-[var(--border)] transition-colors hover:bg-[var(--muted)]/40"
       >
-        <td className="px-2 py-2">{nomeLimpo(linha.produto) || DASH}</td>
+        <td className="px-2 py-2">
+          {nomeLimpo(linha.produto) || DASH}
+          {linha.semBom ? (
+            <span
+              className="ml-2 inline-flex items-center rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-500 ring-1 ring-inset ring-amber-500/20"
+              title="Kit sem lista de material cadastrada: não foi desmembrado em componentes; entra como o próprio kit."
+            >
+              kit sem lista
+            </span>
+          ) : null}
+        </td>
         <td className="px-2 py-2 text-right tabular-nums">{linha.demanda}</td>
         <td className="px-2 py-2 text-right tabular-nums text-[var(--muted-foreground)]">
           {linha.saldoFisico}

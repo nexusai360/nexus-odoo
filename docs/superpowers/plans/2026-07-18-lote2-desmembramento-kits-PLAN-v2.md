@@ -3,17 +3,18 @@
 > v2 = v1 + review adversarial (1 crítico, 3 altos, 5 médios, 2 baixos, tudo medido no cache real).
 > Mesma branch `feat/diretoria-entregas-estoque`, sem PR/merge até o dono liberar.
 
-> ## ESTADO DA EXECUÇÃO (2026-07-18)
-> - [x] **K0** investigação (fechada).
-> - [x] **K2** função pura `desmembrarDemanda` (`src/lib/estoque/desmembrar-kit.ts`) , 7 testes verdes.
-> - [ ] **K1** fato da BOM , **PRÓXIMO. Começa com MIGRATION de schema.** Parei aqui de propósito:
->   regra do projeto (CLAUDE.md/STATUS) é NÃO iniciar migration com contexto apertado (migration
->   pela metade = pior caso). Retomar com contexto fresco: editar `prisma/schema.prisma`
->   (`FatoListaMaterialItem`), `migrate diff --from-migrations --to-schema` (aditivo, sem reset),
->   `agente schema-changed`, builder `fato-lista-material.ts` (padrão `fato-produto.ts`, ligar por
->   `produto_produzido_id`), registrar no `registry.ts`, rebuild worker via `app`, popular o fato.
-> - [ ] **K3** integração na `queryNecessidadeCompra` (épico, decomposto em K3a-d).
-> - [ ] **K4** UI (aba Compras). · [ ] **K5** verificação.
+> ## ESTADO DA EXECUÇÃO (2026-07-19) , FASE 1 COMPLETA
+> - [x] **K0** investigação. · [x] **K2** função `desmembrarDemanda` (7 testes).
+> - [x] **K1** fato da BOM: migration aditiva aplicada (sem reset) + builder `fato-lista-material.ts`
+>   + registry. Populado: 475 linhas, 135 kits. Builder testado (4).
+> - [x] **K3** `queryNecessidadeCompra` desmembra kits em componentes (abate kit montado, agrega,
+>   fallback semBom). E2E real: das 433 linhas, só 2 seguem como kit (os sem BOM).
+> - [x] **K4** UI: bloco A-14 com badge "kit sem lista" + rodapé explicando o desmembramento.
+>   Validado por screenshot.
+> - [x] **K5** verificação: tsc 0, jest verde (2 travas de drift , FATO_CATALOG + BI_SCHEMA , atualizadas).
+> - Rebuild do worker container: NÃO feito no dev (o fato já está populado no banco; o worker velho
+>   não o apaga). No deploy, o CI reconstrói tudo. Documentar.
+> - **Fase 2 (rateio de VALOR Matrix/acessórios) segue pendente do dono.**
 
 ## 1. Objetivo
 Kit vendido → desmembrar nos componentes → necessidade de compra **por componente** (estoque do

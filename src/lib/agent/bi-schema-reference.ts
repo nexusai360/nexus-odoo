@@ -46,6 +46,18 @@ TABLE fato_serial_saldo (
   valor_custo     NUMERIC,
 )
 
+-- Lista de Material (BOM): componentes de cada kit. Usado para desmembrar a demanda de
+-- kits em componentes na necessidade de compra. Ligação pelo pai (produto_pai_id).
+TABLE fato_lista_material_item (
+  id                     INT PRIMARY KEY,
+  produto_pai_id         INT,    -- o kit
+  componente_produto_id  INT,    -- o componente
+  componente_nome        TEXT,
+  quantidade             NUMERIC, -- do componente por 1 kit
+  tipo_item              TEXT,
+  lista_id               INT,
+)
+
 -- Saldo atual de estoque por produto/local
 TABLE fato_estoque_saldo (
   id              UUID PRIMARY KEY,

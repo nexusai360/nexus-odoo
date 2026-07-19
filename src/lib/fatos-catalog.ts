@@ -30,6 +30,7 @@ export const FATO_CATALOG: readonly FatoCatalogEntry[] = [
   { nome: "fato_estoque_local", dominio: "Estoque", modo: "snapshot", fonte: "estoque.local" },
   { nome: "fato_estoque_saldo", dominio: "Estoque", modo: "snapshot", fonte: "estoque.saldo.hoje" },
   { nome: "fato_serial_saldo", dominio: "Estoque", modo: "snapshot", fonte: "estoque.saldo.rastreabilidade.hoje" },
+  { nome: "fato_lista_material_item", dominio: "Estoque", modo: "snapshot", fonte: "sped.produto.lista.material.item" },
   { nome: "fato_estoque_movimento", dominio: "Estoque", modo: "snapshot", fonte: "estoque.extrato" },
   { nome: "fato_produto_parado", dominio: "Estoque", modo: "snapshot", fonte: "estoque.saldo.hoje" },
   // Financeiro
