@@ -54,6 +54,10 @@ const dados = z.object({
   itens: z.array(itemSchema),
   /** O que falta para avançar, derivado dos gatilhos da etapa atual. */
   pendencia: z.string().nullable(),
+  /** Quando o número buscado é um Mercos com vários pedidos no Odoo (1:N). */
+  multiplosMercos: z
+    .object({ numeroMercos: z.string(), pedidos: z.array(z.string()) })
+    .nullable(),
   _RESPOSTA: z.string().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
 });
@@ -102,6 +106,21 @@ export const comercialPedidoSituacao: ToolEntry<Input, Output> = {
     );
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
+
+    // Número de Mercos com vários pedidos no Odoo (1:N): lista, não escolhe um.
+    if (d.multiplosMercos) {
+      const m = d.multiplosMercos;
+      return {
+        ...envelope,
+        estado: "ok" as const,
+        dados: {
+          ...d,
+          _RESPOSTA:
+            `O numero de Mercos ${m.numeroMercos} corresponde a ${m.pedidos.length} pedidos no Odoo: ` +
+            `${m.pedidos.join(", ")}. Consulte um deles pelo numero do pedido.`,
+        },
+      };
+    }
 
     if (!d.encontrado || !d.pedido) {
       return {

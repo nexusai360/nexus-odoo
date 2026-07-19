@@ -334,20 +334,49 @@ export async function queryPedidoSituacao(
   }[];
   /** O que falta para o pedido avançar, derivado dos gatilhos da etapa atual. */
   pendencia: string | null;
+  /**
+   * Quando o alvo é um número de Mercos que corresponde a VÁRIOS pedidos do Odoo
+   * (o Mercos é 1:N), devolve a lista dos números Odoo em vez de escolher um.
+   */
+  multiplosMercos: { numeroMercos: string; pedidos: string[] } | null;
 }> {
   const alvo = filtros.numero.trim();
-  const pedido = await prisma.fatoPedido.findFirst({
-    where: { numero: { contains: alvo, mode: "insensitive" } },
-    orderBy: { dataOrcamento: "desc" },
-  });
+  // Busca reversa por Mercos: se o alvo parece um número de Mercos (4-7 dígitos puros),
+  // casa numeroMercos EXATO primeiro. O Mercos é 1:N com pedidos do Odoo, então tratamos a
+  // lista; a precedência evita o `contains` casar o miolo NNNN de um PV alheio por substring.
+  let pedido: Awaited<ReturnType<typeof prisma.fatoPedido.findFirst>> = null;
+  if (/^[0-9]{4,7}$/.test(alvo)) {
+    const porMercos = await prisma.fatoPedido.findMany({
+      where: { numeroMercos: alvo },
+      orderBy: { dataOrcamento: "desc" },
+    });
+    if (porMercos.length > 1) {
+      return {
+        encontrado: false,
+        foraDaJanela: false,
+        pedido: null,
+        trilha: [],
+        itens: [],
+        pendencia: null,
+        multiplosMercos: { numeroMercos: alvo, pedidos: porMercos.map((p) => p.numero ?? "?") },
+      };
+    }
+    pedido = porMercos[0] ?? null;
+  }
   if (!pedido) {
-    return { encontrado: false, foraDaJanela: false, pedido: null, trilha: [], itens: [], pendencia: null };
+    pedido = await prisma.fatoPedido.findFirst({
+      where: { numero: { contains: alvo, mode: "insensitive" } },
+      orderBy: { dataOrcamento: "desc" },
+    });
+  }
+  if (!pedido) {
+    return { encontrado: false, foraDaJanela: false, pedido: null, trilha: [], itens: [], pendencia: null, multiplosMercos: null };
   }
   // Drill nominal, mas continua sendo documento com data: pedido anterior à data de
   // início das análises não é considerado pela plataforma. O orderBy desc já traz o
   // match mais recente, então só caímos aqui quando TODOS os candidatos são pré-corte.
   if (pedido.dataOrcamento && pedido.dataOrcamento < corteAtualDate()) {
-    return { encontrado: false, foraDaJanela: true, pedido: null, trilha: [], itens: [], pendencia: null };
+    return { encontrado: false, foraDaJanela: true, pedido: null, trilha: [], itens: [], pendencia: null, multiplosMercos: null };
   }
 
   const historico = await prisma.fatoPedidoHistorico.findMany({
@@ -435,6 +464,7 @@ export async function queryPedidoSituacao(
     })),
     itens,
     pendencia,
+    multiplosMercos: null,
   };
 }
 
