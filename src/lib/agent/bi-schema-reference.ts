@@ -212,7 +212,8 @@ TABLE fato_pedido (
   etapa_nome        TEXT,
   etapa_finaliza    BOOLEAN,
   operacao_id       INT,
-  operacao_nome     TEXT,
+  operacao_nome     TEXT,   -- operacao FISCAL do pedido (natureza por CFOP)
+  modalidade_frete  TEXT,   -- codigo NF-e modFrete de quem paga o frete: 0 CIF (remetente), 1 FOB (destinatario), 2 terceiros, 3/4 proprio, 9 sem frete. Distinto da operacao fiscal.
   participante_id   INT,
   participante_nome TEXT,
   vendedor_id       INT,

@@ -67,12 +67,14 @@ export const DOMAINS: ReadonlyArray<DomainEntry> = [
   {
     domain: "comercial",
     description:
-      "Pedidos de venda, propostas, cotacoes, vendas fechadas, faturamento por pedido, devolucoes, produtos vendidos por familia, top pedidos por valor, parcelas do pedido, tempo medio de fechamento, ticket medio, vendedor responsavel pelo pedido, historico de etapas do pedido, tempo gasto em cada etapa, pedidos parados/travados no fluxo de etapas (processo, nao financeiro), tabelas de preco e regras de preco (precos cadastrados por produto, familia ou participante, vigencia). Perguntas tipicas: quais os pedidos abertos, top 10 pedidos do mes, qual o ticket medio, parcelas que vencem, tempo medio para fechar pedido, quanto tempo o pedido X ficou em cada etapa, quais pedidos estao travados ha mais de N dias numa etapa, quantas regras de preco existem, quais as regras da tabela de preco X.",
+      "Pedidos de venda, propostas, cotacoes, vendas fechadas, faturamento por pedido, devolucoes, produtos vendidos por familia, top pedidos por valor, parcelas do pedido, tempo medio de fechamento, ticket medio, vendedor responsavel pelo pedido, historico de etapas do pedido, tempo gasto em cada etapa, pedidos parados/travados no fluxo de etapas (processo, nao financeiro), modalidade de frete do pedido (quem paga o frete: CIF por conta do remetente, FOB por conta do destinatario, terceiros, proprio, sem frete), tabelas de preco e regras de preco (precos cadastrados por produto, familia ou participante, vigencia). Perguntas tipicas: quais os pedidos abertos, top 10 pedidos do mes, qual o ticket medio, parcelas que vencem, tempo medio para fechar pedido, quanto tempo o pedido X ficou em cada etapa, quais pedidos estao travados ha mais de N dias numa etapa, qual a modalidade de frete do pedido, quantos pedidos sao CIF ou FOB, quantas regras de preco existem, quais as regras da tabela de preco X.",
     examples: [
       "quais os pedidos abertos?",
       "top 10 pedidos do mes",
       "quanto tempo o pedido 821 ficou em cada etapa?",
       "quais pedidos estao travados numa etapa?",
+      "qual a modalidade de frete do pedido 821?",
+      "quantos pedidos sao FOB e quantos CIF?",
       "quantas regras de preco existem cadastradas?",
     ],
     forceIncludeOn: [
@@ -86,6 +88,10 @@ export const DOMAINS: ReadonlyArray<DomainEntry> = [
       /hist[oó]rico.{0,20}\betapas?/i,
       /pedido(s)?.{0,20}(parado|travado)/i,
       /(parado|travado)(s)?.{0,15}(no|na)?.{0,5}(fluxo|etapa)/i,
+      // Modalidade de frete do pedido (codigo NF-e modFrete). CIF/FOB/terceiros/proprio.
+      /modalidade\s+de\s+frete/i,
+      /\b(cif|fob)\b/i,
+      /quem\s+paga\s+o\s+frete/i,
       // Coloquial de recebimento futuro (parcelas a vencer). Calibragem R24:
       // "quanto vai entrar essa semana?" -> comercial_parcelas_a_vencer.
       // Convive com o mesmo gatilho em financeiro (ambos sao ofertados).
