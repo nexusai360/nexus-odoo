@@ -34,6 +34,12 @@ import { diasRestantes, statusPrazo, type StatusPrazo } from "@/lib/diretoria/co
 import { VENDA_FUTURA } from "@/lib/fiscal/regras/venda-futura-policy";
 import { getIndiceEstoque, aplicarIndice } from "@/lib/indice-estoque";
 import { atendimentoSincronizado } from "@/lib/diretoria/atendimento-status";
+import {
+  desmembrarDemanda,
+  type ComponenteBom,
+  type ItemDemanda,
+  type DemandaComponente,
+} from "@/lib/estoque/desmembrar-kit";
 import type { ClassificacaoLocal } from "@/lib/estoque/classificacao-local";
 import {
   localIdsPorClassificacao,
@@ -929,6 +935,64 @@ export interface NecessidadeCompraLinha {
   custoEstimado: number;
   /** Onde a mercadoria que existe está , para decidir entre transferir e comprar. */
   porDeposito: SaldoPorDeposito[];
+  /** true quando um kit foi demandado mas não tinha BOM: entra como o próprio kit, com aviso. */
+  semBom?: boolean;
+}
+
+/**
+ * Desmembra a demanda em componentes (K3): kits vendidos viram demanda dos seus componentes,
+ * abatendo o kit MONTADO em estoque antes de desmembrar. Não-kit e kit sem BOM passam como o
+ * próprio produto (fallback honesto, sinalizado). A demanda é agregada por componente.
+ */
+async function desmembrarDemandaParaCompra(
+  prisma: PrismaClient,
+  demanda: Map<number, { nome: string | null; q: number }>,
+  saldoMap: Map<number, { total: number }>,
+): Promise<DemandaComponente[]> {
+  const ids = [...demanda.keys()];
+  if (!ids.length) return [];
+  const prods = await prisma.fatoProduto.findMany({
+    where: { odooId: { in: ids } },
+    select: { odooId: true, unidadeNome: true },
+  });
+  const ehKitDe = new Map(prods.map((p) => [p.odooId, /^kit/i.test(p.unidadeNome ?? "")]));
+  const kitIds = ids.filter((id) => ehKitDe.get(id));
+
+  const bomRows = kitIds.length
+    ? await prisma.fatoListaMaterialItem.findMany({
+        where: { produtoPaiId: { in: kitIds } },
+        select: {
+          produtoPaiId: true,
+          componenteProdutoId: true,
+          componenteNome: true,
+          quantidade: true,
+        },
+      })
+    : [];
+  const bomPorPai = new Map<number, ComponenteBom[]>();
+  for (const b of bomRows) {
+    const arr = bomPorPai.get(b.produtoPaiId) ?? [];
+    arr.push({
+      componenteProdutoId: b.componenteProdutoId,
+      componenteNome: b.componenteNome,
+      quantidade: Number(b.quantidade),
+    });
+    bomPorPai.set(b.produtoPaiId, arr);
+  }
+
+  const saldoKit = new Map<number, number>();
+  for (const id of kitIds) {
+    const s = saldoMap.get(id);
+    if (s) saldoKit.set(id, s.total);
+  }
+
+  const itens: ItemDemanda[] = [...demanda.entries()].map(([produtoId, d]) => ({
+    produtoId,
+    nome: d.nome,
+    ehKit: ehKitDe.get(produtoId) ?? false,
+    qtd: d.q,
+  }));
+  return desmembrarDemanda(itens, bomPorPai, saldoKit);
 }
 
 /**
@@ -1044,31 +1108,36 @@ export async function queryNecessidadeCompra(
     else demanda.set(it.produtoId, { nome: it.produtoNome, q: falta });
   }
 
+  // K3: desmembra kits em componentes ANTES de subtrair o saldo. A necessidade passa a ser no
+  // grão do que se compra (o componente); kit sem BOM entra como ele mesmo, sinalizado.
+  const demandaComp = await desmembrarDemandaParaCompra(prisma, demanda, saldoMap);
+
   const linhas: NecessidadeCompraLinha[] = [];
   let unidadesAComprar = 0;
   let custoTotalEstimado = 0;
 
-  for (const [produtoId, dem] of demanda) {
-    const saldo = saldoMap.get(produtoId);
+  for (const dc of demandaComp) {
+    const saldo = saldoMap.get(dc.produtoId);
     const saldoFisico = saldo?.total ?? 0;
-    const falta = dem.q - saldoFisico;
+    const falta = dc.qtd - saldoFisico;
     if (falta <= 0) continue; // o que já temos em casa não precisa ser comprado
 
-    const custoUnit = custos.get(produtoId) ?? 0;
+    const custoUnit = custos.get(dc.produtoId) ?? 0;
     const custoEstimado = falta * custoUnit;
     unidadesAComprar += falta;
     custoTotalEstimado += custoEstimado;
 
     linhas.push({
-      produtoId,
-      produto: dem.nome ?? saldo?.nome ?? null,
-      demanda: dem.q,
+      produtoId: dc.produtoId,
+      produto: dc.nome ?? saldo?.nome ?? null,
+      demanda: dc.qtd,
       saldoFisico,
       falta,
       custoEstimado,
       porDeposito: [...(saldo?.porLocal ?? new Map())]
         .map(([local, s]) => ({ local, saldo: s }))
         .sort((a, b) => b.saldo - a.saldo),
+      semBom: dc.semBom,
     });
   }
 
