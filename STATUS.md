@@ -10,11 +10,18 @@
 >   Achado bônus: 4 kits com múltiplas BOMs; a Fase 1 duplica componente (só 1281 vivo, latente).
 > - **PLAN `docs/superpowers/plans/2026-07-19-plan3-composicao-valor-kits.md`**: v1 → review #1 (pegou
 >   2 regressões ALTA) → **v2 pronta** → **review #2 disparada (agent)**.
-> - **RETOMAR:** se a review #2 voltou, aplicar → v3 → executar tasks TDD (V1 desmembrarValor;
->   W1-W3 resolverBom/mini-infra BOM que corrige a Fase 1 SEM zerar os 18 kits de lista única;
->   X1 queryComposicaoKit base=tabela, peso 0 não infla; Y1-Y5 painel Diretoria ui-ux-pro-max;
->   Z1 tool Nex) → perícia da onda. Regras já fechadas na v2: valor-ref por tabela (venda real só
->   n>=5 mediana); rateio por custo; contrato em centavos; desempate por listaId (chute declarado).
+> - **PLAN 3 v3 FINAL pronto** (2 reviews aplicadas). **EM EXECUÇÃO TDD:**
+>   - ✅ **V1 feito** (`src/lib/estoque/desmembrar-valor.ts`, 6 testes verdes): função pura de rateio.
+>   - **RETOMAR DE W1:** W1 (mini-infra: colunas `lista_data_ativacao`/`lista_inativa` no
+>     `fato_lista_material_item` via migration aditiva + builder `fato-lista-material.ts` lendo o
+>     HEADER `raw_sped_produto_lista_material`) → W2 (`resolverBom`: escolhe lista ativa SÓ em
+>     multi-lista, all-inactive usa todas, lista única passa reto) → W3 (necessidade de compra usa
+>     resolverBom, E2E: 131 kits lista única intactos, 1281 não duplica) → X1a-d (`queryComposicaoKit`
+>     base=tabela, venda real só n>=5 mediana, peso 0 não infla, contrato centavos) → Y1-Y5 (painel
+>     Diretoria/Estoque, ui-ux-pro-max, sanitizar em dash do ERP) → Z1a-c (tool Nex + BI + vocab) →
+>     perícia da onda.
+>   - Regras fechadas: base=tabela (Venda Padrão); % é invariante à base; rateio por custo; desempate
+>     por listaId (chute declarado). Detalhes no plano.
 > - **Depois:** PLAN 4 (infra estoque: usage do stock.location) e PLAN 5 (job de atendimento).
 >
 > ---
