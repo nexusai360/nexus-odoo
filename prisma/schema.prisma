@@ -2355,6 +2355,10 @@ model FatoPedido {
   // Modalidade de frete (codigo NF-e modFrete: 0 CIF, 1 FOB, 2 terceiros, 3/4 proprio,
   // 9 sem frete). Campo proprio, distinto da operacao fiscal. Rotulo via modalidade-frete.ts.
   modalidadeFrete  String?   @map("modalidade_frete")
+  // Numero de referencia do pedido no Mercos (CRM de vendas externo), parseado do obs
+  // pelo builder (numero-mercos.ts). 4-5 digitos. Sem indice (tabela pequena, rebuild total
+  // por ciclo). E 1:N com pedidos do Odoo (um Mercos pode virar varios documentos).
+  numeroMercos     String?   @map("numero_mercos")
   participanteId   Int?      @map("participante_id")
   participanteNome String?   @map("participante_nome")
   vendedorId       Int?      @map("vendedor_id")
