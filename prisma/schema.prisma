@@ -2352,6 +2352,9 @@ model FatoPedido {
   etapaFinaliza    Boolean   @default(false) @map("etapa_finaliza")
   operacaoId       Int?      @map("operacao_id")
   operacaoNome     String?   @map("operacao_nome")
+  // Modalidade de frete (codigo NF-e modFrete: 0 CIF, 1 FOB, 2 terceiros, 3/4 proprio,
+  // 9 sem frete). Campo proprio, distinto da operacao fiscal. Rotulo via modalidade-frete.ts.
+  modalidadeFrete  String?   @map("modalidade_frete")
   participanteId   Int?      @map("participante_id")
   participanteNome String?   @map("participante_nome")
   vendedorId       Int?      @map("vendedor_id")
