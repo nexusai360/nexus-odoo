@@ -85,8 +85,11 @@ export interface KitResumo {
 }
 
 /**
- * Lista os kits (unidade "kit") que têm lista de material, para o seletor do painel.
- * Leve: só id/nome/marca (o detalhe vem de queryComposicaoKit sob demanda). Ordena por nome.
+ * Lista os produtos que têm lista de material (BOM), para o seletor do painel de composição.
+ * Inclui TODOS os que têm BOM, não só os de unidade "kit": alguns kits reais (ex.: 21287
+ * "KIT BARRA MONTADA") têm unidade "unid" no Odoo e ficariam invisíveis. A composição de valor
+ * faz sentido para qualquer produto com BOM. Leve: só id/nome/marca (o detalhe vem de
+ * queryComposicaoKit sob demanda). Ordena por nome.
  */
 export async function queryListaKits(prisma: PrismaClient): Promise<KitResumo[]> {
   const pais = await prisma.fatoListaMaterialItem.findMany({
@@ -96,7 +99,7 @@ export async function queryListaKits(prisma: PrismaClient): Promise<KitResumo[]>
   const ids = pais.map((p) => p.produtoPaiId);
   if (ids.length === 0) return [];
   const prods = await prisma.fatoProduto.findMany({
-    where: { odooId: { in: ids }, unidadeNome: { startsWith: "kit", mode: "insensitive" } },
+    where: { odooId: { in: ids } },
     select: { odooId: true, nome: true, marcaNome: true },
     orderBy: { nome: "asc" },
   });
@@ -215,28 +218,51 @@ export async function queryComposicaoKit(
     valorReferencia = 0;
   }
 
-  // Monta os componentes com preços. Peso do rateio = quantidade x custo (fallback venda de tabela
-  // -> preço de venda do produto). semPreco quando não há custo NEM nenhuma referência de venda.
-  const parciais = bom.componentes.map((c) => {
+  // Levanta os preços de cada componente. semPreco = sem custo NEM nenhuma referência de venda.
+  const info = bom.componentes.map((c) => {
     const prod = prodPorId.get(c.componenteProdutoId);
     const precoCusto = prod ? num(prod.precoCusto) : null;
     const precoVendaProd = prod ? num(prod.precoVenda) : null;
     const precoVendaPadrao = tabPadrao(c.componenteProdutoId);
     const precoVendaSmart = tabSmart(c.componenteProdutoId);
-    const pesoUnit = precoCusto ?? precoVendaPadrao ?? precoVendaSmart ?? precoVendaProd;
-    const semPreco = pesoUnit == null;
     return {
-      componenteId: c.componenteProdutoId,
-      nome: sanitizarTravessao(c.componenteNome),
-      quantidade: c.quantidade,
+      c,
+      ehMatrix: /matrix/i.test(prod?.marcaNome ?? ""),
       precoCusto,
+      precoVendaProd,
       precoVendaPadrao,
       precoVendaSmart,
-      ehMatrix: /matrix/i.test(prod?.marcaNome ?? ""),
-      semPreco,
-      peso: semPreco ? 0 : c.quantidade * (pesoUnit as number),
+      semPreco:
+        precoCusto == null && precoVendaProd == null && precoVendaPadrao == null && precoVendaSmart == null,
     };
   });
+
+  // Base de peso UNIFORME: NÃO misturar custo com venda entre componentes (venda >> custo
+  // inflaria a fatia de quem só tem venda). Preferência: custo -> venda de tabela -> preço de
+  // venda do produto. Usa a 1a base em que TODOS os componentes têm valor > 0; só cai no fallback
+  // por-componente (misto) quando nenhuma base cobre todos (raro; 0 kits no cache hoje).
+  type Info = (typeof info)[number];
+  const bases: Array<(x: Info) => number | null> = [
+    (x) => x.precoCusto,
+    (x) => x.precoVendaPadrao ?? x.precoVendaSmart,
+    (x) => x.precoVendaProd,
+  ];
+  const baseUniforme = bases.find((f) => info.every((x) => (f(x) ?? 0) > 0));
+  const pesoUnitDe = (x: Info): number =>
+    (baseUniforme ? baseUniforme(x) : x.precoCusto ?? x.precoVendaPadrao ?? x.precoVendaSmart ?? x.precoVendaProd) ??
+    0;
+
+  const parciais = info.map((x) => ({
+    componenteId: x.c.componenteProdutoId,
+    nome: sanitizarTravessao(x.c.componenteNome),
+    quantidade: x.c.quantidade,
+    precoCusto: x.precoCusto,
+    precoVendaPadrao: x.precoVendaPadrao,
+    precoVendaSmart: x.precoVendaSmart,
+    ehMatrix: x.ehMatrix,
+    semPreco: x.semPreco,
+    peso: x.semPreco ? 0 : x.c.quantidade * Math.max(0, pesoUnitDe(x)),
+  }));
 
   const coberturaCompleta = parciais.every((p) => !p.semPreco);
   const podeRatear = coberturaCompleta && valorReferencia > 0;

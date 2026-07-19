@@ -33,9 +33,17 @@ function baseLabel(c: ComposicaoKit): string {
 
 /** Barra empilhada estrutura vs painel: um segmento por componente, largura = % do valor. */
 function BarraComposicao({ c }: { c: ComposicaoKit }) {
+  // Largura pelo valor rateado exato (evita sumir componente cujo % arredonda para 0,0); o rótulo
+  // mostra o percentual do backend. Denominador = valor de referência (soma exata dos rateados).
+  const denom = c.valorReferencia > 0 ? c.valorReferencia : 1;
   const segmentos = c.componentes
-    .filter((comp) => comp.percentual > 0)
-    .map((comp, i) => ({ nome: comp.nome ?? "Sem nome", pct: comp.percentual, cor: getColorByIndex(i) }));
+    .filter((comp) => comp.valorRateado > 0)
+    .map((comp, i) => ({
+      nome: comp.nome ?? "Sem nome",
+      pct: comp.percentual,
+      largura: (comp.valorRateado / denom) * 100,
+      cor: getColorByIndex(i),
+    }));
   if (segmentos.length === 0) return null;
   const resumo = segmentos.map((s) => `${s.nome} ${pct1(s.pct)}`).join(", ");
   return (
@@ -49,7 +57,7 @@ function BarraComposicao({ c }: { c: ComposicaoKit }) {
           <div
             key={s.nome}
             className="h-full min-w-[2px]"
-            style={{ width: `${s.pct}%`, backgroundColor: s.cor }}
+            style={{ width: `${s.largura}%`, backgroundColor: s.cor }}
             title={`${s.nome}: ${pct1(s.pct)}`}
           />
         ))}

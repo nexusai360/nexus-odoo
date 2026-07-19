@@ -85,6 +85,36 @@ describe("queryComposicaoKit", () => {
     expect(r.unidadeNome).toBe("kit, Kit");
   });
 
+  it("base de peso UNIFORME: nao mistura custo (comp A) com venda (comp B) no rateio", async () => {
+    // comp A: custo 100, sem venda. comp B: sem custo, venda de tabela 900. Se misturasse
+    // (custo de A x venda de B), B levaria 900/1000=90%. Com base uniforme, cai para venda de
+    // tabela em AMBOS (A tambem tem venda de tabela 200): A=200, B=900 -> A 18,2%, B 81,8%.
+    const prisma = makePrisma({
+      kit: { odooId: 55, nome: "KIT MISTO", unidadeNome: "kit", marcaNome: "MATRIX", precoVenda: null },
+      bom: [
+        bomLinha({ produtoPaiId: 55, componenteProdutoId: 1, quantidade: 1 }),
+        bomLinha({ produtoPaiId: 55, componenteProdutoId: 2, quantidade: 1 }),
+      ],
+      produtos: [
+        { odooId: 1, nome: "A", marcaNome: "MATRIX", precoCusto: 100, precoVenda: null },
+        { odooId: 2, nome: "B", marcaNome: "MATRIX", precoCusto: null, precoVenda: null },
+      ],
+      precos: [
+        { produtoId: 55, tabelaId: 3, valor: 1100 },
+        { produtoId: 1, tabelaId: 3, valor: 200 }, // A tem venda de tabela tambem
+        { produtoId: 2, tabelaId: 3, valor: 900 }, // B so tem venda de tabela
+      ],
+      vendas: [],
+    });
+    const r = (await queryComposicaoKit(prisma, 55))!;
+    expect(r.coberturaCompleta).toBe(true);
+    const a = r.componentes.find((c) => c.componenteId === 1)!;
+    const b = r.componentes.find((c) => c.componenteId === 2)!;
+    // Base uniforme = venda de tabela (a unica em que os dois tem valor): 200 vs 900.
+    expect(a.percentual).toBeCloseTo(18.2, 0);
+    expect(b.percentual).toBeCloseTo(81.8, 0);
+  });
+
   it("componente sem custo NEM venda: coberturaCompleta=false e NAO rateia (nao infla os demais)", async () => {
     const prisma = makePrisma({
       kit: { odooId: 50, nome: "KIT X", unidadeNome: "kit", marcaNome: "MATRIX", precoVenda: null },
@@ -176,9 +206,11 @@ describe("queryComposicaoKit", () => {
     expect(r).toHaveLength(2);
     expect(r[0]).toEqual({ kitId: 894, nome: "ESTEIRA, PP", marcaNome: "MATRIX", ehMatrix: true });
     expect(r[1].ehMatrix).toBe(false);
-    // Filtra por unidade kit no where.
+    // Inclui TODOS os produtos com BOM (nao filtra por unidade "kit"): kits "unid" como o 21287
+    // ficavam invisiveis. So restringe pelos ids que tem BOM.
     const call = (prisma.fatoProduto.findMany as jest.Mock).mock.calls[0][0];
-    expect(call.where.unidadeNome).toEqual({ startsWith: "kit", mode: "insensitive" });
+    expect(call.where.unidadeNome).toBeUndefined();
+    expect(call.where.odooId).toEqual({ in: [894, 1281] });
   });
 
   it("queryListaKits devolve vazio quando nao ha BOM", async () => {
