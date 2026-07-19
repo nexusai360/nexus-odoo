@@ -68,7 +68,7 @@ function RankingEstados({ d }: { d: VendasData }) {
   return <RankingCards itens={itens} max={15} rotuloValor="faturamento" />;
 }
 
-// C-05 , Modalidades de operação: BARRAS horizontais. Os nomes de operação são
+// C-05 , Operações fiscais (pedidos): BARRAS horizontais. Os nomes de operação são
 // MUITO longos (ex.: "VENDA DE MERCADORIA ADQUIRIDA OU RECEBIDA DE TERCEIROS") e
 // se sobrepunham no eixo. Encurtamos o rótulo (1 linha) e damos altura/folga.
 // A BASE AQUI E O PEDIDO, NAO A NOTA, e isso precisa estar escrito. Em julho/2026 o card

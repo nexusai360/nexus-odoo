@@ -350,9 +350,11 @@ export interface MaiorPedido {
 }
 
 /**
- * C6 , Modalidades e maior pedido. Agrupa os pedidos do período pela operação
- * (`operacaoNome`, a "modalidade" da venda) somando `vrProdutos`, e identifica o
- * maior pedido do recorte. Pedidos sem operação entram como "Outras".
+ * C-05 , Operações fiscais e maior pedido. Agrupa os pedidos do período pela OPERAÇÃO
+ * FISCAL (`operacaoNome`) somando `vrProdutos`, e identifica o maior pedido do recorte.
+ * Pedidos sem operação entram como "Outras". Obs.: NÃO é a modalidade de frete
+ * (CIF/FOB/terceiros/próprio, campo `modalidade_frete`); a chave TS `modalidade` aqui é
+ * histórica e representa a operação fiscal.
  */
 export async function queryModalidadesEMaiorPedido(
   prisma: PrismaClient,

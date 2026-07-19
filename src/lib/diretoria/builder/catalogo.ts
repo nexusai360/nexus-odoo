@@ -109,7 +109,7 @@ export const CATALOGO: ComponenteCatalogo[] = [
   comp({ id: "C-02", nome: "Vendas por estado (mapa)", dominio: "C", tipo: "mapa", fonteDado: "real", publica: ["uf"], consome: ["periodo"] }),
   comp({ id: "C-03", nome: "Vendas por marca", dominio: "C", tipo: "grafico", fonteDado: "real", consome: ["periodo"] }),
   comp({ id: "C-04", nome: "Ranking de estados", dominio: "C", tipo: "widget", fonteDado: "real", consome: ["periodo"] }),
-  comp({ id: "C-05", nome: "Modalidades de operação (pedidos)", dominio: "C", tipo: "grafico", fonteDado: "real", consome: ["periodo"] }),
+  comp({ id: "C-05", nome: "Operações fiscais (pedidos)", dominio: "C", tipo: "grafico", fonteDado: "real", consome: ["periodo"] }),
   comp({ id: "C-07", nome: "Formas de pagamento (títulos)", dominio: "C", tipo: "grafico", fonteDado: "real", consome: ["periodo"] }),
   comp({ id: "C-09", nome: "Distribuição dinâmica (marca/estado/pagamento)", dominio: "C", tipo: "widget", fonteDado: "real", consome: ["periodo"] }),
   // Pedidos & Entregas (B-*)
