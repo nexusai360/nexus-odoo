@@ -12,6 +12,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 
 import { corteAtualDate, janelaClampada } from "@/lib/corte-dados";
 import { aAtenderDoItem } from "@/lib/diretoria/atendimento-item";
+import { rotuloModalidadeFrete } from "@/lib/fiscal/regras/modalidade-frete";
 import { atendimentoSincronizado } from "@/lib/diretoria/atendimento-status";
 import { siglaDeUf } from "@/lib/diretoria/uf";
 import { buildEmpresaWhere } from "@/lib/metrics/_shared/empresa";
@@ -38,8 +39,10 @@ export interface LinhaEntregaParcial {
   produto: string | null;
   familia: string | null;
   marca: string | null;
-  /** No Odoo da Tauga, "modalidade" e "operação" são o mesmo campo. */
+  /** Operação FISCAL do pedido (natureza da operação por CFOP). Distinta da modalidade de frete. */
   operacao: string | null;
+  /** Modalidade de frete (CIF/FOB/terceiros/próprio), rótulo do código NF-e modFrete. */
+  modalidade: string | null;
   etapa: string | null;
   qtdAAtender: number;
   valorVendaAAtender: number;
@@ -159,6 +162,7 @@ export async function queryEntregasParciais(
       participanteId: true,
       participanteNome: true,
       operacaoNome: true,
+      modalidadeFrete: true,
       etapaNome: true,
       vrProdutos: true,
     },
@@ -238,6 +242,7 @@ export async function queryEntregasParciais(
       familia: it.familiaNome,
       marca: it.marcaNome,
       operacao: p.operacaoNome,
+      modalidade: rotuloModalidadeFrete(p.modalidadeFrete),
       etapa: p.etapaNome,
       qtdAAtender: linha.aAtender,
       valorVendaAAtender: linha.vendaLinha,
