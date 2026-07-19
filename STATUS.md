@@ -24,9 +24,23 @@
 > - **Gaps documentados (fora do escopo, decisão do dono):** preço por cliente/período/série não existe no
 >   cache (campos vazios na Tauga); margem só aproximada (custo é snapshot de hoje).
 >
-> **PENDENTE (PLAN 4/5, começam do zero com a metodologia por PLAN):**
-> - **PLAN 4** (infra estoque: ingerir `usage` do stock.location → DSTOCK/trânsito, doc-mãe §5/§11).
-> - **PLAN 5** (job de atendimento popular `quantidade_a_atender`).
+> **PLAN 4 (infra estoque) , BLOQUEADO: premissa REFUTADA na perícia do dado (decisão do dono).**
+> Perícia: `docs/superpowers/research/2026-07-19-plan4-pericia-usage-stock-location.md`. Contra o Odoo
+> Tauga ao vivo: o modelo `estoque.local` (207 campos) NÃO tem o campo `usage` , só `tipo` (A/S =
+> analítico/sintético). Não há warehouse/customer/transit; só `proprietario_*` (que é `false` nos nós
+> Virtual/Terceiros dos R$ 16,3 mi). Os R$ 16,3 mi estão monolíticos nos nós raiz sintéticos, sem
+> granularidade. Logo "ingerir usage" é inexequível. 3 opções para o dono: (1) aceitar o estado atual
+> (Virtual/Terceiros em "fora", KPI honesto , recomendado); (2) a operação estrutura no Odoo e nós
+> reclassificamos via `proprietario_produto_id` (já provado na demonstração); (3) investigar `stock.move`
+> (PLAN próprio). `classificarLocal` atual já está correto. SEM código até o dono decidir.
+>
+> **PLAN 5 (job de atendimento) , ENTREGUE (código já existia; perícia comprovou).**
+> Perícia: `docs/superpowers/research/2026-07-19-plan5-pericia-job-atendimento.md`. O job
+> `syncAtendimento` + builder (`quantidade_a_atender_pedido`→`quantidade_a_atender`) + wiring
+> (04:00 BRT: sync→rebuild→marcador) já foram entregues no PR #189 e estão corretos. O campo estava
+> 100% NULL só no DEV (worker parado); o raw tinha o valor numérico em 19.316 itens. Rodei o rebuild:
+> 0→19.316 preenchidos (a atender real ~R$ 469 mi vs cheio ~R$ 512 mi). Produção já funciona sozinha.
+> NÃO há tarefa de código.
 >
 > ---
 >
