@@ -1,29 +1,32 @@
 # STATUS , ponto de retomada
 
-> ## 🔜 PRÓXIMA SESSÃO , PLAN 3 (composição de valor dos kits) , em PLANEJAMENTO
+> ## 🔜 PRÓXIMA SESSÃO , PLAN 4 (infra estoque: usage do stock.location)
 >
-> **PLAN 1 e PLAN 2 COMPLETOS, verdes, committados, sem PR/merge.** PLAN 3 EM CURSO (planejamento):
-> - **Dono aprovou** o painel de composição de valor dos kits (doc `docs/superpowers/research/2026-07-19-plan3-decisao-dono-kits-valor.md`).
-> - **Perícia completa FEITA** (`docs/superpowers/research/2026-07-19-plan3-pericia-completa-valor-kits.md`):
->   DÁ para ratear por tabela de venda (Padrão id3/Smart id5) + valor real de venda. NÃO dá por
->   cliente/período/série (campos vazios na Tauga, gap de ingestão, fora da reunião , NÃO perseguir).
->   Achado bônus: 4 kits com múltiplas BOMs; a Fase 1 duplica componente (só 1281 vivo, latente).
-> - **PLAN `docs/superpowers/plans/2026-07-19-plan3-composicao-valor-kits.md`**: v1 → review #1 (pegou
->   2 regressões ALTA) → **v2 pronta** → **review #2 disparada (agent)**.
-> - **PLAN 3 v3 FINAL pronto** (2 reviews aplicadas). **EM EXECUÇÃO TDD:**
->   - ✅ **V1 feito** (`src/lib/estoque/desmembrar-valor.ts`, 6 testes): função pura de rateio.
->   - ✅ **W1 feito** (colunas `lista_data_ativacao`/`lista_inativa` no fato da BOM + builder lê o
->     header; migration aplicada; E2E: 607→lista 3, 1281→lista 172 pela ativação).
->   - ✅ **W2 feito** (`src/lib/estoque/resolver-bom.ts`, 8 testes): escolhe lista ativa só em
->     multi-lista, lista única passa reto, all-inactive não zera.
->   - **RETOMAR DE W3:** W3 (necessidade de compra `src/lib/diretoria/queries/estoque.ts` ~1030-1050 usa
->     resolverBom, E2E: 131 kits lista única intactos, 1281 não duplica) → X1a-d (`queryComposicaoKit`
->     base=tabela, venda real só n>=5 mediana, peso 0 não infla, contrato centavos) → Y1-Y5 (painel
->     Diretoria/Estoque, ui-ux-pro-max, sanitizar em dash do ERP) → Z1a-c (tool Nex + BI + vocab) →
->     perícia da onda.
->   - Regras fechadas: base=tabela (Venda Padrão); % é invariante à base; rateio por custo; desempate
->     por listaId (chute declarado). Detalhes no plano.
-> - **Depois:** PLAN 4 (infra estoque: usage do stock.location) e PLAN 5 (job de atendimento).
+> **PLAN 1, PLAN 2 e PLAN 3 COMPLETOS, verdes, committados, sem PR/merge (PR #196 aberto).**
+>
+> **PLAN 3 (composição de valor dos kits) , ENTREGUE e periciado (tsc 0, jest 4347).**
+> Plano: `docs/superpowers/plans/2026-07-19-plan3-composicao-valor-kits.md`. Entregas:
+> - **V1** `src/lib/estoque/desmembrar-valor.ts`: rateio proporcional, fechamento por maior resto (soma exata).
+> - **W1** colunas `lista_data_ativacao`/`lista_inativa` no `fato_lista_material_item` + builder lê o header raw.
+> - **W2** `src/lib/estoque/resolver-bom.ts`: escolhe lista ativa só em multi-lista; lista única passa reto.
+> - **W3** `montarBomPorPai` na necessidade de compra (`estoque.ts`): corrige duplicação de componente em
+>   kits multi-lista (1281). E2E: 131 kits lista única intactos, 4 multi-lista (431/607/1281/21287) resolvidos.
+> - **X1** `src/lib/reports/queries/composicao-kit.ts` (`queryComposicaoKit` + `queryListaKits`): base = preço
+>   de tabela (Venda Padrão id3, fallback Smart id5); venda real só n>=5 (mediana). Peso = qtd × custo, base
+>   UNIFORME (não mistura custo com venda). Cobertura incompleta não rateia. Sanitiza travessão do ERP.
+> - **Y** painel na Diretoria (bloco A-15): seletor de kit + barra estrutura vs painel + tabela de componentes
+>   (custo/venda/rateado/%), badge Matrix/acessório, aviso de cobertura. Server Action `carregarComposicaoKit`.
+> - **Z** tool Nex `estoque_composicao_kit` (+ BI schema + vocabulário + snapshot 129 tools).
+> - **Perícia adversarial (Opus):** 0 bugs críticos; 4 achados menores CORRIGIDOS (base uniforme, seletor
+>   inclui kits "unid", barra por valor exato, custo=0 documentado). Fechamento comprovado contra dado real.
+> - **Ao dono:** o painel vale ~12% a 39% do kit (estrutura vs painel), NÃO zero como o Excel manual do time.
+>   Ex.: 894 estrutura 61,2%/painel 38,8%; 1281 estrutura 88,1%/painel 11,9%.
+> - **Gaps documentados (fora do escopo, decisão do dono):** preço por cliente/período/série não existe no
+>   cache (campos vazios na Tauga); margem só aproximada (custo é snapshot de hoje).
+>
+> **PENDENTE (PLAN 4/5, começam do zero com a metodologia por PLAN):**
+> - **PLAN 4** (infra estoque: ingerir `usage` do stock.location → DSTOCK/trânsito, doc-mãe §5/§11).
+> - **PLAN 5** (job de atendimento popular `quantidade_a_atender`).
 >
 > ---
 >
