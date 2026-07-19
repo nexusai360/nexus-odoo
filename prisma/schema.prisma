@@ -2408,6 +2408,25 @@ model FatoPedidoItem {
   @@map("fato_pedido_item")
 }
 
+/// Lista de Material (BOM) do Odoo (sped.produto.lista.material.item): 1 linha por COMPONENTE de
+/// um kit. Usado para desmembrar a demanda de um kit vendido nos seus componentes (análise de
+/// compra). Ligação pelo PAI direto: produto_pai_id = produto_produzido_id do item (casa 1:1 com o
+/// cabeçalho da BOM; recupera kits sem lista_material_id preenchido). Desmembramento é de 1 nível.
+model FatoListaMaterialItem {
+  id                  Int      @id @default(autoincrement())
+  produtoPaiId        Int      @map("produto_pai_id")
+  componenteProdutoId Int      @map("componente_produto_id")
+  componenteNome      String?  @map("componente_nome")
+  quantidade          Decimal  @default(0) @db.Decimal(18, 4)
+  tipoItem            String?  @map("tipo_item")
+  listaId             Int?     @map("lista_id")
+  atualizadoEm        DateTime @default(now()) @map("atualizado_em")
+
+  @@index([produtoPaiId])
+  @@index([componenteProdutoId])
+  @@map("fato_lista_material_item")
+}
+
 model FatoPedidoParcela {
   odooId             Int       @id @map("odoo_id")
   pedidoId           Int?      @map("pedido_id")

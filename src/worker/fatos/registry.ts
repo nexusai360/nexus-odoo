@@ -46,6 +46,7 @@ import { rebuildFatoPedidoItem } from "./fato-pedido-item";
 import { rebuildFatoPedidoClassificacao } from "./fato-pedido-classificacao";
 import { rebuildFatoEstoqueLocal } from "./fato-estoque-local";
 import { rebuildFatoSerialSaldo } from "./fato-serial-saldo";
+import { rebuildFatoListaMaterial } from "./fato-lista-material";
 
 export interface FatoBuilderEntry {
   nome: string;
@@ -58,6 +59,8 @@ export const FATO_BUILDERS: FatoBuilderEntry[] = [
   // fato_serial_saldo faz join nele, e as queries de estoque filtram por ele.
   { nome: "fato_estoque_local", cycle: "snapshot", run: rebuildFatoEstoqueLocal },
   { nome: "fato_estoque_saldo", cycle: "snapshot", run: rebuildFatoEstoqueSaldo },
+  // Lista de Material (BOM): independente, lê só o raw. Para desmembrar kits em componentes.
+  { nome: "fato_lista_material_item", cycle: "snapshot", run: rebuildFatoListaMaterial },
   // Serial COM local e saldo. Depende da classificacao de locais (acima) e de
   // fato_produto (custo), entao vem depois deles.
   { nome: "fato_serial_saldo", cycle: "snapshot", run: rebuildFatoSerialSaldo },
