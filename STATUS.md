@@ -15,6 +15,11 @@
 > - **Card "Valor em estoque" da Visão Geral** invertido: custo puro (R$ 29,8 mi) em destaque.
 > - **Sigla da UF** no centro de cada estado do mapa.
 > - A receber/A pagar VERIFICADOS (já vêm do título, nada a mudar).
+> - **Lote 2, Fase 1 (desmembramento de kits) COMPLETA**: fato da BOM (`fato_lista_material_item`,
+>   475 linhas) + a necessidade de compra passa a desmembrar kits nos componentes (abate kit
+>   montado, fallback honesto para kit sem BOM). E2E real: das 433 linhas, só 2 seguem como kit.
+>   Migration aditiva aplicada no dev (sem reset). **Fase 2 (rateio de valor Matrix/acessórios)
+>   segue pendente do dono.**
 >
 > **PENDENTE DO DONO/COLEGA (não é esquecimento , o cache não tem o dado):**
 > 1. **Regra de "bloqueado"**: implementada na versão simples (só nota fiscal vencida). O dono
