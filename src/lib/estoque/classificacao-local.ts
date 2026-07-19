@@ -58,6 +58,16 @@ export function classificarLocal(local: LocalBruto): ClassificacaoLocal {
     return "demonstracao";
   }
 
+  // Em transferencia: mercadoria NOSSA em transito entre depositos proprios (documentos TRANSF-*,
+  // ex. Matriz DF -> Filial SE). Decisao do dono (reuniao 2026-07-19, transcricao bruta): "esta em
+  // transferencia, entra como estoque proprio, com contagem de proprio". O local "EM TRANSFERENCIA"
+  // (Odoo id 446) HOJE e invisivel ao usuario de integracao por uma record rule do Odoo ("Local de
+  // estoque - Empresas permitidas - acesso limitado"), entao ainda NAO chega ao cache; esta regra ja
+  // fica pronta para quando o acesso for liberado e o local passar a sincronizar. Classificado por
+  // NOME (o id pode variar entre ambientes). "Transporte(s)" de cliente nao casa (transporte, nao
+  // transferencia). Testado ANTES do deposito real (o local nem esta sob "Proprio").
+  if (/transfer[eê]ncia/i.test(nomeCompleto)) return "fisico";
+
   const ehDepositoReal =
     raiz === RAIZ_PROPRIO &&
     local.estoqueEmMaos &&

@@ -209,4 +209,41 @@ describe("classificarLocal", () => {
       ).toBe("fora");
     });
   });
+
+  describe("em transferencia , mercadoria nossa em transito (decisao do dono, reuniao 2026-07-19)", () => {
+    it("classifica 'EM TRANSFERENCIA' como fisico (conta como proprio), sem estoque em maos/proprietario", () => {
+      // O local 446 e invisivel hoje (record rule do Odoo); quando liberado, vira assim no cache.
+      expect(
+        classificarLocal(
+          local({
+            odooId: 446,
+            nomeCompleto: "EM TRANSFERÊNCIA",
+            estoqueEmMaos: false,
+            calculaExtratoSaldo: false,
+            temProprietario: false,
+          }),
+        ),
+      ).toBe("fisico");
+    });
+
+    it("pega a transferencia mesmo se o nome vier sob uma raiz", () => {
+      expect(
+        classificarLocal(local({ odooId: 446, nomeCompleto: "Próprio / Em Transferência" })),
+      ).toBe("fisico");
+    });
+
+    it("NAO confunde 'Transporte(s)' de cliente com transferencia (fica fora)", () => {
+      expect(
+        classificarLocal(
+          local({
+            odooId: 249,
+            nomeCompleto: "Terceiros / Jds Comércio - 333 Transportes Ltda",
+            estoqueEmMaos: false,
+            calculaExtratoSaldo: false,
+            temProprietario: false,
+          }),
+        ),
+      ).toBe("fora");
+    });
+  });
 });

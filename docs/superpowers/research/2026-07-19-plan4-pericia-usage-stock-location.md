@@ -40,6 +40,38 @@ um **local dedicado "EM TRANSFERÊNCIA" (id 446)**, exatamente como o dono disse
 Eu não o via por causa da permissão, e interpretei a ausência como "não existe". Erro de método:
 tomei "não consigo ler" por "não existe".
 
+## São 16 locais bloqueados, não só o trânsito (varredura completa dos movimentos)
+
+Comparando os locais REFERENCIADOS nos movimentos (`estoque.extrato`, que expõe id + nome mesmo sem
+acesso de leitura ao cadastro) com os locais que o usuário CONSEGUE ler, aparecem **16 locais que o
+Odoo esconde do nosso usuário** pela mesma record rule. E eles conectam duas pendências da reunião:
+
+- **13 depósitos "JDS DEMO [estado]" (» Próprio):** ids 216-226, 228, 229 (TMG, Brasília, Goiás,
+  Bahia, Sergipe, Alagoas, Paraíba, RN, Ceará, Piauí, Maranhão, MS, Pará). **São os JDSDEMO** , a
+  demonstração NOSSA que o dono descreveu ("nossos depósitos espalhados pelo mundo, sem nota de
+  demonstração"). Estão TODOS bloqueados , por isso a demonstração-nossa "não aparecia".
+- **[414] JDS DEMO SÃO PAULO (» Próprio):** o mesmo id que uma perícia anterior classificou como
+  "lixo deletado (76s de vida)". **Reinterpretação:** ele existe e está BLOQUEADO por permissão; o
+  `rawDeleted=true` provavelmente veio de o sync não conseguir lê-lo, não de exclusão real. A rever.
+- **[446] EM TRANSFERÊNCIA:** o trânsito entre depósitos próprios.
+- **[285] Jds Comércio ... Jht SP ... (» Terceiros):** um local intercompany JDS/JHT.
+
+**Consequência:** a record rule "Local de estoque - Empresas permitidas - acesso limitado" esconde
+de uma vez **toda a demonstração própria (JDSDEMO) E o trânsito**. Uma única liberação de acesso
+destrava as duas pendências. O **valor** escondido nesses 16 locais não é mensurável hoje (o saldo
+deles é filtrado pela mesma regra); mede-se assim que o acesso for liberado.
+
+## Regra de classificação já deixada pronta (nosso lado)
+
+`src/lib/estoque/classificacao-local.ts` (+ teste): quando os locais forem liberados e entrarem no
+cache, a classificação já os trata:
+- **"EM TRANSFERÊNCIA" → físico/próprio** (regra nova por nome `/transfer[eê]ncia/i`; "Transporte(s)"
+  de cliente não casa).
+- **"JDS DEMO ..." → demonstração** (a regra JDSDEMO já existente, `Próprio` + `/demo/i`, os cobre
+  automaticamente).
+
+Nada mais a codar antes da liberação. Depois dela: reprocessar o fato de locais e revalidar KPIs.
+
 ## Ação para destravar (é no Odoo, pela Matrix/admin, não no nosso código)
 
 1. **Liberar o acesso** do usuário de integração (id 11) ao local "EM TRANSFERÊNCIA" (id 446):
