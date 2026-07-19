@@ -2,7 +2,17 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development ou executing-plans. Steps com checkbox (`- [ ]`). UI sempre inline com `ui-ux-pro-max`.
 
-**Versão:** v1 (aguarda review adversarial #1 → v2 → review #2 → v3)
+**Versão:** v2 (review adversarial #1 aplicada; aguarda review #2 → v3)
+
+**Mudanças v1 → v2 (após review #1, que pegou 2 regressões ALTA):**
+- **[ALTA] `resolverBom` NÃO pode zerar kits de lista única.** Medido: 18 kits de lista única têm a lista nunca-ativada (17) ou inativada (1); a regra "preferir data_ativacao != null" os zeraria e eles sumiriam da necessidade de compra (regressão da Fase 1 além dos 3 kits multi-lista). Correção: **a escolha por ativação só se aplica quando o kit tem MÚLTIPLAS listas.** Kit de lista única passa reto (BOM idêntica à de hoje), independentemente de ativação. `resolverBom` nunca retorna `componentes: []` quando existem linhas. E2E do W3 verifica que os 131 kits de lista única ficam com a MESMA contagem de componentes de hoje.
+- **[ALTA] Valor de referência do rateio: liderar por TABELA, não por média de vendas.** Só 55/135 kits (40,7%) têm venda com `vr_produtos>0`, e a média é robusta em ~27; média sobre 1-3 vendas engana. Base padrão do painel = **preço de venda de tabela** (Venda Padrão, cobre 90,7% dos kits). "Valor de venda real" vira visão SECUNDÁRIA, só quando n de vendas é suficiente (>=5), usando **mediana** (não média) e **expondo o n** na tela ("baseado em N vendas"). Declarar a cobertura (55/135 e a distribuição de n) na honestidade.
+- **[MÉDIA] Componente sem preço (peso 0) não pode inflar os demais.** Quando a cobertura é incompleta, NÃO ratear 100%: reservar a fatia dos componentes sem preço como "não atribuído (R$ ?)" e ratear só o restante, deixando o buraco visível NO NÚMERO, não só num badge. `desmembrarValor` ganha um sinal de "sem peso" por componente.
+- **[MÉDIA] Builder W1:** explicitar que é uma QUERY NOVA ao header `raw_sped_produto_lista_material` (o builder hoje lê só `raw_sped_produto_lista_material_item`). Sem ela, a ativação vem toda NULL.
+- **[MÉDIA] Decomposição:** Y1 quebrado em Y1..Y5; X1 e Z1 em sub-tasks.
+- **[BAIXA] Contrato reais↔centavos:** X1 converte `reais*100` (round) na entrada de `desmembrarValor` e `/100` na saída. Explícito.
+- **[BAIXA] Desempate arbitrário** (431, 21287: duas listas válidas iguais) declarado como chute (maior lista_id), não verdade do ERP. Referência ao invariante corrigida: o invariante da Fase 1 é `saldoKitMontado` (não "aAtenderDoItem").
+- **4 pontas:** esclarecido , a entrega é Diretoria (painel) + Nex (tool) consumindo a MESMA `queryComposicaoKit`; Relatórios 1.0/2.0 herdam a query quando ganharem um relatório de kit (não há hoje; não inventar), documentado.
 
 **Goal:** Substituir o método manual de Excel do time (que "joga o valor todo na estrutura e zera o painel") por um rateio honesto no sistema: distribuir o valor de venda de um kit entre seus componentes, proporcional ao custo, e mostrar isso num **painel de composição de valor dos kits** na Diretoria + **tool(s) do Nex**. Fiel à reunião (transcrição §3-4).
 
@@ -197,7 +207,7 @@ Rodar `npx prisma migrate deploy` + `npx prisma generate`.
 
 - [ ] **Step 2: Builder materializa a ativação (do raw da lista)**
 
-Em `fato-lista-material.ts`: montar um Map `listaId -> { dataAtivacao, inativa }` a partir de `raw_sped_produto_lista_material` (chaves `data_ativacao`, `data_inativacao`; `false`/vazio = null/não-inativa) ANTES da transação, e preencher os 2 campos por item. Teste no `fato-lista-material.test.ts`.
+Em `fato-lista-material.ts`: hoje o builder lê só `raw_sped_produto_lista_material_item` (os ITENS). **Adicionar uma QUERY NOVA ao header** `raw_sped_produto_lista_material` (`SELECT data FROM ...`, indexar por `odoo_id`), montar um Map `listaId -> { dataAtivacao, inativa }` (chaves `data_ativacao`, `data_inativacao`; `'false'`/vazio = null / não-inativa) ANTES da transação, e preencher os 2 campos por item (join `item.lista_id = header.odoo_id`, FK validada 139/139). Teste no `fato-lista-material.test.ts`.
 
 - [ ] **Step 3: E2E**
 
@@ -224,14 +234,33 @@ git commit -m "W1: materializa ativacao da lista (data_ativacao/inativa) no fato
   export function resolverBom(linhas: LinhaBom[]): { componentes: ComponenteResolvido[]; listaEscolhida: number | null; multiplasListas: boolean };
   ```
 
-- [ ] **Step 1: Write the failing test** (casos: 1 lista; 2 listas com uma nunca ativada; 2 listas ativas mesma data → maior lista_id; componente repetido na lista soma quantidade).
+- [ ] **Step 1: Write the failing tests** , casos CRÍTICOS:
+  - **kit de lista única NUNCA ativada mantém a BOM** (não zera) , protege os 18 kits.
+  - kit de lista única normal: BOM idêntica.
+  - 2 listas, uma nunca ativada → escolhe a ativada (607, 1281).
+  - 2 listas ativas mesma data → maior `listaId` (431, 21287), com `multiplasListas=true`.
+  - componente repetido dentro da lista escolhida → soma quantidade.
 
 - [ ] **Step 2..4: Implement + test + commit**
 
-Regra: descartar `listaInativa`; entre as restantes preferir as com `listaDataAtivacao != null`; escolher a lista de maior `listaDataAtivacao` (desempate maior `listaId`); agregar quantidade por componente dentro da lista escolhida; `multiplasListas=true` quando havia >1 lista candidata.
+Regra CORRIGIDA (review #1): **a escolha por ativação só se aplica quando há >1 lista distinta.**
+```
+listas = distinct(linhas.listaId)
+se listas.length <= 1:
+    componentes = agregaPorComponente(TODAS as linhas)   # passa reto, idêntico à Fase 1
+    return { componentes, listaEscolhida: listas[0] ?? null, multiplasListas: false }
+# múltiplas listas: escolher UMA
+candidatas = listas.filter(nao inativa)                  # descarta data_inativacao preenchida
+ativadas = candidatas.filter(listaDataAtivacao != null)
+pool = ativadas.length ? ativadas : candidatas           # NUNCA vazio se havia candidatas
+escolhida = pool ordenado por (listaDataAtivacao desc, listaId desc)[0]
+componentes = agregaPorComponente(linhas da escolhida)
+return { componentes, listaEscolhida: escolhida, multiplasListas: true }
+```
+NUNCA retornar `componentes: []` quando `linhas.length > 0`. Desempate por `listaId` é declarado chute (não verdade do ERP) para 431/21287.
 
 ```bash
-git commit -m "W2: resolverBom escolhe a lista ativa e agrega componentes (base do rateio e da Fase 1)"
+git commit -m "V2/W2: resolverBom escolhe lista ativa SO em multi-lista (lista unica passa reto, sem zerar)"
 ```
 
 ### Task W3: Necessidade de compra usa a BOM resolvida (corrige a duplicação)
@@ -275,7 +304,13 @@ git commit -m "W3: necessidade de compra usa a BOM ativa (corrige duplicacao de 
   export function queryComposicaoKit(prisma, kitId: number, opts?: { base?: ... }): Promise<ComposicaoKit | null>;
   ```
 
-- [ ] **Steps:** buscar o kit (unidade "kit"); `resolverBom` para os componentes; custo/venda de cada (`fato_produto` + `fato_preco` tab 3/5); valor de referência = média do `vr_produtos/quantidade` das vendas reais do kit (fallback preço de tabela do kit); `desmembrarValor` sobre os pesos de custo (fallback venda de tabela); montar % e flags. Teste com mock cobrindo Matrix (estrutura vs painel) e componente sem preço. Commit.
+- [ ] **Steps (decompor: X1a busca+resolverBom; X1b precos; X1c valor-referencia; X1d rateio+flags):**
+  - Buscar o kit (unidade "kit"); `resolverBom` para os componentes.
+  - Custo/venda de cada: `fato_produto.preco_custo`/`preco_venda` + `fato_preco` (tab 3 Venda Padrão, 5 Venda Smart).
+  - **Valor de referência (corrigido, review #1): base padrão = preço de venda de TABELA do kit** (Venda Padrão; cobre 90,7%). Base secundária "venda real" só quando o kit tem **>=5 vendas** (`vr_produtos>0`), usando **MEDIANA** e expondo o **n** (`baseValor`, `nVendas`). Nunca liderar por média de 1-3 vendas.
+  - **Rateio (contrato em centavos):** `desmembrarValor(Math.round(valorReferencia*100), pesos)`, pesos = `quantidade × preco_custo` do componente; saída `/100` → reais.
+  - **Componente sem preço (peso 0), honestidade:** se algum componente não tem custo NEM venda, `coberturaCompleta=false` e o rateio do valor de venda NÃO é exibido como % do kit (seria enganoso, os precificados absorveriam 100%). Nesse caso exibir por componente o custo e o preço de tabela DIRETOS, com aviso "N componentes sem preço , rateio do valor indisponível". Só ratear o valorReferencia quando `coberturaCompleta`.
+  - Teste com mock: Matrix (estrutura vs painel, cobertura completa), acessório, e kit com componente sem preço (checar que não infla). Commit.
 
 ```bash
 git commit -m "X1: queryComposicaoKit (rateio do valor de venda por componente, custo+tabelas, cobertura honesta)"
@@ -290,9 +325,10 @@ git commit -m "X1: queryComposicaoKit (rateio do valor de venda por componente, 
 **Files:**
 - Create/Modify: componente em `src/components/diretoria/**` + rota/registro em `src/app/(protected)/diretoria/estoque/**` (ou nova sub-aba)
 
-- [ ] **Step 1: ui-ux-pro-max** para o layout (lista de kits + detalhe de composição: barra estrutura vs painel, tabela de componentes com custo/venda/rateado/%, badge Matrix/acessório, aviso quando cobertura incompleta).
-- [ ] **Step 2..: Implement inline** (reuso de DataTable/KpiButton/tokens; sem emoji; dark+light; 375px; estado vazio e "sem preço" acionáveis).
-- [ ] **E2E visual:** screenshot dark+light; conferir num kit Matrix (estrutura ~46-80%, painel 14-25%) e num acessório.
+Decompor (review #1) em: **Y1** design ui-ux-pro-max; **Y2** componente de detalhe de composição (barra estrutura vs painel, tabela custo/venda/rateado/%, badge Matrix/acessório, aviso cobertura incompleta); **Y3** lista/seleção de kit; **Y4** rota/registro na Diretoria (Estoque); **Y5** estados (vazio/erro/sem-preço) + E2E visual dark+light.
+- [ ] **Y1: ui-ux-pro-max** (OBRIGATÓRIO antes de tocar UI).
+- [ ] **Y2-Y4: Implement inline** (reuso de DataTable/KpiButton/tokens; sem emoji; dark+light; 375px).
+- [ ] **Y5: estados + E2E visual:** screenshot dark+light; conferir num kit Matrix (estrutura vs painel 14-25%) e num acessório; kit com componente sem preço mostra o aviso.
 
 ```bash
 git commit -m "Y1: painel de composicao de valor dos kits na Diretoria (estrutura vs painel, honesto)"
@@ -322,13 +358,20 @@ git commit -m "Z1: tool composicao_kit do Nex + BI schema + vocabulario (4a pont
 - [ ] E2E real: composição de um kit Matrix (estrutura vs painel, painel 14-25%) e de um acessório batem com o cache; kit com componente sem preço mostra o buraco.
 - [ ] **BOM dupla corrigida:** necessidade de compra do 1281 não duplica componente.
 - [ ] **4 pontas:** o mesmo rateio na Diretoria (painel) e no Nex (tool); função/query compartilhadas.
-- [ ] Perícia da onda (subagente): rateio fecha soma exata; fallback correto; sem travessão; sem invariante quebrado (aAtenderDoItem intacto); honestidade do dado (margem não vendida como exata).
+- [ ] Perícia da onda (subagente): rateio fecha soma exata; fallback correto; sem travessão; Fase 1 intacta nos 131 kits de lista única (invariante `saldoKitMontado` preservado); honestidade do dado (margem não vendida como exata; componente sem preço não infla).
 - [ ] STATUS/HISTORY atualizados. Relatório ao dono: "painel vale 14-25%, não zero"; gaps de cliente/período documentados.
 
-## Pontos abertos para a review adversarial #1
+## Decisões fechadas (v2, pela review #1)
 
-1. **Base do valor de referência:** média das vendas reais do kit, ou última venda, ou preço de tabela? A média mistura descontos de eras diferentes. Definir o mais honesto e útil para o painel.
-2. **Peso do rateio:** custo (reproduz "estrutura leva o valor") vs preço de venda de tabela. O doc-mãe recomenda custo; confirmar e tratar componente sem custo (fallback venda).
-3. **Onde na Diretoria:** sub-aba nova em Estoque, ou bloco no catálogo montável? Menor atrito e consistência.
-4. **W3 risco:** mudar o `bomPorPai` da necessidade de compra pode alterar números da Fase 1 já validada , garantir que só muda os 3 kits multi-lista (E2E).
-5. **Fallback de valor de referência** quando o kit nunca foi vendido (sem `vr_produtos`): usar preço de tabela do kit; se o kit não tem preço, marcar sem-referência.
+- **Valor de referência:** base = **preço de venda de tabela** (Venda Padrão, 90,7%); "venda real" só como visão secundária com n>=5 e MEDIANA + n exposto.
+- **Peso do rateio:** **custo** (`quantidade × preco_custo`); componente sem custo → cobertura incompleta, rateio de valor não exibido como % (mostra custo/tabela diretos).
+- **W3:** `resolverBom` só escolhe lista quando multi-lista; lista única passa reto (18 kits protegidos). E2E confirma 131 kits de lista única intactos.
+- **Contrato centavos:** `Math.round(reais*100)` entra, `/100` sai.
+- **Desempate 431/21287:** maior `listaId` (chute declarado, não verdade do ERP).
+
+## Pontos abertos para a review adversarial #2
+
+1. **Onde na Diretoria:** sub-aba nova em Estoque vs bloco no catálogo montável , definir o de menor atrito.
+2. **Fallback de valor de referência** quando o kit não tem preço de tabela NEM venda: marcar `sem-referencia` e mostrar só custo por componente.
+3. **Coerência da mediana:** confirmar que a mediana de venda real (visão secundária) e o preço de tabela (base) não se contradizem na tela de forma confusa , decidir a hierarquia visual.
+4. **Y (UI):** confirmar a decomposição Y1-Y5 e o reuso de componentes existentes (não criar DataTable/Card novos).
