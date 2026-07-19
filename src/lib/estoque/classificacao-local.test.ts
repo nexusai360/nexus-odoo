@@ -83,6 +83,24 @@ describe("classificarLocal", () => {
         ),
       ).toBe("demonstracao");
     });
+
+    it("classifica o JDSDEMO nosso (raiz Proprio + 'demo' no nome) como demonstracao", () => {
+      // Regra da reuniao: nossos depositos de demonstracao (sem nota), sob "Proprio",
+      // com "JDS DEMO"/"demo" no nome, vao para demonstracao, nao para fisico.
+      expect(
+        classificarLocal(
+          local({ odooId: 414, nomeCompleto: "Próprio / JDS DEMO SÃO PAULO" }),
+        ),
+      ).toBe("demonstracao");
+    });
+
+    it("reconhece JDSDEMO sem espaco no nome", () => {
+      expect(
+        classificarLocal(
+          local({ odooId: 998, nomeCompleto: "Próprio / JDSDEMO Interlagos" }),
+        ),
+      ).toBe("demonstracao");
+    });
   });
 
   describe("fora , nao entra no valor de estoque", () => {

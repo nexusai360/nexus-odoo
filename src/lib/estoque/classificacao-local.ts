@@ -49,6 +49,15 @@ export function classificarLocal(local: LocalBruto): ClassificacaoLocal {
   if (nomeCompleto.startsWith(PREFIXO_DEMONSTRACAO)) return "demonstracao";
 
   const raiz = nomeCompleto.split(SEPARADOR)[0];
+  // JDSDEMO nosso: local de demonstracao PROPRIO (sob "Proprio"), sem nota de
+  // demonstracao, identificado por "JDS DEMO"/"demo" no nome. Regra da reuniao
+  // (dono, 2026-07-19): "tudo que tem demonstracao no nome vai para demonstracao;
+  // mais o JDSDEMO (nossos depositos de demo), exclusivamente". Testado ANTES do
+  // deposito real, senao um JDSDEMO com estoque em maos cairia em "fisico".
+  if (raiz === RAIZ_PROPRIO && /\bjds\s*demo\b|\bdemo\b/i.test(nomeCompleto)) {
+    return "demonstracao";
+  }
+
   const ehDepositoReal =
     raiz === RAIZ_PROPRIO &&
     local.estoqueEmMaos &&
