@@ -9,6 +9,7 @@ type Pedido = {
   participanteNome: string | null;
   operacaoNome: string | null;
   modalidadeFrete?: string | null;
+  numeroMercos?: string | null;
   etapaNome: string | null;
   vrProdutos: number;
 };
@@ -122,6 +123,28 @@ describe("queryEntregasParciais", () => {
     expect(l1.modalidade).toBe("FOB (destinatario)");
     expect(l1.operacao).toBe("Venda"); // operação continua distinta da modalidade
     expect(l2.modalidade).toBe("Nao informada");
+  });
+
+  it("carrega o número do Mercos na linha", async () => {
+    const prisma = makePrisma({
+      pedidos: [
+        { odooId: 1, numero: "P1", participanteId: 5010, participanteNome: "A", operacaoNome: "Venda", numeroMercos: "43203", etapaNome: "Sep", vrProdutos: 1000 },
+        { odooId: 2, numero: "P2", participanteId: 5020, participanteNome: "B", operacaoNome: "Venda", numeroMercos: null, etapaNome: "Sep", vrProdutos: 500 },
+      ],
+      itens: [
+        { pedidoId: 1, produtoId: 100, produtoNome: "X", familiaNome: null, marcaNome: null, quantidade: 10, quantidadeAAtender: null, vrProdutos: 1000 },
+        { pedidoId: 2, produtoId: 100, produtoNome: "Y", familiaNome: null, marcaNome: null, quantidade: 5, quantidadeAAtender: null, vrProdutos: 500 },
+      ],
+      produtos: [{ odooId: 100, precoCusto: 40 }],
+      parceiros: [
+        { odooId: 5010, uf: "SP", cidade: "SP" },
+        { odooId: 5020, uf: "SP", cidade: "SP" },
+      ],
+    });
+
+    const r = await queryEntregasParciais(prisma, HOJE);
+    expect(r.linhas.find((l) => l.numero === "P1")!.numeroMercos).toBe("43203");
+    expect(r.linhas.find((l) => l.numero === "P2")!.numeroMercos).toBeNull();
   });
 
   it("job sincronizado: item já entregue (a atender 0) some da tabela mas não some do total do pedido", async () => {

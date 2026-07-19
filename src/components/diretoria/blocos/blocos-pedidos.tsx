@@ -176,6 +176,7 @@ function KpisEntregasParciais({ d }: { d: PedidosData }) {
 function TabelaEntregasParciais({ d }: { d: PedidosData }) {
   const linhas = d.entregasParciais.linhas.map((l) => ({
     numero: l.numero ?? DASH,
+    mercos: l.numeroMercos ?? DASH,
     cliente: nomeLimpo(l.cliente) || DASH,
     uf: l.uf === "??" ? DASH : rotuloUf(l.uf),
     cidade: l.cidade ?? DASH,
@@ -193,6 +194,7 @@ function TabelaEntregasParciais({ d }: { d: PedidosData }) {
   }));
   const colunas: ColumnDef<(typeof linhas)[number]>[] = [
     { key: "numero", header: "Pedido", tipo: "texto" },
+    { key: "mercos", header: "Nº Mercos", tipo: "texto" },
     { key: "cliente", header: "Cliente", tipo: "texto" },
     { key: "uf", header: "UF", tipo: "texto" },
     { key: "cidade", header: "Cidade", tipo: "texto" },

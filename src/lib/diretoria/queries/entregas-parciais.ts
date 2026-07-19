@@ -33,6 +33,8 @@ export interface FiltrosEntregasParciais {
 export interface LinhaEntregaParcial {
   pedidoId: number;
   numero: string | null;
+  /** Número de referência do pedido no Mercos (CRM externo), parseado do obs. */
+  numeroMercos: string | null;
   uf: string;
   cidade: string | null;
   cliente: string | null;
@@ -159,6 +161,7 @@ export async function queryEntregasParciais(
     select: {
       odooId: true,
       numero: true,
+      numeroMercos: true,
       participanteId: true,
       participanteNome: true,
       operacaoNome: true,
@@ -235,6 +238,7 @@ export async function queryEntregasParciais(
     linhas.push({
       pedidoId: it.pedidoId,
       numero: p.numero,
+      numeroMercos: p.numeroMercos ?? null,
       uf: ufDoPedido(p.participanteId),
       cidade: p.participanteId != null ? cidadeDe.get(p.participanteId) ?? null : null,
       cliente: p.participanteNome,
