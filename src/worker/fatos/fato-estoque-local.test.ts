@@ -1,4 +1,4 @@
-import { mapLocalRow } from "./fato-estoque-local";
+import { mapLocalRow, buildEmpresasDoGrupo } from "./fato-estoque-local";
 
 /** Linha crua de raw_estoque_local, no formato que o Odoo devolve. */
 function raw(over: Record<string, unknown> = {}): Record<string, unknown> {
@@ -83,6 +83,44 @@ describe("mapLocalRow", () => {
     expect(virtual.tipo).toBe("S");
   });
 
+  it("classifica o local intercompany como fisico quando o dono e empresa do grupo", () => {
+    // Local 285 real: Jds Matriz DF guardando mercadoria da Jht SP (mesmo grupo).
+    const intercompany = mapLocalRow(
+      raw({
+        id: 285,
+        nome_completo: "Terceiros / Jds Comércio - Matriz DF - Jht SP Comércio",
+        local_superior_id: [2, "Terceiros"],
+        proprietario_local_id: [15, "Jht SP Comércio - Matriz DF"],
+      }),
+      new Set([15]),
+    );
+    expect(intercompany.classificacao).toBe("fisico");
+  });
+
+  it("mantem fora o local de Terceiros de um cliente de verdade", () => {
+    const cliente = mapLocalRow(
+      raw({
+        id: 249,
+        nome_completo: "Terceiros / Jds Comércio - Condominio Manhattan",
+        local_superior_id: [2, "Terceiros"],
+        proprietario_local_id: [8001, "Condominio Manhattan"],
+      }),
+      new Set([15]),
+    );
+    expect(cliente.classificacao).toBe("fora");
+  });
+
+  it("sem o conjunto de empresas do grupo, Terceiros continua fora (fail-closed)", () => {
+    const semConjunto = mapLocalRow(
+      raw({
+        id: 285,
+        nome_completo: "Terceiros / Jds Comércio - Matriz DF - Jht SP Comércio",
+        proprietario_local_id: [15, "Jht SP Comércio - Matriz DF"],
+      }),
+    );
+    expect(semConjunto.classificacao).toBe("fora");
+  });
+
   it("trata campos ausentes sem quebrar (fail-closed)", () => {
     const vazio = mapLocalRow({ id: 999 });
     expect(vazio).toMatchObject({
@@ -97,5 +135,31 @@ describe("mapLocalRow", () => {
       temProprietario: false,
       classificacao: "fora",
     });
+  });
+});
+
+describe("buildEmpresasDoGrupo", () => {
+  it("junta os participantes marcados como empresa do grupo", () => {
+    const conjunto = buildEmpresasDoGrupo([
+      { data: { id: 15, eh_empresa: true, tipo_pessoa: "J" } },
+      { data: { id: 11, eh_empresa: true, tipo_pessoa: "J" } },
+      { data: { id: 8001, eh_empresa: false, tipo_pessoa: "J" } },
+    ]);
+    expect([...conjunto].sort()).toEqual([11, 15]);
+  });
+
+  it("ignora pessoa fisica marcada como empresa (cadastro errado no Odoo)", () => {
+    // Caso real: o participante 990 (CPF, pessoa fisica) esta com eh_empresa=true.
+    // Se entrasse, o local de Terceiros dele viraria estoque proprio.
+    const conjunto = buildEmpresasDoGrupo([
+      { data: { id: 990, eh_empresa: true, tipo_pessoa: "F" } },
+    ]);
+    expect(conjunto.size).toBe(0);
+  });
+
+  it("ignora linha sem id valido", () => {
+    expect(
+      buildEmpresasDoGrupo([{ data: { eh_empresa: true, tipo_pessoa: "J" } }]).size,
+    ).toBe(0);
   });
 });

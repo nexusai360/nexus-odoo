@@ -246,4 +246,73 @@ describe("classificarLocal", () => {
       ).toBe("fora");
     });
   });
+
+  describe("intercompany , mercadoria entre empresas do proprio grupo (decisao do dono, reuniao 2026-07-19)", () => {
+    /** O local 285 real: filho direto de Terceiros, dono = Jht SP (empresa do grupo). */
+    function intercompany(over: Partial<LocalBruto> = {}): LocalBruto {
+      return local({
+        odooId: 285,
+        nomeCompleto:
+          "Terceiros / Jds Comércio - Matriz DF 18.282.961/0001-00 - Jht SP Comércio - Matriz DF 34.161.829/0001-98 - Jht SP Comércio de Produtos e Equipamentos Esportivos Ltda [34.161.829/0001-98]",
+        proprietarioEhEmpresaDoGrupo: true,
+        ...over,
+      });
+    }
+
+    it("classifica como fisico o local de Terceiros cujo dono e empresa do grupo", () => {
+      // "Terceiro, mas e nosso": a mercadoria trocou de CNPJ dentro do grupo, nao saiu de casa.
+      expect(classificarLocal(intercompany())).toBe("fisico");
+    });
+
+    it("mantem fora o local de Terceiros de um cliente de verdade", () => {
+      expect(
+        classificarLocal(
+          intercompany({
+            odooId: 249,
+            nomeCompleto: "Terceiros / Jds Comércio - Condominio Manhattan",
+            proprietarioEhEmpresaDoGrupo: false,
+          }),
+        ),
+      ).toBe("fora");
+    });
+
+    it("nao vale para as subarvores de Terceiros (Feira, Patrimonio): la a mercadoria esta em evento, nao em deposito", () => {
+      expect(
+        classificarLocal(
+          intercompany({
+            odooId: 380,
+            nomeCompleto: "Terceiros / Feira / Jds Comércio - Matriz DF",
+          }),
+        ),
+      ).toBe("fora");
+    });
+
+    it("demonstracao vence intercompany (equipamento no cliente continua demonstracao)", () => {
+      // Locais de demonstracao cujo dono e uma empresa do grupo existem (ex.: 391, filial BA).
+      // Eles sao demonstracao, nao estoque vendavel.
+      expect(
+        classificarLocal(
+          intercompany({
+            odooId: 391,
+            nomeCompleto:
+              "Terceiros / Demonstração / Jds Comércio - Matriz DF - Jht SP Comércio - Filial BA",
+          }),
+        ),
+      ).toBe("demonstracao");
+    });
+
+    it("a raiz 'Terceiros' sozinha nunca vira fisico", () => {
+      expect(
+        classificarLocal(
+          intercompany({ odooId: 2, nomeCompleto: "Terceiros" }),
+        ),
+      ).toBe("fora");
+    });
+
+    it("sem a informacao do dono, o local de Terceiros continua fora (fail-closed)", () => {
+      const semInfo = intercompany();
+      delete semInfo.proprietarioEhEmpresaDoGrupo;
+      expect(classificarLocal(semInfo)).toBe("fora");
+    });
+  });
 });

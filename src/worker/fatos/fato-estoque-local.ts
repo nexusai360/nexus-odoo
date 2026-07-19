@@ -34,16 +34,53 @@ function inteiro(valor: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-export function mapLocalRow(raw: Record<string, unknown>): FatoLocalRow {
+/**
+ * Ids dos participantes que sao empresas do PROPRIO grupo (JDS, JHT, JIB, KS, CS, JMF).
+ * O Odoo marca isso em `sped.participante.eh_empresa`. Exigimos tambem `tipo_pessoa = "J"`:
+ * ha pessoa fisica cadastrada com `eh_empresa` ligado por engano, e sem esse filtro o local
+ * de terceiro dela viraria estoque proprio.
+ */
+export function buildEmpresasDoGrupo(rows: { data: unknown }[]): Set<number> {
+  const ids = new Set<number>();
+  for (const row of rows) {
+    const data = row.data as Record<string, unknown>;
+    if (data?.eh_empresa !== true || data?.tipo_pessoa !== "J") continue;
+    const id = Number(data.id);
+    if (Number.isFinite(id)) ids.add(id);
+  }
+  return ids;
+}
+
+/** Le raw_sped_participante e devolve os ids das empresas do grupo. */
+export async function loadEmpresasDoGrupo(
+  prisma: PrismaClient,
+): Promise<Set<number>> {
+  const rows = await prisma.rawSpedParticipante.findMany({
+    where: { rawDeleted: false },
+    select: { data: true },
+  });
+  return buildEmpresasDoGrupo(rows);
+}
+
+export function mapLocalRow(
+  raw: Record<string, unknown>,
+  empresasDoGrupo: Set<number> = new Set(),
+): FatoLocalRow {
+  const proprietarioId = relId(raw.proprietario_local_id as OdooM2O);
   const local = {
     odooId: Number(raw.id),
     nomeCompleto: texto(raw.nome_completo),
     estoqueEmMaos: raw.estoque_em_maos === true,
     calculaExtratoSaldo: raw.calcula_extrato_saldo === true,
     temProprietario: temProprietario(raw.proprietario_local_id),
+    proprietarioEhEmpresaDoGrupo:
+      proprietarioId !== null && empresasDoGrupo.has(proprietarioId),
   };
+  // `proprietarioEhEmpresaDoGrupo` e insumo da classificacao, nao coluna do fato , por isso
+  // fica de fora do retorno (o createMany rejeitaria um campo que a tabela nao tem).
+  const { proprietarioEhEmpresaDoGrupo: _grupo, ...colunas } = local;
   return {
-    ...local,
+    ...colunas,
     nome: texto(raw.nome),
     tipo: texto(raw.tipo),
     nivel: inteiro(raw.nivel),
@@ -56,12 +93,13 @@ export function mapLocalRow(raw: Record<string, unknown>): FatoLocalRow {
 export async function rebuildFatoEstoqueLocal(
   prisma: PrismaClient,
 ): Promise<number> {
+  const empresasDoGrupo = await loadEmpresasDoGrupo(prisma);
   const rawRows = await prisma.rawEstoqueLocal.findMany({
     where: { rawDeleted: false },
     select: { data: true },
   });
   const mapped = rawRows
-    .map((r) => mapLocalRow(r.data as Record<string, unknown>))
+    .map((r) => mapLocalRow(r.data as Record<string, unknown>, empresasDoGrupo))
     .filter((m) => Number.isFinite(m.odooId));
 
   await prisma.$transaction(
