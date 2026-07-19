@@ -47,7 +47,10 @@ TABLE fato_serial_saldo (
 )
 
 -- Lista de Material (BOM): componentes de cada kit. Usado para desmembrar a demanda de
--- kits em componentes na necessidade de compra. Ligação pelo pai (produto_pai_id).
+-- kits em componentes na necessidade de compra E para a composição de valor dos kits
+-- (rateio do valor entre a estrutura e o painel). Ligação pelo pai (produto_pai_id).
+-- Um kit pode ter MAIS de uma lista (lista_id): use a lista ATIVA (lista_data_ativacao NOT
+-- NULL e lista_inativa=false) para não duplicar componentes compartilhados entre listas.
 TABLE fato_lista_material_item (
   id                     INT PRIMARY KEY,
   produto_pai_id         INT,    -- o kit
@@ -56,6 +59,8 @@ TABLE fato_lista_material_item (
   quantidade             NUMERIC, -- do componente por 1 kit
   tipo_item              TEXT,
   lista_id               INT,
+  lista_data_ativacao    TIMESTAMP, -- quando a lista foi ativada (NULL = nunca ativada)
+  lista_inativa          BOOLEAN,   -- true quando a lista foi inativada no Odoo
 )
 
 -- Saldo atual de estoque por produto/local
@@ -484,7 +489,10 @@ TABLE fato_reinf_evento (
 
 -- ─── PREÇOS (F4 L1a) ─────────────────────────────────────────────────────────
 
--- Regras de preço das tabelas de preço (uma linha por regra)
+-- Regras de preço das tabelas de preço (uma linha por regra).
+-- Tabelas de VENDA (para preço de venda de tabela do produto/kit): tabela_id=3 "Venda Padrão",
+-- tabela_id=5 "Venda Smart". Tabelas de custo: 1 "Custo Padrão", 4/6/7/17 (custos derivados).
+-- participante_id é 100% NULL na Tauga: NÃO existe preço por cliente no cache.
 TABLE fato_preco (
   odoo_id           INT PRIMARY KEY,
   tabela_id         INT,

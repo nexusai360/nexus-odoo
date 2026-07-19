@@ -154,12 +154,14 @@ export const DOMAINS: ReadonlyArray<DomainEntry> = [
   {
     domain: "estoque",
     description:
-      "Saldo de estoque, quanto temos ou quanto sobrou de um material, peca ou produto (cabos, discos, molas, pecas, equipamentos de academia), posicao por local, movimentacao, extrato de entrada e saida, locais (depositos, armazens), lote, serie, rastreabilidade, produto parado (sem giro), tempo em estoque, duracao em dias, busca de item por codigo de produto, divergencia de inventario. Perguntas tipicas: qual o saldo do produto X, tem quanto de cabo de aco, quanto sobrou de disco, o que temos do codigo 1000093102, produtos parados ha mais de 30 dias, posicao por deposito.",
+      "Saldo de estoque, quanto temos ou quanto sobrou de um material, peca ou produto (cabos, discos, molas, pecas, equipamentos de academia), posicao por local, movimentacao, extrato de entrada e saida, locais (depositos, armazens), lote, serie, rastreabilidade, produto parado (sem giro), tempo em estoque, duracao em dias, busca de item por codigo de produto, divergencia de inventario, composicao de valor dos kits (de que um kit e feito, sua lista de material, quanto do valor e a estrutura e quanto e o painel, rateio do valor pelo custo dos componentes). Perguntas tipicas: qual o saldo do produto X, tem quanto de cabo de aco, quanto sobrou de disco, o que temos do codigo 1000093102, produtos parados ha mais de 30 dias, posicao por deposito, do que e feito o kit Y, quanto vale a estrutura e o painel do kit.",
     examples: [
       "qual o saldo do produto mola espiral?",
       "tem quanto de cabo de aco?",
       "o que temos do codigo 1000093102",
       "produtos parados ha mais de 30 dias",
+      "do que e feito o kit powermill?",
+      "quanto do valor do kit e a estrutura e quanto e o painel?",
     ],
     forceIncludeOn: [
       /\bem estoque\b/i,
@@ -169,6 +171,11 @@ export const DOMAINS: ReadonlyArray<DomainEntry> = [
       /sem giro/i,
       /\bc[oó]digo\s*\d/i,
       /\bdep[oó]sito\b/i,
+      /\bcomposi[cç][aã]o\b/i,
+      /\blista de material\b/i,
+      /do que (e|é|e feito|é feito|se comp[oõ]e)/i,
+      /\b(estrutura|painel)\b.*\bkit\b/i,
+      /\bkit\b.*\b(estrutura|painel|composi|feito|componente)/i,
     ],
   },
   {

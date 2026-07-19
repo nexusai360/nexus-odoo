@@ -2402,6 +2402,8 @@ export const TOOLS_SEM_FORMATADOR_REAL: string[] = [
   "comercial_estoque_disponivel",
   "comercial_pedido_situacao",
   "comercial_seriais_produto",
+  // Composição de valor dos kits (2026-07): auto-formatada via _RESPOSTA no handler.
+  "estoque_composicao_kit",
 ];
 
 export function formatadorPorTool(toolName: string): FormatadorCanonico {
