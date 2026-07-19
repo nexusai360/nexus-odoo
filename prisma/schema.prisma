@@ -2175,6 +2175,75 @@ model FatoEstoqueSaldoSnapshot {
   @@map("fato_estoque_saldo_snapshot")
 }
 
+/// Historico temporal de PRECO (append-por-mudanca). Uma linha por (tabela, produto,
+/// quantidade_minima) sempre que o valor muda; evento='baixa' com valor NULL quando a regra
+/// some do fato. `vigente` marca a ultima linha de cada chave.
+/// ATENCAO: o indice UNICO PARCIAL `fato_preco_historico_vigente_key` (WHERE vigente) existe
+/// SO na migration (SQL cru); o Prisma 7 nao o modela. NAO remover num `migrate dev` de outra
+/// worktree , ele garante um-vigente-por-chave e a leitura O(chaves) da captura.
+model FatoPrecoHistorico {
+  id               String   @id @default(uuid()) @db.Uuid
+  rodadaId         String   @map("rodada_id") @db.Uuid
+  capturadoEm      DateTime @map("capturado_em")
+  tabelaId         Int      @map("tabela_id")
+  tabelaNome       String?  @map("tabela_nome")
+  produtoId        Int      @map("produto_id")
+  produtoNome      String?  @map("produto_nome")
+  quantidadeMinima Decimal  @map("quantidade_minima") @db.Decimal(18, 4)
+  valor            Decimal? @db.Decimal(18, 4)
+  evento           String
+  vigente          Boolean
+
+  @@index([tabelaId, produtoId, quantidadeMinima, capturadoEm])
+  @@index([capturadoEm])
+  @@index([rodadaId])
+  @@map("fato_preco_historico")
+}
+
+/// Historico temporal de SALDO (append-por-mudanca). Uma linha por (produto, local) sempre que
+/// quantidade OU vrSaldo mudam; evento='baixa' com valores NULL quando some do fato.
+/// ATENCAO: indice UNICO PARCIAL `fato_estoque_saldo_historico_vigente_key` (WHERE vigente) so
+/// na migration (SQL cru); NAO remover em `migrate dev` de outra worktree.
+model FatoEstoqueSaldoHistorico {
+  id          String   @id @default(uuid()) @db.Uuid
+  rodadaId    String   @map("rodada_id") @db.Uuid
+  capturadoEm DateTime @map("capturado_em")
+  produtoId   Int      @map("produto_id")
+  produtoNome String?  @map("produto_nome")
+  localId     Int      @map("local_id")
+  localNome   String?  @map("local_nome")
+  quantidade  Decimal? @db.Decimal(18, 4)
+  vrSaldo     Decimal? @map("vr_saldo") @db.Decimal(18, 2)
+  familiaId   Int?     @map("familia_id")
+  familiaNome String?  @map("familia_nome")
+  marcaId     Int?     @map("marca_id")
+  marcaNome   String?  @map("marca_nome")
+  unidade     String?
+  evento      String
+  vigente     Boolean
+
+  @@index([produtoId, localId, capturadoEm])
+  @@index([capturadoEm])
+  @@index([rodadaId])
+  @@map("fato_estoque_saldo_historico")
+}
+
+/// Registro de cada rodada de captura (preco/saldo). Serve para: (1) responder "entre X e Y
+/// nao houve observacao" (worker fora do ar) em vez de afirmar estabilidade; (2) expurgo
+/// cirurgico de um lote falso pelo rodada_id. status: base | ok | recusada.
+model FatoCapturaRodada {
+  id               String   @id @default(uuid()) @db.Uuid
+  serie            String
+  capturadoEm      DateTime @map("capturado_em")
+  linhasObservadas Int      @map("linhas_observadas")
+  linhasGravadas   Int      @map("linhas_gravadas")
+  status           String
+  motivo           String?
+
+  @@index([serie, capturadoEm])
+  @@map("fato_captura_rodada")
+}
+
 /// Movimento de estoque (entrada/saída). Derivado de raw_estoque_extrato
 /// por rebuild completo. odooId é PK porque o builder recria a tabela inteira.
 model FatoEstoqueMovimento {
