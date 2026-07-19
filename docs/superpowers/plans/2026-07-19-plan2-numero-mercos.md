@@ -2,7 +2,13 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development ou superpowers:executing-plans. Steps usam checkbox (`- [ ]`).
 
-**Versão:** v1 (aguarda review adversarial #1 → v2 → review #2 → v3)
+**Versão:** v2 (review adversarial #1 aplicada; aguarda review #2 → v3)
+
+**Mudanças v1 → v2 (após review #1):**
+- **Regex corrigido (bug crítico):** `\b` antes de "mercos" NÃO barra "mercosul" (a fronteira fica antes do "m"; "mercosul" começa numa fronteira). O regex do v1 quebraria o próprio teste. Novo regex: `/mercos(?!ul)[^0-9]{0,10}([0-9]{4,7})/i` , o lookahead negativo `(?!ul)` barra "mercosul", `{4,7}` cobre crescimento do CRM sem falso positivo. Medido: 794/797, distribuição {4:34, 5:760}, zero mercosul. Sem o `\b`, também pega "PEDIDOMERCOS:45110" (grudado).
+- **Critério de aceite alinhado para 794** (o regex furado do v1 dava 793).
+- **Índice removido:** o PLAN 1 adicionou `modalidade_frete` sem índice; `numero_mercos` segue o mesmo padrão (tabela de 2461 linhas, seq scan sub-ms, o builder reconstruiria o índice todo ciclo à toa).
+- **Busca reversa decidida (Mercos→pedido):** o goal é "cruzar o pedido do Odoo com o do Mercos". Nova Task M6: `queryPedidoSituacao` passa a casar TAMBÉM pelo `numeroMercos` (além do número do Odoo), para "situação do pedido Mercos 43203" funcionar a qualquer usuário do Nex, sem tool nova nem depender do BI admin.
 
 **Goal:** O número de referência do pedido no Mercos (CRM de vendas externo) existe hoje só como texto livre em `raw_pedido_documento.data->>'obs'`. Materializar como coluna estruturada `numero_mercos` no `fato_pedido` (parseando o obs no builder) e expor nas 4 pontas (relatório de entregas + relatórios + Nex), para o time cruzar o pedido do Odoo com o do Mercos.
 
@@ -22,7 +28,7 @@
 ## Achados de perícia (cache `nexus_odoo_l1`, 2026-07-19)
 
 1. **Onde:** `raw_pedido_documento.data->>'obs'` (campo presente em 2461/2461 pedidos ativos). **797** pedidos têm "mercos" (case-insensitive) no obs; formato predominante `PEDIDO MERCOS: NNNNN`.
-2. **Regex `mercos[^0-9]{0,10}([0-9]{1,7})` (case-insensitive):** extrai **794 de 797** (99,6%). Distribuição do número: **4 dígitos (34), 5 dígitos (760)**. Nenhum de 1-3 ou 6-7 dígitos.
+2. **Regex final `mercos(?!ul)[^0-9]{0,10}([0-9]{4,7})` (case-insensitive):** extrai **794 de 797** (99,6%). Distribuição do número: **4 dígitos (34), 5 dígitos (760)**. Nenhum de 1-3 ou 6-7 dígitos. O `(?!ul)` barra "mercosul" (o `\b` NÃO barra, ver mudanças v1→v2).
 3. **Zero falso positivo de "mercosul"** (0 ocorrências).
 4. **Os 3 escapes:** (a) `PEDIDO MERCOS: DEMONSTRAÇÃO` , correto escapar (não há número); (b) `PEDIDO N°44746 MERCOS` , número ANTES da palavra (1 caso); (c) `PEDIDO MERCOS REFERENTE: 46018` , "REFERENTE: " (12 chars) excede a folga de 10 não-dígitos (1 caso). Decisão de escopo do regex final na review (aumentar folga p/ pegar "REFERENTE"? tratar número-antes? ou aceitar 794/797).
 5. **Cobertura total:** 794 de 2461 pedidos (~32%), consistente com o doc-mãe (~33%). Os demais pedidos simplesmente não têm Mercos (venda não originada no CRM).
@@ -90,10 +96,12 @@ Expected: FAIL (módulo inexistente).
  * livre `obs` do pedido do Odoo. A FONTE DA VERDADE é o texto do Odoo; esta função só
  * o estrutura. Formato real (medido no cache): "PEDIDO MERCOS: NNNNN", 4-5 dígitos.
  *
- * O `\b` antes de "mercos" evita casar "mercosul". `[^0-9]{0,10}` tolera ": ", " ",
- * "N " etc. entre a palavra e o número. Retorna só os dígitos, ou null.
+ * `(?!ul)` barra "mercosul" (um `\b` ANTES de "mercos" não barraria, pois "mercosul"
+ * começa numa fronteira de palavra). `[^0-9]{0,10}` tolera ": ", " ", "N " etc. entre a
+ * palavra e o número. `{4,7}` cobre 4-5 dígitos de hoje e crescimento do CRM sem falso
+ * positivo. Retorna só os dígitos, ou null.
  */
-const RE_MERCOS = /\bmercos[^0-9]{0,10}([0-9]{4,6})/i;
+const RE_MERCOS = /mercos(?!ul)[^0-9]{0,10}([0-9]{4,7})/i;
 
 export function extrairNumeroMercos(obs: string | null | undefined): string | null {
   if (!obs) return null;
@@ -102,7 +110,7 @@ export function extrairNumeroMercos(obs: string | null | undefined): string | nu
 }
 ```
 
-> Nota: `{4,6}` (não `{1,7}`) porque os números reais têm 4-5 dígitos; restringir evita capturar um dígito solto espúrio. `\b` barra "mercosul". Ponto para a review: aceitar 794/797 ou tentar cobrir "REFERENTE:" (folga maior) e "número antes de mercos" (2 casos).
+> Nota: `{4,7}` (não `{1,7}`) porque os números reais têm 4-5 dígitos; restringir evita capturar um dígito solto espúrio, e o teto 7 é folga de futuro. `(?!ul)` barra "mercosul". Escopo aceito: 794/797 (os 2 escapes restantes , "número antes de mercos" e "REFERENTE:" , são 2 casos raros; cobri-los arriscaria falso positivo, não compensa).
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -123,22 +131,21 @@ git commit -m "M1: extracao pura do numero do Mercos do obs do pedido"
 - Create: `prisma/migrations/<ts>_fato_pedido_numero_mercos/migration.sql`
 
 **Interfaces:**
-- Produces: coluna `fato_pedido.numero_mercos` (text, nullable); campo Prisma `FatoPedido.numeroMercos`. Índice para busca por número.
+- Produces: coluna `fato_pedido.numero_mercos` (text, nullable); campo Prisma `FatoPedido.numeroMercos`. Sem índice (segue o padrão de `modalidade_frete` do PLAN 1; tabela de 2461 linhas, seq scan sub-ms, o builder reconstruiria o índice todo ciclo à toa).
 
-- [ ] **Step 1: Add field + index to the model**
+- [ ] **Step 1: Add field to the model**
 
 Em `FatoPedido`, após `modalidadeFrete`:
 ```prisma
   numeroMercos     String?   @map("numero_mercos")
 ```
-E adicionar `@@index([numeroMercos])` ao bloco de índices (para "achar o pedido pelo número do Mercos").
+Sem `@@index` (consistência com `modalidade_frete`).
 
 - [ ] **Step 2: Create the additive migration SQL**
 
 `prisma/migrations/<ts>_fato_pedido_numero_mercos/migration.sql`:
 ```sql
 ALTER TABLE "fato_pedido" ADD COLUMN "numero_mercos" TEXT;
-CREATE INDEX "fato_pedido_numero_mercos_idx" ON "fato_pedido"("numero_mercos");
 ```
 
 - [ ] **Step 3: Apply + regenerate**
@@ -194,7 +201,7 @@ Importar `extrairNumeroMercos`. Adicionar `numeroMercos: string | null;` a `Fato
 
 - [ ] **Step 4: Run test + E2E**
 
-Run: `npx jest src/worker/fatos/fato-pedido.test.ts` (PASS). E2E contra o cache (após popular): confirmar ~794 pedidos com `numero_mercos` não-nulo, 4-5 dígitos.
+Run: `npx jest src/worker/fatos/fato-pedido.test.ts` (PASS). E2E contra o cache (após popular): confirmar **794** pedidos com `numero_mercos` não-nulo, 4-5 dígitos (medido com o regex final).
 ```bash
 docker exec nexus-odoo-db-1 psql -U nexus -d nexus_odoo_l1 -tAc \
   "SELECT count(*) FILTER (WHERE numero_mercos IS NOT NULL) AS com, count(*) AS total FROM fato_pedido;"
@@ -272,6 +279,49 @@ git add src/lib/agent/bi-schema-reference.ts src/lib/agent/router/domain-vocabul
 git commit -m "M5: numero do Mercos nas pontas do Nex (BI + vocab + tool pedido_situacao)"
 ```
 
+## Task M6: Busca reversa , `pedido_situacao` também casa pelo número do Mercos
+
+**Files:**
+- Modify: `src/lib/reports/queries/comercial.ts` (`queryPedidoSituacao`, o `where` do `findFirst`)
+- Test: `src/lib/reports/queries/comercial.test.ts`
+
+**Interfaces:**
+- Consumes: `FatoPedido.numeroMercos`.
+
+> **Por que (goal do plano):** "cruzar o pedido do Odoo com o do Mercos" é bidirecional. Hoje `queryPedidoSituacao` casa só pelo número do Odoo (`fatoPedido.numero`). Fazer o `where` casar TAMBÉM por `numeroMercos` deixa "situação do pedido Mercos 43203" funcionar para qualquer usuário do Nex, sem tool nova nem depender do `bi_consulta_avancada` (admin). Baixo custo: um OR no where.
+
+- [ ] **Step 1: Write the failing test**
+
+Em `comercial.test.ts`, um caso onde o input `numero` é um número de Mercos (ex.: "43203") e o `findFirst` retorna o pedido cujo `numeroMercos="43203"`. Assertar que `encontrado=true`. (Confirmar que o mock reflete o `where` com OR.)
+
+- [ ] **Step 2: Run/verify fail**
+
+Run: `npx jest comercial`.
+
+- [ ] **Step 3: Implement the OR in the where**
+
+Trocar `where: { numero: { contains: alvo, mode: "insensitive" } }` por:
+```typescript
+where: {
+  OR: [
+    { numero: { contains: alvo, mode: "insensitive" } },
+    { numeroMercos: alvo },
+  ],
+},
+```
+(match exato no Mercos , é um id; `contains` no número do Odoo mantém o comportamento atual.)
+
+- [ ] **Step 4: Run tests + rebuild mcp**
+
+Run: `npx jest comercial` (PASS) + `npx tsc --noEmit` + (já rebuildado no M5, ou `docker compose up -d --build mcp`).
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/lib/reports/queries/comercial.ts src/lib/reports/queries/comercial.test.ts
+git commit -m "M6: pedido_situacao acha o pedido tambem pelo numero do Mercos (busca reversa)"
+```
+
 ---
 
 ## Verificação final da onda (perícia do PLAN 2)
@@ -282,9 +332,14 @@ git commit -m "M5: numero do Mercos nas pontas do Nex (BI + vocab + tool pedido_
 - [ ] Perícia da onda (subagente): confere no código que a extração é a mesma função nas pontas, sem regex duplicado divergente; que a coluna não zera no rebuild; sem travessão.
 - [ ] STATUS.md e HISTORY.md atualizados.
 
-## Pontos abertos para a review adversarial #1
+## Decisões fechadas (v2, pela review #1)
 
-1. **Regex final:** aceitar 794/797 (perde 2 casos raros: "número antes de mercos" e "REFERENTE:") ou estender? Custo/benefício de cada extensão vs risco de falso positivo.
-2. **`{4,6}` vs `{1,7}`:** restringir a 4-6 dígitos é seguro? Há risco de um Mercos futuro com 6 dígitos (o CRM cresce)? `{4,7}` seria mais à prova de futuro sem perder precisão?
-3. **Onde expor exatamente:** o Nº Mercos entra só no relatório de entregas + tool pedido_situacao, ou também em outros relatórios de pedido? (mesma lógica de 4 pontas do PLAN 1: onde o pedido é identificado, o Mercos ajuda).
-4. **Índice:** `@@index([numeroMercos])` vale a pena? (uso: buscar pedido pelo nº Mercos , provável no Nex/relatórios).
+- **Regex:** `mercos(?!ul)[^0-9]{0,10}([0-9]{4,7})` , barra mercosul via lookahead, 794/797, `{4,7}` à prova de futuro. Os 2 escapes raros (número antes / "REFERENTE:") aceitos (cobri-los arriscaria falso positivo).
+- **Sem índice:** consistência com `modalidade_frete` (PLAN 1); tabela pequena, índice reconstruído todo ciclo à toa.
+- **Busca reversa:** Task M6 , `pedido_situacao` casa também por `numeroMercos`.
+- **4 pontas:** relatório de entregas (Diretoria) + Nex (pedido_situacao/BI/vocab). Reports 1.0/2.0 não têm relatório de pedido-por-número hoje (igual ao PLAN 1); herdam do fato quando tiverem. `comercial-cotacao.ts` (fato_cotacao) não é alvo.
+
+## Pontos abertos para a review adversarial #2
+
+1. Confirmar que o regex JS `mercos(?!ul)...` roda igual no builder e não tem edge com flag global/estado (usar `.exec` em regex sem `g` é seguro; a review #2 confirma).
+2. M6: o `OR` no `where` do `findFirst` com `orderBy dataOrcamento desc` , quando o input casa tanto um `numero` do Odoo quanto um `numeroMercos` de OUTRO pedido, qual vem? (colisão improvável: números Odoo têm formato "PV-NNNN/AA"; Mercos são 4-7 dígitos puros. Confirmar que não há pedido Odoo cujo `numero` seja 4-7 dígitos puros que colida com um Mercos.)
