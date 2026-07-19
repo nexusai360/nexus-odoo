@@ -1,9 +1,43 @@
 # STATUS , ponto de retomada
 
-> ## 🔜 PRÓXIMA SESSÃO (troca em 2026-07-19) , COMEÇAR PELOS PLANS
+> ## 🔜 PRÓXIMA SESSÃO , PLAN 2 (Nº do Mercos)
 >
-> **Ponto de retomada:** a perícia COMPLETA da reunião × sistema está feita. Agora é montar os
-> PLANS e executar (por ondas). **LER PRIMEIRO, nesta ordem:**
+> **PLAN 1 (ajustes finos) COMPLETO e committado (2026-07-19), sem PR/merge.** Ciclo cumprido:
+> plano v1 → 2 reviews adversariais sequenciais → v3 → 13 tasks TDD → perícia da onda → verde.
+> Plano em `docs/superpowers/plans/2026-07-19-plan1-ajustes-finos.md`.
+>
+> **Entregue no PLAN 1 (tsc 0, jest 4301 verdes):**
+> - **Modalidade de frete** materializada no `fato_pedido` (código NF-e modFrete), de-para puro
+>   `src/lib/fiscal/regras/modalidade-frete.ts`, separada da operação fiscal. Nas 4 pontas:
+>   Diretoria (coluna própria "Modalidade" no relatório de entregas + C-05 rotulado "Operações
+>   fiscais"), relatório comercial/tool `pedido_situacao` (Nex), BI schema + vocabulário do Nex.
+>   E2E: 2461 pedidos, distribuição 1:1257 0:1042 9:136 2:24 3:2, zero nulos.
+> - **Regra JDSDEMO nosso** (Próprio + demo no nome → demonstração) em `classificacao-local.ts`.
+>   **Perícia refutou a premissa do doc-mãe:** o id 414 NÃO é bug de builder, é lixo deletado no
+>   Odoo (criado e removido em 76s, zero saldo). Não ressuscitado. `queryValorArmazem` blindada
+>   contra deletado; `porCategoria` do Nex passou a usar a fonte única (contava demo errado).
+> - **Demonstração em 2 blocos** no painel A-13: "nossa (JDSDEMO)" em cima (vazia hoje, estado
+>   acionável) e "em cliente" embaixo (R$ 1,56 mi a custo, 35 locais). Shape `{valorGeral,nossos,cliente}`.
+>
+> **PENDÊNCIAS HONESTAS do PLAN 1 (não são bug, ambiente):**
+> - Validação VISUAL por screenshot do painel 2 blocos NÃO foi capturada (o dev não está no ar
+>   nesta worktree; subir derrubaria a main). Código segue o design system e o dado foi conferido
+>   via SQL. O dono valida visualmente no fim.
+> - E2E ao vivo do Nex (smoke de modalidade) pendente: containers `mcp`/`worker`/`app` do
+>   nexus-odoo estão parados. Ao rodar o dev/containers, rebuildar (`docker compose build app`
+>   + `up -d --build mcp`) ANTES, senão o worker velho (imagem 2026-07-13) zeraria
+>   `modalidade_frete` e ignoraria B1/B4 no próximo cron. Em produção o CI builda do código novo.
+>
+> **PLAN 2 , Nº do Mercos (próximo):** parsear `raw_pedido_documento.data->>'obs'` (regex
+> `mercos[^0-9]{0,10}([0-9]{1,7})`, 827/2542 pedidos ~33%) → coluna `numero_mercos` no `fato_pedido`
+> (migration aditiva) → expor no relatório de entregas e nas 4 pontas. Depois PLAN 3 (rateio de
+> valor dos kits Fase 2), PLAN 4 (infra de estoque: usage do stock.location), PLAN 5 (job de atendimento).
+>
+> ---
+>
+> ## Perícia da reunião (base dos PLANS) , LER se precisar de contexto
+>
+> **LER PRIMEIRO, nesta ordem:**
 > 1. `docs/superpowers/research/2026-07-19-pericia-completa-reuniao.md` , O documento-mãe. Tem o
 >    de-para de tudo (existe/ajustar/novo/infra), as **decisões do dono (§10)**, a **lógica de
 >    estoque/demonstração exata da reunião (§11)** e o **escopo dos 5 PLANS (§12)**.
