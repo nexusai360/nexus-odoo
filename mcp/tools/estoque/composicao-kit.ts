@@ -49,6 +49,8 @@ const dados = z.object({
   multiplasListas: z.boolean(),
   coberturaCompleta: z.boolean(),
   componentes: z.array(componente),
+  /** Contrato de lista: os componentes vêm por maior participação (estrutura antes do painel). */
+  ordenadoPor: z.string(),
   ambiguidade,
   _RESPOSTA: z.string().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -113,6 +115,7 @@ function shapeComposicao(c: ComposicaoKit): Dados {
     nVendas: c.nVendas,
     multiplasListas: c.multiplasListas,
     coberturaCompleta: c.coberturaCompleta,
+    ordenadoPor: "maior participação (estrutura antes do painel)",
     componentes: c.componentes.map((comp) => ({
       nome: humanizeName(comp.nome ?? "Sem nome"),
       ehMatrix: comp.ehMatrix,
@@ -152,6 +155,7 @@ export const estoqueComposicaoKit: ToolEntry<Input, Output> = {
           nVendas: 0,
           multiplasListas: false,
           coberturaCompleta: false,
+          ordenadoPor: "maior participação (estrutura antes do painel)",
           componentes: [],
         };
 

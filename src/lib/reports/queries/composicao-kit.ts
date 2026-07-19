@@ -250,18 +250,24 @@ export async function queryComposicaoKit(
       )
     : new Map<number, number>();
 
-  const componentes: ComponenteComposicao[] = parciais.map((p) => ({
-    componenteId: p.componenteId,
-    nome: p.nome,
-    quantidade: p.quantidade,
-    precoCusto: p.precoCusto,
-    precoVendaPadrao: p.precoVendaPadrao,
-    precoVendaSmart: p.precoVendaSmart,
-    ehMatrix: p.ehMatrix,
-    valorRateado: podeRatear ? (rateado.get(p.componenteId) ?? 0) / 100 : 0,
-    percentual: podeRatear && somaPesos > 0 ? Math.round((p.peso / somaPesos) * 1000) / 10 : 0,
-    semPreco: p.semPreco,
-  }));
+  const componentes: ComponenteComposicao[] = parciais
+    .map((p) => ({
+      componenteId: p.componenteId,
+      nome: p.nome,
+      quantidade: p.quantidade,
+      precoCusto: p.precoCusto,
+      precoVendaPadrao: p.precoVendaPadrao,
+      precoVendaSmart: p.precoVendaSmart,
+      ehMatrix: p.ehMatrix,
+      valorRateado: podeRatear ? (rateado.get(p.componenteId) ?? 0) / 100 : 0,
+      percentual: podeRatear && somaPesos > 0 ? Math.round((p.peso / somaPesos) * 1000) / 10 : 0,
+      semPreco: p.semPreco,
+    }))
+    // Maior participação primeiro (a "estrutura" antes do "painel"). Quando não rateia
+    // (cobertura incompleta / sem referência), ordena pelo custo. Ordem única nas 4 pontas.
+    .sort(
+      (a, b) => b.valorRateado - a.valorRateado || (b.precoCusto ?? 0) - (a.precoCusto ?? 0),
+    );
 
   return {
     kitId,
