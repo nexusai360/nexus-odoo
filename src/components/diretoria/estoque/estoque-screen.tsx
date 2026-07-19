@@ -34,6 +34,7 @@ import type {
   NecessidadeCompraLinha, EstoqueDemonstracaoAgrupado,
 } from "@/lib/diretoria/queries/estoque";
 import type { StatusPrazo } from "@/lib/diretoria/cores";
+import type { KitResumo } from "@/lib/reports/queries/composicao-kit";
 
 // ---------------------------------------------------------------------------
 // Formatação
@@ -81,6 +82,8 @@ export interface EstoqueData {
     negativos: number;
     unidadesAComprar: number;
   };
+  /** A15 , kits (unidade "kit" com BOM) para o seletor de composição de valor. */
+  listaKits: KitResumo[];
 }
 
 // ---------------------------------------------------------------------------

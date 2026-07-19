@@ -21,6 +21,7 @@ import { InteractiveBarChart } from "@/components/charts/interactive/bar-chart";
 import { getColorByIndex } from "@/components/charts/colors";
 import type { PeriodKey } from "@/lib/datetime-core";
 import { brl, brlCompacto, num, pct1, DASH, nomeLimpo } from "@/components/diretoria/kit/format";
+import { ComposicaoKitBloco } from "@/components/diretoria/blocos/composicao-kit-bloco";
 import type { EstoqueData } from "@/components/diretoria/estoque/estoque-screen";
 
 /** Painel rico de drill-down: grade de cartões rótulo/valor (ref. Detalhes da
@@ -664,6 +665,7 @@ export function renderBlocoEstoque(
     case "A-12": return <EstoqueDisponivel d={d} />;
     case "A-13": return <EstoqueDemonstracao d={d} />;
     case "A-14": return <NecessidadeCompra d={d} />;
+    case "A-15": return <ComposicaoKitBloco kits={d.listaKits} />;
     case "A-07": return <ComprasAtivas d={d} />;
     case "A-08": return <MatrizFornecedor d={d} />;
     case "A-10": return <SerieTemporalCompras serie={d.comprasSerie} periodo={periodo} customRange={customRange} />;

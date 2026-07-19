@@ -77,6 +77,37 @@ export function sanitizarTravessao(s: string | null): string | null {
   return s.replace(RE_TRAVESSAO, ", ");
 }
 
+export interface KitResumo {
+  kitId: number;
+  nome: string | null;
+  marcaNome: string | null;
+  ehMatrix: boolean;
+}
+
+/**
+ * Lista os kits (unidade "kit") que têm lista de material, para o seletor do painel.
+ * Leve: só id/nome/marca (o detalhe vem de queryComposicaoKit sob demanda). Ordena por nome.
+ */
+export async function queryListaKits(prisma: PrismaClient): Promise<KitResumo[]> {
+  const pais = await prisma.fatoListaMaterialItem.findMany({
+    select: { produtoPaiId: true },
+    distinct: ["produtoPaiId"],
+  });
+  const ids = pais.map((p) => p.produtoPaiId);
+  if (ids.length === 0) return [];
+  const prods = await prisma.fatoProduto.findMany({
+    where: { odooId: { in: ids }, unidadeNome: { startsWith: "kit", mode: "insensitive" } },
+    select: { odooId: true, nome: true, marcaNome: true },
+    orderBy: { nome: "asc" },
+  });
+  return prods.map((p) => ({
+    kitId: p.odooId,
+    nome: sanitizarTravessao(p.nome),
+    marcaNome: sanitizarTravessao(p.marcaNome),
+    ehMatrix: /matrix/i.test(p.marcaNome ?? ""),
+  }));
+}
+
 function num(v: unknown): number | null {
   if (v == null) return null;
   const n = Number(v);

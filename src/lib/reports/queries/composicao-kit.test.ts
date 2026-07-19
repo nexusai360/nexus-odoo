@@ -1,5 +1,5 @@
 import { describe, it, expect } from "@jest/globals";
-import { queryComposicaoKit, sanitizarTravessao } from "./composicao-kit";
+import { queryComposicaoKit, queryListaKits, sanitizarTravessao } from "./composicao-kit";
 
 /**
  * Monta um prisma dublado. Cada tabela recebe as linhas cruas; a query filtra sozinha.
@@ -158,6 +158,35 @@ describe("queryComposicaoKit", () => {
     expect(r.componentes[0].valorRateado).toBe(0);
     // O custo do componente continua visivel (nao sumiu).
     expect(r.componentes[0].precoCusto).toBe(30);
+  });
+
+  it("queryListaKits lista so unidade kit com BOM, ordenado, com ehMatrix e nome sanitizado", async () => {
+    const prisma = {
+      fatoListaMaterialItem: {
+        findMany: jest.fn().mockResolvedValue([{ produtoPaiId: 894 }, { produtoPaiId: 1281 }]),
+      },
+      fatoProduto: {
+        findMany: jest.fn().mockResolvedValue([
+          { odooId: 894, nome: `ESTEIRA ${String.fromCharCode(0x2014)} PP`, marcaNome: "MATRIX" },
+          { odooId: 1281, nome: "POWERMILL", marcaNome: "LIFE FITNESS" },
+        ]),
+      },
+    } as unknown as Parameters<typeof queryListaKits>[0];
+    const r = await queryListaKits(prisma);
+    expect(r).toHaveLength(2);
+    expect(r[0]).toEqual({ kitId: 894, nome: "ESTEIRA, PP", marcaNome: "MATRIX", ehMatrix: true });
+    expect(r[1].ehMatrix).toBe(false);
+    // Filtra por unidade kit no where.
+    const call = (prisma.fatoProduto.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where.unidadeNome).toEqual({ startsWith: "kit", mode: "insensitive" });
+  });
+
+  it("queryListaKits devolve vazio quando nao ha BOM", async () => {
+    const prisma = {
+      fatoListaMaterialItem: { findMany: jest.fn().mockResolvedValue([]) },
+      fatoProduto: { findMany: jest.fn() },
+    } as unknown as Parameters<typeof queryListaKits>[0];
+    expect(await queryListaKits(prisma)).toEqual([]);
   });
 
   it("fallback tabela smart quando nao ha Venda Padrao", async () => {
