@@ -2,7 +2,18 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development ou executing-plans. Steps com checkbox (`- [ ]`). UI sempre inline com `ui-ux-pro-max`.
 
-**Versão:** v2 (review adversarial #1 aplicada; aguarda review #2 → v3)
+**Versão:** v3 (FINAL , reviews #1 e #2 aplicadas; pronto para execução TDD)
+
+**Mudanças v2 → v3 (após review #2):**
+- **[MÉDIA] Contradição interna corrigida:** Goal/Architecture/Achado #1 agora dizem base = **preço de tabela** (venda real é visão SECUNDÁRIA, n>=5, mediana), coerente com X1 e as decisões fechadas. Insight da review: o **percentual estrutura/painel é INVARIANTE à base** (só depende dos pesos de custo); a base muda só o R$ absoluto. A manchete "painel vale X%" é robusta às duas bases.
+- **[MÉDIA] `resolverBom` , buraco all-inactive fechado:** em multi-lista, se TODAS as listas forem inativas, `pool` cai para TODAS as listas (nunca vazio). Nunca retorna `componentes: []` com `linhas.length>0`. (Latente: nenhum kit vivo cai nisso hoje, mas fecha a classe de bug.)
+- **[MÉDIA] Decomposição:** X1 vira X1a-d (tasks/commits reais); Z1 vira Z1a-c.
+- **[BAIXA] Enum/interface:** `baseValor: "venda_real_mediana" | "preco_tabela_padrao" | "preco_tabela_smart" | "sem_referencia"`; interface ganha `nVendas`. Estado `sem_referencia` para os ~9% kits sem tabela nem venda.
+- **[BAIXA] Travessão do ERP:** `unidade_nome`/`familia_nome` no cache contêm em-dash ("unid — Unidade"); sanitizar na exibição (painel e tool) para não furar a regra "sem travessão".
+- **[BAIXA] Lista única INATIVADA** (só o kit 580, que é "unid" → não chega a nenhum consumidor, impacto vivo zero): manter "passa reto", mas adicionar teste do ramo e, se um dia um produto "kit" tiver a única BOM inativada, expor flag "BOM inativada no ERP".
+- **Números alinhados:** 12 kits (não 17) têm componente sem custo E sem venda (perdem o % rateado); 123/135 mantêm. O "17" era sem preço de venda; o guard usa custo-nem-venda.
+
+**Mudanças v1 → v2 (após review #1):**
 
 **Mudanças v1 → v2 (após review #1, que pegou 2 regressões ALTA):**
 - **[ALTA] `resolverBom` NÃO pode zerar kits de lista única.** Medido: 18 kits de lista única têm a lista nunca-ativada (17) ou inativada (1); a regra "preferir data_ativacao != null" os zeraria e eles sumiriam da necessidade de compra (regressão da Fase 1 além dos 3 kits multi-lista). Correção: **a escolha por ativação só se aplica quando o kit tem MÚLTIPLAS listas.** Kit de lista única passa reto (BOM idêntica à de hoje), independentemente de ativação. `resolverBom` nunca retorna `componentes: []` quando existem linhas. E2E do W3 verifica que os 131 kits de lista única ficam com a MESMA contagem de componentes de hoje.
@@ -16,7 +27,7 @@
 
 **Goal:** Substituir o método manual de Excel do time (que "joga o valor todo na estrutura e zera o painel") por um rateio honesto no sistema: distribuir o valor de venda de um kit entre seus componentes, proporcional ao custo, e mostrar isso num **painel de composição de valor dos kits** na Diretoria + **tool(s) do Nex**. Fiel à reunião (transcrição §3-4).
 
-**Architecture:** Fonte da verdade = ERP Odoo. Valor a ratear = valor REAL da venda (`fato_pedido_item.vr_produtos`, que varia por desconto). Pesos = `preco_custo` do componente (fallback preço de venda de tabela `fato_preco`). Rateio proporcional com fechamento por maior resto (soma exata). Resolve o bug de kits com múltiplas BOMs (corrige a Fase 1 de quebra). NÃO persegue preço por cliente/período/série (campos vazios na Tauga, fora da reunião , ver perícia).
+**Architecture:** Fonte da verdade = ERP Odoo. **Valor a ratear (base) = preço de venda de TABELA do kit** (Venda Padrão, cobre 90,7%); valor real de venda (`fato_pedido_item.vr_produtos`) é visão SECUNDÁRIA só quando n>=5 vendas (mediana). Pesos = `preco_custo` do componente (fallback preço de venda de tabela). Rateio proporcional com fechamento por maior resto (soma exata). O **percentual estrutura/painel é invariante à base** (só depende dos pesos de custo). Resolve o bug de kits com múltiplas BOMs (corrige a Fase 1). NÃO persegue preço por cliente/período/série (campos vazios na Tauga, fora da reunião , ver perícia).
 
 **Tech Stack:** TypeScript, Prisma v7 (Postgres `nexus_odoo_l1`), worker BullMQ, Next.js 16 (App Router), MCP, Jest/TDD.
 
@@ -33,7 +44,7 @@
 
 ## Achados de perícia (base do plano , `docs/superpowers/research/2026-07-19-plan3-pericia-completa-valor-kits.md`)
 
-1. **Valor real a ratear** = `fato_pedido_item.vr_produtos` (valor comercial da venda; filtrar `=0` = bonificação). Varia 4-6x entre vendas do mesmo kit. Fonte mais limpa (NF é mais suja).
+1. **Base do valor a ratear = preço de venda de tabela do kit** (Venda Padrão, 90,7%). Valor real de venda (`fato_pedido_item.vr_produtos`, filtrar `=0`) é visão SECUNDÁRIA só com n>=5 (mediana); cobre 55/135 kits, robusto em ~27. Média de 1-3 vendas engana.
 2. **Pesos** = `fato_produto.preco_custo` do componente (diferenciado: estrutura cara vs painel barato). Fallback: preço de venda de tabela `fato_preco` (tabela_id 3 "Venda Padrão", 5 "Venda Smart") → `fato_produto.preco_venda`.
 3. **Custo histórico NÃO existe** (`vr_custo` é lixo). Margem só aproximada. Preço por **cliente/período/série NÃO existe** no cache.
 4. **Cobertura:** 118/135 kits (87,4%) com todos os componentes precificados; 52/277 componentes (18,8%) sem preço de venda.
@@ -251,8 +262,9 @@ se listas.length <= 1:
     return { componentes, listaEscolhida: listas[0] ?? null, multiplasListas: false }
 # múltiplas listas: escolher UMA
 candidatas = listas.filter(nao inativa)                  # descarta data_inativacao preenchida
+se candidatas vazio: candidatas = listas                 # all-inactive: usa todas (nunca vazio)
 ativadas = candidatas.filter(listaDataAtivacao != null)
-pool = ativadas.length ? ativadas : candidatas           # NUNCA vazio se havia candidatas
+pool = ativadas.length ? ativadas : candidatas           # NUNCA vazio
 escolhida = pool ordenado por (listaDataAtivacao desc, listaId desc)[0]
 componentes = agregaPorComponente(linhas da escolhida)
 return { componentes, listaEscolhida: escolhida, multiplasListas: true }
@@ -297,9 +309,11 @@ git commit -m "W3: necessidade de compra usa a BOM ativa (corrige duplicacao de 
   export interface ComposicaoKit {
     kitId: number; kitNome: string | null; ehMatrix: boolean;
     valorReferencia: number;   // valor usado para ratear (ver base)
-    baseValor: "venda_real_media" | "preco_tabela_padrao" | "preco_tabela_smart";
+    baseValor: "preco_tabela_padrao" | "preco_tabela_smart" | "venda_real_mediana" | "sem_referencia";
+    nVendas: number;           // n de vendas reais (para a visao secundaria; 0 se base=tabela)
     componentes: ComponenteComposicao[];
-    multiplasListas: boolean; coberturaCompleta: boolean;  // false se algum componente sem preco
+    multiplasListas: boolean; coberturaCompleta: boolean;  // false se algum componente sem custo NEM venda
+    // sanitizar em dash do ERP (unidade_nome "unid — Unidade") na exibicao
   }
   export function queryComposicaoKit(prisma, kitId: number, opts?: { base?: ... }): Promise<ComposicaoKit | null>;
   ```
@@ -344,7 +358,7 @@ git commit -m "Y1: painel de composicao de valor dos kits na Diretoria (estrutur
 - Create: `mcp/tools/estoque/composicao-kit.ts` + registro (`index.ts`, `mcp/catalog/index.ts`, `tool-triggers.data.ts`)
 - Modify: `src/lib/agent/bi-schema-reference.ts`, `src/lib/agent/router/domain-vocabulary.ts`
 
-- [ ] **Steps:** tool que recebe um kit (nome/id) e devolve a composição (`queryComposicaoKit`), com resposta humanizada ("o kit X é composto por: estrutura R$ N (P%), painel R$ M (Q%)..."). BI schema documenta `fato_lista_material_item` + preços. Vocabulário: "do que é feito o kit", "composição do kit", "quanto vale a estrutura/painel". Rebuild mcp. Commit.
+Decompor (review #2): **Z1a** tool `estoque_composicao_kit` (usa `queryComposicaoKit`, resposta humanizada "o kit X: estrutura R$ N (P%), painel R$ M (Q%)...", sanitiza em dash) + registro (index/catalog/triggers); **Z1b** BI schema (`fato_lista_material_item` + preços); **Z1c** vocabulário ("do que é feito o kit", "composição do kit", "quanto vale a estrutura/painel") + rebuild mcp. Commit por sub-task.
 
 ```bash
 git commit -m "Z1: tool composicao_kit do Nex + BI schema + vocabulario (4a ponta)"
