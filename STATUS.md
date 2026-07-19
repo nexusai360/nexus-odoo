@@ -1,5 +1,30 @@
 # STATUS , ponto de retomada
 
+> ## 🔜 PRÓXIMA SESSÃO (troca em 2026-07-19) , COMEÇAR PELOS PLANS
+>
+> **Ponto de retomada:** a perícia COMPLETA da reunião × sistema está feita. Agora é montar os
+> PLANS e executar (por ondas). **LER PRIMEIRO, nesta ordem:**
+> 1. `docs/superpowers/research/2026-07-19-pericia-completa-reuniao.md` , O documento-mãe. Tem o
+>    de-para de tudo (existe/ajustar/novo/infra), as **decisões do dono (§10)**, a **lógica de
+>    estoque/demonstração exata da reunião (§11)** e o **escopo dos 5 PLANS (§12)**.
+> 2. `docs/superpowers/research/2026-07-19-reuniao-transcricao-pericia.md` , kits e valores.
+> 3. Os planos do Lote 1 e Lote 2 (`docs/superpowers/plans/2026-07-18-*`) , o que já foi feito.
+>
+> **Diretrizes inegociáveis (§10 do doc-mãe):** ERP Odoo = fonte da verdade; **consistência nas 4
+> pontas** (Diretoria, Relatórios 1.0, Relatórios 2.0, agente Nex bubble+WhatsApp) em TODA task.
+>
+> **Metodologia por PLAN:** PLAN v1 → review pesada (v1) → v2 → review mais profunda (v2) → v3 →
+> tasks bem descritas → testes → **perícia da onda** (conferir se entregou mesmo; se não, refazer)
+> → próxima. Sem spec (vai direto ao plan). **Sem PR/merge até o dono liberar.**
+>
+> **Ordem dos PLANS (§12):** 1) ajustes finos (modalidade_frete, JDS DEMO SP id 414, demo 2 blocos);
+> 2) Nº do Mercos (parsear obs → coluna); 3) rateio de valor dos kits (Fase 2, proporcional ao
+> custo); 4) INFRA de estoque (ingerir `usage` do stock.location → DSTOCK/trânsito); 5) job de
+> atendimento (quantidade_a_atender). Já ajustado nesta sessão: bloqueio = def. do ERP (nota OU
+> pedido faturado).
+>
+> ---
+>
 > ## 2026-07-18 , BRANCH `feat/diretoria-entregas-estoque` (NÃO mergeada , aguarda o dono)
 >
 > Frente pedida na reunião do dono com a logística. Ciclo completo: perícia (4 frentes) →

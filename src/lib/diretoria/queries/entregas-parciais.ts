@@ -67,15 +67,16 @@ export interface EntregasParciaisData {
 }
 
 // REGRA_BLOQUEIO (D-b, versão SIMPLES, pendente de veredito do dono , 2026-07-18):
-// um cliente fica "bloqueado" quando tem NOTA FISCAL emitida vencida em aberto. Carteira
-// (pedido confirmado ainda sem nota) NÃO conta. Para a versão rigorosa (qualquer título
-// vencido, carteira incluída), troque para `false`.
-const BLOQUEIO_SO_NOTA_EMITIDA = true;
+// REGRA_BLOQUEIO (decisão do dono, 2026-07-19): segue a fonte da verdade, o ERP Odoo. No Odoo,
+// "conta a receber" é o título FATURADO (nota emitida OU pedido já faturado, que gerou a
+// duplicata); a carteira (pedido confirmado ainda não faturado) NÃO é conta a receber, é receita
+// contratada. Então um cliente fica "bloqueado" quando tem título a_receber FATURADO vencido em
+// aberto , exatamente o que o menu Contas a Receber do Odoo lista como em atraso.
 
 /**
- * Clientes bloqueados: os que têm título `a_receber` vencido em aberto. Mesmo predicado dos
- * Títulos Vencidos (`vrSaldo>0`, vencimento antes de hoje, documento pós-corte, intragrupo
- * fora), numa única query batched por participante (sem N+1).
+ * Clientes bloqueados: os que têm conta a receber (faturada) vencida em aberto, como o ERP Odoo
+ * define. Mesmo predicado dos Títulos Vencidos (`vrSaldo>0`, vencimento antes de hoje, documento
+ * pós-corte, intragrupo fora), numa única query batched por participante (sem N+1).
  */
 export async function statusBloqueioPorCliente(
   prisma: PrismaClient,
@@ -92,7 +93,8 @@ export async function statusBloqueioPorCliente(
       vrSaldo: { gt: 0 },
       dataVencimento: { lt: inicioDoDia },
       dataDocumento: { gte: corteAtualDate() },
-      ...(BLOQUEIO_SO_NOTA_EMITIDA ? { notaFiscalId: { not: null } } : {}),
+      // Faturado = conta a receber no Odoo: tem nota OU o pedido já foi faturado (gerou duplicata).
+      OR: [{ notaFiscalId: { not: null } }, { pedidoFaturado: true }],
     },
     select: { participanteId: true, participanteNome: true },
   });

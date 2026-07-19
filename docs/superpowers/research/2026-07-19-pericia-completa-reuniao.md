@@ -165,4 +165,72 @@ Caveat: estoque/a receber/a pagar/demandas não recortam por empresa (o hint avi
 
 ## 9. Já entregue nesta branch (para não refazer)
 Lote 1 completo (relatório de entregas parciais, card a custo, sigla UF, verificações financeiras)
-e Lote 2 Fase 1 (desmembramento de kits na necessidade de compra). 16 commits, sem PR/merge.
+e Lote 2 Fase 1 (desmembramento de kits na necessidade de compra). 17 commits, sem PR/merge.
+
+---
+
+## 10. DECISÕES E DIRETRIZES DO DONO (2026-07-19) , valem para o PLAN
+
+1. **O ERP Odoo é a FONTE DA VERDADE.** Quando o dono diz "o sistema", quase sempre é o **ERP
+   Odoo** (de onde puxamos os dados brutos). A plataforma Nexus Odoo tem que ser **coerente e
+   sincronizada com o ERP**: como um dado funciona/é classificado no Odoo é como tem que aparecer
+   na plataforma. Nada de inventar regra que diverge do ERP.
+2. **Bloqueado = como o ERP define conta a receber vencida.** ✅ **JÁ AJUSTADO NO CÓDIGO** (2026-07-19):
+   `statusBloqueioPorCliente` agora bloqueia por título a_receber FATURADO (nota emitida **OU**
+   pedido faturado) vencido em aberto , o que o menu Contas a Receber do Odoo lista (23 clientes,
+   não 15). Carteira (não faturado) não é conta a receber no Odoo, então não bloqueia.
+3. **CONSISTÊNCIA NAS 4 PONTAS (inegociável).** Todo dado/regra que a gente criar ou ajustar tem
+   que alimentar IGUAL as 4 saídas: **(1) menu Diretoria** (todos os relatórios dele), **(2)
+   Relatórios 1.0**, **(3) Relatórios 2.0**, **(4) Agente Nex** (bubble in-app + WhatsApp/MCP). O
+   mesmo número tem que aparecer em qualquer uma. Onde o 1.0/2.0 estiverem defasados, ao mexer
+   neles têm que passar a alimentar igual. **Toda task do plan deve checar as 4 pontas.**
+4. **Reproduzir a reunião ao pé da letra** (não perguntar o que já foi dito): ver §11.
+
+## 11. LÓGICA DE ESTOQUE / DEMONSTRAÇÃO , reproduzir EXATAMENTE o que a reunião falou
+
+O colega detalhou, com a tela aberta, como o estoque deve ser qualificado. Regra a implementar
+(vale para o Nexus Odoo, fiel ao Odoo):
+
+**A) Estoque FÍSICO / próprio** (o que está disponível para entrega; base da análise de compra):
+- Depósitos próprios: **JDS filial SE, filial SP, matriz DF**.
+- O local que aparece como **"terceiro" mas é NOSSO** ("DSTOCK", mercadoria da JDS armazenada
+  fora) , conta como próprio/físico.
+- **"Em transferência" (trânsito)**: mercadoria nossa a caminho , conta como **próprio/físico**.
+
+**B) Estoque de DEMONSTRAÇÃO** (movimentação; NÃO é 100% vendável; análise separada), **2 sub-tipos,
+no MESMO painel, um em cima do outro**:
+- **Nossos (JDSDEMO)**: locais de demonstração NOSSOS, espalhados, **sem nota de demonstração**
+  (nome contém "demo"/"JDSDEMO"). Regra do colega: "tudo que tem 'demonstração' no nome vai para
+  demonstração; **mais** o JDSDEMO (nossos depósitos de demo), exclusivamente."
+- **Em cliente**: produto num cliente **com nota de demonstração** (marcado "demonstração" +
+  "terceiro"; a JDS é a proprietária, o local está no cliente).
+- **UI**: painel de demonstração com **os nossos (JDSDEMO) em cima e os que estão em cliente
+  embaixo**, no mesmo painel, para comparar ("tenho X de demonstração e Y de estoque").
+
+**Objetivo do colega**: ver, lado a lado, o **DSTOCK real/físico** (disponível para entrega, base da
+compra) e o **DSTOCK de demonstração** ("tenho 5 mi de demonstração e 50 mi de estoque").
+
+**Estado no cache (da perícia §5)**: Próprio SE/SP/DF ✅; demonstração-em-cliente ✅; showroom ✅;
+**JDS DEMO SP (id 414) existe mas está fora do fato → bug a corrigir + classificar demonstração**;
+**DSTOCK-nosso-em-terceiro (R$ 5,3 mi) e trânsito (R$ 9,1 mi) hoje caem em "fora"** e só se separam
+de verdade **ingerindo do Odoo o `usage` do `stock.location`** (internal/transit/customer/supplier)
++ o proprietário/warehouse. **É a peça de INFRA mais pesada, mas o dono mandou "fazer acontecer".**
+
+## 12. Escopo consolidado para os PLANS da próxima sessão (ordem sugerida)
+Cada um vira PLAN v1 → review pesada → v2 → review mais pesada → v3 → tasks → testes → perícia da
+onda. Fazer respeitando as 4 pontas (§10.3).
+- **PLAN 1 , Ajustes finos (baixo risco, fecham o que já existe)**: modalidade_frete (materializar +
+  separar da operação); JDS DEMO SP (bug id 414 + classificar demonstração); demonstração em 2
+  blocos na UI. + garantir 4 pontas.
+- **PLAN 2 , Nº do Mercos**: parsear `raw_pedido_documento.obs` (regex `mercos...([0-9]+)`) → coluna
+  `numero_mercos` no `fato_pedido` (migration) → expor no relatório de entregas, e nas 4 pontas
+  (Diretoria + relatórios + tool do Nex).
+- **PLAN 3 , Rateio de valor dos kits (Fase 2)**: `desmembrarValor` proporcional ao `preco_custo`
+  (fallback venda→tabela, fechamento por maior resto), aplicar onde o valor de venda por componente
+  faz sentido; nas 4 pontas. Reportar ao dono o "painel vale 14-25%, não zero".
+- **PLAN 4 , INFRA de estoque (o pesado)**: ingerir `usage`/proprietário do `stock.location` (modelo
+  novo/campos no sync + migration) → reclassificar locais para separar DSTOCK-nosso (→físico) e
+  trânsito (→físico); DSTOCK real × demonstração lado a lado. Depois, ajustar KPI de estoque,
+  necessidade de compra, seriais e as 4 pontas.
+- **PLAN 5 , Job de atendimento**: fazer `quantidade_a_atender` popular (worker/sync) para o "a
+  atender" real (R$ 21 mi) em vez da quantidade cheia. Afeta relatório de entregas e card de demanda.
