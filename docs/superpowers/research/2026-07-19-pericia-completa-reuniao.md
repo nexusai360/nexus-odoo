@@ -111,7 +111,7 @@ Classificação hoje (valor a custo): físico R$ 28,99 mi · fora R$ 14,44 mi ·
 | **Próprio** (JDS SE/SP/DF) | ids 11/12/24 (+ matriz), classificados físico | ✅ correto |
 | **Demonstração em cliente** (nota + terceiro) | subárvore `Terceiros / Demonstração` (id 251), 56 locais, R$ 2,3 mi, proprietário = nossas empresas | ✅ correto |
 | **Showroom** | id 35, hardcoded demonstração | ✅ correto |
-| **JDSDEMO nosso** | **id 414 "Próprio / JDS DEMO SÃO PAULO" EXISTE no raw, mas está FORA do `fato_estoque_local`** (bug: 389 de 390) e cairia em "fora" | 🔧 ajustar (bug + classificar como demonstração) |
+| **JDSDEMO nosso** | **id 414 "Próprio / JDS DEMO SÃO PAULO" é LIXO deletado no Odoo** (criado 2026-05-28 16:54:49, removido 16:56:05, 76s de vida, zero saldo/serial/movimento). `rawDeleted=true` correto; builder o exclui certo (389 raw ativos = 389 fato). **Não é bug, não ressuscitar.** A ação foi criar a REGRA de classificação JDSDEMO (PLAN 1 B1) para um futuro JDSDEMO ativo | ✅ resolvido (regra criada; 414 permanece fora, fiel ao Odoo) |
 | **DSTOCK / "terceiro que é nosso"** | não existe por nome. Candidato: **R$ 5,3 mi de equipamento Matrix pendurado no nó "Terceiros" (id 2)**, hoje "fora". `proprietario_local_id` do nó = false; **não há dado que prove posse** | 🧱 infra (ingerir `usage`/proprietário do local) + confirmar com o dono |
 | **Em transferência / trânsito** | conceito não ingerido (`usage='transit'` não vem; `tipo` só é sintético/analítico). Candidato: **R$ 9,1 mi no nó "Virtual" (id 3)**, hoje "fora" | 🧱 infra (ingerir `usage` do stock.location) |
 
@@ -149,7 +149,7 @@ Caveat: estoque/a receber/a pagar/demandas não recortam por empresa (o hint avi
 | E | **Modalidade**: materializar `modalidade_frete` e separar da operação | 🔧+🆕 | baixo-médio |
 | F | **Nº do Mercos**: parsear `obs` → coluna `numero_mercos` em `fato_pedido` | 🆕 | médio (builder + migration) |
 | G | **Rateio de valor dos kits (Fase 2)**: proporcional ao custo | 🆕 | médio |
-| H | **JDS DEMO SP (id 414)**: corrigir ausência no fato + classificar demonstração | 🔧 | baixo |
+| H | **JDS DEMO SP (id 414)**: era premissa errada (não é bug de builder). O 414 é lixo deletado no Odoo (76s de vida, zero saldo). Ação real: criar a REGRA JDSDEMO nosso (Próprio + demo → demonstração) para o futuro. | ✅ resolvido (PLAN 1 B1) | baixo |
 | I | **DSTOCK + Trânsito**: ingerir `usage`/proprietário do `stock.location` do Odoo, então reclassificar | 🧱 infra | ALTO (sync novo + migration) |
 | J | **Job de atendimento** (`quantidade_a_atender`): fazer rodar para o "a atender" real (21 mi) | 🧱 infra | médio (worker) |
 | K | Demonstração em 2 blocos (nossos × cliente) | 🟢 depende de H | baixo |
@@ -211,7 +211,8 @@ no MESMO painel, um em cima do outro**:
 compra) e o **DSTOCK de demonstração** ("tenho 5 mi de demonstração e 50 mi de estoque").
 
 **Estado no cache (da perícia §5)**: Próprio SE/SP/DF ✅; demonstração-em-cliente ✅; showroom ✅;
-**JDS DEMO SP (id 414) existe mas está fora do fato → bug a corrigir + classificar demonstração**;
+**JDS DEMO SP (id 414) é lixo deletado no Odoo (76s de vida, zero saldo) → NÃO ressuscitar; a REGRA
+JDSDEMO nosso foi criada (PLAN 1 B1) para reconhecer um futuro JDSDEMO ativo**;
 **DSTOCK-nosso-em-terceiro (R$ 5,3 mi) e trânsito (R$ 9,1 mi) hoje caem em "fora"** e só se separam
 de verdade **ingerindo do Odoo o `usage` do `stock.location`** (internal/transit/customer/supplier)
 + o proprietário/warehouse. **É a peça de INFRA mais pesada, mas o dono mandou "fazer acontecer".**
