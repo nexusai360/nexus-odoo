@@ -24,6 +24,18 @@ describe("extrairNumeroMercos", () => {
     expect(extrairNumeroMercos("Mercosul 12345 e MERCOS 55555")).toBe("55555");
   });
 
+  it("não atravessa quebra de linha para pegar número de outra linha", () => {
+    expect(extrairNumeroMercos("MERCOS\n43203")).toBeNull();
+    // mas pega quando o número está na mesma linha
+    expect(extrairNumeroMercos("MERCOS 43203\noutra linha")).toBe("43203");
+  });
+
+  it("rejeita bloco de 8+ dígitos em vez de truncar", () => {
+    expect(extrairNumeroMercos("mercos 12345678")).toBeNull();
+    // 5 dígitos seguidos de espaço/texto continuam válidos
+    expect(extrairNumeroMercos("MERCOS: 43203 obs extra")).toBe("43203");
+  });
+
   it("devolve null para obs sem mercos, nulo ou vazio", () => {
     expect(extrairNumeroMercos("Pedido normal sem referencia")).toBeNull();
     expect(extrairNumeroMercos(null)).toBeNull();

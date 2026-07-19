@@ -346,8 +346,10 @@ export async function queryPedidoSituacao(
   // lista; a precedência evita o `contains` casar o miolo NNNN de um PV alheio por substring.
   let pedido: Awaited<ReturnType<typeof prisma.fatoPedido.findFirst>> = null;
   if (/^[0-9]{4,7}$/.test(alvo)) {
+    // Respeita a data de início das análises: pedidos pré-corte não entram na lista nem
+    // fazem a busca cair no ramo "vários pedidos" indevidamente (regra durável nº1).
     const porMercos = await prisma.fatoPedido.findMany({
-      where: { numeroMercos: alvo },
+      where: { numeroMercos: alvo, dataOrcamento: { gte: corteAtualDate() } },
       orderBy: { dataOrcamento: "desc" },
     });
     if (porMercos.length > 1) {
