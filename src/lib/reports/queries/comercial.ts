@@ -308,6 +308,8 @@ export async function queryPedidoSituacao(
     operacaoNome: string | null;
     /** Modalidade de frete (CIF/FOB/terceiros/próprio), rótulo do código NF-e modFrete. */
     modalidadeFrete: string | null;
+    /** Número de referência do pedido no Mercos (CRM externo), ou null. */
+    numeroMercos: string | null;
     empresaNome: string | null;
     participanteNome: string | null;
     vendedorNome: string | null;
@@ -417,6 +419,7 @@ export async function queryPedidoSituacao(
       categoriaOperacao: pedido.categoriaOperacao,
       operacaoNome: pedido.operacaoNome,
       modalidadeFrete: rotuloModalidadeFrete(pedido.modalidadeFrete),
+      numeroMercos: pedido.numeroMercos,
       empresaNome: pedido.empresaNome,
       participanteNome: pedido.participanteNome,
       vendedorNome: pedido.vendedorNome,

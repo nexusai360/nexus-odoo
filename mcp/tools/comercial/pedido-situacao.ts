@@ -20,6 +20,7 @@ const pedidoSchema = z
     categoriaOperacao: z.string().nullable(),
     operacaoNome: z.string().nullable(),
     modalidadeFrete: z.string().nullable(),
+    numeroMercos: z.string().nullable(),
     empresaNome: z.string().nullable(),
     participanteNome: z.string().nullable(),
     vendedorNome: z.string().nullable(),
@@ -148,6 +149,7 @@ export const comercialPedidoSituacao: ToolEntry<Input, Output> = {
     const resposta =
       `${p.numero} (${p.operacaoNome ?? "sem operacao"}, ${brl(p.valorProdutos)}` +
       `${p.modalidadeFrete ? `, frete ${p.modalidadeFrete}` : ""}` +
+      `${p.numeroMercos ? `, Mercos ${p.numeroMercos}` : ""}` +
       `${p.participanteNome ? `, cliente ${p.participanteNome}` : ""}). ` +
       `Esta ${parado} na etapa "${p.etapaNome ?? "?"}" (${situacao}).` +
       `${aprov ? ` Aprovado em ${aprov}.` : ""}` +

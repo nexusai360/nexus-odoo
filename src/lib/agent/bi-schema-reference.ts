@@ -214,6 +214,7 @@ TABLE fato_pedido (
   operacao_id       INT,
   operacao_nome     TEXT,   -- operacao FISCAL do pedido (natureza por CFOP)
   modalidade_frete  TEXT,   -- codigo NF-e modFrete de quem paga o frete: 0 CIF (remetente), 1 FOB (destinatario), 2 terceiros, 3/4 proprio, 9 sem frete. Distinto da operacao fiscal.
+  numero_mercos     TEXT,   -- numero de referencia do pedido no Mercos (CRM de vendas externo), 4-5 digitos. E 1:N: o mesmo numero_mercos pode aparecer em varios pedidos do Odoo.
   participante_id   INT,
   participante_nome TEXT,
   vendedor_id       INT,

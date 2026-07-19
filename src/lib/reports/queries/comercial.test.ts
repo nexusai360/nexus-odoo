@@ -558,6 +558,7 @@ describe("CORTE , piso da data de início das análises nas consultas de pedido"
           categoriaOperacao: "venda",
           operacaoNome: "Venda",
           modalidadeFrete: "0",
+          numeroMercos: "43203",
           empresaNome: "Matrix",
           participanteNome: "Cliente A",
           vendedorNome: "Ana",
@@ -578,5 +579,7 @@ describe("CORTE , piso da data de início das análises nas consultas de pedido"
     expect(r.pedido?.numero).toBe("PV-2037/26");
     // modalidade de frete traduzida do código NF-e (0 -> CIF)
     expect(r.pedido?.modalidadeFrete).toBe("CIF (remetente)");
+    // número do Mercos exposto no pedido
+    expect(r.pedido?.numeroMercos).toBe("43203");
   });
 });
