@@ -279,8 +279,8 @@ O painel A-12 ("Estoque disponível") usa a mesma base e **fecha exatamente** co
 
 ## 6. Demandas a entregar , 337 pedidos, R$ 21.207.730 (a custo, do que falta entregar)
 
-**Fonte:** `fato_pedido` com `bucket_demanda = 'ABERTA'` e `data_orcamento >= início das
-análises`.
+**Fonte:** `fato_pedido` com `bucket_demanda = 'ABERTA'`, com a janela vindo da **pílula de
+período** do topo (não do corte de leitura , ver "janela" no fim desta seção).
 
 **O valor é o que FALTA ENTREGAR, a custo** (regra nova, 2026-07-13). Antes era a soma de
 `vr_produtos` (o cabeçalho do pedido inteiro, a preço de venda): um pedido com 10 itens, 6 já
@@ -313,10 +313,23 @@ Ficam listados de propósito , o zero é justamente o que denuncia a esteira par
 O valor cheio a preço de venda continua disponível na consulta (`valorAAtenderVenda`), para
 quem precisar da leitura de receita futura.
 
-**"ABERTA"** é decidido pelos **gatilhos da própria etapa** do pedido no Odoo (não pelo nome
-dela): a etapa não pode ter `finaliza_faturamento`, `finaliza_pedido_confirmando` nem
-`finaliza_pedido_cancelando`. Ou seja: pedido de venda a cliente externo que **ainda não foi
-faturado, concluído nem cancelado**.
+**"ABERTA" (regra nova, Fase 1A, 2026-07-20)** é `op.entraDemanda` (gate de **operação**:
+intragrupo/remessa/transferência ficam de fora) **E** `tipo = 'venda'` (o pedido é de venda,
+não romaneio/produção) **E** `etapa_id` na **whitelist curada de 27 etapas** do relatório
+oficial de Entregas Parciais do Odoo (ID 28). **A whitelist VENCE os flags da etapa**: pertencer
+ao conjunto é o que decide, não `finaliza_faturamento`/`confirmando`/`cancelando`. A regra antiga
+(por gatilhos dinâmicos da etapa) vazava para a demanda: **Cancelado (etapas 6/123) sai** pela
+whitelist, e a cauda longa, **peças e venda a consumidor final também saem** (TODO do dono, D7 ,
+decisão final de reincluir peças/consumidor final ainda pendente). A exceção "Nota emitida e não
+entregue" (etapa 226) continua na demanda, agora **por estar na whitelist**, não mais por nome.
+
+**Janela (regra nova, Fase 1A): a demanda a entregar NÃO é cortada pelo corte de leitura**
+(`sync.corte_dados`). A janela vem só da **pílula de período** do topo (Hoje / Esta semana /
+Este mês / Este ano / Tudo / Personalizado), aplicada por `data_orcamento`; **"Tudo" abre do
+primeiro pedido** até hoje/futuro. Assim o card da Visão geral, o relatório de Entregas Parciais,
+os blocos de Pedidos e o agente Nex mostram **o mesmo número para o mesmo período + empresa**
+(INV1). As **demais** métricas (faturamento, a receber, a pagar, valor em estoque) continuam
+grampeando no corte , só a demanda a entregar deixou de grampear.
 
 **"Atrasadas"**: dos abertos, os que têm `data_prevista` **anterior a hoje**. É a data
 prometida de entrega já vencida, com o pedido ainda aberto.
@@ -402,9 +415,10 @@ estados passam a ser os verdadeiros.
 | Origem do título (pedido x nota) | `src/worker/fatos/fato-financeiro-titulo.ts` |
 | Valor em estoque | `src/lib/diretoria/queries/estoque.ts` |
 | Demandas e atrasadas | `src/lib/diretoria/queries/pedidos.ts` |
-| Bucket da demanda (ABERTA) | `src/lib/fiscal/regras/classifica-etapa-demanda.ts` |
+| Bucket da demanda (ABERTA) | `src/worker/fatos/fato-pedido-classificacao.ts` (`bucketDoPedido`) + whitelist `src/lib/fiscal/regras/etapas-demanda-aberta.ts` |
 | Empresas do grupo (intragrupo) | `src/lib/fiscal/grupo/` |
 | Data de início das análises | `src/lib/corte-dados.ts` |
+| Janela da demanda a entregar (segue a pílula, não o corte) | `janelaDemandaAberta` (`src/lib/corte-dados.ts`) + `resolverJanelaDemanda` (`src/lib/diretoria/periodo.ts`) |
 
 ---
 

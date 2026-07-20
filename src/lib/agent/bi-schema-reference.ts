@@ -285,6 +285,14 @@ TABLE fato_pedido (
   data_prevista     TIMESTAMPTZ,
   vr_produtos       NUMERIC(18,2),
   vr_nf             NUMERIC(18,2),
+  -- Colunas materializadas pelo builder de classificacao (src/worker/fatos/fato-pedido-classificacao.ts):
+  categoria_operacao TEXT,  -- categoria gerencial da operacao por CFOP (venda, transferencia, remessa, ...)
+  pendencia_etapa    TEXT,  -- "o que falta para avancar", derivado dos gatilhos da etapa (so para bucket ABERTA)
+  bucket_demanda     TEXT,  -- ABERTA | FECHADA | IGNORAR. ABERTA = demanda a entregar = pedido de VENDA
+                            -- (tipo='venda'), operacao que entra na demanda (nao intragrupo/remessa), e
+                            -- etapa_id na whitelist curada de 27 etapas do relatorio oficial. A whitelist
+                            -- VENCE os flags da etapa. A demanda a entregar NAO e recortada pelo corte de
+                            -- leitura (segue a pilula de periodo por data_orcamento; "Tudo" = tudo).
   atualizado_em     TIMESTAMPTZ
 );
 
