@@ -12,6 +12,8 @@ import type { PrismaClient } from "@/generated/prisma/client";
 
 import { corteAtualDate, janelaDemandaAberta } from "@/lib/corte-dados";
 import { aAtenderDoItem } from "@/lib/diretoria/atendimento-item";
+import { corEtapaValida } from "@/lib/diretoria/etapa-cor";
+import { formatarNomeEtapa } from "@/lib/diretoria/etapa-formato";
 import { rotuloModalidadeFrete } from "@/lib/fiscal/regras/modalidade-frete";
 import { atendimentoSincronizado } from "@/lib/diretoria/atendimento-status";
 import { siglaDeUf } from "@/lib/diretoria/uf";
@@ -48,6 +50,8 @@ export interface LinhaEntregaParcial {
   /** Modalidade de frete (CIF/FOB/terceiros/próprio), rótulo do código NF-e modFrete. */
   modalidade: string | null;
   etapa: string | null;
+  /** Hex da cor da etapa vindo do Odoo (raw_pedido_etapa.data.cor), ou null (tag neutra). */
+  etapaCor: string | null;
   qtdAAtender: number;
   valorVendaAAtender: number;
   valorCustoAAtender: number;
@@ -71,6 +75,23 @@ export interface EntregasParciaisData {
   linhas: LinhaEntregaParcial[];
   /** false = job de atendimento não rodou; a tela avisa que usa a quantidade cheia. */
   atendimentoSincronizado: boolean;
+}
+
+/**
+ * Constrói o mapa etapa_id -> hex a partir das linhas de `raw_pedido_etapa`. Puro e
+ * testável: cada valor passa por `corEtapaValida` (false/lixo -> null). A cor é
+ * atributo de domínio da etapa (não histórico datado), então não segue o corte de
+ * leitura; apenas registros vivos (`rawDeleted: false`) entram no lote (ver A5).
+ */
+export function mapaCorEtapa(
+  rows: { odooId: number; data: unknown }[],
+): Map<number, string | null> {
+  const m = new Map<number, string | null>();
+  for (const r of rows) {
+    const cor = (r.data as { cor?: unknown } | null)?.cor;
+    m.set(r.odooId, corEtapaValida(cor));
+  }
+  return m;
 }
 
 // REGRA_BLOQUEIO (D-b, versão SIMPLES, pendente de veredito do dono , 2026-07-18):
@@ -165,6 +186,7 @@ export async function queryEntregasParciais(
       participanteNome: true,
       operacaoNome: true,
       modalidadeFrete: true,
+      etapaId: true,
       etapaNome: true,
       vrProdutos: true,
     },
@@ -215,6 +237,19 @@ export async function queryEntregasParciais(
   const idsEscopo = new Set(pedidosEscopo.map((p) => p.odooId));
   const pedidoDe = new Map(pedidosEscopo.map((p) => [p.odooId, p]));
 
+  // Cor da etapa: um único lote em `raw_pedido_etapa` pelos etapa_id em uso (sem N+1,
+  // sem migration, sem rebuild do worker). Só registros vivos (rawDeleted: false, A5).
+  const etapaIds = [
+    ...new Set(pedidosEscopo.map((p) => p.etapaId).filter((x): x is number => x != null)),
+  ];
+  const etapasRaw = etapaIds.length
+    ? await prisma.rawPedidoEtapa.findMany({
+        where: { odooId: { in: etapaIds }, rawDeleted: false },
+        select: { odooId: true, data: true },
+      })
+    : [];
+  const corDe = mapaCorEtapa(etapasRaw);
+
   let totalPedido = 0;
   for (const p of pedidosEscopo) totalPedido += Number(p.vrProdutos ?? 0);
 
@@ -246,7 +281,9 @@ export async function queryEntregasParciais(
       marca: it.marcaNome,
       operacao: p.operacaoNome,
       modalidade: rotuloModalidadeFrete(p.modalidadeFrete),
-      etapa: p.etapaNome,
+      // Preserva o null quando não há etapa (a UI cai no DASH); só formata quando há nome.
+      etapa: p.etapaNome ? formatarNomeEtapa(p.etapaNome) : null,
+      etapaCor: p.etapaId != null ? corDe.get(p.etapaId) ?? null : null,
       qtdAAtender: linha.aAtender,
       valorVendaAAtender: linha.vendaLinha,
       valorCustoAAtender: linha.custoLinha,

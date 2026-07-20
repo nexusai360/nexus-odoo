@@ -1,4 +1,4 @@
-import { queryEntregasParciais } from "./entregas-parciais";
+import { mapaCorEtapa, queryEntregasParciais } from "./entregas-parciais";
 
 const HOJE = new Date("2026-07-18T12:00:00");
 
@@ -10,6 +10,7 @@ type Pedido = {
   operacaoNome: string | null;
   modalidadeFrete?: string | null;
   numeroMercos?: string | null;
+  etapaId?: number | null;
   etapaNome: string | null;
   vrProdutos: number;
 };
@@ -32,8 +33,12 @@ function makePrisma(opts: {
   jobOk?: boolean;
   titulosVencidos?: { participanteId: number | null; participanteNome: string | null }[];
   formasPagamento?: { pedidoId: number | null; formaPagamentoNome: string | null }[];
+  etapasRaw?: { odooId: number; data: unknown }[];
 }) {
+  const rawPedidoEtapaFindMany = jest.fn().mockResolvedValue(opts.etapasRaw ?? []);
   return {
+    __rawPedidoEtapaFindMany: rawPedidoEtapaFindMany,
+    rawPedidoEtapa: { findMany: rawPedidoEtapaFindMany },
     fatoPedido: { findMany: jest.fn().mockResolvedValue(opts.pedidos) },
     fatoPedidoItem: { findMany: jest.fn().mockResolvedValue(opts.itens) },
     fatoProduto: { findMany: jest.fn().mockResolvedValue(opts.produtos) },
@@ -248,5 +253,92 @@ describe("queryEntregasParciais", () => {
     const r = await queryEntregasParciais(prisma, HOJE, { ufs: ["SP"] });
     expect(r.indicadores.qtdPedidos).toBe(1);
     expect(r.linhas.every((l) => l.uf === "SP")).toBe(true);
+  });
+
+  it("Fase 2: devolve etapaCor (hex do Odoo) e o nome da etapa formatado na linha", async () => {
+    const prisma = makePrisma({
+      pedidos: [
+        { odooId: 1, numero: "P1", participanteId: 5010, participanteNome: "A", operacaoNome: "Venda", etapaId: 42, etapaNome: "GERA BOLETO", vrProdutos: 1000 },
+      ],
+      itens: [
+        { pedidoId: 1, produtoId: 100, produtoNome: "X", familiaNome: null, marcaNome: null, quantidade: 10, quantidadeAAtender: null, vrProdutos: 1000 },
+      ],
+      produtos: [{ odooId: 100, precoCusto: 40 }],
+      parceiros: [{ odooId: 5010, uf: "SP", cidade: "SP" }],
+      etapasRaw: [{ odooId: 42, data: { cor: "#fa7e1e" } }],
+    });
+
+    const r = await queryEntregasParciais(prisma, HOJE);
+    expect(r.linhas[0].etapaCor).toBe("#fa7e1e");
+    expect(r.linhas[0].etapa).toBe("Gera Boleto"); // formatarNomeEtapa aplicado
+
+    // A5: o lote em raw_pedido_etapa filtra registros vivos e usa só os etapa_id em uso.
+    const where = (prisma as unknown as { __rawPedidoEtapaFindMany: jest.Mock })
+      .__rawPedidoEtapaFindMany.mock.calls[0][0].where;
+    expect(where.rawDeleted).toBe(false);
+    expect(where.odooId.in).toEqual([42]);
+  });
+
+  it("Fase 2: etapa sem cor no Odoo (false) => etapaCor null (tag neutra)", async () => {
+    const prisma = makePrisma({
+      pedidos: [
+        { odooId: 1, numero: "P1", participanteId: 5010, participanteNome: "A", operacaoNome: "Venda", etapaId: 7, etapaNome: "V.O - Aprovado", vrProdutos: 1000 },
+      ],
+      itens: [
+        { pedidoId: 1, produtoId: 100, produtoNome: "X", familiaNome: null, marcaNome: null, quantidade: 10, quantidadeAAtender: null, vrProdutos: 1000 },
+      ],
+      produtos: [{ odooId: 100, precoCusto: 40 }],
+      parceiros: [{ odooId: 5010, uf: "SP", cidade: "SP" }],
+      etapasRaw: [{ odooId: 7, data: { cor: false } }],
+    });
+
+    const r = await queryEntregasParciais(prisma, HOJE);
+    expect(r.linhas[0].etapaCor).toBeNull();
+    expect(r.linhas[0].etapa).toBe("V.O - Aprovado");
+  });
+
+  it("Fase 2: sem etapa_id não dispara o lote em raw_pedido_etapa (sem query desnecessária)", async () => {
+    const prisma = makePrisma({
+      pedidos: [
+        { odooId: 1, numero: "P1", participanteId: 5010, participanteNome: "A", operacaoNome: "Venda", etapaNome: null, vrProdutos: 1000 },
+      ],
+      itens: [
+        { pedidoId: 1, produtoId: 100, produtoNome: "X", familiaNome: null, marcaNome: null, quantidade: 10, quantidadeAAtender: null, vrProdutos: 1000 },
+      ],
+      produtos: [{ odooId: 100, precoCusto: 40 }],
+      parceiros: [{ odooId: 5010, uf: "SP", cidade: "SP" }],
+    });
+
+    const r = await queryEntregasParciais(prisma, HOJE);
+    expect(r.linhas[0].etapaCor).toBeNull();
+    expect(r.linhas[0].etapa).toBeNull(); // etapaNome null preserva null (UI cai no DASH)
+    expect((prisma as unknown as { __rawPedidoEtapaFindMany: jest.Mock })
+      .__rawPedidoEtapaFindMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("mapaCorEtapa", () => {
+  it("mapeia etapa_id -> hex valido e trata false/ausente como null", () => {
+    const m = mapaCorEtapa([
+      { odooId: 4, data: { cor: "#fa7e1e" } },
+      { odooId: 6, data: { cor: false } },
+      { odooId: 9, data: {} },
+    ]);
+    expect(m.get(4)).toBe("#fa7e1e");
+    expect(m.get(6)).toBeNull();
+    expect(m.get(9)).toBeNull();
+  });
+
+  it("descarta hex invalido (vira null) e aceita data nulo", () => {
+    const m = mapaCorEtapa([
+      { odooId: 1, data: { cor: "laranja" } },
+      { odooId: 2, data: null },
+    ]);
+    expect(m.get(1)).toBeNull();
+    expect(m.get(2)).toBeNull();
+  });
+
+  it("mapa vazio para lista vazia", () => {
+    expect(mapaCorEtapa([]).size).toBe(0);
   });
 });
