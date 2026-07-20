@@ -1,5 +1,6 @@
 import {
   corEtapaValida,
+  derivarCorTag,
   hexParaRgba,
   luminanciaRelativa,
 } from "./etapa-cor";
@@ -48,5 +49,26 @@ describe("luminanciaRelativa", () => {
   });
   it("null para hex invalido", () => {
     expect(luminanciaRelativa("xyz")).toBeNull();
+  });
+});
+
+describe("derivarCorTag", () => {
+  it("null quando nao ha cor (etapa sem cor no Odoo)", () => {
+    expect(derivarCorTag(null)).toBeNull();
+  });
+  it("null quando o hex e invalido", () => {
+    expect(derivarCorTag("banana")).toBeNull();
+  });
+  it("deriva bg e borda translucidos do hue (defaults)", () => {
+    expect(derivarCorTag("#fa7e1e")).toEqual({
+      backgroundColor: "rgba(250, 126, 30, 0.14)",
+      borderColor: "rgba(250, 126, 30, 0.4)",
+    });
+  });
+  it("aceita alphas customizados para o ajuste fino do inline (A4)", () => {
+    expect(derivarCorTag("#fa7e1e", { alphaFundo: 0.2, alphaBorda: 0.7 })).toEqual({
+      backgroundColor: "rgba(250, 126, 30, 0.2)",
+      borderColor: "rgba(250, 126, 30, 0.7)",
+    });
   });
 });
