@@ -79,7 +79,26 @@ export function resolverPeriodoDir(
   return { ...bruto, de: clampDateAoCorte(bruto.de) };
 }
 
-function resolverPeriodoDirBruto(
+/**
+ * Janela de periodo da Diretoria PARA A DEMANDA A ENTREGAR: usa a mesma pilula, mas NAO
+ * grampeia no corte de leitura (a demanda nao e cortada pelo corte, D8/RF-A5). "Tudo" abre
+ * a janela inteira (sem de/ate). Os demais presets recortam pelo intervalo exato.
+ */
+export function resolverJanelaDemanda(
+  params: PeriodoDirParams,
+  hoje: Date,
+): { periodoDe?: string; periodoAte?: string } {
+  const bruto = resolverPeriodoDirBruto(params, hoje);
+  if (bruto.preset === "tudo") return {}; // janela aberta: do primeiro pedido ate o futuro
+  return { periodoDe: isoDiaUtc(bruto.de), periodoAte: isoDiaUtc(bruto.ate) };
+}
+
+/** AAAA-MM-DD de um Date em UTC (o resolvedor bruto ja trabalha em UTC). */
+function isoDiaUtc(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+export function resolverPeriodoDirBruto(
   params: PeriodoDirParams,
   hoje: Date,
 ): PeriodoDirResolvido {

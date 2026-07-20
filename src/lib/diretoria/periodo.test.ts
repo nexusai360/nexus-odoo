@@ -1,4 +1,4 @@
-import { resolverPeriodoDir } from "./periodo";
+import { resolverPeriodoDir, resolverJanelaDemanda } from "./periodo";
 
 // 2026-06-28 é um domingo.
 const hoje = new Date("2026-06-28T12:00:00Z");
@@ -64,5 +64,27 @@ describe("resolverPeriodoDir", () => {
     const r = resolverPeriodoDir({ periodo: "xpto" }, hoje);
     expect(r.preset).toBe("este_mes");
     expect(iso(r.de)).toBe("2026-06-01");
+  });
+});
+
+describe("resolverJanelaDemanda , pilula manda, sem grampo no corte", () => {
+  const HOJE = new Date("2026-07-20T12:00:00Z");
+
+  it("'tudo' => janela ABERTA (sem de/ate)", () => {
+    const r = resolverJanelaDemanda({ periodo: "tudo" }, HOJE);
+    expect(r.periodoDe).toBeUndefined();
+    expect(r.periodoAte).toBeUndefined();
+  });
+
+  it("'este_mes' => recorta o mes exato (nao grampeia no corte)", () => {
+    const r = resolverJanelaDemanda({ periodo: "este_mes" }, HOJE);
+    expect(r.periodoDe).toBe("2026-07-01");
+    expect(r.periodoAte).toBe("2026-07-31");
+  });
+
+  it("'custom' anterior ao corte NAO e puxado para o corte", () => {
+    const r = resolverJanelaDemanda({ periodo: "custom", de: "2024-11-01", ate: "2025-01-31" }, HOJE);
+    expect(r.periodoDe).toBe("2024-11-01");
+    expect(r.periodoAte).toBe("2025-01-31");
   });
 });

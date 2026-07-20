@@ -158,6 +158,18 @@ export function janelaClampada(
 }
 
 /**
+ * Piso da metrica "demanda a entregar": ela NAO e recortada pelo corte de leitura (D8/RF-A5).
+ * A janela vem so da pilula de periodo; o piso 2000 e "abre tudo" (na pratica, do primeiro
+ * pedido). As OUTRAS metricas continuam usando janelaClampada (piso no corte).
+ */
+export const PISO_DEMANDA_ABERTA = "2000-01-01";
+
+/** Janela de leitura da demanda a entregar: recorta pela pilula, sem grampear no corte. */
+export function janelaDemandaAberta(de?: string, ate?: string): Janela {
+  return janelaClampada(de, ate, PISO_DEMANDA_ABERTA);
+}
+
+/**
  * Grampeia um mes ("AAAA-MM") ao mes do corte. Para series mensais, cujo eixo e o mes e nao
  * o dia (fato_estoque_movimento.mes, por exemplo).
  *

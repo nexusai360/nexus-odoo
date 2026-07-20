@@ -2,6 +2,8 @@
 import { describe, it, expect } from "@jest/globals";
 import {
   janelaClampada,
+  janelaDemandaAberta,
+  PISO_DEMANDA_ABERTA,
   whereData,
   clampMesAoCorte,
   clampIsoAoCorte,
@@ -76,5 +78,19 @@ describe("clampIsoAoCorte", () => {
   it("usa o padrao 16/03/2026 quando ninguem configurou", () => {
     expect(CORTE_DADOS_PADRAO).toBe("2026-03-16");
     expect(clampIsoAoCorte("2024-01-01")).toBe(CORTE_DADOS_PADRAO);
+  });
+});
+
+describe("janelaDemandaAberta , demanda a entregar nao grampeia no corte", () => {
+  it("sem periodo => abre do piso (2000) ate o fim aberto", () => {
+    const j = janelaDemandaAberta();
+    expect(j.gte.toISOString().slice(0, 10)).toBe(PISO_DEMANDA_ABERTA);
+    expect(j.lt.getUTCFullYear()).toBeGreaterThanOrEqual(2100);
+  });
+
+  it("com intervalo anterior ao corte NAO grampeia (recorta exato)", () => {
+    const j = janelaDemandaAberta("2024-11-01", "2025-12-31");
+    expect(j.gte.toISOString().slice(0, 10)).toBe("2024-11-01");
+    expect(j.cortado).toBe(false); // piso 2000, entao nunca "cortado"
   });
 });
