@@ -160,7 +160,7 @@ function KpisEntregasParciais({ d }: { d: PedidosData }) {
         <KpiButton rotulo="Pedidos" valor={num.format(i.qtdPedidos)} icone={ClipboardList} tone="info" hint="Em aberto no período" />
         <KpiButton rotulo="Total dos pedidos" valor={brlCompacto(i.totalPedido)} valorCompleto={brl.format(i.totalPedido)} icone={Receipt} hint="Valor cheio, a venda (inclui o já entregue)" />
         <KpiButton rotulo="Falta entregar (venda)" valor={brlCompacto(i.aAtenderVenda)} valorCompleto={brl.format(i.aAtenderVenda)} icone={Wallet} hint="Saldo a atender, a preço de venda" />
-        <KpiButton rotulo="Falta entregar (custo)" valor={brlCompacto(i.aAtenderCusto)} valorCompleto={brl.format(i.aAtenderCusto)} icone={Coins} tone="success" hint="Saldo a atender, a custo (bate com o card)" />
+        <KpiButton rotulo="Falta entregar (custo)" valor={brlCompacto(i.aAtenderCusto)} valorCompleto={brl.format(i.aAtenderCusto)} icone={Coins} tone="success" hint="Saldo a atender, a custo (mesma métrica do card: bate para o mesmo período e empresa)" />
       </div>
       {!d.entregasParciais.atendimentoSincronizado ? (
         <p className="inline-flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">

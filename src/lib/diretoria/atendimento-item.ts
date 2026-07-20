@@ -1,9 +1,10 @@
 // Invariante ÚNICO de "quanto falta entregar de um item de pedido".
 //
 // Esta é a peça compartilhada entre o card "Demandas a entregar" (grão-pedido, em
-// `enriquecerComAAtender`) e o Relatório de Entregas Parciais (grão-item). Os dois PRECISAM
-// somar exatamente o mesmo, senão os números divergem em silêncio. Por isso a regra mora
-// aqui, testada isoladamente, e ninguém a reescreve.
+// `enriquecerComAAtender`) e o Relatório de Entregas Parciais (grão-item). É a MESMA métrica:
+// no mesmo período e na mesma empresa, os dois somam exatamente o mesmo número (a demanda a
+// entregar segue a pílula de período, não o corte de leitura, D8/RF-A5/A6). Se divergirem no
+// mesmo escopo, é bug. Por isso a regra mora aqui, testada isoladamente, e ninguém a reescreve.
 //
 // Regra (a mesma de sempre, ver `atendimento-status.ts`):
 //   - `jobOk` = o job de atendimento completou recentemente. Aí confia-se no saldo do Odoo
