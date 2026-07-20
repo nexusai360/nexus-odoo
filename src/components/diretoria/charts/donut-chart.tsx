@@ -36,7 +36,14 @@ function compacto(v: number): string {
 const VOLTA_COMPLETA = 2 * Math.PI - 1e-6;
 
 function arco(cx: number, cy: number, r: number, a0: number, a1: number): string {
-  const p = (a: number) => [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+  // Precisao FIXA (3 casas): server (Node) e client (browser) podem divergir 1 ULP no
+  // Math.cos/Math.sin (funcoes transcendentais nao sao bit-identicas entre engines), e a
+  // string do float mudava no ultimo digito , dava hydration mismatch no React. Arredondar
+  // gera a MESMA string dos dois lados (e ainda encurta o path). 3 casas sobra num viewBox 180.
+  const p = (a: number): [string, string] => [
+    (cx + r * Math.cos(a)).toFixed(3),
+    (cy + r * Math.sin(a)).toFixed(3),
+  ];
 
   // FATIA DE 100%: o ponto inicial e o final do arco coincidem, e o SVG entende ponto de
   // partida igual ao de chegada como "não desenhe nada" , o gráfico sumia da tela. É o que

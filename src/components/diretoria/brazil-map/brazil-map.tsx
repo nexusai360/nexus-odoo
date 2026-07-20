@@ -7,27 +7,116 @@ import { cn } from "@/lib/utils";
 import { SEM_UF } from "@/lib/diretoria/uf";
 import { BRAZIL_VIEWBOX, UF_PATHS } from "./uf-data";
 
-// Posição da sigla de cada estado: centroide dos vértices do path (os paths são só M/L,
-// coordenadas absolutas), e um tamanho de fonte proporcional ao menor lado do estado , para
-// a letrinha caber em estados pequenos (DF, SE) sem esmagar os grandes. Calculado uma vez.
-const UF_LABELS = UF_PATHS.map((p) => {
-  const nums = p.path.match(/-?\d+(?:\.\d+)?/g)?.map(Number) ?? [];
-  let sx = 0, sy = 0, n = 0;
-  let minx = Infinity, miny = Infinity, maxx = -Infinity, maxy = -Infinity;
-  for (let i = 0; i + 1 < nums.length; i += 2) {
-    const x = nums[i], y = nums[i + 1];
-    sx += x; sy += y; n += 1;
-    if (x < minx) minx = x;
-    if (x > maxx) maxx = x;
-    if (y < miny) miny = y;
-    if (y > maxy) maxy = y;
+// Anéis (sub-paths) de um path só com M/L: cada "Z" fecha um anel de coordenadas absolutas.
+function aneisDoPath(path: string): [number, number][][] {
+  return path
+    .split(/Z/i)
+    .filter((s) => s.trim())
+    .map((sub) => {
+      const nums = sub.match(/-?\d+(?:\.\d+)?/g)?.map(Number) ?? [];
+      const anel: [number, number][] = [];
+      for (let i = 0; i + 1 < nums.length; i += 2) anel.push([nums[i], nums[i + 1]]);
+      return anel;
+    });
+}
+
+function pontoNoAnel(px: number, py: number, anel: [number, number][]): boolean {
+  let dentro = false;
+  for (let i = 0, j = anel.length - 1; i < anel.length; j = i++) {
+    const xi = anel[i][0], yi = anel[i][1], xj = anel[j][0], yj = anel[j][1];
+    if ((yi > py) !== (yj > py) && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) {
+      dentro = !dentro;
+    }
   }
+  return dentro;
+}
+
+function distSegmento(px: number, py: number, a: [number, number], b: [number, number]): number {
+  const dx = b[0] - a[0], dy = b[1] - a[1];
+  let t = dx || dy ? ((px - a[0]) * dx + (py - a[1]) * dy) / (dx * dx + dy * dy) : 0;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(px - (a[0] + t * dx), py - (a[1] + t * dy));
+}
+
+// Polo de inacessibilidade: o ponto MAIS INTERIOR do polígono (o mais distante de qualquer
+// borda). É o que as bibliotecas de mapa usam para posicionar rótulo. O centroide simples
+// (média dos vértices) era puxado para o litoral, onde os paths têm mais pontos, e a sigla
+// caía fora do meio (ex.: PA no topo, AC na ponta fina). O polo cai sempre dentro do estado,
+// no maior espaço livre , inclusive nos côncavos. Refino de grade: parte do centro da bbox e
+// vai afunilando em torno do melhor ponto.
+function poloDeInacessibilidade(
+  aneis: [number, number][][],
+  bbox: { minx: number; miny: number; maxx: number; maxy: number },
+): [number, number] {
+  const dentro = (x: number, y: number) => aneis.some((a) => pontoNoAnel(x, y, a));
+  const distBorda = (x: number, y: number) => {
+    let md = Infinity;
+    for (const a of aneis) {
+      for (let i = 0, j = a.length - 1; i < a.length; j = i++) {
+        const d = distSegmento(x, y, a[j], a[i]);
+        if (d < md) md = d;
+      }
+    }
+    return md;
+  };
+  let cx = (bbox.minx + bbox.maxx) / 2, cy = (bbox.miny + bbox.maxy) / 2;
+  let melhor: [number, number] | null = null, melhorD = -Infinity;
+  let alcance = Math.max(bbox.maxx - bbox.minx, bbox.maxy - bbox.miny) / 2;
+  for (let passe = 0; passe < 6; passe++) {
+    const passo = alcance / 6 || 1;
+    for (let x = cx - alcance; x <= cx + alcance; x += passo) {
+      for (let y = cy - alcance; y <= cy + alcance; y += passo) {
+        if (!dentro(x, y)) continue;
+        const d = distBorda(x, y);
+        if (d > melhorD) { melhorD = d; melhor = [x, y]; }
+      }
+    }
+    if (melhor) { cx = melhor[0]; cy = melhor[1]; }
+    alcance /= 3;
+  }
+  return melhor ?? [cx, cy]; // fallback: centro da bbox (paths degenerados dos testes)
+}
+
+// Ajustes por UF, só nos estados pequenos onde a regra geral não serve. Cada campo é opcional:
+// `cx`/`cy` reposicionam a sigla; `fonte` sobrepõe o tamanho. Os demais estados seguem o polo
+// de inacessibilidade + a fórmula de fonte.
+// - DF: é minúsculo; a sigla no polo (dentro do quadradinho) fica ilegível. Vai ACIMA do
+//   quadrado (o DF ocupa ~y[325..334], x[402..417]).
+// - DF/SE/AL: fonte num meio-termo (9,5) entre o que a fórmula dava (~8) e o teto dos demais
+//   estados (11), para ficarem mais legíveis sem destoar.
+const AJUSTE_ESPECIAL: Record<string, { cx?: number; cy?: number; fonte?: number }> = {
+  DF: { cx: 409.5, cy: 319, fonte: 9.5 },
+  SE: { fonte: 9.5 },
+  AL: { fonte: 9.5 },
+};
+
+// Posição e tamanho da sigla de cada estado. Calculado uma vez.
+const UF_LABELS = UF_PATHS.map((p) => {
+  const aneis = aneisDoPath(p.path);
+  let minx = Infinity, miny = Infinity, maxx = -Infinity, maxy = -Infinity;
+  for (const a of aneis) {
+    for (const [x, y] of a) {
+      if (x < minx) minx = x;
+      if (x > maxx) maxx = x;
+      if (y < miny) miny = y;
+      if (y > maxy) maxy = y;
+    }
+  }
+  if (!Number.isFinite(minx)) { minx = miny = 0; maxx = maxy = 1; }
+  const [cx, cy] = poloDeInacessibilidade(aneis, { minx, miny, maxx, maxy });
   const menor = Math.min(maxx - minx, maxy - miny);
+  // Arredonda: o cálculo usa Math.hypot, que pode divergir 1 ULP entre engines (server x
+  // client) , sem isto, x/y/fontSize sairiam com um dígito diferente e dariam hydration
+  // mismatch, como acontecia no DonutChart. 2 casas sobra num viewBox de 613.
+  const arred = (v: number) => Number(v.toFixed(2));
+  const especial = AJUSTE_ESPECIAL[p.uf] ?? {};
+  // Menor que antes (0,42 -> 0,30; teto 15 -> 11): as siglas estavam pesadas. Piso 6.
+  const fonteBase = arred(Math.max(6, Math.min(11, menor * 0.3)));
   return {
     uf: p.uf,
-    cx: n ? sx / n : 0,
-    cy: n ? sy / n : 0,
-    fonte: Math.max(7, Math.min(15, menor * 0.42)),
+    cx: especial.cx ?? arred(cx),
+    cy: especial.cy ?? arred(cy),
+    fonte: especial.fonte ?? fonteBase,
   };
 });
 
