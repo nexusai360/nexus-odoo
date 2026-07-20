@@ -1,4 +1,8 @@
-import { corEtapaValida } from "./etapa-cor";
+import {
+  corEtapaValida,
+  hexParaRgba,
+  luminanciaRelativa,
+} from "./etapa-cor";
 
 describe("corEtapaValida", () => {
   it("aceita hex de 6 digitos", () => {
@@ -22,5 +26,27 @@ describe("corEtapaValida", () => {
   });
   it("apara espacos ao redor", () => {
     expect(corEtapaValida("  #00b159 ")).toBe("#00b159");
+  });
+});
+
+describe("hexParaRgba", () => {
+  it("converte hex de 6 digitos com alpha", () => {
+    expect(hexParaRgba("#ff0000", 0.14)).toBe("rgba(255, 0, 0, 0.14)");
+  });
+  it("expande hex de 3 digitos", () => {
+    expect(hexParaRgba("#0a0", 1)).toBe("rgba(0, 170, 0, 1)");
+  });
+  it("devolve null para hex invalido", () => {
+    expect(hexParaRgba("nope", 0.5)).toBeNull();
+  });
+});
+
+describe("luminanciaRelativa", () => {
+  it("branco ~ 1 e preto ~ 0", () => {
+    expect(luminanciaRelativa("#ffffff")).toBeCloseTo(1, 2);
+    expect(luminanciaRelativa("#000000")).toBeCloseTo(0, 2);
+  });
+  it("null para hex invalido", () => {
+    expect(luminanciaRelativa("xyz")).toBeNull();
   });
 });
