@@ -63,12 +63,14 @@ describe("derivarCorTag", () => {
     expect(derivarCorTag("#fa7e1e")).toEqual({
       backgroundColor: "rgba(250, 126, 30, 0.14)",
       borderColor: "rgba(250, 126, 30, 0.4)",
+      color: "color-mix(in oklab, #fa7e1e 65%, var(--foreground))",
     });
   });
   it("aceita alphas customizados para o ajuste fino do inline (A4)", () => {
     expect(derivarCorTag("#fa7e1e", { alphaFundo: 0.2, alphaBorda: 0.7 })).toEqual({
       backgroundColor: "rgba(250, 126, 30, 0.2)",
       borderColor: "rgba(250, 126, 30, 0.7)",
+      color: "color-mix(in oklab, #fa7e1e 65%, var(--foreground))",
     });
   });
 });

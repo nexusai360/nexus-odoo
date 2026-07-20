@@ -65,6 +65,7 @@ export function formatarNomeEtapa(nome: string | null | undefined): string {
   if (!nome) return "";
   return nome
     .trim()
+    .replace(/\.+\s*$/u, "")
     .split(" - ")
     .map((clausula) => formatarClausula(clausula))
     .join(" - ");

@@ -48,6 +48,12 @@ export function luminanciaRelativa(hex: string): number | null {
 export interface EstiloTagCor {
   backgroundColor: string;
   borderColor: string;
+  /**
+   * Cor do TEXTO da tag: o proprio hex do Odoo puxado 35% na direcao do
+   * `--foreground` do tema (via color-mix), pra conversar com a cor da tag e
+   * ainda ter contraste no claro E no escuro (no dark clareia, no light escurece).
+   */
+  color: string;
 }
 
 /**
@@ -80,5 +86,6 @@ export function derivarCorTag(
   const backgroundColor = hex ? hexParaRgba(hex, alphaFundo) : null;
   const borderColor = hex ? hexParaRgba(hex, alphaBorda) : null;
   if (!backgroundColor || !borderColor) return null;
-  return { backgroundColor, borderColor };
+  const color = `color-mix(in oklab, ${hex} 65%, var(--foreground))`;
+  return { backgroundColor, borderColor, color };
 }

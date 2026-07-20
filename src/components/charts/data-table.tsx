@@ -649,8 +649,8 @@ export function DataTable<T extends Record<string, unknown>>({
                                       if (estiloCor) {
                                         return (
                                           <span
-                                            className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium text-foreground"
-                                            style={{ backgroundColor: estiloCor.backgroundColor, borderColor: estiloCor.borderColor }}
+                                            className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium"
+                                            style={{ backgroundColor: estiloCor.backgroundColor, borderColor: estiloCor.borderColor, color: estiloCor.color }}
                                           >
                                             {String(row[c.key] ?? "")}
                                           </span>
