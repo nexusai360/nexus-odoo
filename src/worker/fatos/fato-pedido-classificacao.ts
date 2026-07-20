@@ -12,6 +12,7 @@ import {
   classificaOperacao,
   classificaEtapaDemanda,
   notaEhVendaExterna,
+  ETAPAS_DEMANDA_ABERTA,
 } from "../../lib/fiscal/regras";
 import { frasePendencia } from "../../lib/comercial/pendencia-etapa";
 
@@ -52,6 +53,29 @@ export interface ClassificacaoPedido {
   categoriaOperacao: string;
   bucketDemanda: string;
   pendenciaEtapa: string | null;
+}
+
+/**
+ * Decisao UNICA do bucket de demanda de um pedido. Usada pelas duas gemeas do builder
+ * (classificarPedidosDoRaw e rebuildFatoPedidoClassificacao) para nao derivarem.
+ *
+ * Precedencia:
+ *   1. Gate de OPERACAO: fora da demanda (intragrupo/remessa/transferencia) => IGNORAR.
+ *   2. Gate de TIPO: pedido que nao e de venda (romaneio/producao/transferencia) => IGNORAR.
+ *      Espelha `pd.tipo = 'venda'` do relatorio oficial (ID 28).
+ *   3. Whitelist AUTORITATIVA: etapa nos 27 curados => ABERTA. Pertencer vence os flags.
+ *   4. Fora da whitelist NUNCA e ABERTA: cancelado => IGNORAR; o resto => FECHADA.
+ */
+export function bucketDoPedido(input: {
+  entraDemanda: boolean;
+  tipo: string | null;
+  etapaId: number | null;
+  finalizaPedidoCancelando: boolean;
+}): "ABERTA" | "FECHADA" | "IGNORAR" {
+  if (!input.entraDemanda) return "IGNORAR";
+  if (input.tipo !== "venda") return "IGNORAR";
+  if (input.etapaId != null && ETAPAS_DEMANDA_ABERTA.has(input.etapaId)) return "ABERTA";
+  return input.finalizaPedidoCancelando ? "IGNORAR" : "FECHADA";
 }
 
 /**
