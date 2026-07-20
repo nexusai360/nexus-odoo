@@ -873,13 +873,14 @@ describe("queryEstoqueDisponivelDiretoria (A12)", () => {
     expect(r.produtos).toBe(3);
   });
 
-  // Fronteira da regra: o SALDO é foto (não filtra), mas a DEMANDA vem de pedido, que é
-  // documento com data. Pedido pré-corte não pode comprometer estoque e fabricar negativo.
-  it("a demanda só considera pedidos a partir da data de início das análises; o saldo não filtra", async () => {
+  // Fronteira da regra: o SALDO é foto (não filtra). A DEMANDA vem de pedido (documento com
+  // data), mas NÃO é cortada pelo corte de leitura (D8/RF-A5): sem período, abre no piso 2000
+  // (a mesma janela do card/relatório para "Tudo"), não no corte.
+  it("a demanda segue a pílula (piso 2000), não o corte de leitura; o saldo não filtra", async () => {
     const prisma = makePrisma([], [], []);
     await queryEstoqueDisponivelDiretoria(prisma, {});
     const pedidoCall = (prisma.fatoPedido.findMany as jest.Mock).mock.calls[0][0];
-    expect(pedidoCall.where.dataOrcamento.gte).toEqual(CORTE);
+    expect(pedidoCall.where.dataOrcamento.gte.toISOString().slice(0, 10)).toBe("2000-01-01");
     expect(pedidoCall.where.bucketDemanda ?? pedidoCall.where.OR).toBeDefined();
     const saldoCall = (prisma.fatoEstoqueSaldo.findMany as jest.Mock).mock.calls[0][0];
     // O saldo continua sem piso de data (é foto do agora: o que está no armazém hoje

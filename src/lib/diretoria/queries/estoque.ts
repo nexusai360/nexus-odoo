@@ -28,7 +28,7 @@
 //   comparar com o saldo do grupo fabricaria disponibilidade que não existe.
 
 import type { PrismaClient } from "@/generated/prisma/client";
-import { clampDateAoCorte, janelaClampada } from "@/lib/corte-dados";
+import { clampDateAoCorte, janelaClampada, janelaDemandaAberta } from "@/lib/corte-dados";
 import { buildEmpresaWhere } from "@/lib/metrics/_shared/empresa";
 import { diasRestantes, statusPrazo, type StatusPrazo } from "@/lib/diretoria/cores";
 import { VENDA_FUTURA } from "@/lib/fiscal/regras/venda-futura-policy";
@@ -76,6 +76,21 @@ function periodoWhere(
   campo: string,
 ): Record<string, unknown> {
   const j = janelaClampada(de, ate);
+  return { [campo]: { gte: j.gte, lt: j.lt } };
+}
+
+/**
+ * Recorte de período da DEMANDA A ENTREGAR (bucket ABERTA): igual ao periodoWhere, mas SEM
+ * grampear no corte de leitura. A demanda segue só a pílula de período (D8/RF-A5); sem período,
+ * abre a janela inteira (piso 2000, na prática o primeiro pedido). Vale só para as consultas
+ * de demanda (estoque disponível e necessidade de compra); compra e DF-e seguem o corte.
+ */
+function periodoDemandaWhere(
+  de: string | undefined,
+  ate: string | undefined,
+  campo: string,
+): Record<string, unknown> {
+  const j = janelaDemandaAberta(de, ate);
   return { [campo]: { gte: j.gte, lt: j.lt } };
 }
 
@@ -913,16 +928,16 @@ export async function queryEstoqueDisponivelDiretoria(
   // politica de venda futura estiver ligada, inclui tambem o simples faturamento
   // (venda futura ja faturada, reservada ate a remessa) , ENGATILHADO.
   //
-  // Diferente do saldo, o PEDIDO é documento com data: só compromete estoque se estiver
-  // dentro do período analisado (e nunca antes da data de início das análises). Sem esse
-  // piso, um pedido velho preso em "ABERTA" subtraía saldo e fabricava "disponível
-  // negativo" (e unidades a comprar) que não existem.
+  // Diferente do saldo, o PEDIDO é documento com data. A demanda a entregar NÃO é cortada
+  // pelo corte de leitura (D8/RF-A5): a janela vem só da pílula; sem período, abre inteira
+  // (piso 2000). Assim o "disponível/necessidade" usa o MESMO comprometido do card/relatório
+  // para a mesma pílula (INV1), sem regrampear no corte.
   //
   // Sem recorte por empresa de propósito: o pedido tem empresa, o saldo não. Filtrar só a
   // demanda e subtrair do saldo do grupo mostraria disponibilidade que não existe.
   const abertos = await prisma.fatoPedido.findMany({
     where: {
-      ...periodoWhere(filtros.periodoDe, filtros.periodoAte, "dataOrcamento"),
+      ...periodoDemandaWhere(filtros.periodoDe, filtros.periodoAte, "dataOrcamento"),
       ...(VENDA_FUTURA.RESERVA_ESTOQUE_ATE_REMESSA
         ? { OR: [{ bucketDemanda: "ABERTA" }, { categoriaOperacao: "simples_faturamento" }] }
         : { bucketDemanda: "ABERTA" }),
@@ -1118,12 +1133,13 @@ export async function queryNecessidadeCompra(
       },
     }),
     custoPorProduto(prisma),
-    // A DEMANDA recorta por período (data do pedido); o SALDO acima, não (é a foto de
+    // A DEMANDA recorta pela pílula de período (data do pedido) e NÃO pelo corte de leitura
+    // (D8/RF-A5); sem período, abre inteira (piso 2000). O SALDO acima, não (é a foto de
     // hoje). Empresa fica de fora pelo mesmo motivo do estoque disponível: o pedido tem
     // empresa, o saldo não, e recortar só um lado da subtração daria uma falta irreal.
     prisma.fatoPedido.findMany({
       where: {
-        ...periodoWhere(filtros.periodoDe, filtros.periodoAte, "dataOrcamento"),
+        ...periodoDemandaWhere(filtros.periodoDe, filtros.periodoAte, "dataOrcamento"),
         ...(VENDA_FUTURA.RESERVA_ESTOQUE_ATE_REMESSA
           ? {
               OR: [
