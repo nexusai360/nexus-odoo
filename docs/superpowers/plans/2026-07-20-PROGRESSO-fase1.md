@@ -50,8 +50,31 @@ implementação (UI SEMPRE inline + ui-ux-pro-max). Sem spec.
   `2026-07-20-fase2-tags-etapa.md`, `2026-07-20-review-plano-fase2.md`.
   Validação visual no browser: PENDENTE (dev:fresh rodado, client regenerado,
   erro `fatoEstoqueLocal` era client desatualizado do dev, resolvido).
-- **FASE 3+ (colunas completas, filtros, agrupamento, views): não iniciadas.**
-  Base: protótipo ERP Nexus (mesma stack). Ordem no doc mestre seção 8.
+### Ajustes finais da Fase 2 (feitos, commitados)
+- Texto da tag na COR do Odoo (color-mix 65% hex + 35% --foreground), não branco.
+- Ponto final removido do nome da etapa.
+- Coluna Financeiro virou ÍCONE: `CircleCheck` (Liberado, verde) / `CircleX`
+  (Bloqueado, vermelho), 18px, strokeWidth 2.25, com Tooltip instantâneo (delay 0,
+  sem title nativo). Status é BINÁRIO (só essas 2 categorias). Novo `tipo:"status"`
+  aditivo no DataTable (icone por CHAVE, RSC-safe). Commits eb1cd6d1 e anteriores.
+- Listas confirmadas: 27 etapas (nome cru -> customizado) e 8 operações do relatório
+  (dono NÃO quer mexer no nome das operações).
+
+## FASE 3+ (não iniciadas) , PROMPT DE CONTINUAÇÃO
+
+Retomar na branch `feat/entregas-parciais-base-calculo`. Fases 1A, 1B e 2
+CONCLUÍDAS e validadas (ler este PROGRESSO + o hub
+`docs/superpowers/research/2026-07-20-entregas-parciais-repaginacao-pesquisa.md`).
+Iniciar a **FASE 3 , colunas completas** do relatório oficial que ainda faltam:
+Orçamento, Prevista, Contrato/Validade, Emitente, CNPJ, CEP, Código do produto,
+Unitário, Valor cheio, Observações, Obs Entrega, Vendedor. Algumas exigem
+materializar campo novo no fato (vendedor, emitente, datas, obs); a maioria já
+existe no raw. Cada coluna deve ser filtrável/agrupável (isso é Fase 4+).
+Metodologia (D0): planner -> 1 review profunda -> planner v2 -> implementação
+(UI SEMPRE inline + ui-ux-pro-max) -> testes -> perícia. UI NUNCA delegada.
+Nada vai para produção sem "sim" explícito do dono. Depois: Fase 4 (filtro E/OU +
+busca inteligente), 5 (agrupamento), 6 (colunas DnD), 7 (views + salvar visão),
+tudo com base no protótipo do ERP Nexus (mesma stack, client-side).
 
 - **FASE 1B , recuo cirúrgico do corte** (traz os ~51 pedidos antigos em aberto):
   planner pronto `docs/superpowers/plans/2026-07-20-fase1b-corte-antigos.md`
