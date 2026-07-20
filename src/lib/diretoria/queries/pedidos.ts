@@ -8,7 +8,7 @@
 
 import type { PrismaClient } from "@/generated/prisma/client";
 
-import { janelaClampada } from "@/lib/corte-dados";
+import { janelaDemandaAberta } from "@/lib/corte-dados";
 import { aAtenderDoItem } from "@/lib/diretoria/atendimento-item";
 import { atendimentoSincronizado } from "@/lib/diretoria/atendimento-status";
 import { siglaDeUf } from "@/lib/diretoria/uf";
@@ -16,9 +16,10 @@ import { buildEmpresaWhere } from "@/lib/metrics/_shared/empresa";
 
 export interface FiltrosDemandas {
   ufs?: string[];
-  /** Início da janela (AAAA-MM-DD). Ausente ou anterior ao corte = piso na data de início das análises. */
+  /** Início da janela (AAAA-MM-DD). Ausente = janela aberta (piso 2000). A demanda a entregar
+   *  segue a pílula de período, não o corte de leitura (D8/RF-A5). */
   periodoDe?: string;
-  /** Fim da janela (AAAA-MM-DD). Ausente = janela aberta até hoje. */
+  /** Fim da janela (AAAA-MM-DD). Ausente = janela aberta até o futuro. */
   periodoAte?: string;
   /** Recorte por empresa do grupo (empresaId do fato); undefined = grupo inteiro. */
   empresaId?: number;
@@ -57,14 +58,14 @@ interface PedidoAbertoRow {
 }
 
 /**
- * Universo único do módulo: os pedidos em demanda aberta. Pedido é DOCUMENTO com data, ou
- * seja, histórico , entra a partir da data de início das análises (`sync.corte_dados`).
- * Sem período informado (é como as páginas chamam hoje), o piso continua sendo o corte:
- * "em aberto" nunca significa "desde sempre". Pedido sem `dataOrcamento` fica de fora, pois
- * não há data de documento que prove que ele pertence à janela analisada.
+ * Universo único do módulo: os pedidos em demanda aberta. A demanda a entregar NÃO é cortada
+ * pelo corte de leitura (`sync.corte_dados`), D8/RF-A5: a janela vem SÓ da pílula de período
+ * do topo. Sem período informado, a janela abre no piso (2000, na prática o primeiro pedido),
+ * ou seja, "Tudo". Pedido sem `dataOrcamento` fica de fora, pois não há data de documento que
+ * prove a que janela ele pertence.
  *
- * Como TUDO no módulo (B2, B4, B6, B6b, B7 e o mapa da visão geral) sai daqui, o piso
- * aplicado neste ponto vale para todos eles. Idem para o recorte por empresa do grupo
+ * Como TUDO no módulo (B2, B4, B6, B6b, B7 e o mapa da visão geral) sai daqui, a janela
+ * aplicada neste ponto vale para todos eles. Idem para o recorte por empresa do grupo
  * (`fato_pedido.empresa_id`, preenchido em 100% das linhas): item e histórico do pedido são
  * lidos por `pedidoId` dentro deste universo, então herdam o recorte sem filtro próprio.
  */
@@ -72,7 +73,7 @@ async function carregarAbertas(
   prisma: PrismaClient,
   filtros: FiltrosDemandas = {},
 ): Promise<PedidoAbertoRow[]> {
-  const j = janelaClampada(filtros.periodoDe, filtros.periodoAte);
+  const j = janelaDemandaAberta(filtros.periodoDe, filtros.periodoAte);
   const pedidos = await prisma.fatoPedido.findMany({
     where: {
       bucketDemanda: "ABERTA",

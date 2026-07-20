@@ -1,5 +1,3 @@
-import { corteAtualDate } from "@/lib/corte-dados";
-
 import {
   queryDemandasPorUf,
   queryIndicadoresDemandas,
@@ -8,8 +6,8 @@ import {
   queryDemandasMaisParadas,
 } from "./pedidos";
 
-/** Data de início das análises vigente nos testes (padrão da plataforma). */
-const CORTE = corteAtualDate();
+/** Piso da demanda a entregar: ela nao e cortada pelo corte de leitura (D8/RF-A5). */
+const PISO_DEMANDA = "2000-01-01";
 
 type PedidoMock = {
   odooId: number;
@@ -204,27 +202,34 @@ describe("recorte por empresa na demanda em aberta", () => {
   });
 });
 
-// Pedido é documento com data: TUDO no módulo sai de carregarAbertas, então o piso da data
-// de início das análises é verificado ali, uma vez, para as 5 queries.
-describe("data de início das análises na demanda em aberta", () => {
+// Pedido é documento com data, mas a DEMANDA A ENTREGAR não é cortada pelo corte de leitura
+// (D8/RF-A5): a janela vem só da pílula. TUDO no módulo sai de carregarAbertas, então o piso
+// (2000, "abre tudo") é verificado ali, uma vez, para as 5 queries.
+describe("janela da demanda em aberta segue a pílula, não o corte de leitura", () => {
   const whereDe = (p: ReturnType<typeof makePrisma>) =>
     (p.fatoPedido.findMany as jest.Mock).mock.calls[0][0].where;
 
-  it("sem período, a demanda em aberta parte do corte (antes varria todo o histórico)", async () => {
+  it("sem período, a demanda abre no piso 2000 (não no corte de leitura)", async () => {
     const p = makePrisma([], []);
     await queryDemandasPorUf(p, {});
     expect(whereDe(p).bucketDemanda).toBe("ABERTA");
-    expect(whereDe(p).dataOrcamento.gte).toEqual(CORTE);
+    expect(whereDe(p).dataOrcamento.gte.toISOString().slice(0, 10)).toBe(PISO_DEMANDA);
   });
 
-  it("período informado antes do corte é grampeado", async () => {
+  it("carregarAbertas usa a janela de demanda (piso 2000) via queryIndicadoresDemandas", async () => {
+    const p = makePrisma([], []);
+    await queryIndicadoresDemandas(p, hoje, {});
+    expect(whereDe(p).dataOrcamento.gte.toISOString().slice(0, 10)).toBe(PISO_DEMANDA);
+  });
+
+  it("período informado antes do corte NÃO é grampeado (recorta exato)", async () => {
     const p = makePrisma([], []);
     await queryIndicadoresDemandas(p, hoje, { periodoDe: "2024-05-01", periodoAte: "2026-06-30" });
-    expect(whereDe(p).dataOrcamento.gte).toEqual(CORTE);
+    expect(whereDe(p).dataOrcamento.gte).toEqual(new Date("2024-05-01T00:00:00Z"));
     expect(whereDe(p).dataOrcamento.lt).toEqual(new Date("2026-07-01T00:00:00Z"));
   });
 
-  it("o piso vale para as demais leituras do módulo (B2, B6b, B7)", async () => {
+  it("o piso 2000 vale para as demais leituras do módulo (B2, B6b, B7)", async () => {
     for (const roda of [
       (p: ReturnType<typeof makePrisma>) => queryDemandasPendentes(p, hoje, {}),
       (p: ReturnType<typeof makePrisma>) => queryDemandaPorEtapa(p, {}),
@@ -232,7 +237,7 @@ describe("data de início das análises na demanda em aberta", () => {
     ]) {
       const p = makePrisma([], []);
       await roda(p);
-      expect(whereDe(p).dataOrcamento.gte).toEqual(CORTE);
+      expect(whereDe(p).dataOrcamento.gte.toISOString().slice(0, 10)).toBe(PISO_DEMANDA);
     }
   });
 });
