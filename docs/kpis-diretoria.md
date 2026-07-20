@@ -331,6 +331,18 @@ os blocos de Pedidos e o agente Nex mostram **o mesmo número para o mesmo perí
 (INV1). As **demais** métricas (faturamento, a receber, a pagar, valor em estoque) continuam
 grampeando no corte , só a demanda a entregar deixou de grampear.
 
+**Ingestão dos pedidos antigos (regra nova, Fase 1B, 2026-07-20).** Para "Tudo" abrir de
+verdade nos pedidos em aberto anteriores a 2026 (o mais antigo tem `data_orcamento` de
+2024-11-27), a **ingestão** recua um corte cirúrgico por modelo: `pedido.documento` e
+`sped.documento.item` passam a ser puxados desde **2024-11-01** (`OVERRIDE_INGESTAO` em
+`src/worker/sync/corte.ts`, fonte única lida por reconcile, atendimento e purge via
+`corteIngestaoDe`). Isso é **ingestão**, não leitura: o corte de **leitura** das demais métricas
+segue em 2026-01-01 (o override só recua estes 2 modelos; a nota `sped.documento` e o financeiro
+ficam em 2026, então faturamento/a-receber **não** mudam). O item de **nota** (`pedido_id=false`,
+91% do volume) continua cortado em 2026 pela união de `corteDomainHerdado`, para não reinundar o
+cache com as ~172 mil notas pré-2026. Operação e aceites em
+`docs/runbooks/backfill-entregas-antigas.md`.
+
 **"Atrasadas"**: dos abertos, os que têm `data_prevista` **anterior a hoje**. É a data
 prometida de entrega já vencida, com o pedido ainda aberto.
 

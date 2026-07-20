@@ -293,6 +293,9 @@ TABLE fato_pedido (
                             -- etapa_id na whitelist curada de 27 etapas do relatorio oficial. A whitelist
                             -- VENCE os flags da etapa. A demanda a entregar NAO e recortada pelo corte de
                             -- leitura (segue a pilula de periodo por data_orcamento; "Tudo" = tudo).
+                            -- Fase 1B: a INGESTAO recua pedido.documento e sped.documento.item para
+                            -- 2024-11-01 (OVERRIDE_INGESTAO em corte.ts), entao os pedidos em aberto
+                            -- pre-2026 existem no cache. O corte de LEITURA das demais metricas segue 2026.
   atualizado_em     TIMESTAMPTZ
 );
 
