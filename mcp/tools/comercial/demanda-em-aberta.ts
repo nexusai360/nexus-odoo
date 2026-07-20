@@ -21,6 +21,16 @@ const inputSchema = z.object({
     ),
   limite: z.number().int().min(1).max(100).optional(),
   ordenacao: z.enum(["tempo_parado", "valor", "data_criacao"]).optional(),
+  periodoDe: z
+    .string()
+    .optional()
+    .describe(
+      "Inicio da janela (AAAA-MM-DD). Ausente = demanda inteira (nao cortada pelo corte de leitura).",
+    ),
+  periodoAte: z
+    .string()
+    .optional()
+    .describe("Fim da janela (AAAA-MM-DD). Ausente = ate hoje/futuro."),
 });
 
 const etapaSchema = z.object({

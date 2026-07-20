@@ -7,7 +7,7 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { diasAtraso } from "../../../../mcp/lib/dias-atraso";
 import { VENDA_FUTURA } from "@/lib/fiscal/regras/venda-futura-policy";
-import { corteAtualDate, janelaClampada } from "@/lib/corte-dados";
+import { corteAtualDate, janelaClampada, janelaDemandaAberta } from "@/lib/corte-dados";
 import { atendimentoSincronizado } from "@/lib/diretoria/atendimento-status";
 import { rotuloModalidadeFrete } from "@/lib/fiscal/regras/modalidade-frete";
 import {
@@ -139,7 +139,14 @@ export type OrdenacaoDemanda = "tempo_parado" | "valor" | "data_criacao";
  */
 export async function queryDemandaEmAberta(
   prisma: PrismaClient,
-  filtros: { empresaId?: number; etapa?: string; limite?: number; ordenacao?: OrdenacaoDemanda } = {},
+  filtros: {
+    empresaId?: number;
+    etapa?: string;
+    limite?: number;
+    ordenacao?: OrdenacaoDemanda;
+    periodoDe?: string;
+    periodoAte?: string;
+  } = {},
 ): Promise<{
   totalPedidos: number;
   /** O que falta entregar, a preço de VENDA. */
@@ -170,6 +177,9 @@ export async function queryDemandaEmAberta(
   const limite = Math.min(Math.max(filtros.limite ?? 20, 1), 100);
   const ordenacao = filtros.ordenacao ?? "tempo_parado";
   const status = await atendimentoSincronizado(prisma);
+  // Demanda a entregar NAO e cortada pelo corte de leitura (D8/RF-A5): a janela vem da pilula
+  // de periodo. Sem periodo, abre a demanda inteira (piso 2000).
+  const j = janelaDemandaAberta(filtros.periodoDe, filtros.periodoAte);
 
   const todas = await prisma.$queryRaw<
     {
@@ -217,9 +227,10 @@ export async function queryDemandaEmAberta(
       WHERE h.pedido_id = f.odoo_id AND h.etapa_id = f.etapa_id
     ) h ON true
     WHERE f.bucket_demanda = 'ABERTA'
-      -- Piso da janela de análise: pedido é documento com data. Sem isso, um pedido
-      -- pré-corte preso em "ABERTA" entra no total e lidera o ranking de mais parado.
-      AND f.data_orcamento >= ${corteAtualDate()}
+      -- Demanda a entregar NAO e cortada pelo corte de leitura (D8/RF-A5): a janela vem da
+      -- pilula de periodo. Sem periodo, abre a demanda inteira (piso 2000).
+      AND f.data_orcamento >= ${j.gte}
+      AND f.data_orcamento <  ${j.lt}
   `;
   // Filtros em memoria (volume pequeno, ~395), evita SQL condicional. Etapa e
   // substring case-insensitive: e a ponte "demanda na etapa X" -> pedidos (com
@@ -477,7 +488,7 @@ export async function queryPedidoSituacao(
  */
 export async function queryDemandaPorProduto(
   prisma: PrismaClient,
-  filtros: { limite?: number; empresaId?: number } = {},
+  filtros: { limite?: number; empresaId?: number; periodoDe?: string; periodoAte?: string } = {},
 ): Promise<{
   linhas: {
     produtoId: number | null;
@@ -498,6 +509,9 @@ export async function queryDemandaPorProduto(
   // Recorte opcional por empresa (decisão #2: demanda por grupo E por empresa).
   const empresaId = filtros.empresaId ?? null;
   const status = await atendimentoSincronizado(prisma);
+  // Demanda a entregar segue a pilula, nao o corte de leitura (D8/RF-A5). Sem periodo, abre
+  // a demanda inteira (piso 2000), igual ao card/relatorio.
+  const j = janelaDemandaAberta(filtros.periodoDe, filtros.periodoAte);
   const rows = await prisma.$queryRaw<
     {
       produto_id: number | null;
@@ -520,9 +534,10 @@ export async function queryDemandaPorProduto(
       JOIN fato_pedido f ON f.odoo_id = it.pedido_id
       LEFT JOIN fato_produto p ON p.odoo_id = it.produto_id
       WHERE f.bucket_demanda = 'ABERTA'
-        -- Piso da janela de análise (data do documento pai): item de pedido pré-corte
-        -- não pode somar quantidade no ranking de produto com mais demanda.
-        AND f.data_orcamento >= ${corteAtualDate()}
+        -- Demanda a entregar NAO e cortada pelo corte de leitura (D8/RF-A5): janela pela
+        -- pilula. Sem periodo, abre a demanda inteira (piso 2000), pra bater com o card.
+        AND f.data_orcamento >= ${j.gte}
+        AND f.data_orcamento <  ${j.lt}
         AND (${empresaId}::int IS NULL OR f.empresa_id = ${empresaId}::int)
     )
     SELECT produto_id, produto_nome, familia_nome,
@@ -564,6 +579,9 @@ export async function queryEstoqueDisponivel(
     limite?: number;
     /** Escopo do lado do SALDO. Padrão: só o estoque próprio (o da casa). */
     classificacao?: EscopoLocal;
+    /** Janela da DEMANDA (não do saldo). Ausente = demanda inteira (piso 2000), D8/RF-A5. */
+    periodoDe?: string;
+    periodoAte?: string;
   } = {},
 ): Promise<{
   linhas: {
@@ -584,6 +602,9 @@ export async function queryEstoqueDisponivel(
 }> {
   const limite = Math.min(Math.max(filtros.limite ?? 20, 1), 100);
   const status = await atendimentoSincronizado(prisma);
+  // Janela da DEMANDA (o lado do saldo e foto, sem data): segue a pilula, nunca o corte de
+  // leitura (D8/RF-A5). Sem periodo, abre a demanda inteira (piso 2000).
+  const j = janelaDemandaAberta(filtros.periodoDe, filtros.periodoAte);
 
   // Lado do SALDO: só o estoque que existe dentro de casa. Contar demonstração e
   // terceiros aqui daria "disponível" onde não há mercadoria para entregar. O escopo sai
@@ -634,10 +655,11 @@ export async function queryEstoqueDisponivel(
       -- faturamento (venda futura ja faturada, reservada ate a remessa).
       WHERE (f.bucket_demanda = 'ABERTA'
              OR (${VENDA_FUTURA.RESERVA_ESTOQUE_ATE_REMESSA} AND f.categoria_operacao = 'simples_faturamento'))
-        -- Piso da janela de análise no lado da DEMANDA (documento com data). O lado do
-        -- saldo é foto do estoque de hoje: não se aplica. Sem o piso, pedido pré-corte
-        -- comprometia estoque e gerava "disponível negativo" falso.
-        AND f.data_orcamento >= ${corteAtualDate()}
+        -- Janela da DEMANDA (documento com data), pela pilula e NUNCA pelo corte de leitura
+        -- (D8/RF-A5). O lado do saldo é foto do estoque de hoje: não se aplica. Sem periodo,
+        -- abre a demanda inteira (piso 2000), pra bater com card/relatorio.
+        AND f.data_orcamento >= ${j.gte}
+        AND f.data_orcamento <  ${j.lt}
     )
     SELECT produto_id,
            sum(qtd)::float8 AS q,

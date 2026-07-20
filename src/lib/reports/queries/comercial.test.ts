@@ -467,7 +467,11 @@ describe("CORTE , piso da data de início das análises nas consultas de pedido"
     fatoBuildState: { findUnique: jest.fn().mockResolvedValue(null) },
   });
 
-  it("queryDemandaEmAberta: o SQL tem piso em data_orcamento >= corte", async () => {
+  // Piso da DEMANDA a entregar: 2000-01-01 (nao o corte de leitura), D8/RF-A5. A janela vem
+  // da pilula de periodo; sem periodo, abre a demanda inteira.
+  const PISO_DEMANDA = new Date("2000-01-01T00:00:00Z");
+
+  it("queryDemandaEmAberta: sem periodo, a janela abre no piso 2000 (nao no corte)", async () => {
     const raw = jest.fn().mockResolvedValue([]);
     const mockPrisma = {
       ...semAtendimento(),
@@ -476,10 +480,23 @@ describe("CORTE , piso da data de início das análises nas consultas de pedido"
 
     await queryDemandaEmAberta(mockPrisma, {});
     expect(sqlDoRaw(raw)).toContain("f.data_orcamento >=");
-    expect(valoresDoRaw(raw)).toContainEqual(CORTE);
+    expect(valoresDoRaw(raw)).toContainEqual(PISO_DEMANDA);
+    expect(valoresDoRaw(raw)).not.toContainEqual(CORTE);
   });
 
-  it("queryDemandaPorProduto: o JOIN com o pedido tem piso de data", async () => {
+  it("queryDemandaEmAberta: periodoAte estreita a janela (fim exclusivo = ate + 1 dia)", async () => {
+    const raw = jest.fn().mockResolvedValue([]);
+    const mockPrisma = {
+      ...semAtendimento(),
+      $queryRaw: raw,
+    } as unknown as import("@/generated/prisma/client").PrismaClient;
+
+    await queryDemandaEmAberta(mockPrisma, { periodoDe: "2026-06-01", periodoAte: "2026-06-30" });
+    expect(valoresDoRaw(raw)).toContainEqual(new Date("2026-06-01T00:00:00Z"));
+    expect(valoresDoRaw(raw)).toContainEqual(new Date("2026-07-01T00:00:00Z"));
+  });
+
+  it("queryDemandaPorProduto: o JOIN com o pedido abre no piso 2000 (segue a pilula)", async () => {
     const raw = jest.fn().mockResolvedValue([]);
     const mockPrisma = {
       ...semAtendimento(),
@@ -488,10 +505,11 @@ describe("CORTE , piso da data de início das análises nas consultas de pedido"
 
     await queryDemandaPorProduto(mockPrisma, {});
     expect(sqlDoRaw(raw)).toContain("f.data_orcamento >=");
-    expect(valoresDoRaw(raw)).toContainEqual(CORTE);
+    expect(valoresDoRaw(raw)).toContainEqual(PISO_DEMANDA);
+    expect(valoresDoRaw(raw)).not.toContainEqual(CORTE);
   });
 
-  it("queryEstoqueDisponivel: piso na demanda; o saldo, que é foto, fica sem filtro de data", async () => {
+  it("queryEstoqueDisponivel: demanda abre no piso 2000; o saldo, que é foto, fica sem filtro de data", async () => {
     const raw = jest.fn().mockResolvedValue([]);
     const saldoFindMany = jest.fn().mockResolvedValue([]);
     const mockPrisma = {
@@ -505,9 +523,10 @@ describe("CORTE , piso da data de início das análises nas consultas de pedido"
     } as unknown as import("@/generated/prisma/client").PrismaClient;
 
     await queryEstoqueDisponivel(mockPrisma, {});
-    // A demanda (documento com data) respeita o piso...
+    // A demanda (documento com data) segue a pilula (piso 2000), nao o corte...
     expect(sqlDoRaw(raw)).toContain("f.data_orcamento >=");
-    expect(valoresDoRaw(raw)).toContainEqual(CORTE);
+    expect(valoresDoRaw(raw)).toContainEqual(PISO_DEMANDA);
+    expect(valoresDoRaw(raw)).not.toContainEqual(CORTE);
     // ...e o saldo, que e foto do estoque de hoje, nao leva recorte de data nenhum.
     expect(saldoFindMany.mock.calls[0][0].where).not.toHaveProperty("dataOrcamento");
   });
