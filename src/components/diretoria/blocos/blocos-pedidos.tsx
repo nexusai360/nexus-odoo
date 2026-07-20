@@ -208,9 +208,9 @@ function TabelaEntregasParciais({ d }: { d: PedidosData }) {
     { key: "qtd", header: "Qtd a atender", tipo: "numero" },
     { key: "vlrVenda", header: "A atender (venda)", tipo: "moeda" },
     { key: "vlrCusto", header: "A atender (custo)", tipo: "moeda" },
-    { key: "status", header: "Financeiro", tipo: "tag", tagCores: {
-      Liberado: "bg-emerald-500/10 text-emerald-400 ring-1 ring-inset ring-emerald-500/20",
-      Bloqueado: "bg-rose-500/10 text-rose-400 ring-1 ring-inset ring-rose-500/20",
+    { key: "status", header: "Financeiro", tipo: "status", statusMapa: {
+      Liberado: { icone: "shield-check", classe: "text-emerald-400", rotulo: "Liberado" },
+      Bloqueado: { icone: "shield-x", classe: "text-rose-400", rotulo: "Bloqueado" },
     } },
     { key: "forma", header: "Forma de pagamento", tipo: "texto" },
   ];

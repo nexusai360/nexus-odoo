@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Columns2, WrapText, ChevronLeft, ChevronRight, Download, ListFilter, Check, X, Search } from "lucide-react";
+import { Columns2, WrapText, ChevronLeft, ChevronRight, Download, ListFilter, Check, X, Search, ShieldCheck, ShieldX } from "lucide-react";
 import {
   TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -21,6 +21,10 @@ import {
 } from "./data-table-utils";
 import { gerarCsv, downloadCsv } from "./export-csv";
 import { derivarCorTag, corEtapaValida } from "@/lib/diretoria/etapa-cor";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+
+/** Chave -> componente de icone, pra `tipo: "status"` (chave atravessa RSC->client). */
+const ICONES_STATUS = { "shield-check": ShieldCheck, "shield-x": ShieldX } as const;
 import { PageJumpNavigator } from "@/components/agent/consumo/page-jump-navigator";
 import type { ReactNode } from "react";
 
@@ -34,7 +38,7 @@ export interface ColumnDef<T> {
    *   ordena pelo ISO (lexicográfico = cronológico). Valores não-ISO (ex.:
    *   "Sem previsão") passam intactos.
    */
-  tipo: "texto" | "numero" | "moeda" | "percentual" | "tag" | "tags" | "data";
+  tipo: "texto" | "numero" | "moeda" | "percentual" | "tag" | "tags" | "data" | "status";
   /**
    * Para `tipo: "tag"|"tags"`: mapa valor->classe Tailwind do badge. O valor sem
    * mapa cai numa cor neutra. Ex.: `{ Atrasado: "bg-rose-500/10 text-rose-400" }`.
@@ -48,6 +52,12 @@ export interface ColumnDef<T> {
    * cai no caminho `tagCores`/neutro. Aditivo: colunas sem `corKey` nao mudam.
    */
   corKey?: keyof T & string;
+  /**
+   * Para `tipo: "status"`: mapa valor->icone/cor/rotulo. O icone e uma CHAVE
+   * (resolvida em `ICONES_STATUS`), nao componente (atravessa RSC->client).
+   * Renderiza so o icone com Tooltip instantaneo (delay 0), sem `title` nativo.
+   */
+  statusMapa?: Record<string, { icone: "shield-check" | "shield-x"; classe: string; rotulo: string }>;
 }
 
 interface DataTableProps<T> {
@@ -680,7 +690,21 @@ export function DataTable<T extends Record<string, unknown>>({
                                           ))}
                                         </div>
                                       )
-                                    : textoCelula(row[c.key])}
+                                    : c.tipo === "status"
+                                      ? (() => {
+                                          const s = c.statusMapa?.[String(row[c.key] ?? "")];
+                                          if (!s) return textoCelula(row[c.key]);
+                                          const Icone = ICONES_STATUS[s.icone];
+                                          return (
+                                            <Tooltip>
+                                              <TooltipTrigger render={<span className="inline-flex cursor-default" />}>
+                                                <Icone className={cn("size-4", s.classe)} aria-label={s.rotulo} />
+                                              </TooltipTrigger>
+                                              <TooltipContent>{s.rotulo}</TooltipContent>
+                                            </Tooltip>
+                                          );
+                                        })()
+                                      : textoCelula(row[c.key])}
                         </TableCell>
                       ))}
                     </TableRow>
