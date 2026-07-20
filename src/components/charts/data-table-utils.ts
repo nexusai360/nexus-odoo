@@ -47,11 +47,14 @@ export function sortRows<T extends Record<string, unknown>>(
 export function filterRows<T extends Record<string, unknown>>(
   rows: T[],
   query: string,
+  chaves?: readonly string[],
 ): T[] {
   const q = query.trim().toLowerCase();
   if (!q) return rows;
+  const valoresDe = (row: T): unknown[] =>
+    chaves ? chaves.map((k) => row[k]) : Object.values(row);
   return rows.filter((row) =>
-    Object.values(row).some((v) =>
+    valoresDe(row).some((v) =>
       String(v ?? "").toLowerCase().includes(q),
     ),
   );

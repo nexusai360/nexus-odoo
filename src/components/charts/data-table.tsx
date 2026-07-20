@@ -20,6 +20,7 @@ import {
   sortRows, filterRows, toggleSortStack, type SortEntry,
 } from "./data-table-utils";
 import { gerarCsv, downloadCsv } from "./export-csv";
+import { derivarCorTag, corEtapaValida } from "@/lib/diretoria/etapa-cor";
 import { PageJumpNavigator } from "@/components/agent/consumo/page-jump-navigator";
 import type { ReactNode } from "react";
 
@@ -39,6 +40,14 @@ export interface ColumnDef<T> {
    * mapa cai numa cor neutra. Ex.: `{ Atrasado: "bg-rose-500/10 text-rose-400" }`.
    */
   tagCores?: Record<string, string>;
+  /**
+   * Para `tipo: "tag"`: nome do campo da linha que carrega a COR (hex) da tag,
+   * vinda do Odoo. Quando presente e o valor for um hex valido, a pilula usa
+   * cor derivada (fundo/borda translucidos) via `derivarCorTag`, com o texto
+   * em `text-foreground` (contraste garantido nos dois temas). Sem cor valida,
+   * cai no caminho `tagCores`/neutro. Aditivo: colunas sem `corKey` nao mudam.
+   */
+  corKey?: keyof T & string;
 }
 
 interface DataTableProps<T> {
@@ -250,7 +259,7 @@ export function DataTable<T extends Record<string, unknown>>({
 
   // --- pipeline: busca → filtro por coluna → sort ---
   const filtered = useMemo(
-    () => filterRows(rows, debouncedQuery),
+    () => filterRows(rows, debouncedQuery, columns.map((c) => c.key)),
     [rows, debouncedQuery],
   );
 
@@ -633,14 +642,29 @@ export function DataTable<T extends Record<string, unknown>>({
                               : c.tipo === "percentual"
                                 ? `${Number(row[c.key] ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
                                 : c.tipo === "tag"
-                                  ? (
-                                      <span className={cn(
-                                        "inline-flex rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ring-border/60",
-                                        c.tagCores?.[String(row[c.key] ?? "")] ?? "bg-muted text-muted-foreground",
-                                      )}>
-                                        {String(row[c.key] ?? "")}
-                                      </span>
-                                    )
+                                  ? (() => {
+                                      const estiloCor = c.corKey
+                                        ? derivarCorTag(corEtapaValida(row[c.corKey]))
+                                        : null;
+                                      if (estiloCor) {
+                                        return (
+                                          <span
+                                            className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium text-foreground"
+                                            style={{ backgroundColor: estiloCor.backgroundColor, borderColor: estiloCor.borderColor }}
+                                          >
+                                            {String(row[c.key] ?? "")}
+                                          </span>
+                                        );
+                                      }
+                                      return (
+                                        <span className={cn(
+                                          "inline-flex rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ring-border/60",
+                                          c.tagCores?.[String(row[c.key] ?? "")] ?? "bg-muted text-muted-foreground",
+                                        )}>
+                                          {String(row[c.key] ?? "")}
+                                        </span>
+                                      );
+                                    })()
                                   : c.tipo === "data"
                                     ? formatarDataBR(String(row[c.key] ?? ""))
                                   : c.tipo === "tags"
