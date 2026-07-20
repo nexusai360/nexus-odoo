@@ -48,4 +48,24 @@ describe("alvos do purge", () => {
     const doc = alvos.find((a) => a.tabela === "raw_sped_documento")!;
     expect(doc.chaveNulos).toBe("data_emissao");
   });
+
+  // Fase 1B: o purge le o MESMO override que a ingestao (corteIngestaoDe por modelo). Assim,
+  // se rodado apos o back-fill, ele NAO re-apaga os pedidos/itens antigos trazidos (R2/PR#168).
+  describe("Fase 1B , purge respeita o override de ingestao por modelo", () => {
+    it("pedido.documento usa o override 2024-11-01 (nao apaga os pedidos antigos trazidos)", () => {
+      const p = alvos.find((a) => a.tabela === "raw_pedido_documento")!;
+      expect(p.where).toContain("< '2024-11-01'");
+      expect(p.where).not.toContain("< '2026-01-01'");
+    });
+    it("sped.documento.item usa o override 2024-11-01 no limiar do pai (itens de pedido antigos ficam)", () => {
+      const i = alvos.find((a) => a.tabela === "raw_sped_documento_item")!;
+      expect(i.where).toContain("< '2024-11-01'");
+      expect(i.where).not.toContain("< '2026-01-01'");
+    });
+    it("sped.documento (nota) permanece no corte global 2026 (historico de notas segue apagavel)", () => {
+      const n = alvos.find((a) => a.tabela === "raw_sped_documento")!;
+      expect(n.where).toContain("< '2026-01-01'");
+      expect(n.where).not.toContain("< '2024-11-01'");
+    });
+  });
 });

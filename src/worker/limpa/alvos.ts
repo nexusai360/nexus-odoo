@@ -7,6 +7,7 @@
 
 import type { CatalogEntry } from "../catalog/model-catalog";
 import { rawTableFor } from "../catalog/model-catalog";
+import { corteIngestaoDe } from "../sync/corte";
 import {
   wherePre2026Raw,
   wherePre2026Filho,
@@ -28,11 +29,15 @@ export function montaAlvosPurge(catalog: readonly CatalogEntry[]): AlvoPurge[] {
   const alvos: AlvoPurge[] = [];
   for (const e of catalog) {
     const tabela = rawTableFor(e.odooModel);
+    // Fase 1B: limiar por MODELO, lido da MESMA fonte da ingestao (corteIngestaoDe). O pedido
+    // e o item de pedido recuam para 2024-11 (override); a nota e os demais ficam em 2026. Sem
+    // isto, rodar o purge apos o back-fill re-apagaria os antigos trazidos (R2/PR#168).
+    const corte = corteIngestaoDe(e.odooModel);
     if (e.corte) {
       alvos.push({
         tabela,
-        criterio: `data ${e.corte.raw} < 2026`,
-        where: wherePre2026Raw(e.corte.raw),
+        criterio: `data ${e.corte.raw} < ${corte}`,
+        where: wherePre2026Raw(e.corte.raw, corte),
         chaveNulos: e.corte.raw,
         profundidade: 0,
       });
@@ -41,21 +46,22 @@ export function montaAlvosPurge(catalog: readonly CatalogEntry[]): AlvoPurge[] {
       if (pai?.corte) {
         alvos.push({
           tabela,
-          criterio: `filho de ${e.cortePai.tabelaRawPai}`,
-          where: wherePre2026Filho(e.cortePai.tabelaRawPai, e.cortePai.fkRaw, pai.corte.raw),
+          criterio: `filho de ${e.cortePai.tabelaRawPai} (< ${corte})`,
+          where: wherePre2026Filho(e.cortePai.tabelaRawPai, e.cortePai.fkRaw, pai.corte.raw, corte),
           profundidade: 1,
         });
       } else {
-        // pai intermediario (ex.: item): encadeia ao avo documento
+        // pai intermediario (ex.: rastreabilidade): encadeia ao avo documento
         alvos.push({
           tabela,
-          criterio: `filho de ${e.cortePai.tabelaRawPai}`,
+          criterio: `filho de ${e.cortePai.tabelaRawPai} (< ${corte})`,
           where: wherePre2026Neto(
             e.cortePai.tabelaRawPai,
             e.cortePai.fkRaw,
             "raw_sped_documento",
             "documento_id",
             "data_emissao",
+            corte,
           ),
           profundidade: 2,
         });
