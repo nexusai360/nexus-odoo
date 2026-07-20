@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Columns2, WrapText, ChevronLeft, ChevronRight, Download, ListFilter, Check, X, Search, ShieldCheck, ShieldX } from "lucide-react";
+import { Columns2, WrapText, ChevronLeft, ChevronRight, Download, ListFilter, Check, X, Search, CircleCheck, CircleX } from "lucide-react";
 import {
   TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -24,7 +24,7 @@ import { derivarCorTag, corEtapaValida } from "@/lib/diretoria/etapa-cor";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 /** Chave -> componente de icone, pra `tipo: "status"` (chave atravessa RSC->client). */
-const ICONES_STATUS = { "shield-check": ShieldCheck, "shield-x": ShieldX } as const;
+const ICONES_STATUS = { "circle-check": CircleCheck, "circle-x": CircleX } as const;
 import { PageJumpNavigator } from "@/components/agent/consumo/page-jump-navigator";
 import type { ReactNode } from "react";
 
@@ -57,7 +57,7 @@ export interface ColumnDef<T> {
    * (resolvida em `ICONES_STATUS`), nao componente (atravessa RSC->client).
    * Renderiza so o icone com Tooltip instantaneo (delay 0), sem `title` nativo.
    */
-  statusMapa?: Record<string, { icone: "shield-check" | "shield-x"; classe: string; rotulo: string }>;
+  statusMapa?: Record<string, { icone: "circle-check" | "circle-x"; classe: string; rotulo: string }>;
 }
 
 interface DataTableProps<T> {
@@ -698,7 +698,7 @@ export function DataTable<T extends Record<string, unknown>>({
                                           return (
                                             <Tooltip>
                                               <TooltipTrigger render={<span className="inline-flex cursor-default" />}>
-                                                <Icone className={cn("size-4", s.classe)} aria-label={s.rotulo} />
+                                                <Icone className={cn("size-5", s.classe)} strokeWidth={2.25} aria-label={s.rotulo} />
                                               </TooltipTrigger>
                                               <TooltipContent>{s.rotulo}</TooltipContent>
                                             </Tooltip>
