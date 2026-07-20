@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { aquecerCorte } from "@/lib/corte-app";
 import { requireDiretoriaArea, userUfs, canDiretoria } from "@/lib/diretoria/access";
 import { SEM_UF } from "@/lib/diretoria/uf";
-import { resolverPeriodoDir } from "@/lib/diretoria/periodo";
+import { resolverPeriodoDir, resolverJanelaDemanda } from "@/lib/diretoria/periodo";
 import {
   queryIndicadoresVendas,
   queryVendasPorUf,
@@ -67,12 +67,26 @@ export default async function DiretoriaVisaoGeralPage({
   // Teto da janela de cobranca. "Tudo" = sem teto (carteira inteira em aberto).
   const tetoCobranca = periodo.preset === "tudo" ? undefined : isoDia(periodo.ate);
 
+  // Demanda a entregar segue a PILULA + empresa, NAO o corte de leitura (D8/D9/RF-A6): o card
+  // da visao geral tem que bater com o relatorio e os blocos da tela de Pedidos para a mesma
+  // pilula. "Tudo" abre do primeiro pedido (janela de demanda sem grampo no corte).
+  const jd = resolverJanelaDemanda(
+    { periodo: param("periodo"), de: param("de"), ate: param("ate") },
+    hoje,
+  );
+  const fDemanda = {
+    ufs,
+    periodoDe: jd.periodoDe,
+    periodoAte: jd.periodoAte,
+    empresaId: empresaSel?.empresaId,
+  };
+
   const [vendas, vendasUf, vendasMarca, demandas, estoque, estoqueFamilia, aReceber, aPagar] =
     await Promise.all([
       queryIndicadoresVendas(prisma, filtros),
       queryVendasPorUf(prisma, filtros),
       queryVendasPorMarca(prisma, filtros),
-      queryIndicadoresDemandas(prisma, hoje, { ufs }),
+      queryIndicadoresDemandas(prisma, hoje, fDemanda),
       queryIndicadoresEstoque(prisma),
       queryEstoquePorFamilia(prisma),
       // Janela de cobranca: vencido + vencendo ate o fim do periodo em analise.

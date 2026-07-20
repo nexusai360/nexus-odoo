@@ -20,7 +20,7 @@ import { ultimaSyncIso } from "@/lib/diretoria/freshness";
 import { DiretoriaFiltros } from "@/components/diretoria/diretoria-filtros";
 import { listarEmpresasDoFato } from "@/lib/metrics/_shared/empresa";
 import { opcoesDeEmpresa } from "@/lib/diretoria/empresa-opcoes";
-import { resolverPeriodoDir } from "@/lib/diretoria/periodo";
+import { resolverJanelaDemanda } from "@/lib/diretoria/periodo";
 
 import { type PedidosData } from "@/components/diretoria/pedidos/pedidos-screen";
 import { PedidosMontavel } from "@/components/diretoria/pedidos/pedidos-montavel";
@@ -28,11 +28,6 @@ import { carregarLayout } from "@/lib/diretoria/builder/layout-repo";
 import type { BlocoLayout } from "@/lib/diretoria/builder/layout";
 
 export const dynamic = "force-dynamic";
-
-function isoDia(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
-
 
 export default async function DiretoriaPedidosPage({
   searchParams,
@@ -46,34 +41,35 @@ export default async function DiretoriaPedidosPage({
   const ufs = await userUfs(user);
   const hoje = new Date();
 
-  const periodo = resolverPeriodoDir(
-    { periodo: param("periodo"), de: param("de"), ate: param("ate") },
-    hoje,
-  );
   const empresas = await listarEmpresasDoFato(prisma);
   const empresaParam = Number(param("empresa"));
   const empresaSel = Number.isFinite(empresaParam)
     ? empresas.find((e) => e.empresaId === empresaParam)
     : undefined;
 
-  // O periodo recorta o PEDIDO pela data do orcamento; a empresa recorta o dono do pedido.
-  const f = {
+  // Demanda a entregar segue a PILULA de periodo, NAO o corte de leitura (D8/RF-A5): "Tudo"
+  // abre do primeiro pedido. Os blocos de demanda recebem a janela de demanda (sem grampo no
+  // corte); as contas a receber (financeiro) seguem o proprio corte, alheias a esta janela.
+  const jd = resolverJanelaDemanda(
+    { periodo: param("periodo"), de: param("de"), ate: param("ate") },
+    hoje,
+  );
+  const fDemanda = {
     ufs,
-    periodoDe: isoDia(periodo.de),
-    periodoAte: isoDia(periodo.ate),
+    periodoDe: jd.periodoDe,
+    periodoAte: jd.periodoAte,
     empresaId: empresaSel?.empresaId,
   };
 
-  const incluiAntigos = param("entregas_todos") === "1";
   const [indicadores, porUf, pendentes, porEtapa, maisParadas, aReceber, entregasParciais] =
     await Promise.all([
-      queryIndicadoresDemandas(prisma, hoje, f),
-      queryDemandasPorUf(prisma, f),
-      queryDemandasPendentes(prisma, hoje, f),
-      queryDemandaPorEtapa(prisma, f),
-      queryDemandasMaisParadas(prisma, hoje, { ...f, limite: 50 }),
+      queryIndicadoresDemandas(prisma, hoje, fDemanda),
+      queryDemandasPorUf(prisma, fDemanda),
+      queryDemandasPendentes(prisma, hoje, fDemanda),
+      queryDemandaPorEtapa(prisma, fDemanda),
+      queryDemandasMaisParadas(prisma, hoje, { ...fDemanda, limite: 50 }),
       queryContasAReceber(prisma, {}, hoje),
-      queryEntregasParciais(prisma, hoje, { ...f, ignorarCorteDados: incluiAntigos }),
+      queryEntregasParciais(prisma, hoje, fDemanda),
     ]);
 
   const podeSync = await canDiretoria(user, "diretoria.sync.force");
