@@ -8,6 +8,7 @@ export { regraPorPrefixo } from "./cfop-prefixo";
 export { classificarCfop } from "./classificar";
 export { classificaEtapaDemanda } from "./classifica-etapa-demanda";
 export type { EstagioDemanda, GatilhosEtapa } from "./classifica-etapa-demanda";
+export { ETAPAS_DEMANDA_ABERTA } from "./etapas-demanda-aberta";
 export { classificaOperacao } from "./classifica-operacao";
 export type {
   ClassificacaoOperacao,
