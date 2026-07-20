@@ -5,12 +5,12 @@
 // o que falta entregar a venda e o que falta entregar a custo convivem, rotulados.
 //
 // Reconciliação garantida por construção: o "a atender" de cada linha vem da MESMA função
-// (`aAtenderDoItem`) que o card "Demandas a entregar" usa. No mesmo escopo (corte + empresa +
-// UF), o KPI de custo daqui é idêntico ao card.
+// (`aAtenderDoItem`) que o card "Demandas a entregar" usa. No mesmo escopo (mesma janela de
+// período + empresa + UF), o KPI de custo daqui é idêntico ao card.
 
 import type { PrismaClient } from "@/generated/prisma/client";
 
-import { corteAtualDate, janelaClampada } from "@/lib/corte-dados";
+import { corteAtualDate, janelaDemandaAberta } from "@/lib/corte-dados";
 import { aAtenderDoItem } from "@/lib/diretoria/atendimento-item";
 import { rotuloModalidadeFrete } from "@/lib/fiscal/regras/modalidade-frete";
 import { atendimentoSincronizado } from "@/lib/diretoria/atendimento-status";
@@ -24,8 +24,10 @@ export interface FiltrosEntregasParciais {
   periodoAte?: string;
   empresaId?: number;
   /**
-   * Quando true, ignora a data de início das análises e traz todo pedido em aberto (o range
-   * amplo que o time usa no Odoo). Default false = respeita o corte (bate com o card).
+   * @deprecated (Fase 1A) A demanda a entregar já não é cortada pelo corte de leitura: ela
+   * sempre segue a pílula de período (piso 2000), então este toggle não altera mais o
+   * resultado. Mantido no tipo por compatibilidade com o botão da UI, que sai numa fase de
+   * frontend. Ver D8/RF-A5.
    */
   ignorarCorteDados?: boolean;
 }
@@ -144,13 +146,10 @@ export async function queryEntregasParciais(
   hoje: Date,
   filtros: FiltrosEntregasParciais = {},
 ): Promise<EntregasParciaisData> {
-  // Corte: por default grampeado na data de início das análises; ignorarCorteDados usa um piso
-  // antigo (2000) que na prática abre a janela inteira.
-  const janela = janelaClampada(
-    filtros.periodoDe,
-    filtros.periodoAte,
-    filtros.ignorarCorteDados ? "2000-01-01" : undefined,
-  );
+  // Demanda a entregar segue a pílula de período, nunca o corte de leitura (D8/RF-A5).
+  // `ignorarCorteDados` ficou obsoleto: a demanda já abre pela pílula (piso 2000). Sem período,
+  // é "Tudo" (do primeiro pedido ao futuro). As outras métricas seguem o corte, esta não.
+  const janela = janelaDemandaAberta(filtros.periodoDe, filtros.periodoAte);
 
   const pedidos = await prisma.fatoPedido.findMany({
     where: {

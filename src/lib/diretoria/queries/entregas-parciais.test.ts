@@ -38,9 +38,12 @@ function makePrisma(opts: {
     fatoPedidoItem: { findMany: jest.fn().mockResolvedValue(opts.itens) },
     fatoProduto: { findMany: jest.fn().mockResolvedValue(opts.produtos) },
     fatoBuildState: {
+      // O marcador de atendimento é aferido contra Date.now() com validade de 48h
+      // (atendimento-status.ts). Para o teste ser determinístico (não depender de o relógio
+      // real estar dentro de 48h de HOJE), o marcador "fresco" usa a data atual.
       findUnique: jest
         .fn()
-        .mockResolvedValue(opts.jobOk ? { ultimoBuildAt: HOJE } : null),
+        .mockResolvedValue(opts.jobOk ? { ultimoBuildAt: new Date() } : null),
     },
     fatoParceiro: {
       findMany: jest.fn().mockImplementation(({ select }: { select: Record<string, boolean> }) =>
@@ -199,6 +202,30 @@ describe("queryEntregasParciais", () => {
 
     const r = await queryEntregasParciais(prisma, HOJE);
     expect(r.linhas[0].formaPagamento).toBe("Boleto");
+  });
+
+  it("RF-A5: usa a janela de demanda (piso 2000), não o corte de leitura", async () => {
+    const prisma = makePrisma({ pedidos: [], itens: [], produtos: [], parceiros: [] });
+    await queryEntregasParciais(prisma, HOJE, {});
+    const where = (prisma as unknown as { fatoPedido: { findMany: jest.Mock } }).fatoPedido
+      .findMany.mock.calls[0][0].where;
+    expect(where.dataOrcamento.gte.toISOString().slice(0, 10)).toBe("2000-01-01");
+  });
+
+  it("RF-A8: repassa o filtro de empresa ao where (recorta B-08/B-09)", async () => {
+    const prisma = makePrisma({ pedidos: [], itens: [], produtos: [], parceiros: [] });
+    await queryEntregasParciais(prisma, HOJE, { empresaId: 1 });
+    const where = (prisma as unknown as { fatoPedido: { findMany: jest.Mock } }).fatoPedido
+      .findMany.mock.calls[0][0].where;
+    expect(where.empresaId).toBe(1);
+  });
+
+  it("RF-A9: empresa sem entregas => indicadores zerados e linhas vazias (estado vazio representável)", async () => {
+    const prisma = makePrisma({ pedidos: [], itens: [], produtos: [], parceiros: [] });
+    const data = await queryEntregasParciais(prisma, HOJE, { empresaId: 999 });
+    expect(data.linhas).toHaveLength(0);
+    expect(data.indicadores.qtdPedidos).toBe(0);
+    expect(data.indicadores.aAtenderCusto).toBe(0);
   });
 
   it("escopo de UF remove pedidos de estados fora do filtro", async () => {
