@@ -53,19 +53,13 @@ describe("classificaEtapaDemanda , estagio por gatilho (dado real do Odoo Tauga)
     ).toBe("IGNORAR");
   });
 
-  it("EXCECAO: Nota emitida e nao entregue => ABERTA (tem nota mas conta como demanda)", () => {
+  it("Nota emitida e nao entregue: sem excecao por nome; com nota emitida => FECHADA (a whitelist e quem mantem 226 na demanda)", () => {
     expect(
       classificaEtapaDemanda({
         ...base,
         nome: "Nota emitida e nao entregue.",
-        finalizaFaturamento: false,
+        finalizaFaturamento: true,
       }),
-    ).toBe("ABERTA");
-  });
-
-  it("EXCECAO vale mesmo com acento/caixa diferentes", () => {
-    expect(
-      classificaEtapaDemanda({ ...base, nome: "NOTA EMITIDA E NÃO ENTREGUE" }),
-    ).toBe("ABERTA");
+    ).toBe("FECHADA");
   });
 });

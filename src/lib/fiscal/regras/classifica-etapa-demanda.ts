@@ -21,35 +21,17 @@ export interface GatilhosEtapa {
   finalizaPedidoCancelando: boolean;
 }
 
-/** Normaliza um nome de etapa: minusculo, sem acento, espacos colapsados. */
-function normalizar(nome: string): string {
-  return nome
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
 /**
- * Excecao confirmada pela Mariane/observacao do Odoo: a etapa "Nota emitida e nao
- * entregue" conta como demanda ABERTA mesmo tendo nota emitida (mercadoria nao saiu).
- */
-function ehExcecaoNotaEmitidaNaoEntregue(nomeNormalizado: string): boolean {
-  return nomeNormalizado.startsWith("nota emitida e nao entregue");
-}
-
-/**
- * Classifica o estagio da etapa quanto a demanda.
- * Ordem de precedencia: cancelamento > excecao(nota nao entregue) > conclusao/emissao.
+ * Classifica o estagio da etapa quanto a demanda (por gatilho, sem excecao por nome).
+ * Ordem: cancelamento > conclusao/emissao > (fallback) ABERTA.
+ *
+ * NOTA (Fase 1A): quem decide "demanda a entregar = ABERTA" e a whitelist autoritativa
+ * ETAPAS_DEMANDA_ABERTA no builder (bucketDoPedido). Esta funcao continua util como leitura
+ * de estagio da etapa, mas NAO e mais a fonte do bucket. A excecao antiga "Nota emitida e nao
+ * entregue" saiu: a etapa 226 e mantida na demanda pela whitelist, nao por nome.
  */
 export function classificaEtapaDemanda(g: GatilhosEtapa): EstagioDemanda {
   if (g.finalizaPedidoCancelando) return "IGNORAR";
-
-  const nome = normalizar(g.nome);
-  if (ehExcecaoNotaEmitidaNaoEntregue(nome)) return "ABERTA";
-
   if (g.finalizaFaturamento || g.finalizaPedidoConfirmando) return "FECHADA";
-
   return "ABERTA";
 }
