@@ -22,6 +22,12 @@
 
 import { MODEL_CATALOG, rawTableFor } from "../catalog/model-catalog";
 
+/**
+ * Dominio Odoo generico: pode ser uma lista de clausulas [campo, op, valor] em AND implicito,
+ * ou usar operadores prefixos ("|"/"&") para OR/AND explicito (notacao polonesa do Odoo).
+ */
+export type OdooDomain = Array<string | [string, string, unknown]>;
+
 /** Ate onde o worker puxa historico do Odoo. Constante tecnica, nunca configuravel na tela. */
 export const CORTE_INGESTAO_ISO = "2026-01-01";
 
@@ -81,10 +87,10 @@ export function corteDomain(odooModel: string): Array<[string, string, string]> 
  * herdado, a reconciliacao despejaria ~172 mil registros pre-corte no banco, contrariando a
  * regra de ingestao e derrubando o worker por memoria. Dai esta funcao existir separada.
  */
-export function corteDomainHerdado(odooModel: string): Array<[string, string, string]> {
+export function corteDomainHerdado(odooModel: string): OdooDomain {
   const entry = POR_MODELO.get(odooModel);
   if (!entry) return [];
-  if (entry.corte) return [[entry.corte.odoo, ">=", CORTE_INGESTAO_ISO]];
+  if (entry.corte) return [[entry.corte.odoo, ">=", corteIngestaoDe(odooModel)]];
   if (!entry.cortePai) return [];
 
   const pai = POR_TABELA_RAW.get(entry.cortePai.tabelaRawPai);
@@ -92,7 +98,21 @@ export function corteDomainHerdado(odooModel: string): Array<[string, string, st
 
   // Pai com data propria: `<fk>.<campo_do_pai>`.
   if (pai.corte) {
-    return [[`${entry.cortePai.fkRaw}.${pai.corte.odoo}`, ">=", CORTE_INGESTAO_ISO]];
+    const campoPai = `${entry.cortePai.fkRaw}.${pai.corte.odoo}`;
+    const override = OVERRIDE_INGESTAO.get(odooModel);
+    // Caso especial e UNICO hoje (Fase 1B): sped.documento.item. So os itens de PEDIDO recuam;
+    // os de NOTA (pedido_id=false, 91% do volume) ficam no corte global 2026. Sem o gate de
+    // pedido_id, recuar a data do pai reinundaria com ~172 mil itens de nota (BLOCKER-2). Sem o
+    // ramo de nota, o reconcile deixaria de repor itens de nota perdidos na janela de commit do
+    // Odoo (os 158 itens/R$493k que motivaram o reconcile bidirecional).
+    if (override) {
+      return [
+        "|",
+        "&", ["pedido_id", "!=", false], [campoPai, ">=", override],
+        "&", ["pedido_id", "=", false], [campoPai, ">=", CORTE_INGESTAO_ISO],
+      ];
+    }
+    return [[campoPai, ">=", CORTE_INGESTAO_ISO]];
   }
   // Pai intermediario (ex.: rastreabilidade -> item -> documento): encadeia ate o avo.
   if (pai.cortePai) {

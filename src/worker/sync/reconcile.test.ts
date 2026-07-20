@@ -103,8 +103,13 @@ describe("reconcileModel , o cache tem que convergir para o Odoo nos DOIS sentid
     const r = await reconcileModel(client, raw as never, "sped.documento.item");
 
     expect(searchIds).toHaveBeenNthCalledWith(1, "sped.documento.item", []);
+    // Fase 1B: o corte herdado do item virou UNIAO (itens de pedido recuam para 2024-11; itens
+    // de nota ficam em 2026). O universo restrito de insercao continua vindo do herdado, nunca
+    // do modelo inteiro , os pre-corte 999_00x seguem fora.
     expect(searchIds).toHaveBeenNthCalledWith(2, "sped.documento.item", [
-      ["documento_id.data_emissao", ">=", "2026-01-01"],
+      "|",
+      "&", ["pedido_id", "!=", false], ["documento_id.data_emissao", ">=", "2024-11-01"],
+      "&", ["pedido_id", "=", false], ["documento_id.data_emissao", ">=", "2026-01-01"],
     ]);
     // os pre-corte (999_001, 999_002) NAO entram no cache
     expect(raw.upsert).not.toHaveBeenCalled();

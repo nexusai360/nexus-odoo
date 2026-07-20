@@ -73,13 +73,21 @@ describe("corteDomainHerdado , o corte que o filho herda do pai", () => {
   // Sem isto, o reconcile perguntaria ao Odoo "quais itens existem?" e receberia os 233.563
   // do modelo inteiro (contra 59.804 dentro do corte), despejando ~172 mil linhas pre-corte
   // no cache. Medido no Odoo de producao em 2026-07-13.
-  it("FILHO sem data propria: herda a data do pai por dot-notation", () => {
+  //
+  // Fase 1B: sped.documento.item TEM override; o herdado vira UNIAO. So os itens de PEDIDO
+  // recuam (para 2024-11); os de NOTA (pedido_id=false, 91% do volume) ficam no corte global
+  // 2026. Sem o gate de pedido_id, recuar a data do pai reinundaria com ~172 mil itens de nota
+  // (BLOCKER-2); sem o ramo de nota, o reconcile deixaria de repor itens de nota perdidos na
+  // janela de commit do Odoo (os 158 itens/R$493k que motivaram o reconcile bidirecional).
+  it("FILHO com override (sped.documento.item): uniao pedido>=override OR nota>=global", () => {
     expect(corteDomainHerdado("sped.documento.item")).toEqual([
-      ["documento_id.data_emissao", ">=", "2026-01-01"],
+      "|",
+      "&", ["pedido_id", "!=", false], ["documento_id.data_emissao", ">=", "2024-11-01"],
+      "&", ["pedido_id", "=", false], ["documento_id.data_emissao", ">=", "2026-01-01"],
     ]);
   });
 
-  it("NETO: encadeia ate o avo", () => {
+  it("NETO (sem override): encadeia ate o avo, inalterado", () => {
     expect(corteDomainHerdado("sped.documento.item.rastreabilidade")).toEqual([
       ["item_id.documento_id.data_emissao", ">=", "2026-01-01"],
     ]);
