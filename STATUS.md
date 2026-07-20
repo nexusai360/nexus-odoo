@@ -1,8 +1,35 @@
 # STATUS , ponto de retomada
 
-> ## 🔜 PRÓXIMA SESSÃO , PLAN 4 (infra estoque: usage do stock.location)
+> ## ✅ TUDO EM PRODUÇÃO , troca de sessão (2026-07-20)
 >
-> **PLAN 1, PLAN 2 e PLAN 3 COMPLETOS, verdes, committados, sem PR/merge (PR #196 aberto).**
+> **Tudo que estava em andamento foi ENTREGUE, mergeado e está EM PRODUÇÃO. A `main` local
+> (pasta principal) está em dia com o `origin/main` (`fe48965f`). Nada pendente de deploy.**
+> A próxima sessão trabalha direto na **`main`** (a worktree `feat/diretoria-entregas-estoque`
+> foi removida; a branch está mergeada). O dev roda na pasta principal, porta 3000, na `main`.
+>
+> **Fechado e em produção nesta rodada:**
+> - **PLAN 4/6 (classificação de estoque + histórico temporal)** , PR #196, em prod. Frente A
+>   (intercompany → físico + re-sync dos saldos + perícia) e Frente B (3 tabelas de histórico
+>   append-por-mudança + captura acoplada ao ciclo + consultas nas 4 pontas). Migrations
+>   aplicadas em prod; o worker de prod já reclassificou (18 físicos) e captura o histórico.
+> - **UI da Diretoria** , PR #197, em prod. Mapa de faturamento por estado: siglas pelo **polo
+>   de inacessibilidade** (centradas em todos os estados), fonte menor, DF acima do quadradinho,
+>   DF/SE/AL em fonte 9,5. **Fix de hydration mismatch** do DonutChart (arredondar coordenadas do
+>   arco; `Math.cos/sin` divergia 1 ULP entre server e client) + preventivo no mapa (`Math.hypot`).
+> - **Ambiente local estabilizado:** o dev estava em loop de restart (cache `.next` velho após
+>   regen do Prisma) , resolvido com `dev:fresh`. Login travava por rate-limit no Redis (limpo).
+>   Worker local subido (a base voltou a sincronizar do 14/07 em diante).
+>
+> **Próximas frentes candidatas (não iniciadas):** telas de gráfico do histórico da Frente B
+> (o dado e as queries existem; falta a UI); o item de maior valor do RADAR
+> (`R-faturamento-nome-operacao`, R$ 538k que somem em silêncio , falta a rede de alerta); F5
+> (WhatsApp + agente) e F6 (construtor). Ver seções abaixo e `docs/RADAR.md`.
+>
+> ---
+>
+> ## 🔜 HISTÓRICO DA RETOMADA ANTERIOR , PLAN 4 (infra estoque: usage do stock.location)
+>
+> **PLAN 1, PLAN 2 e PLAN 3 COMPLETOS, verdes, committados (mergeados no PR #196).**
 >
 > **PLAN 3 (composição de valor dos kits) , ENTREGUE e periciado (tsc 0, jest 4347).**
 > Plano: `docs/superpowers/plans/2026-07-19-plan3-composicao-valor-kits.md`. Entregas:
