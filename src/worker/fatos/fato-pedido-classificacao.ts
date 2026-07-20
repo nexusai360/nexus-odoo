@@ -10,7 +10,6 @@ import { markFatoBuilt } from "./fato-build-state";
 import { carregarParticipantesGrupo, ehNotaIntragrupo } from "../../lib/fiscal/grupo";
 import {
   classificaOperacao,
-  classificaEtapaDemanda,
   notaEhVendaExterna,
   ETAPAS_DEMANDA_ABERTA,
 } from "../../lib/fiscal/regras";
@@ -22,6 +21,7 @@ interface PedidoRow {
   participante_id: number | null;
   participante_nome: string | null;
   cfop: string | null;
+  tipo: string | null;
 }
 interface EtapaRow {
   odoo_id: number;
@@ -135,6 +135,7 @@ export async function classificarPedidosDoRaw(
            (p.data->'etapa_id'->>0)::int as etapa_id,
            (p.data->'participante_id'->>0)::int as participante_id,
            (p.data->'participante_id'->>1) as participante_nome,
+           (p.data->>'tipo') as tipo,
            it.cfop
     from raw_pedido_documento p
     left join itens it on it.pedido_id = (p.data->>'id')::int
@@ -146,20 +147,13 @@ export async function classificarPedidosDoRaw(
       { cfop: p.cfop, participanteId: p.participante_id, participanteNome: p.participante_nome },
       participantesGrupo,
     );
-    let bucket: string;
-    if (!op.entraDemanda) {
-      bucket = "IGNORAR";
-    } else {
-      const g = p.etapa_id !== null ? gatilhoPorEtapa.get(p.etapa_id) : undefined;
-      bucket = g
-        ? classificaEtapaDemanda({
-            nome: g.nome ?? "",
-            finalizaFaturamento: g.fin_fat,
-            finalizaPedidoConfirmando: g.fin_conf,
-            finalizaPedidoCancelando: g.fin_canc,
-          })
-        : "ABERTA";
-    }
+    const g = p.etapa_id !== null ? gatilhoPorEtapa.get(p.etapa_id) : undefined;
+    const bucket = bucketDoPedido({
+      entraDemanda: op.entraDemanda,
+      tipo: p.tipo,
+      etapaId: p.etapa_id,
+      finalizaPedidoCancelando: g?.fin_canc ?? false,
+    });
     const pendencia =
       bucket === "ABERTA" && p.etapa_id !== null
         ? pendenciaPorEtapa.get(p.etapa_id) ?? null
@@ -221,7 +215,7 @@ export async function rebuildFatoPedidoClassificacao(prisma: PrismaClient): Prom
         and jsonb_typeof(i.data->'pedido_id') = 'array'
       order by (i.data->'pedido_id'->>0)::int, (i.data->>'quantidade')::numeric desc nulls last
     )
-    select f.odoo_id, f.etapa_id, f.participante_id, f.participante_nome, it.cfop
+    select f.odoo_id, f.etapa_id, f.participante_id, f.participante_nome, f.tipo, it.cfop
     from fato_pedido f
     left join itens it on it.pedido_id = f.odoo_id`;
 
@@ -232,20 +226,13 @@ export async function rebuildFatoPedidoClassificacao(prisma: PrismaClient): Prom
       { cfop: p.cfop, participanteId: p.participante_id, participanteNome: p.participante_nome },
       participantesGrupo,
     );
-    let bucket: string;
-    if (!op.entraDemanda) {
-      bucket = "IGNORAR";
-    } else {
-      const g = p.etapa_id !== null ? gatilhoPorEtapa.get(p.etapa_id) : undefined;
-      bucket = g
-        ? classificaEtapaDemanda({
-            nome: g.nome ?? "",
-            finalizaFaturamento: g.fin_fat,
-            finalizaPedidoConfirmando: g.fin_conf,
-            finalizaPedidoCancelando: g.fin_canc,
-          })
-        : "ABERTA";
-    }
+    const g = p.etapa_id !== null ? gatilhoPorEtapa.get(p.etapa_id) : undefined;
+    const bucket = bucketDoPedido({
+      entraDemanda: op.entraDemanda,
+      tipo: p.tipo,
+      etapaId: p.etapa_id,
+      finalizaPedidoCancelando: g?.fin_canc ?? false,
+    });
     // Pendencia so faz sentido para demanda ABERTA (pedido comercial em andamento).
     const pendencia =
       bucket === "ABERTA" && p.etapa_id !== null

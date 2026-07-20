@@ -1,4 +1,23 @@
-import { bucketDoPedido } from "./fato-pedido-classificacao";
+import { bucketDoPedido, classificarPedidosDoRaw } from "./fato-pedido-classificacao";
+
+function makePrisma(opts: {
+  etapas: { odoo_id: number; nome: string; fin_fat: boolean; fin_conf: boolean; fin_canc: boolean;
+            apr_ped: boolean; apr_fin: boolean; apr_est: boolean; apr_fat: boolean; fin_fin: boolean; fin_est: boolean }[];
+  pedidos: { odoo_id: number; etapa_id: number | null; participante_id: number | null;
+             participante_nome: string | null; cfop: string | null; tipo: string | null }[];
+}) {
+  const queryRaw = jest
+    .fn()
+    .mockResolvedValueOnce(opts.etapas) // 1a chamada: etapas
+    .mockResolvedValueOnce(opts.pedidos); // 2a chamada: pedidos
+  return {
+    fatoParceiro: { findMany: jest.fn().mockResolvedValue([]) }, // sem intragrupo
+    $queryRaw: queryRaw,
+  } as never;
+}
+
+const etapaBase = { fin_fat: false, fin_conf: false, fin_canc: false, apr_ped: false,
+  apr_fin: false, apr_est: false, apr_fat: false, fin_fin: false, fin_est: false };
 
 describe("bucketDoPedido , whitelist autoritativa + gates de tipo e operacao", () => {
   const venda = { entraDemanda: true, tipo: "venda", finalizaPedidoCancelando: false };
@@ -38,5 +57,29 @@ describe("bucketDoPedido , whitelist autoritativa + gates de tipo e operacao", (
 
   it("etapaId nulo, venda, dentro da operacao => nunca ABERTA (sem etapa nao ha pertenca)", () => {
     expect(bucketDoPedido({ ...venda, etapaId: null })).toBe("FECHADA");
+  });
+});
+
+describe("classificarPedidosDoRaw , whitelist + tipo aplicados de ponta a ponta", () => {
+  it("venda com CFOP de venda na etapa 130 => ABERTA; romaneio na mesma etapa => IGNORAR", async () => {
+    const prisma = makePrisma({
+      etapas: [{ odoo_id: 130, nome: "Aguardando Autorizacao", ...etapaBase }],
+      pedidos: [
+        { odoo_id: 1, etapa_id: 130, participante_id: 5010, participante_nome: "Cliente X", cfop: "5102", tipo: "venda" },
+        { odoo_id: 2, etapa_id: 130, participante_id: 5010, participante_nome: "Cliente X", cfop: "5102", tipo: "romaneio" },
+      ],
+    });
+    const out = await classificarPedidosDoRaw(prisma);
+    expect(out.get(1)!.bucketDemanda).toBe("ABERTA");
+    expect(out.get(2)!.bucketDemanda).toBe("IGNORAR");
+  });
+
+  it("venda com CFOP de venda na etapa Cancelado (6, fora da whitelist) => nao e ABERTA", async () => {
+    const prisma = makePrisma({
+      etapas: [{ odoo_id: 6, nome: "Cancelado", ...etapaBase }],
+      pedidos: [{ odoo_id: 3, etapa_id: 6, participante_id: 5010, participante_nome: "Cliente X", cfop: "5102", tipo: "venda" }],
+    });
+    const out = await classificarPedidosDoRaw(prisma);
+    expect(out.get(3)!.bucketDemanda).not.toBe("ABERTA");
   });
 });
