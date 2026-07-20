@@ -1,4 +1,4 @@
-import { syncAtendimento, DOMINIO_ATENDIMENTO } from "./atendimento";
+import { syncAtendimento, dominioAtendimento } from "./atendimento";
 import type { OdooClient } from "../odoo/client";
 import type { RawDelegate } from "./incremental";
 
@@ -50,26 +50,26 @@ function fakeRaw(): RawDelegate & { upsert: jest.Mock } {
   } as unknown as RawDelegate & { upsert: jest.Mock };
 }
 
-describe("DOMINIO_ATENDIMENTO", () => {
+describe("dominioAtendimento", () => {
   it("le so itens que pertencem a um pedido", () => {
-    expect(DOMINIO_ATENDIMENTO).toContainEqual(["pedido_id", "!=", false]);
+    expect(dominioAtendimento()).toContainEqual(["pedido_id", "!=", false]);
   });
 
-  it("respeita o corte de ingestao pela data do documento pai", () => {
-    // O modelo corta por cortePai (a data mora no documento), entao corteDomain()
-    // devolve vazio para ele. Sem esta clausula explicita, o job reimportaria o
-    // historico que a limpeza ja removeu.
-    expect(DOMINIO_ATENDIMENTO).toContainEqual([
+  it("recua com o override de sped.documento.item (a_atender dos antigos fresco)", () => {
+    // Fase 1B: e uma FUNCAO, nao const. A const congelava CORTE_INGESTAO_ISO no import; o
+    // a_atender dos pedidos antigos (2024-11) nunca atualizaria (ficaria congelado/NULL).
+    // O gate pedido_id!=false garante que o recuo NAO traz itens de nota.
+    expect(dominioAtendimento()).toContainEqual([
       "documento_id.data_emissao",
       ">=",
-      "2026-01-01",
+      "2024-11-01",
     ]);
   });
 
   it("NAO filtra por write_date , e a razao de existir do job", () => {
     // O write_date do item nao muda quando a entrega acontece (quem nasce e a nota).
     // Se filtrassemos por ele, o valor entraria uma vez e congelaria.
-    const campos = DOMINIO_ATENDIMENTO.map(([campo]) => campo);
+    const campos = dominioAtendimento().map(([campo]) => campo);
     expect(campos).not.toContain("write_date");
   });
 });

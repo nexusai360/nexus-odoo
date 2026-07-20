@@ -21,24 +21,30 @@
 import type { OdooClient } from "../odoo/client";
 import { parseWriteDate } from "../odoo/datetime";
 import { getModelFields } from "../odoo/field-selection";
-import { CORTE_INGESTAO_ISO } from "./corte";
+import { corteIngestaoDe } from "./corte";
 import { PAGE_SIZE, type RawDelegate } from "./incremental";
 
 const MODELO = "sped.documento.item";
 
 /**
- * So itens que pertencem a um pedido, e so dentro do corte de ingestao.
+ * So itens que pertencem a um pedido, e so dentro do corte de ingestao EFETIVO do item.
  *
  * O corte vem explicito porque `corteDomain(MODELO)` devolve vazio: o modelo corta por
  * `cortePai` (a data mora no documento pai), nao por campo proprio. Sem esta clausula, o
  * job reimportaria o historico que a limpeza ja removeu.
  *
+ * Fase 1B: e uma FUNCAO, nao const. Uma const congelava o corte no momento do import; com o
+ * override (2024-11), o a_atender dos pedidos antigos nunca atualizaria (ficaria congelado ou
+ * NULL). O gate `pedido_id != false` garante que o recuo NAO arrasta itens de nota.
+ *
  * E NAO ha filtro de `write_date` , e o ponto do job.
  */
-export const DOMINIO_ATENDIMENTO: Array<[string, string, string | boolean]> = [
-  ["pedido_id", "!=", false],
-  ["documento_id.data_emissao", ">=", CORTE_INGESTAO_ISO],
-];
+export function dominioAtendimento(): Array<[string, string, string | boolean]> {
+  return [
+    ["pedido_id", "!=", false],
+    ["documento_id.data_emissao", ">=", corteIngestaoDe(MODELO)],
+  ];
+}
 
 export interface ResultadoAtendimento {
   lidos: number;
@@ -83,7 +89,7 @@ export async function syncAtendimento(
 
     const { records, hasMore } = await client.searchReadPage(
       MODELO,
-      DOMINIO_ATENDIMENTO,
+      dominioAtendimento(),
       { offset, pageSize: PAGE_SIZE, fields },
     );
 
