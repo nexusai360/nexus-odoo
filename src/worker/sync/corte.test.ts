@@ -1,6 +1,12 @@
 // Corte TECNICO da ingestao (T2a) , fixo, independente da data de inicio das analises.
 import { describe, it, expect } from "@jest/globals";
-import { corteDomain, corteDomainHerdado, CORTE_INGESTAO_ISO } from "./corte";
+import {
+  corteDomain,
+  corteDomainHerdado,
+  corteIngestaoDe,
+  OVERRIDE_INGESTAO,
+  CORTE_INGESTAO_ISO,
+} from "./corte";
 
 describe("corteDomain", () => {
   it("o corte da ingestao e FIXO em 2026-01-01 (nao e a data da tela)", () => {
@@ -26,6 +32,36 @@ describe("corteDomain", () => {
   });
   it("modelo desconhecido gera vazia", () => {
     expect(corteDomain("nao.existe")).toEqual([]);
+  });
+});
+
+describe("OVERRIDE_INGESTAO , recuo cirurgico por-modelo (fonte unica, Fase 1B)", () => {
+  // TRAVA DE ROLLBACK (review ALTO): este snapshot do conteudo do override existe para que
+  // remover/reverter o override QUEBRE o teste. Motivo: os pedidos antigos (2024-11..2025) so
+  // sobrevivem ao reconcile diario enquanto este literal estiver deployado. Um rollback de
+  // imagem/revert para uma versao sem o override faria vivos(pedido)=data_orcamento>=2026 e o
+  // proximo reconcile marcaria TODO pedido pre-2026 como rawDeleted (PR#168). Ver runbook.
+  it("contem EXATAMENTE pedido.documento e sped.documento.item recuados para 2024-11-01", () => {
+    expect([...OVERRIDE_INGESTAO.entries()].sort()).toEqual([
+      ["pedido.documento", "2024-11-01"],
+      ["sped.documento.item", "2024-11-01"],
+    ]);
+    expect(OVERRIDE_INGESTAO.size).toBe(2);
+  });
+
+  it("corteIngestaoDe devolve o override quando existe, senao o global", () => {
+    expect(corteIngestaoDe("pedido.documento")).toBe("2024-11-01");
+    expect(corteIngestaoDe("sped.documento.item")).toBe("2024-11-01");
+    expect(corteIngestaoDe("sped.documento")).toBe(CORTE_INGESTAO_ISO);
+    expect(corteIngestaoDe("res.partner")).toBe(CORTE_INGESTAO_ISO);
+  });
+
+  it("pedido.documento usa o override no corteDomain (recuo cirurgico), nao o global", () => {
+    expect(corteDomain("pedido.documento")).toEqual([["data_orcamento", ">=", "2024-11-01"]]);
+  });
+
+  it("modelo com corte proprio e sem override continua no global 2026", () => {
+    expect(corteDomain("sped.documento")).toEqual([["data_emissao", ">=", CORTE_INGESTAO_ISO]]);
   });
 });
 

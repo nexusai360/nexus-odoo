@@ -28,6 +28,34 @@ export const CORTE_INGESTAO_ISO = "2026-01-01";
 /** @deprecated nome antigo (confundia com a data da tela). Use CORTE_INGESTAO_ISO. */
 export const CORTE_DADOS_ISO = CORTE_INGESTAO_ISO;
 
+/**
+ * Recuo cirurgico do corte de ingestao POR MODELO (Fase 1B). Fonte UNICA, literal e
+ * PERMANENTE (deployada com o codigo, nunca configuravel na tela). Lida de forma IDENTICA por
+ * corteDomain, corteDomainHerdado, dominioAtendimento e o purge (alvos.ts), para que
+ * reconcile, atendimento e limpeza nunca divirjam sobre ate onde o cache guarda cada modelo.
+ *
+ * So `pedido.documento` (header do pedido) e `sped.documento.item` (itens de pedido) recuam,
+ * para trazer os pedidos em aberto anteriores a 2026 SEM repor o historico de notas/financeiro.
+ * A data (2024-11-01) e o piso do mes do pedido em aberto mais antigo, confirmado ao vivo na
+ * Task 0: min(data_orcamento)=2024-11-27; o min(documento_id.data_emissao) dos itens desses
+ * pedidos e 2026-03-04 (mais tarde, logo nenhum item some por pai anterior). Ver PLAN Fase 1B.
+ *
+ * HAZARD DE ROLLBACK (nao remover sem re-sync): enquanto este literal estiver deployado, o
+ * reconcile diario mantem vivos(pedido)=data_orcamento>=2024-11 e nunca marca os antigos como
+ * rawDeleted. Reverter/rollar para uma versao SEM o override re-arma o PR#168: o proximo
+ * reconcile marcaria todo pedido 2024-11..2025 como removido. Ha um teste que trava este
+ * conteudo justamente para que um revert quebre a suite. Ver runbook backfill-entregas-antigas.
+ */
+export const OVERRIDE_INGESTAO: ReadonlyMap<string, string> = new Map([
+  ["pedido.documento", "2024-11-01"],
+  ["sped.documento.item", "2024-11-01"],
+]);
+
+/** Data de corte de ingestao EFETIVA do modelo: override da Fase 1B se houver, senao o global. */
+export function corteIngestaoDe(odooModel: string): string {
+  return OVERRIDE_INGESTAO.get(odooModel) ?? CORTE_INGESTAO_ISO;
+}
+
 const POR_MODELO = new Map(MODEL_CATALOG.map((e) => [e.odooModel, e]));
 const POR_TABELA_RAW = new Map(MODEL_CATALOG.map((e) => [rawTableFor(e.odooModel), e]));
 
@@ -35,7 +63,7 @@ const POR_TABELA_RAW = new Map(MODEL_CATALOG.map((e) => [rawTableFor(e.odooModel
 export function corteDomain(odooModel: string): Array<[string, string, string]> {
   const entry = POR_MODELO.get(odooModel);
   if (!entry?.corte) return [];
-  return [[entry.corte.odoo, ">=", CORTE_INGESTAO_ISO]];
+  return [[entry.corte.odoo, ">=", corteIngestaoDe(odooModel)]];
 }
 
 /**
