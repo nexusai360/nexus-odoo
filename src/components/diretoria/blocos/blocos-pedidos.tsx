@@ -208,9 +208,12 @@ function TabelaEntregasParciais({ d }: { d: PedidosData }) {
       produto: l.produto ?? DASH,
       familia: l.familia ?? DASH,
       marca: l.marca ?? DASH,
+      qtdTotal: l.quantidadeTotal,
+      qtdAtendida: l.quantidadeAtendida,
       qtd: l.qtdAAtender,
       unitario: l.unitario,
       valorCheio: l.valorCheio,
+      valorCustoTotal: l.valorCustoTotal,
       vlrVenda: l.valorVendaAAtender,
       vlrCusto: l.valorCustoAAtender,
     };
@@ -237,13 +240,21 @@ function TabelaEntregasParciais({ d }: { d: PedidosData }) {
         etapa: l.etapa ?? DASH,
         etapaCor: l.etapaCor,
         status: l.statusFinanceiro === "bloqueado" ? "Bloqueado" : "Liberado",
-        forma: l.formaPagamento ?? "Não informado",
+        // Mostra a forma como vem da base (ex.: "Sem pagamento", "Boleto"); só
+        // cai no traço quando de fato não há valor. (Fonte em revisão: alguns
+        // pedidos vêm sem parcela e a forma real está no cabeçalho do pedido.)
+        forma: l.formaPagamento ?? DASH,
         vendedor: nomeVendedor(l.vendedor),
         observacoes: l.observacoes ?? DASH,
         obsEntrega: l.obsEntrega ?? DASH,
         qtdItens: 0,
+        qtdTotal: 0,
+        qtdAtendida: 0,
         qtd: 0,
         valorCheio: 0,
+        valorTotalCusto: 0,
+        valorAtendidoVenda: 0,
+        valorAtendidoCusto: 0,
         vlrVenda: 0,
         vlrCusto: 0,
         itens: [],
@@ -258,10 +269,15 @@ function TabelaEntregasParciais({ d }: { d: PedidosData }) {
   const linhas: LinhaEntrega[] = [];
   for (const ped of mapa.values()) {
     ped.qtdItens = ped.itens.length;
+    ped.qtdTotal = ped.itens.reduce((s, i) => s + (i.qtdTotal || 0), 0);
+    ped.qtdAtendida = ped.itens.reduce((s, i) => s + (i.qtdAtendida || 0), 0);
     ped.qtd = ped.itens.reduce((s, i) => s + (i.qtd || 0), 0);
     ped.valorCheio = ped.itens.reduce((s, i) => s + (i.valorCheio || 0), 0);
+    ped.valorTotalCusto = ped.itens.reduce((s, i) => s + (i.valorCustoTotal || 0), 0);
     ped.vlrVenda = ped.itens.reduce((s, i) => s + (i.vlrVenda || 0), 0);
     ped.vlrCusto = ped.itens.reduce((s, i) => s + (i.vlrCusto || 0), 0);
+    ped.valorAtendidoVenda = Math.max(0, ped.valorCheio - ped.vlrVenda);
+    ped.valorAtendidoCusto = Math.max(0, ped.valorTotalCusto - ped.vlrCusto);
     ped.produtosTexto = ped.itens.map((i) => `${i.codigo} ${i.produto}`).join(" | ");
     ped.familias = [...new Set(ped.itens.map((i) => i.familia).filter((v) => v && v !== DASH))];
     ped.marcas = [...new Set(ped.itens.map((i) => i.marca).filter((v) => v && v !== DASH))];
@@ -288,7 +304,7 @@ function TabelaEntregasParciais({ d }: { d: PedidosData }) {
       rowKey={(l) => String(l.pedidoId || l.numero)}
       valorSoma={(l) => l.vlrVenda}
       colunaSoma="vlrVenda"
-      storageKey="entregas-parciais-tabela-v2"
+      storageKey="entregas-parciais-tabela-v3"
       exportFilename="entregas-parciais"
       labelRegistro="pedidos"
       presets={PRESETS_ENTREGA}

@@ -53,8 +53,14 @@ export interface LinhaEntregaParcial {
   /** Hex da cor da etapa vindo do Odoo (raw_pedido_etapa.data.cor), ou null (tag neutra). */
   etapaCor: string | null;
   qtdAAtender: number;
+  /** Quantidade cheia do item (total do pedido, antes de atender). */
+  quantidadeTotal: number;
+  /** Quantidade já atendida (cheia − a atender; 0 se o atendimento não sincronizou). */
+  quantidadeAtendida: number;
   valorVendaAAtender: number;
   valorCustoAAtender: number;
+  /** Valor total do item a preço de CUSTO (quantidade cheia × custo unitário). */
+  valorCustoTotal: number;
   statusFinanceiro: "liberado" | "bloqueado";
   formaPagamento: string | null;
   // --- Fase 3: colunas completas do relatório oficial (ID 28) ---
@@ -150,6 +156,15 @@ export function extrairObsPedido(
 ): { obs: string | null; obsEntrega: string | null } {
   const d = data as { obs?: unknown; obs_produtos?: unknown } | null;
   return { obs: strOuNull(d?.obs), obsEntrega: strOuNull(d?.obs_produtos) };
+}
+
+/** Forma de pagamento do CABEÇALHO do pedido (`pedido.documento.forma_pagamento_id`,
+ * many2one `[id, nome]`). É a fonte fiel: muitos pedidos em aberto não têm parcela,
+ * então a forma vinda de `fato_pedido_parcela` some (o bug do "Não informado").
+ * `false`/vazio do Odoo => null. */
+export function extrairFormaPagamento(data: unknown): string | null {
+  const v = (data as { forma_pagamento_id?: unknown } | null)?.forma_pagamento_id;
+  return Array.isArray(v) && typeof v[1] === "string" ? strOuNull(v[1]) : null;
 }
 
 // REGRA_BLOQUEIO (D-b, versão SIMPLES, pendente de veredito do dono , 2026-07-18):
@@ -272,6 +287,7 @@ export async function queryEntregasParciais(
         marcaNome: true,
         quantidade: true,
         quantidadeAAtender: true,
+        quantidadeAtendida: true,
         vrProdutos: true,
       },
     }),
@@ -301,6 +317,8 @@ export async function queryEntregasParciais(
   const cnpjDe = new Map(parceiros.map((p) => [p.odooId, p.documento ?? null]));
   const cepDe = new Map(parceiros.map((p) => [p.odooId, p.cep ?? null]));
   const obsDe = new Map(obsRaw.map((r) => [r.odooId, extrairObsPedido(r.data)]));
+  // Forma de pagamento fiel: cabeçalho do pedido (cobre 100%); parcela é fallback.
+  const formaCabecalhoDe = new Map(obsRaw.map((r) => [r.odooId, extrairFormaPagamento(r.data)]));
 
   const escopo = filtros.ufs && filtros.ufs.length ? new Set(filtros.ufs) : null;
   const ufDoPedido = (participanteId: number | null): string =>
@@ -347,6 +365,10 @@ export async function queryEntregasParciais(
 
     const valorCheio = Number(it.vrProdutos ?? 0);
     const obsPedido = obsDe.get(it.pedidoId) ?? { obs: null, obsEntrega: null };
+    // Quantidades diretas do fato = as 3 colunas do Odoo (Quantidade/Atendido/A atender).
+    const quantidadeTotalItem = Number(it.quantidade ?? 0);
+    const qtdAtendidaItem = Number(it.quantidadeAtendida ?? 0);
+    const custoUnitario = it.produtoId != null ? (custoDe(it.produtoId) ?? 0) : 0;
 
     linhas.push({
       pedidoId: it.pedidoId,
@@ -364,13 +386,16 @@ export async function queryEntregasParciais(
       etapa: p.etapaNome ? formatarNomeEtapa(p.etapaNome) : null,
       etapaCor: p.etapaId != null ? corDe.get(p.etapaId) ?? null : null,
       qtdAAtender: linha.aAtender,
+      quantidadeTotal: quantidadeTotalItem,
+      quantidadeAtendida: qtdAtendidaItem,
       valorVendaAAtender: linha.vendaLinha,
       valorCustoAAtender: linha.custoLinha,
+      valorCustoTotal: quantidadeTotalItem * custoUnitario,
       statusFinanceiro:
         p.participanteId != null && bloqueados.has(p.participanteId)
           ? "bloqueado"
           : "liberado",
-      formaPagamento: formaDe.get(it.pedidoId) ?? null,
+      formaPagamento: formaCabecalhoDe.get(it.pedidoId) ?? formaDe.get(it.pedidoId) ?? null,
       // --- Fase 3 ---
       orcamento: isoData(p.dataOrcamento),
       prevista: isoData(p.dataPrevista),

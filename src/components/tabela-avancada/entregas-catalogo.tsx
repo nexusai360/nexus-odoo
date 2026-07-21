@@ -24,9 +24,12 @@ export interface ItemEntrega {
   produto: string;
   familia: string;
   marca: string;
+  qtdTotal: number;   // quantidade cheia do item
+  qtdAtendida: number; // quantidade já atendida
   qtd: number;        // qtd a atender
   unitario: number;
-  valorCheio: number;
+  valorCheio: number;      // valor total do item (venda)
+  valorCustoTotal: number; // valor total do item (custo)
   vlrVenda: number;   // a atender (venda)
   vlrCusto: number;   // a atender (custo)
 }
@@ -56,11 +59,16 @@ export interface LinhaEntrega {
   observacoes: string;
   obsEntrega: string;
   // Agregados do pedido (somados a partir dos itens em saldo).
-  qtdItens: number;   // nº de produtos (linhas) do pedido
-  qtd: number;        // soma da qtd a atender
-  valorCheio: number; // soma do valor cheio
-  vlrVenda: number;   // soma a atender (venda)
-  vlrCusto: number;   // soma a atender (custo)
+  qtdItens: number;      // nº de produtos (linhas) do pedido
+  qtdTotal: number;      // soma da quantidade cheia
+  qtdAtendida: number;   // soma da quantidade já atendida
+  qtd: number;           // soma da qtd a atender
+  valorCheio: number;    // soma do valor cheio (= valor total a venda)
+  valorTotalCusto: number;    // soma do valor total a custo
+  valorAtendidoVenda: number; // valor total venda − a atender venda
+  valorAtendidoCusto: number; // valor total custo − a atender custo
+  vlrVenda: number;      // soma a atender (venda)
+  vlrCusto: number;      // soma a atender (custo)
   // Itens + índices de texto para busca/filtro por produto.
   itens: ItemEntrega[];
   produtosTexto: string; // "código nome | código nome ..." (busca rápida)
@@ -108,19 +116,27 @@ export const COLUNAS: ColunaDef<LinhaEntrega>[] = [
   { key: "cidade", label: "Cidade", tipo: "texto", sortable: true, numeric: false, padrao: true, valor: (l) => l.cidade },
   { key: "etapa", label: "Etapa", tipo: "tagCor", sortable: true, numeric: false, padrao: true, valor: (l) => formatarNomeEtapa(l.etapa) },
   { key: "prevista", label: "Prevista", tipo: "data", sortable: true, numeric: false, padrao: true, valor: (l) => l.prevista },
+  // Quantidades (unidades): total, atendida, a atender.
+  { key: "qtdTotal", label: "Qtd total", tipo: "numero", sortable: true, numeric: true, padrao: true, valor: (l) => l.qtdTotal },
+  { key: "qtdAtendida", label: "Qtd atendida", tipo: "numero", sortable: true, numeric: true, padrao: true, valor: (l) => l.qtdAtendida },
   { key: "qtd", label: "Qtd a atender", tipo: "numero", sortable: true, numeric: true, padrao: true, valor: (l) => l.qtd },
-  { key: "vlrVenda", label: "A atender (venda)", tipo: "moeda", sortable: true, numeric: true, padrao: true, valor: (l) => l.vlrVenda },
-  { key: "vlrCusto", label: "A atender (custo)", tipo: "moeda", sortable: true, numeric: true, padrao: true, valor: (l) => l.vlrCusto },
+  // Valores a CUSTO (padrão): total, atendido, a atender.
+  { key: "valorTotalCusto", label: "Valor total (custo)", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.valorTotalCusto },
+  { key: "valorAtendidoCusto", label: "Valor atendido (custo)", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.valorAtendidoCusto },
+  { key: "vlrCusto", label: "Valor a atender (custo)", tipo: "moeda", sortable: true, numeric: true, padrao: true, valor: (l) => l.vlrCusto },
   { key: "status", label: "Financeiro", tipo: "status", sortable: true, numeric: false, padrao: true, valor: (l) => l.status },
-  // Não-default (disponíveis no seletor de colunas / detalhe).
+  // Valores a VENDA (opcionais; o toggle custo/venda com ícones vem na próxima leva).
+  { key: "valorCheio", label: "Valor total (venda)", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.valorCheio },
+  { key: "valorAtendidoVenda", label: "Valor atendido (venda)", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.valorAtendidoVenda },
+  { key: "vlrVenda", label: "Valor a atender (venda)", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.vlrVenda },
+  // Cabeçalho (não-default; disponíveis no seletor de colunas / detalhe).
   { key: "orcamento", label: "Orçamento", tipo: "data", sortable: true, numeric: false, padrao: false, valor: (l) => l.orcamento },
-  { key: "contrato", label: "Contrato", tipo: "data", sortable: true, numeric: false, padrao: false, valor: (l) => l.contrato },
+  { key: "contrato", label: "Validade", tipo: "data", sortable: true, numeric: false, padrao: false, valor: (l) => l.contrato },
   { key: "emitente", label: "Emitente", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.emitente, detalheSpan: 2 },
   { key: "cnpj", label: "CNPJ", tipo: "texto", sortable: false, numeric: false, padrao: false, valor: (l) => l.cnpj },
   { key: "cep", label: "CEP", tipo: "texto", sortable: false, numeric: false, padrao: false, valor: (l) => l.cep },
   { key: "operacao", label: "Operação", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.operacao, detalheSpan: 2 },
   { key: "modalidade", label: "Modalidade", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.modalidade },
-  { key: "valorCheio", label: "Valor cheio (total)", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.valorCheio },
   { key: "forma", label: "Forma de pagamento", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.forma },
   { key: "vendedor", label: "Vendedor", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.vendedor },
   { key: "observacoes", label: "Observações", tipo: "texto", sortable: false, numeric: false, padrao: false, valor: (l) => l.observacoes, detalheSpan: 4 },
@@ -280,23 +296,26 @@ export function celula(l: LinhaEntrega, key: string): React.ReactNode {
 
 // ===== Lista de produtos (dropdown da lista + seção do detalhe) =====
 
-const GRID_ITEM = "grid grid-cols-[3.5rem_minmax(0,1fr)_9rem_7rem_5rem_7.5rem_8.5rem] gap-3";
+const GRID_ITEM = "grid grid-cols-[3.5rem_minmax(0,1fr)_7.5rem_6rem_4rem_4.5rem_5rem_7rem_8rem] gap-3";
 
 /** Produtos de um pedido, um embaixo do outro, colunas alinhadas, divisórias
- * bem leves (sem cara de tabela). Rola no próprio contêiner quando estreito. */
+ * bem leves (sem cara de tabela). Rola no próprio contêiner quando estreito.
+ * Quantidades: Total / Atendido / A atender (mesma leitura do Odoo). */
 export function ListaProdutos({ itens }: { itens: ItemEntrega[] }) {
   if (!itens.length) return <p className="px-1 text-sm text-muted-foreground">Sem produtos a atender neste pedido.</p>;
   return (
     <div className="overflow-x-auto">
-      <div className="min-w-[52rem]">
+      <div className="min-w-[58rem]">
         <div className={cn(GRID_ITEM, "px-1 pb-2 text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground")}>
           <span>Cód.</span>
           <span>Produto</span>
           <span>Família</span>
           <span>Marca</span>
-          <span className="text-right">Qtd</span>
-          <span className="text-right">Unitário</span>
+          <span className="text-right">Total</span>
+          <span className="text-right">Atend.</span>
           <span className="text-right">A atender</span>
+          <span className="text-right">Unitário</span>
+          <span className="text-right">Valor a atender</span>
         </div>
         <div className="divide-y divide-border/40">
           {itens.map((it, i) => (
@@ -305,7 +324,9 @@ export function ListaProdutos({ itens }: { itens: ItemEntrega[] }) {
               <span className="min-w-0 break-words font-medium text-foreground">{it.produto}</span>
               <span className="truncate text-muted-foreground">{it.familia}</span>
               <span className="truncate text-muted-foreground">{it.marca}</span>
-              <span className="text-right tabular-nums text-foreground">{it.qtd}</span>
+              <span className="text-right tabular-nums text-muted-foreground">{it.qtdTotal}</span>
+              <span className="text-right tabular-nums text-muted-foreground">{it.qtdAtendida}</span>
+              <span className="text-right font-medium tabular-nums text-foreground">{it.qtd}</span>
               <span className="text-right tabular-nums text-muted-foreground">{formatBRL(it.unitario)}</span>
               <span className="text-right font-semibold tabular-nums text-foreground">{formatBRL(it.vlrVenda)}</span>
             </div>
@@ -374,10 +395,10 @@ export function DetalheEntrega({ l }: { l: LinhaEntrega }) {
 
       {/* Resumo de valores */}
       <div className="grid grid-cols-2 gap-4 rounded-xl border border-border/60 bg-background/40 p-4 sm:grid-cols-4">
-        <Stat label="A atender (venda)" valor={formatBRL(l.vlrVenda)} destaque />
-        <Stat label="A atender (custo)" valor={formatBRL(l.vlrCusto)} />
-        <Stat label="Valor cheio (total)" valor={formatBRL(l.valorCheio)} />
-        <Stat label="Qtd a atender" valor={`${l.qtd}`} />
+        <Stat label="A atender (custo)" valor={formatBRL(l.vlrCusto)} destaque />
+        <Stat label="A atender (venda)" valor={formatBRL(l.vlrVenda)} />
+        <Stat label="Valor total (custo)" valor={formatBRL(l.valorTotalCusto)} />
+        <Stat label="Qtd total / atend. / a atender" valor={`${l.qtdTotal} / ${l.qtdAtendida} / ${l.qtd}`} />
       </div>
 
       <dl className="space-y-5">
@@ -386,7 +407,7 @@ export function DetalheEntrega({ l }: { l: LinhaEntrega }) {
             <Campo label="Nº Mercos" valor={l.mercos} />
             <Campo label="Orçamento" valor={formatarDataBR(l.orcamento)} />
             <Campo label="Prevista" valor={formatarDataBR(l.prevista)} />
-            <Campo label="Contrato" valor={formatarDataBR(l.contrato)} />
+            <Campo label="Validade" valor={formatarDataBR(l.contrato)} />
             <Campo label="Emitente" valor={l.emitente} span={2} />
             <Campo label="Vendedor" valor={l.vendedor} />
             <Campo label="Forma de pagamento" valor={l.forma} />
