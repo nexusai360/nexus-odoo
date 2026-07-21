@@ -314,9 +314,9 @@ function TabelaEntregasParciais({ d }: { d: PedidosData }) {
       agrupamentos={AGRUPAMENTOS_ENTREGA}
       celula={celulaEntrega}
       rowKey={(l) => String(l.pedidoId || l.numero)}
-      valorSoma={(l) => l.vlrVenda}
-      colunaSoma="vlrVenda"
-      storageKey="entregas-parciais-tabela-v3"
+      valorSoma={(l) => l.vlrCusto}
+      colunaSoma="valorAtender"
+      storageKey="entregas-parciais-tabela-v4"
       exportFilename="entregas-parciais"
       labelRegistro="pedidos"
       presets={PRESETS_ENTREGA}
@@ -328,6 +328,7 @@ function TabelaEntregasParciais({ d }: { d: PedidosData }) {
       expandirRow={dropdownProdutos}
       renderDetalhe={(l) => <DetalheEntrega l={l} />}
       textoBusca={(l) => l.produtosTexto}
+      permiteVenda
     />
   );
 }

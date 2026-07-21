@@ -11,12 +11,16 @@
  * Client-side sobre a base já carregada. Persistência por tela (localStorage).
  */
 
-import { Fragment, useMemo, useRef, useState, useEffect, useLayoutEffect } from "react";
+import { Fragment, createContext, useMemo, useRef, useState, useEffect, useLayoutEffect } from "react";
 import {
   Download, SlidersHorizontal, Layers, Star, Search, X, ChevronDown,
   ChevronRight, ChevronLeft, ArrowLeft, List, Columns3, CalendarDays,
-  Trash2, Check, ArrowUp, ArrowDown, ArrowUpDown, Rows3,
+  Trash2, Check, ArrowUp, ArrowDown, ArrowUpDown, Rows3, Tag,
 } from "lucide-react";
+
+/** Opções da tabela que as células precisam ler (ex.: mostrar preço de venda
+ * junto do custo nas colunas de valor). Provido pela TabelaAvancada. */
+export const OpcoesTabelaContext = createContext<{ mostrarVenda: boolean }>({ mostrarVenda: false });
 import { cn } from "@/lib/utils";
 import {
   Popover, Tooltip, Modal, Btn, Select, SeletorColunas, Paginacao,
@@ -75,6 +79,9 @@ export interface TabelaAvancadaProps<T extends Record<string, unknown>> {
   /** texto extra por linha para a busca rápida (ex.: nomes/códigos dos produtos
    * do pedido, que não estão nas colunas visíveis do cabeçalho). */
   textoBusca?: (row: T) => string;
+  /** habilita o toggle "Mostrar venda": as colunas de valor passam a exibir
+   * custo (em cima) e venda (embaixo), com ícones. */
+  permiteVenda?: boolean;
 }
 
 const VIEWS: { key: View; label: string; icon: typeof List }[] = [
@@ -108,6 +115,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   expandirRow,
   renderDetalhe,
   textoBusca,
+  permiteVenda,
 }: TabelaAvancadaProps<T>) {
   const [busca, setBusca] = useState("");
   const [chips, setChips] = useState<Chip[]>([]);
@@ -120,6 +128,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   const [pagina, setPagina] = useState(1);
   const [porPagina, setPorPagina] = useState(50);
   const [compacto, setCompacto] = useState(false);
+  const [mostrarVenda, setMostrarVenda] = useState(false);
   const [kanbanDim, setKanbanDim] = useState<string>(kanbanCampo ?? "");
   const [detalhe, setDetalhe] = useState<{ row: T; idx: number } | null>(null);
   const [expandidos, setExpandidos] = useState<Set<string>>(new Set());
@@ -159,6 +168,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
         if (typeof s.busca === "string") setBusca(s.busca);
         if (typeof s.porPagina === "number") setPorPagina(s.porPagina);
         if (typeof s.compacto === "boolean") setCompacto(s.compacto);
+        if (typeof s.mostrarVenda === "boolean") setMostrarVenda(s.mostrarVenda);
         if (s.arvore) setArvore(s.arvore);
         if (Array.isArray(s.favoritos)) setFavoritos(s.favoritos);
       }
@@ -168,9 +178,9 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   useEffect(() => {
     if (!hidratado) return;
     try {
-      window.localStorage.setItem(storageKey, JSON.stringify({ ordem, vis, sorts, niveis, chips, view, busca, porPagina, compacto, arvore, favoritos }));
+      window.localStorage.setItem(storageKey, JSON.stringify({ ordem, vis, sorts, niveis, chips, view, busca, porPagina, compacto, mostrarVenda, arvore, favoritos }));
     } catch { /* ignore */ }
-  }, [hidratado, storageKey, ordem, vis, sorts, niveis, chips, view, busca, porPagina, compacto, arvore, favoritos]);
+  }, [hidratado, storageKey, ordem, vis, sorts, niveis, chips, view, busca, porPagina, compacto, mostrarVenda, arvore, favoritos]);
 
   // ===== Busca inteligente (facets das colunas de texto visíveis) =====
   const sugestoes = useMemo(() => {
@@ -356,11 +366,18 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   const colCount = colsVisiveis.length;
 
   return (
+    <OpcoesTabelaContext.Provider value={{ mostrarVenda }}>
     <div className="flex h-full min-h-0 flex-col">
       {/* Toolbar */}
       <div className="mb-3 flex shrink-0 flex-wrap items-center gap-2">
         <Btn variant="outline" onClick={exportar}><Download className="size-4" /> Exportar</Btn>
         <Btn variant={compacto ? "primary" : "outline"} onClick={() => setCompacto((v) => !v)}><Rows3 className="size-4" /> Compacto</Btn>
+        {/* Toggle custo/venda: colunas de valor passam a mostrar custo + venda com ícones. */}
+        {permiteVenda && (
+          <Btn variant={mostrarVenda ? "primary" : "outline"} onClick={() => setMostrarVenda((v) => !v)}>
+            <Tag className="size-4" /> {mostrarVenda ? "Custo + venda" : "Mostrar venda"}
+          </Btn>
+        )}
         {/* Seletor de colunas: só no modo lista, na toolbar (não vaza ao rolar). */}
         {view === "lista" && (
           <SeletorColunas rotulo="Colunas" colunas={colunas} ordem={ordem} visiveis={vis} onOrdemChange={setOrdem} onVisiveisChange={setVis} />
@@ -660,6 +677,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
         </div>
       )}
     </div>
+    </OpcoesTabelaContext.Provider>
   );
 }
 

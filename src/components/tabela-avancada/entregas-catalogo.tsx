@@ -10,10 +10,12 @@
  * acoplamento a domínio da tabela nova.
  */
 
-import { CircleCheck, CircleX, ExternalLink, Package, MapPin, FileText, ClipboardList, TrendingUp } from "lucide-react";
+import { useContext } from "react";
+import { CircleCheck, CircleX, ExternalLink, Package, MapPin, FileText, ClipboardList, TrendingUp, Coins, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { corEtapaValida, derivarCorTag } from "@/lib/diretoria/etapa-cor";
 import { formatarNomeEtapa } from "@/lib/diretoria/etapa-formato";
+import { OpcoesTabelaContext } from "./tabela-avancada";
 import type { ColunaDef, CampoDef } from "./tipos";
 
 // ===== Shapes (montados em blocos-pedidos.tsx) =====
@@ -137,15 +139,13 @@ export const COLUNAS: ColunaDef<LinhaEntrega>[] = [
   { key: "qtdTotal", label: "Qtd total", tipo: "numero", sortable: true, numeric: true, padrao: true, valor: (l) => l.qtdTotal },
   { key: "qtdAtendida", label: "Qtd atendida", tipo: "numero", sortable: true, numeric: true, padrao: true, valor: (l) => l.qtdAtendida },
   { key: "qtd", label: "Qtd a atender", tipo: "numero", sortable: true, numeric: true, padrao: true, valor: (l) => l.qtd },
-  // Valores a CUSTO (padrão): total, atendido, a atender.
-  { key: "valorTotalCusto", label: "Valor total (custo)", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.valorTotalCusto },
-  { key: "valorAtendidoCusto", label: "Valor atendido (custo)", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.valorAtendidoCusto },
-  { key: "vlrCusto", label: "Valor a atender (custo)", tipo: "moeda", sortable: true, numeric: true, padrao: true, valor: (l) => l.vlrCusto },
+  // Valores: custo por padrão; com o toggle "Mostrar venda", a célula mostra
+  // custo (ícone moeda) em cima e venda (ícone tag) embaixo. `valor` = custo
+  // (usado no sort/agrupamento/CSV).
+  { key: "valorTotal", label: "Valor total", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.valorTotalCusto },
+  { key: "valorAtendido", label: "Valor atendido", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.valorAtendidoCusto },
+  { key: "valorAtender", label: "Valor a atender", tipo: "moeda", sortable: true, numeric: true, padrao: true, valor: (l) => l.vlrCusto },
   { key: "status", label: "Financeiro", tipo: "status", sortable: true, numeric: false, padrao: true, valor: (l) => l.status },
-  // Valores a VENDA (opcionais; o toggle custo/venda com ícones vem na próxima leva).
-  { key: "valorCheio", label: "Valor total (venda)", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.valorCheio },
-  { key: "valorAtendidoVenda", label: "Valor atendido (venda)", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.valorAtendidoVenda },
-  { key: "vlrVenda", label: "Valor a atender (venda)", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.vlrVenda },
   // Rentabilidade do pedido (prontos do Odoo). Margem padrão; resto opcional.
   { key: "margemPct", label: "Margem", tipo: "percent", sortable: true, numeric: true, padrao: true, valor: (l) => l.margemPct },
   { key: "subtotal", label: "Subtotal", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.subtotal },
@@ -291,6 +291,23 @@ function StatusFinanceiro({ status, comRotulo }: { status: string; comRotulo?: b
   );
 }
 
+/** Valor com custo por padrão; com o toggle "Mostrar venda" ligado, exibe custo
+ * (ícone moeda, âmbar) em cima e venda (ícone tag, verde) embaixo, na mesma linha. */
+function CelulaValorCV({ custo, venda }: { custo: number; venda: number }) {
+  const { mostrarVenda } = useContext(OpcoesTabelaContext);
+  if (!mostrarVenda) return <span className="whitespace-nowrap tabular-nums">{formatBRL(custo)}</span>;
+  return (
+    <span className="inline-flex flex-col items-end gap-0.5 leading-tight">
+      <span className="inline-flex items-center gap-1 whitespace-nowrap text-xs tabular-nums text-amber-500" title="Custo">
+        <Coins className="size-3 shrink-0" aria-hidden />{formatBRL(custo)}
+      </span>
+      <span className="inline-flex items-center gap-1 whitespace-nowrap text-xs tabular-nums text-emerald-500" title="Venda">
+        <Tag className="size-3 shrink-0" aria-hidden />{formatBRL(venda)}
+      </span>
+    </span>
+  );
+}
+
 // ===== Render de célula por tipo (cabeçalho do pedido) =====
 
 export function celula(l: LinhaEntrega, key: string): React.ReactNode {
@@ -298,6 +315,10 @@ export function celula(l: LinhaEntrega, key: string): React.ReactNode {
   if (!col) return null;
   // Pedido: tag translúcida clicável (abre no Odoo).
   if (key === "numero") return <TagPedido numero={l.numero} pedidoId={l.pedidoId} />;
+  // Colunas de valor: custo por padrão, custo+venda com o toggle.
+  if (key === "valorTotal") return <CelulaValorCV custo={l.valorTotalCusto} venda={l.valorCheio} />;
+  if (key === "valorAtendido") return <CelulaValorCV custo={l.valorAtendidoCusto} venda={l.valorAtendidoVenda} />;
+  if (key === "valorAtender") return <CelulaValorCV custo={l.vlrCusto} venda={l.vlrVenda} />;
   // Produtos: contagem de itens do pedido.
   if (key === "itens") {
     return (
