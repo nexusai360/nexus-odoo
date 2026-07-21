@@ -14,12 +14,12 @@
 import { useMemo, useRef, useState, useEffect, useLayoutEffect } from "react";
 import {
   Download, SlidersHorizontal, Layers, Star, Search, X, ChevronDown,
-  ChevronRight, List, Columns3, CalendarDays, Trash2, Check, ArrowUp,
-  ArrowDown, ArrowUpDown, Rows3,
+  ChevronRight, ChevronLeft, ArrowLeft, List, Columns3, CalendarDays,
+  Trash2, Check, ArrowUp, ArrowDown, ArrowUpDown, Rows3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
-  Popover, Tooltip, Modal, Btn, SeletorColunas, Paginacao,
+  Popover, Tooltip, Modal, Btn, Select, SeletorColunas, Paginacao,
   useResizeColunas, ResizeHandle,
 } from "./ui";
 import { FiltroAvancado, type CampoUI } from "./filtro-avancado";
@@ -108,6 +108,8 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   const [pagina, setPagina] = useState(1);
   const [porPagina, setPorPagina] = useState(50);
   const [compacto, setCompacto] = useState(false);
+  const [kanbanDim, setKanbanDim] = useState<string>(kanbanCampo ?? "");
+  const [detalhe, setDetalhe] = useState<{ row: T; idx: number } | null>(null);
   const [expandidos, setExpandidos] = useState<Set<string>>(new Set());
   const [favoritos, setFavoritos] = useState<Favorito[]>([]);
   const [avancadoOpen, setAvancadoOpen] = useState(false);
@@ -347,6 +349,15 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
         {view === "lista" && (
           <SeletorColunas rotulo="Colunas" colunas={colunas} ordem={ordem} visiveis={vis} onOrdemChange={setOrdem} onVisiveisChange={setVis} />
         )}
+        {/* Seletor da dimensão do Kanban (com busca). */}
+        {view === "kanban" && kanbanCampo && (
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-muted-foreground">Agrupar por</span>
+            <div className="w-44">
+              <Select value={kanbanDim} options={agrupamentos.map((a) => ({ value: a.campo, label: a.label }))} onChange={setKanbanDim} ariaLabel="Dimensão do Kanban" />
+            </div>
+          </div>
+        )}
 
         {/* View switcher */}
         <div className="ml-auto inline-flex items-center rounded-lg border border-border bg-card p-0.5">
@@ -484,7 +495,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
       </div>
 
       {/* ===== VISÃO LISTA ===== */}
-      {view === "lista" && (
+      {!detalhe && view === "lista" && (
         <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-card">
           <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto">
             <table className={cn("w-full min-w-[60rem]", compacto ? "text-xs" : "text-sm", colFixo ? "table-fixed" : "table-auto")}>
@@ -527,7 +538,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                       </td>
                     </tr>
                   ) : (
-                    <tr key={rowKey(it.row, idx)} className="border-b border-border/60 transition-colors last:border-0 hover:bg-accent/40">
+                    <tr key={rowKey(it.row, idx)} onClick={() => setDetalhe({ row: it.row, idx: listaOrdenada.indexOf(it.row) })} className="cursor-pointer border-b border-border/60 transition-colors last:border-0 hover:bg-accent/40">
                       {colsVisiveis.map((c) => (
                         <td key={c.key} className={cn("overflow-hidden px-4", compacto ? "py-1.5" : "py-3", c.numeric && "text-right")} style={niveis.length && c.key === colsVisiveis[0].key ? { paddingLeft: `${1 + it.level * 1.25}rem` } : undefined}>
                           <div className={cn("truncate", c.numeric && "text-right")}>{celula(it.row, c.key)}</div>
@@ -558,17 +569,33 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
       )}
 
       {/* ===== KANBAN ===== */}
-      {view === "kanban" && kanbanCampo && (
+      {!detalhe && view === "kanban" && kanbanCampo && (
         <div className="min-h-0 flex-1 overflow-auto">
-          <KanbanView lista={lista} campo={kanbanCampo} campoByKey={campoByLike} tituloItem={tituloItem} subtituloItem={subtituloItem} valorItem={valorItem} />
+          <KanbanView lista={lista} campo={kanbanDim || kanbanCampo} campoByKey={campoByLike} tituloItem={tituloItem} subtituloItem={subtituloItem} valorItem={valorItem} onAbrir={(r) => setDetalhe({ row: r, idx: listaOrdenada.indexOf(r) })} />
         </div>
       )}
 
       {/* ===== CALENDÁRIO ===== */}
-      {view === "calendario" && calendarioCampo && (
+      {!detalhe && view === "calendario" && calendarioCampo && (
         <div className="min-h-0 flex-1 overflow-auto">
-          <CalendarioView lista={lista} campoData={calendarioCampo} colunaByKey={colunaByKey as unknown as Record<string, { valor: (r: T) => string | number }>} tituloItem={tituloItem} valorItem={valorItem} />
+          <CalendarioView lista={lista} campoData={calendarioCampo} colunaByKey={colunaByKey as unknown as Record<string, { valor: (r: T) => string | number }>} tituloItem={tituloItem} valorItem={valorItem} onAbrir={(r) => setDetalhe({ row: r, idx: listaOrdenada.indexOf(r) })} />
         </div>
+      )}
+
+      {/* ===== DETALHE DO PEDIDO (todas as views) ===== */}
+      {detalhe && (
+        <DetalhePedido
+          row={detalhe.row}
+          idx={detalhe.idx}
+          total={listaOrdenada.length}
+          colunas={colunas}
+          celula={celula}
+          onVoltar={() => setDetalhe(null)}
+          onNavegar={(delta) => {
+            const ni = Math.min(Math.max(0, detalhe.idx + delta), listaOrdenada.length - 1);
+            setDetalhe({ row: listaOrdenada[ni], idx: ni });
+          }}
+        />
       )}
 
       {/* Modais */}
@@ -594,3 +621,41 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
 
 const brlFmt = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 function brlSoma(v: number): string { return brlFmt.format(v || 0); }
+
+/** Tela de detalhes de UMA linha: todas as colunas organizadas + voltar/navegar. */
+function DetalhePedido<T extends Record<string, unknown>>({
+  row, idx, total, colunas, celula, onVoltar, onNavegar,
+}: {
+  row: T;
+  idx: number;
+  total: number;
+  colunas: ColunaDef<T>[];
+  celula: (row: T, key: string) => React.ReactNode;
+  onVoltar: () => void;
+  onNavegar: (delta: number) => void;
+}) {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-card">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
+        <button type="button" onClick={onVoltar} className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent">
+          <ArrowLeft className="size-4" /> Voltar
+        </button>
+        <div className="flex items-center gap-2">
+          <span className="text-xs tabular-nums text-muted-foreground">{idx + 1} de {total}</span>
+          <button type="button" onClick={() => onNavegar(-1)} disabled={idx <= 0} aria-label="Anterior" className="flex size-8 cursor-pointer items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"><ChevronLeft className="size-4" /></button>
+          <button type="button" onClick={() => onNavegar(1)} disabled={idx >= total - 1} aria-label="Próximo" className="flex size-8 cursor-pointer items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"><ChevronRight className="size-4" /></button>
+        </div>
+      </div>
+      <div className="min-h-0 flex-1 overflow-auto p-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {colunas.map((c) => (
+            <div key={c.key} className="min-w-0 rounded-lg border border-border/60 bg-background/40 p-3">
+              <p className="mb-1 text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground">{c.label}</p>
+              <div className="break-words text-sm text-foreground">{celula(row, c.key)}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
