@@ -1,6 +1,6 @@
 import { LayoutDashboard } from "lucide-react";
 
-import { PageShell } from "@/components/layout/page-shell";
+import { DiretoriaShell, BotaoModoEstendido } from "@/components/diretoria/modo-estendido";
 import { PageHeader } from "@/components/page-header";
 import { prisma } from "@/lib/prisma";
 import { aquecerCorte } from "@/lib/corte-app";
@@ -140,17 +140,20 @@ export default async function DiretoriaVisaoGeralPage({
   }));
 
   return (
-    <PageShell variant="wide">
+    <DiretoriaShell>
       <PageHeader
         icon={LayoutDashboard}
         title="Visão geral"
         subtitle="Painel executivo da diretoria: indicadores, mapa do Brasil e atalhos."
         actions={<FreshnessBadge iso={freshIso} />}
       />
+      <div className="mb-4 flex">
+        <BotaoModoEstendido />
+      </div>
       <div className="flex flex-col gap-5">
         <DiretoriaFiltros empresas={opcoesEmpresa} />
         <VisaoGeralScreen data={data} />
       </div>
-    </PageShell>
+    </DiretoriaShell>
   );
 }

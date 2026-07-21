@@ -1,6 +1,6 @@
 import { Boxes } from "lucide-react";
 
-import { PageShell } from "@/components/layout/page-shell";
+import { DiretoriaShell } from "@/components/diretoria/modo-estendido";
 import { PageHeader } from "@/components/page-header";
 import { prisma } from "@/lib/prisma";
 import { aquecerCorte } from "@/lib/corte-app";
@@ -160,7 +160,7 @@ export default async function DiretoriaEstoquePage({
   });
 
   return (
-    <PageShell variant="wide">
+    <DiretoriaShell>
       <PageHeader
         icon={Boxes}
         title="Estoque & Compras"
@@ -181,6 +181,6 @@ export default async function DiretoriaEstoquePage({
         }
       />
       <EstoqueMontavel data={data} layoutsPorAba={layoutsPorAba} podeEditarGlobal={podeEditarGlobal} />
-    </PageShell>
+    </DiretoriaShell>
   );
 }

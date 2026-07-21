@@ -1,6 +1,6 @@
 import { TrendingUp } from "lucide-react";
 
-import { PageShell } from "@/components/layout/page-shell";
+import { DiretoriaShell } from "@/components/diretoria/modo-estendido";
 import { PageHeader } from "@/components/page-header";
 import { prisma } from "@/lib/prisma";
 import { aquecerCorte } from "@/lib/corte-app";
@@ -114,7 +114,7 @@ export default async function DiretoriaVendasPage({
   });
 
   return (
-    <PageShell variant="wide">
+    <DiretoriaShell>
       <PageHeader
         icon={TrendingUp}
         title="Vendas"
@@ -131,6 +131,6 @@ export default async function DiretoriaVendasPage({
         aviso="O período recorta as notas (faturamento) e os pedidos (modalidades). O estoque, quando aparecer, é sempre a foto de agora."
       />
       <VendasMontavel data={data} layoutsPorAba={layoutsPorAba} podeEditarGlobal={podeEditarGlobal} />
-    </PageShell>
+    </DiretoriaShell>
   );
 }

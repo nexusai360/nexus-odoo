@@ -10,6 +10,7 @@ import { Pencil, Check, TrendingUp, Warehouse, Layers, Barcode, ShoppingCart, Bu
 
 import { cn } from "@/lib/utils";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { BotaoModoEstendido } from "@/components/diretoria/modo-estendido";
 import { ConstrutorGrid } from "@/components/diretoria/builder/construtor-grid";
 import { renderBlocoEstoque } from "@/components/diretoria/blocos/blocos-estoque";
 import type { EstoqueData } from "@/components/diretoria/estoque/estoque-screen";
@@ -37,9 +38,10 @@ export function EstoqueMontavel({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-end gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <BotaoModoEstendido />
         {editando ? (
-          <span className="mr-auto text-xs text-violet-700 dark:text-violet-300">
+          <span className="text-xs text-violet-700 dark:text-violet-300">
             Modo de edição: arraste pela alça (grip), redimensione pelos cantos/bordas. Salve em cada aba.
           </span>
         ) : null}
@@ -47,7 +49,7 @@ export function EstoqueMontavel({
           type="button"
           onClick={() => setEditando((e) => !e)}
           className={cn(
-            "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors",
+            "ml-auto inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors",
             editando
               ? "border-emerald-500/40 bg-emerald-600/10 text-emerald-700 dark:text-emerald-200 hover:bg-emerald-600/20"
               : "border-violet-500/40 bg-violet-600/10 text-violet-700 dark:text-violet-200 hover:bg-violet-600/20",

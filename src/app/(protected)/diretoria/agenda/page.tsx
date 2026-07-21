@@ -1,6 +1,6 @@
 import { CalendarDays } from "lucide-react";
 
-import { PageShell } from "@/components/layout/page-shell";
+import { DiretoriaShell, BotaoModoEstendido } from "@/components/diretoria/modo-estendido";
 import { PageHeader } from "@/components/page-header";
 import { requireDiretoriaArea, canDiretoria } from "@/lib/diretoria/access";
 import { listarEventos, listarColaboradoresElegiveis } from "@/lib/actions/diretoria-agenda";
@@ -33,12 +33,15 @@ export default async function DiretoriaAgendaPage({
   ]);
 
   return (
-    <PageShell variant="wide">
+    <DiretoriaShell>
       <PageHeader
         icon={CalendarDays}
         title="Agenda"
         subtitle="Eventos da operação: reuniões, inventários, prospecções e assembleias."
       />
+      <div className="mb-4 flex">
+        <BotaoModoEstendido />
+      </div>
       <section className="rounded-2xl border border-border/60 bg-card/60 p-5">
         <AgendaCalendar
           eventos={eventos}
@@ -47,6 +50,6 @@ export default async function DiretoriaAgendaPage({
           colaboradores={colaboradores}
         />
       </section>
-    </PageShell>
+    </DiretoriaShell>
   );
 }

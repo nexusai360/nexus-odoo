@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { requireMenuAccess } from "@/lib/nav/require-menu-access";
+import { ModoEstendidoProvider } from "@/components/diretoria/modo-estendido";
 
 /**
  * Layout do menu Diretoria.
@@ -13,5 +14,5 @@ import { requireMenuAccess } from "@/lib/nav/require-menu-access";
  */
 export default async function DiretoriaLayout({ children }: { children: ReactNode }) {
   await requireMenuAccess("diretoria");
-  return <>{children}</>;
+  return <ModoEstendidoProvider>{children}</ModoEstendidoProvider>;
 }

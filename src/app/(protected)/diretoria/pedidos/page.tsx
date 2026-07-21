@@ -1,6 +1,6 @@
 import { Truck } from "lucide-react";
 
-import { PageShell } from "@/components/layout/page-shell";
+import { DiretoriaShell } from "@/components/diretoria/modo-estendido";
 import { PageHeader } from "@/components/page-header";
 import { prisma } from "@/lib/prisma";
 import { aquecerCorte } from "@/lib/corte-app";
@@ -114,7 +114,7 @@ export default async function DiretoriaPedidosPage({
   });
 
   return (
-    <PageShell variant="wide">
+    <DiretoriaShell>
       <PageHeader
         icon={Truck}
         title="Pedidos & Entregas"
@@ -131,6 +131,6 @@ export default async function DiretoriaPedidosPage({
         aviso="O período recorta os pedidos pela data do orçamento. As contas a receber seguem a janela de cobrança do período."
       />
       <PedidosMontavel data={data} layoutsPorAba={layoutsPorAba} podeEditarGlobal={podeEditarGlobal} />
-    </PageShell>
+    </DiretoriaShell>
   );
 }
