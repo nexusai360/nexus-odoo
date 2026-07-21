@@ -489,19 +489,18 @@ export function SeletorColunas({
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
+    // `drag` aqui é o do closure do effect, que re-roda a cada mudança de drag (está
+    // nas deps), então no pointerup ele é o estado mais recente. Fazemos o reorder
+    // FORA do updater de setDrag (senão chamaríamos setState do pai durante o render).
     const soltar = () => {
-      setDrag((d) => {
-        if (d) {
-          const to = alvoDe(d);
-          if (to !== d.from) {
-            const arr = [...ordemFull];
-            const [movido] = arr.splice(d.from, 1);
-            arr.splice(to, 0, movido);
-            onOrdemChange(arr);
-          }
-        }
-        return null;
-      });
+      const to = alvoDe(drag);
+      if (to !== drag.from) {
+        const arr = [...ordemFull];
+        const [movido] = arr.splice(drag.from, 1);
+        arr.splice(to, 0, movido);
+        onOrdemChange(arr);
+      }
+      setDrag(null);
     };
     window.addEventListener("pointermove", mover);
     window.addEventListener("pointerup", soltar);
