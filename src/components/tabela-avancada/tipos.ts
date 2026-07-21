@@ -29,8 +29,11 @@ export interface ColunaDef<T> {
   padrao: boolean;
   /** obrigatória: sempre visível, não desmarcável nem reordenável. */
   obrigatoria?: boolean;
-  /** valor para ordenação/agrupamento. */
+  /** valor para exibição/facets/CSV (e ordenação, quando não há `sortKey`). */
   valor: (row: T) => string | number;
+  /** chave de ordenação alternativa (quando a ordem natural difere do display;
+   * ex.: CNPJ/CEP ordenados pelo número dos dígitos, ignorando pontuação). */
+  sortKey?: (row: T) => string | number;
   /** largura do campo na TELA DE DETALHE (1 = normal, 2 = largo, 4 = linha inteira). */
   detalheSpan?: 1 | 2 | 4;
 }

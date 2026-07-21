@@ -25,7 +25,8 @@ import {
   AGRUPAMENTOS as AGRUPAMENTOS_ENTREGA,
   celula as celulaEntrega,
   formatBRL as formatBRLEntrega,
-  dropdownProdutos,
+  // dropdownProdutos,  // STAND-BY (pedido do dono): dropdown de produtos na lista
+  //                    // desativado, pois o detalhe do pedido já mostra os produtos.
   DetalheEntrega,
   type LinhaEntrega,
   type ItemEntrega,
@@ -330,7 +331,10 @@ function TabelaEntregasParciais({ d }: { d: PedidosData }) {
       tituloItem={(l) => l.numero}
       subtituloItem={(l) => l.cliente}
       valorItem={(l) => formatBRLEntrega(l.vlrVenda)}
-      expandirRow={dropdownProdutos}
+      /* STAND-BY (pedido do dono): dropdown de produtos na lista comentado porque
+         o detalhe do pedido ja mostra os produtos; ficou redundante. Para reativar,
+         descomente o import de dropdownProdutos e a prop abaixo. */
+      /* expandirRow={dropdownProdutos} */
       renderDetalhe={(l) => <DetalheEntrega l={l} />}
       textoBusca={(l) => l.produtosTexto}
       permiteVenda

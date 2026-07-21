@@ -248,8 +248,9 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
       for (const s of sorts) {
         const def = colunaByKey[s.campo];
         if (!def) continue;
-        const va = def.valor(a);
-        const vb = def.valor(b);
+        const chave = def.sortKey ?? def.valor;
+        const va = chave(a);
+        const vb = chave(b);
         const cmp = typeof va === "number" && typeof vb === "number" ? va - vb : String(va).localeCompare(String(vb), "pt-BR");
         if (cmp !== 0) return s.dir === "asc" ? cmp : -cmp;
       }
@@ -543,7 +544,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                     const ord = ordemDe(c.key);
                     const primeira = ci === 0;
                     return (
-                      <th key={c.key} ref={setRef(c.key)} className={cn("group/th relative overflow-hidden text-left font-medium", primeira ? "pl-8 pr-4" : "px-4", compacto ? "py-2" : "py-3", c.numeric && "text-right")}>
+                      <th key={c.key} ref={setRef(c.key)} className={cn("group/th relative overflow-hidden text-left font-medium", primeira ? (expandirRow ? "pl-8 pr-4" : "pl-2 pr-4") : "px-4", compacto ? "py-2" : "py-3", c.numeric && "text-right")}>
                         <button type="button" onClick={() => ordenarPor(c.key)} className={cn("flex min-w-0 max-w-full items-center gap-1.5", c.numeric && "ml-auto justify-end", c.sortable ? "cursor-pointer hover:text-foreground" : "cursor-default")}>
                           <span className="truncate">{c.label}</span>
                           {ord ? (

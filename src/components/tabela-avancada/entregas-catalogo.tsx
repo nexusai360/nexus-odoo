@@ -167,14 +167,14 @@ export const COLUNAS: ColunaDef<LinhaEntrega>[] = [
   { key: "orcamento", label: "Orçamento", tipo: "data", sortable: true, numeric: false, padrao: false, valor: (l) => l.orcamento },
   { key: "contrato", label: "Validade", tipo: "data", sortable: true, numeric: false, padrao: false, valor: (l) => l.contrato },
   { key: "emitente", label: "Emitente", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.emitente, detalheSpan: 2 },
-  { key: "cnpj", label: "CNPJ", tipo: "texto", sortable: false, numeric: false, padrao: false, valor: (l) => l.cnpj },
-  { key: "cep", label: "CEP", tipo: "texto", sortable: false, numeric: false, padrao: false, valor: (l) => l.cep },
+  { key: "cnpj", label: "CNPJ", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.cnpj, sortKey: (l) => Number(String(l.cnpj).replace(/\D/g, "")) || 0 },
+  { key: "cep", label: "CEP", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.cep, sortKey: (l) => Number(String(l.cep).replace(/\D/g, "")) || 0 },
   { key: "operacao", label: "Operação", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.operacao, detalheSpan: 2 },
   { key: "modalidade", label: "Modalidade", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.modalidade },
   { key: "forma", label: "Forma de pagamento", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.forma },
   { key: "vendedor", label: "Vendedor", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.vendedor },
-  { key: "observacoes", label: "Observações", tipo: "texto", sortable: false, numeric: false, padrao: false, valor: (l) => l.observacoes, detalheSpan: 4 },
-  { key: "obsEntrega", label: "Obs entrega", tipo: "texto", sortable: false, numeric: false, padrao: false, valor: (l) => l.obsEntrega, detalheSpan: 4 },
+  { key: "observacoes", label: "Observações Pedido", tipo: "texto", sortable: false, numeric: false, padrao: false, valor: (l) => l.observacoes, detalheSpan: 4 },
+  { key: "obsEntrega", label: "Observações Gerais", tipo: "texto", sortable: false, numeric: false, padrao: false, valor: (l) => l.obsEntrega, detalheSpan: 4 },
 ];
 
 export const COLUNA_BY_KEY: Record<string, ColunaDef<LinhaEntrega>> = Object.fromEntries(
@@ -539,11 +539,11 @@ export function DetalheEntrega({ l }: { l: LinhaEntrega }) {
           <Secao titulo="Observações" icone={FileText}>
             <div className="space-y-3">
               <div>
-                <p className="text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground">Observações do pedido</p>
+                <p className="text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground">Observações Pedido</p>
                 <p className="mt-1 whitespace-pre-line break-words text-sm text-foreground">{l.observacoes && l.observacoes !== "-" ? l.observacoes : "-"}</p>
               </div>
               <div>
-                <p className="text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground">Obs de entrega</p>
+                <p className="text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground">Observações Gerais</p>
                 <p className="mt-1 whitespace-pre-line break-words text-sm text-foreground">{l.obsEntrega && l.obsEntrega !== "-" ? l.obsEntrega : "-"}</p>
               </div>
             </div>
