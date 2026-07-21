@@ -1,5 +1,30 @@
 # STATUS , ponto de retomada
 
+> ## 🚧 EM ANDAMENTO , Repaginação Entregas Parciais (2026-07-20, troca de sessão)
+>
+> **Branch `feat/entregas-parciais-base-calculo` (LOCAL, nada em produção). ~33 commits.**
+> Fases 1A + 1B + 2 CONCLUÍDAS e validadas. Retomada detalhada:
+> `docs/superpowers/plans/2026-07-20-PROGRESSO-fase1.md`. Hub de decisões:
+> `docs/superpowers/research/2026-07-20-entregas-parciais-repaginacao-pesquisa.md`.
+>
+> - **1A** , demanda em aberto = whitelist de 27 etapas + `tipo=venda`, pareada nas 6
+>   pontas (relatório=card=Nex=demanda-por-produto=estoque=necessidade de compra),
+>   respeitando a pílula de período. Cancelado fora.
+> - **1B** , os 51 pedidos antigos pré-2026 trazidos (R$ 13,4 mi, bate com o oficial),
+>   recuo cirúrgico do corte (só pedidos, sem as 172k notas), sem apagar histórico.
+> - **2** , coluna Etapa vira tag colorida (cor do Odoo, texto na cor, nome
+>   padronizado sem ponto final) + Financeiro vira ícone CircleCheck/CircleX (16px,
+>   tooltip instantâneo). tsc + jest + eslint verdes.
+> - **Próximo: FASE 3** (colunas completas do oficial: Orçamento, Prevista, Contrato,
+>   Emitente, CNPJ, CEP, Código, Unitário, Valor cheio, Observações, Obs Entrega,
+>   Vendedor). Metodologia (D0): planner -> 1 review profunda -> planner v2 ->
+>   implementação (UI inline + ui-ux-pro-max) -> testes -> perícia.
+> - **Nada em produção sem "sim" do dono.** Back-fill 1B em prod: seguir
+>   `docs/runbooks/backfill-entregas-antigas.md` + teste-trava de rollback ativo.
+> - Pendência aberta **P1**: peças/consumidor final fora da demanda (TODO(dono)).
+>
+> ---
+>
 > ## ✅ TUDO EM PRODUÇÃO , troca de sessão (2026-07-20)
 >
 > **Tudo que estava em andamento foi ENTREGUE, mergeado e está EM PRODUÇÃO. A `main` local
