@@ -160,7 +160,17 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
       if (raw) {
         const s = JSON.parse(raw);
         if (Array.isArray(s.vis)) setVis(s.vis);
-        if (Array.isArray(s.ordem)) setOrdem(s.ordem);
+        // Mescla a ordem salva com o catálogo atual: preserva a ordem do usuário,
+        // descarta colunas que não existem mais e ANEXA as novas (senão uma coluna
+        // adicionada depois do último save some da tabela mesmo marcada no seletor,
+        // pois `colsVisiveis` deriva de `ordem`). Resiliente a novas colunas sem
+        // precisar bumpar o storageKey.
+        if (Array.isArray(s.ordem)) {
+          const todas = colunas.map((c) => c.key);
+          const salva = (s.ordem as string[]).filter((k) => todas.includes(k));
+          const faltantes = todas.filter((k) => !salva.includes(k));
+          setOrdem([...salva, ...faltantes]);
+        }
         if (Array.isArray(s.sorts)) setSorts(s.sorts);
         if (Array.isArray(s.niveis)) setNiveis(s.niveis);
         if (Array.isArray(s.chips)) setChips(s.chips);
@@ -174,7 +184,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
       }
     } catch { /* ignore */ }
     setHidratado(true);
-  }, [storageKey]);
+  }, [storageKey, colunas]);
   useEffect(() => {
     if (!hidratado) return;
     try {
