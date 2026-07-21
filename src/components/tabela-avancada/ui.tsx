@@ -383,6 +383,10 @@ export function SeletorColunas({
   // Lista rolável + Y atual do ponteiro: base do auto-scroll durante o arraste.
   const listaRef = useRef<HTMLDivElement>(null);
   const pointerYRef = useRef(0);
+  // Desliga as transições por 1 frame no momento do swap (reorder do DOM + limpar
+  // transforms), senão o transform, que é relativo à posição de layout, salta ao mudar
+  // de slot e a transição de 160ms anima esse salto , a "piscada" ao soltar.
+  const [noAnim, setNoAnim] = useState(false);
   const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
 
   const byKey = useMemo(() => Object.fromEntries(colunas.map((c) => [c.key, c])), [colunas]);
@@ -534,7 +538,15 @@ export function SeletorColunas({
         setDrag((d) => (d ? { ...d, settling: true } : d));
         requestAnimationFrame(() => {
           setDrag((d) => (d ? { ...d, settling: true, settleGo: true } : d));
-          window.setTimeout(() => { onOrdemChange(arr); setDrag(null); }, 180);
+          window.setTimeout(() => {
+            // Swap sem animação (1 frame): reordena o DOM e limpa os transforms com as
+            // transições OFF, para o item cair limpo no novo slot (o visual assentado já
+            // é idêntico ao final). Depois reativa as transições.
+            setNoAnim(true);
+            onOrdemChange(arr);
+            setDrag(null);
+            requestAnimationFrame(() => setNoAnim(false));
+          }, 180);
         });
       } else {
         setDrag(null);
@@ -623,7 +635,7 @@ export function SeletorColunas({
                 <div
                   key={k}
                   data-row-idx={i}
-                  style={{ transform: transformDe(i), transition: arrastado && !drag?.settling ? "none" : "transform 160ms cubic-bezier(0.2,0,0,1)" }}
+                  style={{ transform: transformDe(i), transition: noAnim || (arrastado && !drag?.settling) ? "none" : "transform 160ms cubic-bezier(0.2,0,0,1)" }}
                   className={cn(
                     "relative flex items-center gap-2 rounded-lg px-1.5 py-1.5",
                     arrastado ? "z-10 bg-popover shadow-lg ring-1 ring-violet-500/50" : drag ? "" : "transition-colors hover:bg-accent",
