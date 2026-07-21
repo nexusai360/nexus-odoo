@@ -691,7 +691,7 @@ export function ResizeHandle({ onPointerDown, onReset, ativo }: { onPointerDown:
       title="Arraste para redimensionar · duplo-clique para restaurar"
       className="group/rz absolute right-0 top-0 z-20 flex h-full w-3 -translate-x-0.5 cursor-col-resize touch-none select-none items-center justify-center"
     >
-      <span className={cn("h-1/2 w-0.5 rounded-full transition-colors", ativo ? "bg-violet-500" : "bg-transparent group-hover/rz:bg-violet-400/70")} />
+      <span className={cn("w-0.5 rounded-full transition-all", ativo ? "h-2/3 bg-violet-500" : "h-1/2 bg-transparent group-hover/th:h-2/3 group-hover/th:bg-violet-400/50 group-hover/rz:bg-violet-400/90")} />
     </span>
   );
 }

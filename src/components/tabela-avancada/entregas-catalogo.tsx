@@ -196,7 +196,7 @@ export const AGRUPAMENTOS: { campo: string; label: string }[] = [
  * não propaga para não abrir o detalhe da linha por baixo. */
 export function TagPedido({ numero, pedidoId, grande }: { numero: string; pedidoId: number; grande?: boolean }) {
   const base = cn(
-    "inline-flex max-w-full items-center gap-1 truncate rounded-md bg-foreground/10 font-semibold text-foreground ring-1 ring-inset ring-foreground/15 transition-colors",
+    "inline-flex items-center gap-1 whitespace-nowrap rounded-md bg-foreground/10 font-semibold text-foreground ring-1 ring-inset ring-foreground/15 transition-colors",
     grande ? "gap-1.5 px-3 py-1 text-lg" : "px-2 py-0.5 text-xs",
   );
   const podeAbrir = Number.isFinite(pedidoId) && pedidoId > 0 && !!numero && numero !== "-";
@@ -211,7 +211,7 @@ export function TagPedido({ numero, pedidoId, grande }: { numero: string; pedido
       aria-label={`Abrir pedido ${numero} no Odoo, nova aba`}
       className={cn(base, "cursor-pointer hover:bg-foreground/20 hover:ring-foreground/25")}
     >
-      <span className="truncate tabular-nums">{numero}</span>
+      <span className="tabular-nums">{numero}</span>
       <ExternalLink className={cn("shrink-0 text-muted-foreground", grande ? "size-4" : "size-3")} aria-hidden />
     </a>
   );

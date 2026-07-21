@@ -512,7 +512,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
 
       {/* ===== VISÃO LISTA ===== */}
       {!detalhe && view === "lista" && (
-        <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-card">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card">
           <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto">
             <table className={cn("w-full min-w-[60rem]", compacto ? "text-xs" : "text-sm", colFixo ? "table-fixed" : "table-auto")}>
               {colFixo && (
@@ -522,18 +522,21 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
               )}
               <thead className="sticky top-0 z-10 bg-card">
                 <tr className="border-b border-border text-left text-sm font-semibold text-muted-foreground">
-                  {colsVisiveis.map((c) => {
+                  {colsVisiveis.map((c, ci) => {
                     const ord = ordemDe(c.key);
+                    const primeira = ci === 0;
                     return (
-                      <th key={c.key} ref={setRef(c.key)} className={cn("relative overflow-hidden px-4 text-left font-medium", compacto ? "py-2" : "py-3", c.numeric && "text-right")}>
+                      <th key={c.key} ref={setRef(c.key)} className={cn("group/th relative overflow-hidden text-left font-medium", primeira ? "pl-2 pr-4" : "px-4", compacto ? "py-2" : "py-3", c.numeric && "text-right")}>
                         <button type="button" onClick={() => ordenarPor(c.key)} className={cn("flex min-w-0 max-w-full items-center gap-1.5", c.numeric && "ml-auto justify-end", c.sortable ? "cursor-pointer hover:text-foreground" : "cursor-default")}>
                           <span className="truncate">{c.label}</span>
-                          {ord && (
+                          {ord ? (
                             <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-violet-500/15 px-1.5 py-0.5 text-[0.6rem] font-semibold text-violet-700 ring-1 ring-violet-500/30 dark:text-violet-300">
                               {sorts.length > 1 && <span className="tabular-nums">{ord.pos}</span>}
                               {ord.dir === "asc" ? <ArrowUp className="size-2.5" /> : <ArrowDown className="size-2.5" />}
                             </span>
-                          )}
+                          ) : c.sortable ? (
+                            <ArrowUpDown className="size-3 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/th:opacity-70" aria-hidden />
+                          ) : null}
                         </button>
                         <ResizeHandle onPointerDown={(e) => iniciarResize(e, c.key)} onReset={() => resetColuna(c.key)} ativo={resizingKey === c.key} />
                       </th>
@@ -560,13 +563,13 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                       <Fragment key={rk}>
                         <tr onClick={() => setDetalhe({ row: it.row, idx: listaOrdenada.indexOf(it.row) })} className={cn("cursor-pointer border-b border-border/60 transition-colors last:border-0 hover:bg-accent/40", aberto && "bg-accent/30")}>
                           {colsVisiveis.map((c, ci) => (
-                            <td key={c.key} className={cn("overflow-hidden px-4", compacto ? "py-1.5" : "py-3", c.numeric && "text-right")} style={niveis.length && c.key === colsVisiveis[0].key ? { paddingLeft: `${1 + it.level * 1.25}rem` } : undefined}>
+                            <td key={c.key} className={cn("overflow-hidden", ci === 0 ? "pl-2 pr-4" : "px-4", compacto ? "py-1.5" : "py-3", c.numeric && "text-right")} style={niveis.length && c.key === colsVisiveis[0].key ? { paddingLeft: `${0.5 + it.level * 1.25}rem` } : undefined}>
                               {ci === 0 && expandirRow ? (
-                                <div className="flex min-w-0 items-center gap-1.5">
+                                <div className="flex items-center gap-1">
                                   <button type="button" aria-label={aberto ? "Recolher produtos" : "Ver produtos"} aria-expanded={aberto} onClick={(e) => { e.stopPropagation(); toggleExpandRow(rk); }} className="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
                                     {aberto ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
                                   </button>
-                                  <div className="min-w-0 truncate">{celula(it.row, c.key)}</div>
+                                  {celula(it.row, c.key)}
                                 </div>
                               ) : (
                                 <div className={cn("truncate", c.numeric && "text-right")}>{celula(it.row, c.key)}</div>
