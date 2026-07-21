@@ -8,7 +8,7 @@
  */
 
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, CalendarOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CampoLike } from "./motor-filtro";
 
@@ -161,11 +161,9 @@ export function CalendarioView<T extends Record<string, unknown>>({
       return d;
     });
   }
-  function hoje() { const d = new Date(); setAncora(new Date(d.getFullYear(), d.getMonth(), d.getDate())); }
-
   const titulo = useMemo(() => {
     if (modo === "dia") return fmtBR(ancora);
-    if (modo === "semana") { const ini = inicioSemana(ancora); const fim = new Date(ini); fim.setDate(fim.getDate() + 6); return `${fmtBR(ini)} , ${fmtBR(fim)}`; }
+    if (modo === "semana") { const ini = inicioSemana(ancora); const fim = new Date(ini); fim.setDate(fim.getDate() + 6); return `${fmtBR(ini)} - ${fmtBR(fim)}`; }
     return `${MESES[ancora.getMonth()]} ${ancora.getFullYear()}`;
   }, [modo, ancora]);
 
@@ -182,10 +180,17 @@ export function CalendarioView<T extends Record<string, unknown>>({
 
   return (
     <div className="flex h-full min-h-0 flex-col rounded-xl border border-border bg-card p-3 sm:p-4">
-      <div className="mb-3 flex shrink-0 flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-foreground">{titulo}</h3>
-        <div className="flex items-center gap-2">
-          {/* Seletor Dia / Semana / Mês (estilo o seletor de tema) */}
+      <div className="mb-3 grid shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-2">
+        {/* Esquerda: vazia (balanceia o centro) */}
+        <div aria-hidden />
+        {/* Centro: setinha, período, setinha */}
+        <div className="flex items-center justify-center gap-2">
+          <button type="button" onClick={() => navega(-1)} aria-label="Anterior" className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground"><ChevronLeft className="size-4" /></button>
+          <h3 className="whitespace-nowrap text-center text-sm font-semibold tabular-nums text-foreground">{titulo}</h3>
+          <button type="button" onClick={() => navega(1)} aria-label="Próximo" className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground"><ChevronRight className="size-4" /></button>
+        </div>
+        {/* Direita: seletor Dia / Semana / Mês */}
+        <div className="flex justify-end">
           <div className="inline-flex items-center rounded-lg border border-border bg-card p-0.5">
             {(["dia", "semana", "mes"] as const).map((m) => (
               <button key={m} type="button" onClick={() => setModo(m)} aria-pressed={modo === m}
@@ -193,11 +198,6 @@ export function CalendarioView<T extends Record<string, unknown>>({
                 {m === "mes" ? "Mês" : m}
               </button>
             ))}
-          </div>
-          <div className="flex items-center gap-1">
-            <button type="button" onClick={() => navega(-1)} aria-label="Anterior" className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground"><ChevronLeft className="size-4" /></button>
-            <button type="button" onClick={hoje} className="cursor-pointer rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground">Hoje</button>
-            <button type="button" onClick={() => navega(1)} aria-label="Próximo" className="flex size-8 cursor-pointer items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground"><ChevronRight className="size-4" /></button>
           </div>
         </div>
       </div>
@@ -250,7 +250,7 @@ function VistaSemana<T>({ ancora, porDia, hojeIso, CardItem }: { ancora: Date; p
           <div className={cn("mb-1.5 px-0.5 text-xs font-medium", ymd(d) === hojeIso ? "text-violet-600 dark:text-violet-300" : "text-muted-foreground")}>{DIAS[i]} {String(d.getDate()).padStart(2, "0")}/{String(d.getMonth() + 1).padStart(2, "0")}</div>
           <div className="min-h-0 flex-1 space-y-1 overflow-y-auto">
             {(porDia.get(ymd(d)) ?? []).map((r, k) => <CardItem key={k} r={r} />)}
-            {(porDia.get(ymd(d))?.length ?? 0) === 0 && <span className="px-1 text-[0.65rem] text-muted-foreground/50">,</span>}
+            {(porDia.get(ymd(d))?.length ?? 0) === 0 && <span className="mt-1 block px-1 text-center text-[0.65rem] text-muted-foreground/40">Sem registro</span>}
           </div>
         </div>
       ))}
@@ -263,7 +263,11 @@ function VistaDia<T>({ ancora, porDia, CardItem }: { ancora: Date; porDia: Map<s
   return (
     <div className="mx-auto max-w-2xl">
       {itens.length === 0 ? (
-        <p className="py-12 text-center text-sm text-muted-foreground">Nenhum registro em {fmtBR(ancora)}.</p>
+        <div className="flex flex-col items-center justify-center gap-2.5 py-16 text-center">
+          <div className="flex size-12 items-center justify-center rounded-full bg-muted/50"><CalendarOff className="size-6 text-muted-foreground/60" aria-hidden /></div>
+          <p className="text-sm font-medium text-foreground">Sem registro nesta data</p>
+          <p className="text-xs text-muted-foreground tabular-nums">{fmtBR(ancora)}</p>
+        </div>
       ) : (
         <div className="space-y-1.5">
           {itens.map((r, k) => <CardItem key={k} r={r} />)}

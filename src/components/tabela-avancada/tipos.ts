@@ -30,6 +30,8 @@ export interface ColunaDef<T> {
   obrigatoria?: boolean;
   /** valor para ordenação/agrupamento. */
   valor: (row: T) => string | number;
+  /** largura do campo na TELA DE DETALHE (1 = normal, 2 = largo, 4 = linha inteira). */
+  detalheSpan?: 1 | 2 | 4;
 }
 
 /** Campo para filtro/busca/agrupamento (curado por domínio). */

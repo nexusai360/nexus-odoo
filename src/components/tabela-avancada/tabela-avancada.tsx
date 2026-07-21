@@ -588,13 +588,17 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
           row={detalhe.row}
           idx={detalhe.idx}
           total={listaOrdenada.length}
+          todos={listaOrdenada}
           colunas={colunas}
           celula={celula}
+          tituloItem={tituloItem}
+          subtituloItem={subtituloItem}
           onVoltar={() => setDetalhe(null)}
           onNavegar={(delta) => {
             const ni = Math.min(Math.max(0, detalhe.idx + delta), listaOrdenada.length - 1);
             setDetalhe({ row: listaOrdenada[ni], idx: ni });
           }}
+          onIr={(row) => setDetalhe({ row, idx: listaOrdenada.indexOf(row) })}
         />
       )}
 
@@ -622,36 +626,84 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
 const brlFmt = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 function brlSoma(v: number): string { return brlFmt.format(v || 0); }
 
-/** Tela de detalhes de UMA linha: todas as colunas organizadas + voltar/navegar. */
+/** Tela de detalhes de UMA linha: destaque no número, campos organizados por
+ * largura, observações em bloco largo, filtro por número + voltar/navegar. */
 function DetalhePedido<T extends Record<string, unknown>>({
-  row, idx, total, colunas, celula, onVoltar, onNavegar,
+  row, idx, total, todos, colunas, celula, tituloItem, subtituloItem, onVoltar, onNavegar, onIr,
 }: {
   row: T;
   idx: number;
   total: number;
+  todos: T[];
   colunas: ColunaDef<T>[];
   celula: (row: T, key: string) => React.ReactNode;
+  tituloItem?: (row: T) => string;
+  subtituloItem?: (row: T) => string;
   onVoltar: () => void;
   onNavegar: (delta: number) => void;
+  onIr: (row: T) => void;
 }) {
+  const [q, setQ] = useState("");
+  const [aberto, setAberto] = useState(false);
+  const sugestoes = useMemo(() => {
+    const t = q.trim().toLowerCase();
+    if (!t) return [] as T[];
+    return todos.filter((r) => (tituloItem?.(r) ?? "").toLowerCase().includes(t)).slice(0, 8);
+  }, [q, todos, tituloItem]);
+  const spanClass = (s?: number) => (s === 4 ? "sm:col-span-2 lg:col-span-4" : s === 2 ? "sm:col-span-2" : "");
+
   return (
     <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-card">
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
-        <button type="button" onClick={onVoltar} className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent">
+      {/* Barra superior: voltar | ir para o pedido (nº) | navegação */}
+      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border px-4 py-3">
+        <button type="button" onClick={onVoltar} className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent">
           <ArrowLeft className="size-4" /> Voltar
         </button>
-        <div className="flex items-center gap-2">
+        <div className="relative mx-auto w-full max-w-xs">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
+          <input
+            value={q}
+            onChange={(e) => { setQ(e.target.value); setAberto(true); }}
+            onFocus={() => setAberto(true)}
+            onBlur={() => setTimeout(() => setAberto(false), 150)}
+            placeholder="Ir para o pedido (nº)..."
+            aria-label="Ir para o pedido pelo número"
+            className="h-8 w-full rounded-lg border border-border bg-card pl-8 pr-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          />
+          {aberto && sugestoes.length > 0 && (
+            <div className="absolute left-0 top-full z-40 mt-1 w-full rounded-xl border border-border bg-popover p-1 shadow-xl">
+              {sugestoes.map((r, i) => (
+                <button key={i} type="button" onMouseDown={(e) => { e.preventDefault(); onIr(r); setQ(""); setAberto(false); }} className="flex w-full cursor-pointer flex-col items-start rounded-lg px-2.5 py-1.5 text-left transition-colors hover:bg-accent">
+                  <span className="text-sm font-medium text-foreground">{tituloItem ? tituloItem(r) : ""}</span>
+                  {subtituloItem && <span className="w-full truncate text-xs text-muted-foreground">{subtituloItem(r)}</span>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
           <span className="text-xs tabular-nums text-muted-foreground">{idx + 1} de {total}</span>
           <button type="button" onClick={() => onNavegar(-1)} disabled={idx <= 0} aria-label="Anterior" className="flex size-8 cursor-pointer items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"><ChevronLeft className="size-4" /></button>
           <button type="button" onClick={() => onNavegar(1)} disabled={idx >= total - 1} aria-label="Próximo" className="flex size-8 cursor-pointer items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"><ChevronRight className="size-4" /></button>
         </div>
       </div>
-      <div className="min-h-0 flex-1 overflow-auto p-4">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+
+      <div className="min-h-0 flex-1 overflow-auto p-4 sm:p-5">
+        {/* Destaque do pedido */}
+        <div className="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-border/60 pb-3">
+          <h2 className="text-2xl font-bold tabular-nums text-foreground">{tituloItem ? tituloItem(row) : ""}</h2>
+          {subtituloItem && <span className="text-sm text-muted-foreground">{subtituloItem(row)}</span>}
+        </div>
+        {/* Campos: cada um ocupa a largura do seu detalheSpan (texto completo, sem truncar) */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {colunas.map((c) => (
-            <div key={c.key} className="min-w-0 rounded-lg border border-border/60 bg-background/40 p-3">
+            <div key={c.key} className={cn("min-w-0 rounded-lg border border-border/60 bg-background/40 p-3", spanClass(c.detalheSpan))}>
               <p className="mb-1 text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground">{c.label}</p>
-              <div className="break-words text-sm text-foreground">{celula(row, c.key)}</div>
+              {c.tipo === "texto" ? (
+                <p className="break-words text-sm text-foreground">{String(c.valor(row)) || "-"}</p>
+              ) : (
+                <div className="text-sm text-foreground">{celula(row, c.key)}</div>
+              )}
             </div>
           ))}
         </div>
