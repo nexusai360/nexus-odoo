@@ -11,6 +11,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DataTableFiltroAvancado } from "./data-table-filtro";
 import {
+  BuscaInteligente,
+  montarSugestoes,
+  adicionarFacetAoGrupo,
+} from "./data-table-busca";
+import {
   compilarFiltro,
   grupoVazio,
   type Grupo,
@@ -331,6 +336,17 @@ export function DataTable<T extends Record<string, unknown>>({
     const vals = valoresPorColuna[c.key];
     return vals && vals.length >= 2 && vals.length <= 60;
   });
+
+  // Sugestões da busca inteligente (só com filtroAvancado). Usa o `query` VIVO
+  // (não o debounced) para o dropdown não atrasar.
+  const sugestoesBusca = useMemo(
+    () =>
+      filtroAvancado
+        ? montarSugestoes(query, colunasVisiveis, valoresPorColuna)
+        : [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [filtroAvancado, query, valoresPorColuna, visiveis],
+  );
   const totalFiltrosAtivos = Object.values(colFiltros).reduce((s, v) => s + v.length, 0);
 
   // --- paginação ---
@@ -420,7 +436,17 @@ export function DataTable<T extends Record<string, unknown>>({
     <div className={cn("flex flex-col gap-3 w-full", alturaFluida && "h-full min-h-0")}>
       {/* Barra de controles */}
       <div className="flex flex-wrap items-center gap-2">
-        {searchable && (
+        {filtroAvancado ? (
+          <BuscaInteligente
+            value={query}
+            onChange={handleSearch}
+            sugestoes={sugestoesBusca}
+            onEscolher={(s) => {
+              setGrupoFiltro((g) => adicionarFacetAoGrupo(g, s));
+              handleSearch("");
+            }}
+          />
+        ) : searchable ? (
           <Input
             placeholder="Pesquisar…"
             value={query}
@@ -428,7 +454,7 @@ export function DataTable<T extends Record<string, unknown>>({
             className="h-8 max-w-xs text-sm"
             data-table-search
           />
-        )}
+        ) : null}
 
         {/* Filtro personalizado E/OU (aditivo, só quando filtroAvancado) */}
         {filtroAvancado && (
