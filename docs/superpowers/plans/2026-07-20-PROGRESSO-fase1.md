@@ -89,6 +89,65 @@ de worker** (tudo query + UI, padrão da Fase 2):
   - **ALERTA DE AMBIENTE:** disco a 98% (408Mi livres). A suíte completa falha por
     ENOSPC. Liberar espaço antes das fases seguintes (TDD pesado).
 
+## FASE 4 , CONCLUÍDA E PERICIADA (filtro E/OU aninhado + busca inteligente)
+
+Planner v1 -> review adversarial (subagente Opus) -> planner v2, tudo em
+`docs/superpowers/plans/2026-07-20-fase4-filtro-eou-busca-PLAN-v2.md` e o review
+em `2026-07-20-review-plano-fase4.md` (3 ALTOS + 4 MÉDIOS + 4 BAIXOS aplicados).
+Implementação inline (UI não delegada), 6 commits TDD (d0607c01..após):
+- **T1 motor** (`filtro-avancado.ts`): reuso do `compilarFiltro`, endurecido
+  para a 1ª ligação a UI viva (a aba Avançado dos Relatórios era write-only).
+  Novos operadores `nao_contem`/`vazio`/`preenchido` (visíveis) e `esta_em_lista`
+  (programático, busca por facets, `SEP_LISTA`=U+001F). Motor ciente de tipo:
+  `data` compara ISO lexicográfico (cronológico), `maior`/`menor` não fazem mais
+  `Number()` cego (evita NaN que zerava a tabela, ALTO-2). Guards: `contem`/
+  `nao_contem` com valor vazio são inertes (MÉDIO-2). Helpers `grupoVazio()`,
+  `operadoresParaTipo()`. 33/33 testes.
+- **T2 builder** (`filtro-avancado-builder.tsx` NOVO): extrai `GrupoBuilder`/
+  `CondicaoRow` (puros) de `filters-dialog.tsx`; `CondicaoRow` ciente de tipo
+  (operadores filtrados, input date/number/text, valor some em vazio/preenchido,
+  mantém `<Input>` do DS). `filters-dialog` importa e usa `grupoVazio()`.
+  Não-regressão dos Relatórios: 94 testes verdes.
+- **T3 controle** (`data-table-filtro.tsx` NOVO): botão Filtros (Popover+Button)
+  + `contarCondicoes` (badge) + Limpar. 3/3.
+- **T4 pipeline** (`data-table.tsx`): prop aditiva `filtroAvancado` (default
+  false, 7 outras telas intactas); estágio `advFiltered=compilarFiltro` entre
+  facets e sort; deps de `sorted` e reset de página incluem o grupo. Teste de
+  integração (`data-table-filtro-integracao.test.tsx`) mocka o Popover (base-ui
+  não posiciona no jsdom): recorta 4->2, Limpar restaura.
+- **T5**: liga `filtroAvancado` só no B-09 (`blocos-pedidos.tsx`).
+- **T6 busca inteligente** (`data-table-busca.tsx` NOVO): sugestões "Campo:
+  valor" (texto/tag) com teclado ↑↓/Enter/Esc (combobox/listbox); escolher
+  acumula `esta_em_lista` POR CAMPO (`adicionarFacetAoGrupo`) = OU no campo, E
+  entre campos -> evita o tabela-vazia de SP AND RJ (ALTO-1). `query` vivo (não
+  debounced); `handleSearch("")` ao escolher. 6/6.
+
+**Verde:** tsc limpo; jest FULL 4485 passam / 1 falha (model-catalog
+PRÉ-EXISTENTE, worker/catálogo NÃO tocado, último commit lá é #189); eslint
+limpo. 124 testes de charts + 94 de reports (não-regressão).
+
+**Perícia (auto, feita por mim):** confrontei código × plano v2. Verificado e
+descartado como falso positivo: (a) não-regressão , só B-09 liga a prop; sem ela
+o JSX cai no `<Input>` original idêntico. (b) RSC→client , tudo `"use client"`,
+só dados serializáveis atravessam; `ColumnDef` sem campo-função. (c) coluna
+`status`/`tag` do B-09 , valor da linha é string, filtro OK; busca exclui
+numero/moeda/data/status/tags-array. (d) ALTO-1/ALTO-2/MÉDIO-2 cobertos por
+teste. **Achado (pendência, não bug):** ocultar uma coluna que já tem condição
+mantém o filtro ativo (compilarFiltro usa todas as columns) e o campo aparece em
+branco no builder , NÃO é silencioso (badge conta + linha visível). Coerente com
+"campos = colunas visíveis"; a pendência de filtro-em-coluna-oculta já está no
+plano. Não corrigido por design.
+
+**PENDÊNCIAS honestas da Fase 4:**
+- **Validação VISUAL no browser (dark/light) NÃO capturada:** Docker indisponível
+  nesta sessão (`docker ps` travou; cache na porta 5436 inacessível). A Fase 4 é
+  100% client-side (filtro/busca sobre linhas já carregadas) , SEM query nova nem
+  premissa nova sobre o dado, então o "E2E contra dado real" não se aplica; o
+  render do DataTable com `filtroAvancado` já é exercido nos testes RTL. Falta só
+  o olho no browser (dropdown posicionado, contraste dark/light). **Dono valida.**
+- **Presets de filtro** ("a definir quais fazem sentido"): decisão do dono.
+  Candidatos: Financeiro bloqueado / Sem previsão / Vendas futuras. NÃO inventado.
+
 ## FASE 4+ (não iniciadas) , PROMPT DE CONTINUAÇÃO
 
 Retomar na branch `feat/entregas-parciais-base-calculo`. Fases 1A, 1B e 2
