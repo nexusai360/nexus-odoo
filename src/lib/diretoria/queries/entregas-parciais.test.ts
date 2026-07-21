@@ -1,4 +1,10 @@
-import { mapaCorEtapa, queryEntregasParciais } from "./entregas-parciais";
+import {
+  extrairObsPedido,
+  isoData,
+  mapaCorEtapa,
+  precoUnitarioItem,
+  queryEntregasParciais,
+} from "./entregas-parciais";
 
 const HOJE = new Date("2026-07-18T12:00:00");
 
@@ -13,6 +19,12 @@ type Pedido = {
   etapaId?: number | null;
   etapaNome: string | null;
   vrProdutos: number;
+  // Fase 3
+  dataOrcamento?: Date | null;
+  dataPrevista?: Date | null;
+  dataValidade?: Date | null;
+  empresaNome?: string | null;
+  vendedorNome?: string | null;
 };
 type Item = {
   pedidoId: number;
@@ -28,17 +40,27 @@ type Item = {
 function makePrisma(opts: {
   pedidos: Pedido[];
   itens: Item[];
-  produtos: { odooId: number; precoCusto: number }[];
-  parceiros: { odooId: number; uf: string | null; cidade: string | null }[];
+  produtos: { odooId: number; precoCusto: number; codigo?: string | null }[];
+  parceiros: {
+    odooId: number;
+    uf: string | null;
+    cidade: string | null;
+    documento?: string | null;
+    cep?: string | null;
+  }[];
   jobOk?: boolean;
   titulosVencidos?: { participanteId: number | null; participanteNome: string | null }[];
   formasPagamento?: { pedidoId: number | null; formaPagamentoNome: string | null }[];
   etapasRaw?: { odooId: number; data: unknown }[];
+  obsRaw?: { odooId: number; data: unknown }[];
 }) {
   const rawPedidoEtapaFindMany = jest.fn().mockResolvedValue(opts.etapasRaw ?? []);
+  const rawPedidoDocumentoFindMany = jest.fn().mockResolvedValue(opts.obsRaw ?? []);
   return {
     __rawPedidoEtapaFindMany: rawPedidoEtapaFindMany,
+    __rawPedidoDocumentoFindMany: rawPedidoDocumentoFindMany,
     rawPedidoEtapa: { findMany: rawPedidoEtapaFindMany },
+    rawPedidoDocumento: { findMany: rawPedidoDocumentoFindMany },
     fatoPedido: { findMany: jest.fn().mockResolvedValue(opts.pedidos) },
     fatoPedidoItem: { findMany: jest.fn().mockResolvedValue(opts.itens) },
     fatoProduto: { findMany: jest.fn().mockResolvedValue(opts.produtos) },
@@ -52,7 +74,8 @@ function makePrisma(opts: {
     },
     fatoParceiro: {
       findMany: jest.fn().mockImplementation(({ select }: { select: Record<string, boolean> }) =>
-        // carregarParticipantesGrupo pede documentoDigits; a query do relatório pede uf/cidade.
+        // carregarParticipantesGrupo pede documentoDigits; a query do relatório pede
+        // uf/cidade/documento/cep (documentoDigits falsy => cai no ramo do relatório).
         select?.documentoDigits
           ? opts.parceiros.map((p) => ({ odooId: p.odooId, documentoDigits: null }))
           : opts.parceiros,
@@ -340,5 +363,120 @@ describe("mapaCorEtapa", () => {
 
   it("mapa vazio para lista vazia", () => {
     expect(mapaCorEtapa([]).size).toBe(0);
+  });
+});
+
+// --- Fase 3: helpers puros ---
+
+describe("isoData", () => {
+  it("formata Date em YYYY-MM-DD sem deslocar o dia (datas Odoo são meia-noite UTC)", () => {
+    expect(isoData(new Date("2026-03-16T00:00:00.000Z"))).toBe("2026-03-16");
+  });
+  it("null/undefined => null", () => {
+    expect(isoData(null)).toBeNull();
+    expect(isoData(undefined)).toBeNull();
+  });
+});
+
+describe("precoUnitarioItem", () => {
+  it("valor cheio / quantidade", () => {
+    expect(precoUnitarioItem(259112.2, 20)).toBeCloseTo(12955.61, 2);
+  });
+  it("quantidade fracionária", () => {
+    expect(precoUnitarioItem(180, 24.93)).toBeCloseTo(7.2202, 3);
+  });
+  it("quantidade 0 ou negativa => 0 (sem divisão por zero)", () => {
+    expect(precoUnitarioItem(100, 0)).toBe(0);
+    expect(precoUnitarioItem(100, -1)).toBe(0);
+  });
+});
+
+describe("extrairObsPedido", () => {
+  it("lê obs e obs_produtos do jsonb", () => {
+    expect(extrairObsPedido({ obs: "Inventário GPLOG", obs_produtos: "Entregar cedo" })).toEqual({
+      obs: "Inventário GPLOG",
+      obsEntrega: "Entregar cedo",
+    });
+  });
+  it("false/vazio/não-string do Odoo => null", () => {
+    expect(extrairObsPedido({ obs: false, obs_produtos: "   " })).toEqual({ obs: null, obsEntrega: null });
+    expect(extrairObsPedido({ obs: 123 })).toEqual({ obs: null, obsEntrega: null });
+    expect(extrairObsPedido(null)).toEqual({ obs: null, obsEntrega: null });
+  });
+});
+
+describe("queryEntregasParciais , Fase 3 (colunas completas)", () => {
+  it("materializa datas (ISO), emitente, vendedor, CNPJ, CEP, código, unitário, valor cheio e observações", async () => {
+    const prisma = makePrisma({
+      pedidos: [
+        {
+          odooId: 1,
+          numero: "PV-1",
+          participanteId: 5010,
+          participanteNome: "Cliente A",
+          operacaoNome: "Venda",
+          etapaNome: "Sep",
+          vrProdutos: 1000,
+          dataOrcamento: new Date("2026-03-16T00:00:00.000Z"),
+          dataPrevista: new Date("2026-04-01T00:00:00.000Z"),
+          dataValidade: new Date("2026-03-20T00:00:00.000Z"),
+          empresaNome: "Jds Comércio - Matriz DF 18.282.961/0001-00",
+          vendedorNome: "Mariane Trindade - Mariane",
+        },
+      ],
+      itens: [
+        { pedidoId: 1, produtoId: 100, produtoNome: "Esteira", familiaNome: "Cardio", marcaNome: "Matrix", quantidade: 10, quantidadeAAtender: null, vrProdutos: 1000 },
+      ],
+      produtos: [{ odooId: 100, precoCusto: 40, codigo: "2396" }],
+      parceiros: [{ odooId: 5010, uf: "São Paulo (BR)", cidade: "São Paulo", documento: "07.390.039/0001-01", cep: "72007-490" }],
+      obsRaw: [{ odooId: 1, data: { obs: "Inventário GPLOG", obs_produtos: false } }],
+    });
+
+    const r = await queryEntregasParciais(prisma, HOJE);
+    const l = r.linhas[0];
+    expect(l.orcamento).toBe("2026-03-16");
+    expect(l.prevista).toBe("2026-04-01");
+    expect(l.validade).toBe("2026-03-20");
+    expect(l.emitente).toBe("Jds Comércio - Matriz DF 18.282.961/0001-00"); // limpeza é na UI
+    expect(l.vendedor).toBe("Mariane Trindade - Mariane"); // corte do login é na UI
+    expect(l.cnpj).toBe("07.390.039/0001-01");
+    expect(l.cep).toBe("72007-490");
+    expect(l.codigoProduto).toBe("2396");
+    expect(l.valorCheio).toBe(1000);
+    expect(l.unitario).toBe(100); // 1000 / 10
+    expect(l.observacoes).toBe("Inventário GPLOG");
+    expect(l.obsEntrega).toBeNull(); // obs_produtos false => null
+  });
+
+  it("campos ausentes viram null (sem raw de obs, sem documento/cep/código)", async () => {
+    const prisma = makePrisma({
+      pedidos: [
+        { odooId: 1, numero: "PV-1", participanteId: 5010, participanteNome: "A", operacaoNome: "Venda", etapaNome: "Sep", vrProdutos: 500 },
+      ],
+      itens: [
+        { pedidoId: 1, produtoId: 100, produtoNome: "X", familiaNome: null, marcaNome: null, quantidade: 5, quantidadeAAtender: null, vrProdutos: 500 },
+      ],
+      produtos: [{ odooId: 100, precoCusto: 20 }],
+      parceiros: [{ odooId: 5010, uf: "SP", cidade: "SP" }],
+    });
+
+    const r = await queryEntregasParciais(prisma, HOJE);
+    const l = r.linhas[0];
+    expect(l.orcamento).toBeNull();
+    expect(l.emitente).toBeNull();
+    expect(l.vendedor).toBeNull();
+    expect(l.cnpj).toBeNull();
+    expect(l.cep).toBeNull();
+    expect(l.codigoProduto).toBeNull();
+    expect(l.observacoes).toBeNull();
+    expect(l.obsEntrega).toBeNull();
+    expect(l.unitario).toBe(100); // 500 / 5
+  });
+
+  it("sem pedidos: não dispara o lote de observações no raw (guarda de ids vazios)", async () => {
+    const prisma = makePrisma({ pedidos: [], itens: [], produtos: [], parceiros: [] });
+    await queryEntregasParciais(prisma, HOJE);
+    expect((prisma as unknown as { __rawPedidoDocumentoFindMany: jest.Mock })
+      .__rawPedidoDocumentoFindMany).not.toHaveBeenCalled();
   });
 });

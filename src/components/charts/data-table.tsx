@@ -58,6 +58,14 @@ export interface ColumnDef<T> {
    * Renderiza so o icone com Tooltip instantaneo (delay 0), sem `title` nativo.
    */
   statusMapa?: Record<string, { icone: "circle-check" | "circle-x"; classe: string; rotulo: string }>;
+  /**
+   * Quando true, a coluna NASCE oculta (opt-in via seletor "Colunas"). Aditivo e
+   * RSC-safe (booleano). Ausente => coluna visivel (comportamento historico das
+   * telas que nao declaram a flag). Use para telas densas (ex.: B-09, 28 colunas)
+   * onde nem toda coluna deve aparecer de imediato. A busca e o filtro-por-coluna
+   * operam so nas colunas VISIVEIS, entao ocultar tambem tira do escopo de busca.
+   */
+  ocultaInicial?: boolean;
 }
 
 interface DataTableProps<T> {
@@ -205,16 +213,64 @@ export function DataTable<T extends Record<string, unknown>>({
     setSortStack((prev) => toggleSortStack(prev, key, shiftKey));
   }
 
-  // --- colunas visíveis ---
+  // --- colunas visíveis (colunas com `ocultaInicial` nascem ocultas) ---
   const [visiveis, setVisiveis] = useState<Record<string, boolean>>(
-    () => Object.fromEntries(columns.map((c) => [c.key, true])),
+    () => Object.fromEntries(columns.map((c) => [c.key, !c.ocultaInicial])),
   );
   const colunasVisiveis = columns.filter((c) => visiveis[c.key]);
+  const chavesVisiveis = useMemo(
+    () => colunasVisiveis.map((c) => c.key),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [visiveis, columns],
+  );
+
+  // --- busca dentro do seletor de colunas ---
+  const [buscaColuna, setBuscaColuna] = useState("");
 
   function toggleColuna(key: string) {
     const quantVisiveis = Object.values(visiveis).filter(Boolean).length;
     if (visiveis[key] && quantVisiveis <= 1) return;
     setVisiveis((prev) => ({ ...prev, [key]: !prev[key] }));
+    // Ao ocultar uma coluna, descarta seu filtro-por-coluna para não deixar um
+    // filtro ativo invisível sumindo linhas sem explicação (review M3).
+    if (visiveis[key]) {
+      setColFiltros((prev) => {
+        if (!prev[key]?.length) return prev;
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    }
+  }
+
+  /**
+   * "Marcar todas" / "Limpar" do seletor, escopadas às colunas atualmente
+   * FILTRADAS pela busca do seletor (`alvo`). Guard: nunca deixa 0 colunas
+   * visíveis no total (review H1) , se "Limpar" zerar tudo, preserva a 1ª
+   * coluna definida. Ao ocultar, descarta os filtros-por-coluna afetados.
+   */
+  function definirVisiveisEmLote(alvo: ColumnDef<T>[], visivel: boolean) {
+    setVisiveis((prev) => {
+      const next = { ...prev };
+      for (const c of alvo) next[c.key] = visivel;
+      if (!Object.values(next).some(Boolean)) next[columns[0].key] = true;
+      return next;
+    });
+    if (!visivel) {
+      setColFiltros((prev) => {
+        const preservada = columns[0].key;
+        const next = { ...prev };
+        let mudou = false;
+        for (const c of alvo) {
+          if (c.key === preservada) continue;
+          if (next[c.key]?.length) {
+            delete next[c.key];
+            mudou = true;
+          }
+        }
+        return mudou ? next : prev;
+      });
+    }
   }
 
   // --- modo compacto ---
@@ -231,10 +287,11 @@ export function DataTable<T extends Record<string, unknown>>({
     });
   }
   // Valores distintos por coluna textual/tag (até 60 valores; acima disso a busca
-  // dá conta e o popover viraria uma lista infinita).
+  // dá conta e o popover viraria uma lista infinita). Só colunas VISÍVEIS: filtrar
+  // por uma coluna oculta confunde (some do popover, mas o filtro segue ativo).
   const valoresPorColuna = useMemo(() => {
     const map: Record<string, string[]> = {};
-    for (const c of columns) {
+    for (const c of colunasVisiveis) {
       if (c.tipo !== "texto" && c.tipo !== "tag" && c.tipo !== "tags") continue;
       const set = new Set<string>();
       for (const r of rows) {
@@ -245,8 +302,9 @@ export function DataTable<T extends Record<string, unknown>>({
       map[c.key] = [...set].sort((a, b) => a.localeCompare(b, "pt-BR"));
     }
     return map;
-  }, [rows, columns]);
-  const colunasFiltráveis = columns.filter((c) => {
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, columns, visiveis]);
+  const colunasFiltráveis = colunasVisiveis.filter((c) => {
     const vals = valoresPorColuna[c.key];
     return vals && vals.length >= 2 && vals.length <= 60;
   });
@@ -268,9 +326,11 @@ export function DataTable<T extends Record<string, unknown>>({
   }
 
   // --- pipeline: busca → filtro por coluna → sort ---
+  // A busca varre só as colunas VISÍVEIS (buscar por uma coluna oculta acharia
+  // linhas sem o termo à vista). Nas telas sem colunas ocultas, é o mesmo que antes.
   const filtered = useMemo(
-    () => filterRows(rows, debouncedQuery, columns.map((c) => c.key)),
-    [rows, debouncedQuery],
+    () => filterRows(rows, debouncedQuery, chavesVisiveis),
+    [rows, debouncedQuery, chavesVisiveis],
   );
 
   const colFiltered = useMemo(() => {
@@ -355,34 +415,89 @@ export function DataTable<T extends Record<string, unknown>>({
               </Button>
             }
           />
-          <PopoverContent className="w-52 p-2">
-            <p className="mb-2 px-1 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Colunas visíveis
-            </p>
-            <ul className="flex flex-col gap-1 max-h-60 overflow-y-auto">
-              {columns.map((c) => {
-                const quantVisiveis = Object.values(visiveis).filter(Boolean).length;
-                const isLast = visiveis[c.key] && quantVisiveis <= 1;
-                return (
-                  <li key={c.key}>
-                    <label
-                      className={cn(
-                        "flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-sm hover:bg-muted",
-                        isLast && "cursor-not-allowed opacity-50",
-                      )}
+          <PopoverContent className="w-60 p-0">
+            <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
+              <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                Colunas visíveis
+              </span>
+              <span className="text-[11px] tabular-nums text-muted-foreground">
+                {Object.values(visiveis).filter(Boolean).length}/{columns.length}
+              </span>
+            </div>
+            {/* Busca por nome da coluna (útil com muitas colunas). */}
+            <div className="border-b border-border/60 p-2">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
+                <Input
+                  value={buscaColuna}
+                  onChange={(e) => setBuscaColuna(e.target.value)}
+                  placeholder="Buscar coluna…"
+                  className="h-7 pl-7 text-xs"
+                  aria-label="Buscar coluna pelo nome"
+                />
+              </div>
+            </div>
+            {(() => {
+              const q = buscaColuna.trim().toLowerCase();
+              const filtradas = q
+                ? columns.filter((c) => c.header.toLowerCase().includes(q))
+                : columns;
+              return (
+                <>
+                  {/* Marcar/limpar em lote, escopadas ao que a busca mostra. */}
+                  <div className="flex items-center gap-1 border-b border-border/60 px-2 py-1.5">
+                    <button
+                      type="button"
+                      onClick={() => definirVisiveisEmLote(filtradas, true)}
+                      disabled={filtradas.length === 0}
+                      className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
                     >
-                      <Checkbox
-                        checked={visiveis[c.key]}
-                        onCheckedChange={() => toggleColuna(c.key)}
-                        disabled={isLast}
-                        aria-label={`Mostrar coluna ${c.header}`}
-                      />
-                      {c.header}
-                    </label>
-                  </li>
-                );
-              })}
-            </ul>
+                      <Check className="size-3" aria-hidden />
+                      Marcar {q ? "filtradas" : "todas"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => definirVisiveisEmLote(filtradas, false)}
+                      disabled={filtradas.length === 0}
+                      className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+                    >
+                      <X className="size-3" aria-hidden />
+                      Limpar {q ? "filtradas" : ""}
+                    </button>
+                  </div>
+                  <ul className="flex flex-col gap-1 max-h-60 overflow-y-auto p-2">
+                    {filtradas.length === 0 ? (
+                      <li className="py-3 text-center text-xs text-muted-foreground">
+                        Nenhuma coluna encontrada.
+                      </li>
+                    ) : (
+                      filtradas.map((c) => {
+                        const quantVisiveis = Object.values(visiveis).filter(Boolean).length;
+                        const isLast = visiveis[c.key] && quantVisiveis <= 1;
+                        return (
+                          <li key={c.key}>
+                            <label
+                              className={cn(
+                                "flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-sm hover:bg-muted",
+                                isLast && "cursor-not-allowed opacity-50",
+                              )}
+                            >
+                              <Checkbox
+                                checked={visiveis[c.key]}
+                                onCheckedChange={() => toggleColuna(c.key)}
+                                disabled={isLast}
+                                aria-label={`Mostrar coluna ${c.header}`}
+                              />
+                              {c.header}
+                            </label>
+                          </li>
+                        );
+                      })
+                    )}
+                  </ul>
+                </>
+              );
+            })()}
           </PopoverContent>
         </Popover>
 

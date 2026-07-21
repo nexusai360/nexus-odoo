@@ -57,6 +57,31 @@ export interface LinhaEntregaParcial {
   valorCustoAAtender: number;
   statusFinanceiro: "liberado" | "bloqueado";
   formaPagamento: string | null;
+  // --- Fase 3: colunas completas do relatório oficial (ID 28) ---
+  /** Data de orçamento do pedido (ISO `YYYY-MM-DD`) ou null. */
+  orcamento: string | null;
+  /** Data prevista de entrega (ISO) ou null. */
+  prevista: string | null;
+  /** Data de validade do contrato (`data_validade` do cabeçalho, ISO) ou null. */
+  validade: string | null;
+  /** Empresa emissora do pedido (razão social). */
+  emitente: string | null;
+  /** Vendedor responsável pelo pedido. */
+  vendedor: string | null;
+  /** CNPJ/CPF do cliente (formatado, como no Odoo). */
+  cnpj: string | null;
+  /** CEP do cliente. */
+  cep: string | null;
+  /** Código do produto (SKU do cadastro). */
+  codigoProduto: string | null;
+  /** Preço unitário do item (valor cheio / quantidade; bruto, ver D-F3-2). */
+  unitario: number;
+  /** Valor cheio da linha (qtd x unitário, sem desconto do a-atender). */
+  valorCheio: number;
+  /** Observações do pedido (`obs` do raw). */
+  observacoes: string | null;
+  /** Observação de entrega (`obs_produtos` do raw). TODO(dono): confirmar fonte (D-F3-4). */
+  obsEntrega: string | null;
 }
 
 export interface IndicadoresEntregasParciais {
@@ -92,6 +117,39 @@ export function mapaCorEtapa(
     m.set(r.odooId, corEtapaValida(cor));
   }
   return m;
+}
+
+// --- Fase 3: helpers puros (colunas completas do relatório oficial) ---
+
+/** Normaliza um valor do Odoo em string útil: não-string (ex.: `false`), vazio ou só
+ * espaços viram null. */
+function strOuNull(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const t = v.trim();
+  return t.length ? t : null;
+}
+
+/** Data ISO `YYYY-MM-DD` a partir de um Date, ou null. Reusa o padrão provado no repo
+ * (`estoque.ts`): as datas do Odoo são `timestamp` 00:00:00 em UTC, então `toISOString`
+ * não desloca o dia (ver review D-F3-8/B2). */
+export function isoData(d: Date | null | undefined): string | null {
+  return d ? d.toISOString().slice(0, 10) : null;
+}
+
+/** Preço unitário do item: valor cheio da linha dividido pela quantidade. Bruto (o
+ * `vr_produtos` do Odoo não subtrai desconto); bate com `vr_unitario` a menos de drift
+ * de arredondamento de centavo em ~1,4% dos itens (review B1). Quantidade 0/negativa => 0. */
+export function precoUnitarioItem(valorCheio: number, quantidade: number): number {
+  return quantidade > 0 ? valorCheio / quantidade : 0;
+}
+
+/** Extrai as observações do pedido do jsonb raw: `obs` (observações gerais) e
+ * `obs_produtos` (candidato a "Obs entrega", D-F3-4). `false`/vazio do Odoo => null. */
+export function extrairObsPedido(
+  data: unknown,
+): { obs: string | null; obsEntrega: string | null } {
+  const d = data as { obs?: unknown; obs_produtos?: unknown } | null;
+  return { obs: strOuNull(d?.obs), obsEntrega: strOuNull(d?.obs_produtos) };
 }
 
 // REGRA_BLOQUEIO (D-b, versão SIMPLES, pendente de veredito do dono , 2026-07-18):
@@ -189,6 +247,12 @@ export async function queryEntregasParciais(
       etapaId: true,
       etapaNome: true,
       vrProdutos: true,
+      // Fase 3: datas, emitente e vendedor já materializados no fato (sem migration).
+      dataOrcamento: true,
+      dataPrevista: true,
+      dataValidade: true,
+      empresaNome: true,
+      vendedorNome: true,
     },
   });
 
@@ -197,7 +261,7 @@ export async function queryEntregasParciais(
     ...new Set(pedidos.map((p) => p.participanteId).filter((x): x is number => x != null)),
   ];
 
-  const [itens, produtos, status, parceiros, bloqueados, formaDe] = await Promise.all([
+  const [itens, produtos, status, parceiros, bloqueados, formaDe, obsRaw] = await Promise.all([
     prisma.fatoPedidoItem.findMany({
       where: { pedidoId: { in: ids } },
       select: {
@@ -211,20 +275,32 @@ export async function queryEntregasParciais(
         vrProdutos: true,
       },
     }),
-    prisma.fatoProduto.findMany({ select: { odooId: true, precoCusto: true } }),
+    prisma.fatoProduto.findMany({ select: { odooId: true, precoCusto: true, codigo: true } }),
     atendimentoSincronizado(prisma),
     prisma.fatoParceiro.findMany({
       where: { odooId: { in: participanteIds } },
-      select: { odooId: true, uf: true, cidade: true },
+      select: { odooId: true, uf: true, cidade: true, documento: true, cep: true },
     }),
     statusBloqueioPorCliente(prisma, participanteIds, hoje),
     formaPagamentoPorPedido(prisma, ids),
+    // Fase 3: observações do pedido em um único lote no raw (padrão da cor da etapa;
+    // sem migration, sem rebuild). Só registros vivos. Guarda: sem ids, não dispara.
+    ids.length
+      ? prisma.rawPedidoDocumento.findMany({
+          where: { odooId: { in: ids }, rawDeleted: false },
+          select: { odooId: true, data: true },
+        })
+      : Promise.resolve([] as { odooId: number; data: unknown }[]),
   ]);
 
   const custoMap = new Map(produtos.map((p) => [p.odooId, Number(p.precoCusto ?? 0)]));
   const custoDe = (id: number): number | undefined => custoMap.get(id);
+  const codigoProdutoDe = new Map(produtos.map((p) => [p.odooId, p.codigo ?? null]));
   const ufDe = new Map(parceiros.map((p) => [p.odooId, siglaDeUf(p.uf) ?? "??"]));
   const cidadeDe = new Map(parceiros.map((p) => [p.odooId, p.cidade]));
+  const cnpjDe = new Map(parceiros.map((p) => [p.odooId, p.documento ?? null]));
+  const cepDe = new Map(parceiros.map((p) => [p.odooId, p.cep ?? null]));
+  const obsDe = new Map(obsRaw.map((r) => [r.odooId, extrairObsPedido(r.data)]));
 
   const escopo = filtros.ufs && filtros.ufs.length ? new Set(filtros.ufs) : null;
   const ufDoPedido = (participanteId: number | null): string =>
@@ -269,6 +345,9 @@ export async function queryEntregasParciais(
     aAtenderCusto += linha.custoLinha;
     if (linha.aAtender <= 0) continue;
 
+    const valorCheio = Number(it.vrProdutos ?? 0);
+    const obsPedido = obsDe.get(it.pedidoId) ?? { obs: null, obsEntrega: null };
+
     linhas.push({
       pedidoId: it.pedidoId,
       numero: p.numero,
@@ -292,6 +371,19 @@ export async function queryEntregasParciais(
           ? "bloqueado"
           : "liberado",
       formaPagamento: formaDe.get(it.pedidoId) ?? null,
+      // --- Fase 3 ---
+      orcamento: isoData(p.dataOrcamento),
+      prevista: isoData(p.dataPrevista),
+      validade: isoData(p.dataValidade),
+      emitente: p.empresaNome ?? null,
+      vendedor: p.vendedorNome ?? null,
+      cnpj: p.participanteId != null ? cnpjDe.get(p.participanteId) ?? null : null,
+      cep: p.participanteId != null ? cepDe.get(p.participanteId) ?? null : null,
+      codigoProduto: it.produtoId != null ? codigoProdutoDe.get(it.produtoId) ?? null : null,
+      unitario: precoUnitarioItem(valorCheio, Number(it.quantidade ?? 0)),
+      valorCheio,
+      observacoes: obsPedido.obs,
+      obsEntrega: obsPedido.obsEntrega,
     });
   }
 
