@@ -253,6 +253,7 @@ function TabelaEntregasParciais({ d }: { d: PedidosData }) {
       columns={colunas}
       rows={linhas}
       searchable
+      filtroAvancado
       compactoInicial
       alturaFluida
       exportFilename="entregas-parciais"
