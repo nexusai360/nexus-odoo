@@ -86,6 +86,9 @@ export interface LinhaEntregaParcial {
   /** IRPJ e CSLL do pedido (vr_irpj / vr_csll), prontos do Odoo. */
   irpj: number;
   csll: number;
+  /** CBS e IBS do pedido (vr_cbs / vr_ibs, reforma tributária), prontos do Odoo. */
+  cbs: number;
+  ibs: number;
   /** Alíquota de comissão (%) e valor da comissão (R$). */
   comissaoPct: number;
   comissaoValor: number;
@@ -230,7 +233,7 @@ function numJson(v: unknown): number {
  * vêm prontos (NÃO recalcular: é Lucro Real, o líquido já abate créditos). */
 export function extrairRentabilidade(data: unknown): {
   subtotal: number; custoComercial: number; icms: number; difal: number; fcp: number;
-  pis: number; cofins: number; irpj: number; csll: number; comissaoPct: number; comissaoValor: number; liquido: number; margemPct: number;
+  pis: number; cofins: number; irpj: number; csll: number; cbs: number; ibs: number; comissaoPct: number; comissaoValor: number; liquido: number; margemPct: number;
 } {
   const d = data as Record<string, unknown> | null;
   return {
@@ -243,6 +246,8 @@ export function extrairRentabilidade(data: unknown): {
     cofins: numJson(d?.vr_cofins_proprio),
     irpj: numJson(d?.vr_irpj),
     csll: numJson(d?.vr_csll),
+    cbs: numJson(d?.vr_cbs),
+    ibs: numJson(d?.vr_ibs),
     comissaoPct: numJson(d?.al_comissao),
     comissaoValor: numJson(d?.vr_comissao),
     liquido: numJson(d?.vr_liquido),

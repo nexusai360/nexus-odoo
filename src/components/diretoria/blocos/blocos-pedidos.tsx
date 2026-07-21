@@ -276,6 +276,8 @@ function TabelaEntregasParciais({ d }: { d: PedidosData }) {
         cofins: l.cofins,
         irpj: l.irpj,
         csll: l.csll,
+        cbs: l.cbs,
+        ibs: l.ibs,
         comissaoPct: l.comissaoPct,
         comissaoValor: l.comissaoValor,
         liquido: l.liquido,

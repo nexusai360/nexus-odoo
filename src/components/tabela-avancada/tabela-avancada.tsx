@@ -158,7 +158,16 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
       const raw = window.localStorage.getItem(storageKey);
       if (raw) {
         const s = JSON.parse(raw);
-        if (Array.isArray(s.vis)) setVis(s.vis);
+        // Colunas novas = as que ainda não estão na ordem persistida (não existiam no
+        // último save). Usado para (a) mostrar colunas `padrao` novas mesmo em quem já
+        // tem estado salvo e (b) anexá-las à ordem. Não força as que o usuário já viu.
+        const ordemSalva = Array.isArray(s.ordem) ? (s.ordem as string[]) : [];
+        const novas = colunas.filter((c) => !ordemSalva.includes(c.key)).map((c) => c.key);
+        if (Array.isArray(s.vis)) {
+          const existe = (k: string) => colunas.some((c) => c.key === k);
+          const novasPadrao = colunas.filter((c) => c.padrao && novas.includes(c.key)).map((c) => c.key);
+          setVis([...(s.vis as string[]).filter(existe), ...novasPadrao.filter((k) => !(s.vis as string[]).includes(k))]);
+        }
         // Mescla a ordem salva com o catálogo atual: preserva a ordem do usuário,
         // descarta colunas que não existem mais e ANEXA as novas (senão uma coluna
         // adicionada depois do último save some da tabela mesmo marcada no seletor,
@@ -166,7 +175,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
         // precisar bumpar o storageKey.
         if (Array.isArray(s.ordem)) {
           const todas = colunas.map((c) => c.key);
-          const salva = (s.ordem as string[]).filter((k) => todas.includes(k));
+          const salva = ordemSalva.filter((k) => todas.includes(k));
           const faltantes = todas.filter((k) => !salva.includes(k));
           setOrdem([...salva, ...faltantes]);
         }

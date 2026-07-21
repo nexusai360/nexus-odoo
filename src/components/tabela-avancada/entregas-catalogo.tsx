@@ -91,6 +91,8 @@ export interface LinhaEntrega {
   cofins: number;
   irpj: number;
   csll: number;
+  cbs: number;
+  ibs: number;
   comissaoPct: number;
   comissaoValor: number;
   liquido: number;
@@ -255,6 +257,8 @@ export const COLUNAS: ColunaDef<LinhaEntrega>[] = [
   { key: "cofins", label: "COFINS", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.cofins, rodape: totMoeda((l) => l.cofins) },
   { key: "irpj", label: "IRPJ", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.irpj, rodape: totMoeda((l) => l.irpj) },
   { key: "csll", label: "CSLL", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.csll, rodape: totMoeda((l) => l.csll) },
+  { key: "cbs", label: "CBS", tipo: "moeda", sortable: true, numeric: true, padrao: true, valor: (l) => l.cbs, rodape: totMoeda((l) => l.cbs) },
+  { key: "ibs", label: "IBS", tipo: "moeda", sortable: true, numeric: true, padrao: true, valor: (l) => l.ibs, rodape: totMoeda((l) => l.ibs) },
   // --- Observações ---
   { key: "observacoes", label: "Observações Pedido", tipo: "texto", sortable: false, numeric: false, padrao: false, valor: (l) => l.observacoes, detalheSpan: 4 },
   { key: "obsEntrega", label: "Observações Gerais", tipo: "texto", sortable: false, numeric: false, padrao: false, valor: (l) => l.obsEntrega, detalheSpan: 4 },
@@ -614,6 +618,8 @@ export function DetalheEntrega({ l }: { l: LinhaEntrega }) {
               <Campo label="COFINS" valor={formatBRL(l.cofins)} />
               <Campo label="IRPJ" valor={formatBRL(l.irpj)} />
               <Campo label="CSLL" valor={formatBRL(l.csll)} />
+              <Campo label="CBS" valor={formatBRL(l.cbs)} />
+              <Campo label="IBS" valor={formatBRL(l.ibs)} />
               <Campo label="Lucro Líquido" valor={formatBRL(l.liquido)} />
               <div className="min-w-0">
                 <dt className="text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground">Margem</dt>
