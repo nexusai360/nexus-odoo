@@ -50,3 +50,32 @@ Decisões: Ondas 0-5 completas; views Lista + Kanban por etapa + Calendário; r�
 1. Ler o resultado do `next build` (corrigir se acusar).
 2. Dono reinicia Docker -> subir dev -> perícia visual dark/light -> corrigir.
 3. Ajustes finos de UX que aparecerem na validação visual.
+
+## AJUSTES DO DONO (2026-07-21, apos ver no browser) , ENTREGUES
+
+Commits 643c9e88 (1/5/6) e 18594c0d (2/3/4). Dev no ar, 0 erros de runtime,
+validado por screenshot (lista + calendario). tsc/eslint limpos.
+
+1. **Grid**: tabelas crescem ate 12 unidades na vertical (era 8; horizontal
+   segue 8). `ALTURAS` ate 12 + `alturaMax` da tabela=12 em
+   `src/lib/diretoria/builder/catalogo.ts`. TabelaAvancada virou altura-fluida
+   (h-full; lista/kanban/calendario preenchem o bloco).
+2. **Calendario**: seletor Dia/Semana/Mes (segmented control estilo tema),
+   ancorado em HOJE (usa `new Date()`, nao mais o mes com mais dados), semana de
+   SEGUNDA a DOMINGO, titulos (mes "Julho 2026", semana "dd/mm , dd/mm/aaaa",
+   dia "dd/mm/aaaa"), hoje destacado, mais espaco vertical em semana/dia.
+   Reescrito em `visoes.tsx` (VistaMes/VistaSemana/VistaDia).
+3. **Kanban**: seletor da DIMENSAO na toolbar (Select com busca; usa
+   `agrupamentos`) + barra de busca fixa por coluna. `kanbanDim` no estado.
+4. **Detalhe do pedido**: componente `DetalhePedido` (inline, substitui a view)
+   com TODAS as colunas + Voltar + navegar anterior/proximo. Estado `detalhe`;
+   `onAbrir` ligado em lista/kanban/calendario (clique na linha/card).
+5. **Lista**: cabecalho `text-sm` (sem uppercase), maior.
+6. **Seletor de colunas**: movido do header para a TOOLBAR (`SeletorColunas`
+   ganhou prop `rotulo`), so no modo lista; removida a coluna-extra do corpo ->
+   corrige o vazamento do painel ao rolar lateral.
+
+RESPOSTA AO DONO: grid = 8 horizontais x 8 verticais (agora ate 12 na vertical p/ tabelas).
+
+PENDENTE: dono avaliar no browser (especialmente detalhe do pedido e kanban por
+dimensao) e pedir ajustes finos ou autorizar merge. Nada em prod sem sim dele.
