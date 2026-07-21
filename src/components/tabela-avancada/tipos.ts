@@ -13,7 +13,8 @@ export type CelulaTipo =
   | "moeda"
   | "data"
   | "tagCor"
-  | "status";
+  | "status"
+  | "percent";
 
 /** Coluna da tabela (exibição + sort + agrupamento). */
 export interface ColunaDef<T> {

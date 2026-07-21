@@ -10,7 +10,7 @@
  * acoplamento a domínio da tabela nova.
  */
 
-import { CircleCheck, CircleX, ExternalLink, Package, MapPin, FileText, ClipboardList } from "lucide-react";
+import { CircleCheck, CircleX, ExternalLink, Package, MapPin, FileText, ClipboardList, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { corEtapaValida, derivarCorTag } from "@/lib/diretoria/etapa-cor";
 import { formatarNomeEtapa } from "@/lib/diretoria/etapa-formato";
@@ -69,6 +69,18 @@ export interface LinhaEntrega {
   valorAtendidoCusto: number; // valor total custo − a atender custo
   vlrVenda: number;      // soma a atender (venda)
   vlrCusto: number;      // soma a atender (custo)
+  // Rentabilidade do pedido (prontos do Odoo; iguais em toda linha do pedido).
+  subtotal: number;
+  custoComercial: number;
+  icms: number;
+  difal: number;
+  fcp: number;
+  pis: number;
+  cofins: number;
+  comissaoPct: number;
+  comissaoValor: number;
+  liquido: number;
+  margemPct: number;
   // Itens + índices de texto para busca/filtro por produto.
   itens: ItemEntrega[];
   produtosTexto: string; // "código nome | código nome ..." (busca rápida)
@@ -85,6 +97,11 @@ const brl = new Intl.NumberFormat("pt-BR", {
 });
 export function formatBRL(v: number): string {
   return Number.isFinite(v) ? brl.format(v) : "R$ 0,00";
+}
+
+/** Percentual pt-BR com 2 casas (ex.: -12,19%). O Odoo já entrega o número (5, -12.19). */
+export function formatPct(v: number): string {
+  return `${(Number.isFinite(v) ? v : 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
 }
 
 /** URL do pedido no Odoo (Tauga). Só o `id` muda entre pedidos; o resto é fixo
@@ -129,6 +146,18 @@ export const COLUNAS: ColunaDef<LinhaEntrega>[] = [
   { key: "valorCheio", label: "Valor total (venda)", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.valorCheio },
   { key: "valorAtendidoVenda", label: "Valor atendido (venda)", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.valorAtendidoVenda },
   { key: "vlrVenda", label: "Valor a atender (venda)", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.vlrVenda },
+  // Rentabilidade do pedido (prontos do Odoo). Margem padrão; resto opcional.
+  { key: "margemPct", label: "Margem", tipo: "percent", sortable: true, numeric: true, padrao: true, valor: (l) => l.margemPct },
+  { key: "subtotal", label: "Subtotal", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.subtotal },
+  { key: "comissaoPct", label: "% comissão", tipo: "percent", sortable: true, numeric: true, padrao: false, valor: (l) => l.comissaoPct },
+  { key: "comissaoValor", label: "Comissão", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.comissaoValor },
+  { key: "custoComercial", label: "Custo comercial", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.custoComercial },
+  { key: "icms", label: "ICMS", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.icms },
+  { key: "difal", label: "DIFAL", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.difal },
+  { key: "fcp", label: "FCP", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.fcp },
+  { key: "pis", label: "PIS", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.pis },
+  { key: "cofins", label: "COFINS", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.cofins },
+  { key: "liquido", label: "Líquido", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.liquido },
   // Cabeçalho (não-default; disponíveis no seletor de colunas / detalhe).
   { key: "orcamento", label: "Orçamento", tipo: "data", sortable: true, numeric: false, padrao: false, valor: (l) => l.orcamento },
   { key: "contrato", label: "Validade", tipo: "data", sortable: true, numeric: false, padrao: false, valor: (l) => l.contrato },
@@ -283,6 +312,11 @@ export function celula(l: LinhaEntrega, key: string): React.ReactNode {
       return <span className="whitespace-nowrap tabular-nums">{formatBRL(Number(l[key] ?? 0))}</span>;
     case "numero":
       return <span className="whitespace-nowrap tabular-nums">{String(l[key] ?? "")}</span>;
+    case "percent": {
+      const v = Number(l[key] ?? 0);
+      const cor = key === "margemPct" ? (v < 0 ? "text-rose-400" : v > 0 ? "text-emerald-400" : "text-muted-foreground") : "text-foreground";
+      return <span className={cn("whitespace-nowrap tabular-nums", cor)}>{formatPct(v)}</span>;
+    }
     case "data":
       return <span className="whitespace-nowrap text-muted-foreground">{formatarDataBR(String(l[key] ?? ""))}</span>;
     case "status":
@@ -425,6 +459,27 @@ export function DetalheEntrega({ l }: { l: LinhaEntrega }) {
             <Campo label="Cidade" valor={l.cidade} />
           </div>
         </Secao>
+
+        {(l.subtotal !== 0 || l.liquido !== 0 || l.custoComercial !== 0) && (
+          <Secao titulo="Rentabilidade do pedido" icone={TrendingUp}>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-4">
+              <Campo label="Subtotal" valor={formatBRL(l.subtotal)} />
+              <Campo label="Custo comercial" valor={formatBRL(l.custoComercial)} />
+              <Campo label={`Comissão (${formatPct(l.comissaoPct)})`} valor={formatBRL(l.comissaoValor)} />
+              <Campo label="ICMS" valor={formatBRL(l.icms)} />
+              <Campo label="DIFAL" valor={formatBRL(l.difal)} />
+              <Campo label="FCP" valor={formatBRL(l.fcp)} />
+              <Campo label="PIS" valor={formatBRL(l.pis)} />
+              <Campo label="COFINS" valor={formatBRL(l.cofins)} />
+              <Campo label="Líquido" valor={formatBRL(l.liquido)} />
+              <div className="min-w-0">
+                <dt className="text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground">Margem</dt>
+                <dd className={cn("mt-0.5 text-sm font-semibold tabular-nums", l.margemPct < 0 ? "text-rose-400" : l.margemPct > 0 ? "text-emerald-400" : "text-muted-foreground")}>{formatPct(l.margemPct)}</dd>
+              </div>
+            </div>
+            <p className="mt-3 text-[0.7rem] text-muted-foreground">Valores prontos do Odoo (aba Rentabilidade). Margem = Líquido ÷ Subtotal; o líquido já abate os créditos tributários (Lucro Real).</p>
+          </Secao>
+        )}
 
         <Secao titulo={`Produtos (${l.itens.length})`} icone={Package}>
           <ListaProdutos itens={l.itens} />

@@ -61,6 +61,23 @@ export interface LinhaEntregaParcial {
   valorCustoAAtender: number;
   /** Valor total do item a preço de CUSTO (quantidade cheia × custo unitário). */
   valorCustoTotal: number;
+  // --- Rentabilidade do PEDIDO (campos prontos do Odoo, raw_pedido_documento;
+  //     repetidos em toda linha do mesmo pedido). Margem = liquido / subtotal. ---
+  /** Base tributável do pedido (vr_operacao_tributacao) = Subtotal do Odoo. */
+  subtotal: number;
+  /** Custo comercial (vr_custo_comercial; o custo da aba Rentabilidade). */
+  custoComercial: number;
+  icms: number;
+  difal: number;
+  fcp: number;
+  pis: number;
+  cofins: number;
+  /** Alíquota de comissão (%) e valor da comissão (R$). */
+  comissaoPct: number;
+  comissaoValor: number;
+  /** Resultado líquido do pedido (vr_liquido) e margem (%) prontos do Odoo. */
+  liquido: number;
+  margemPct: number;
   statusFinanceiro: "liberado" | "bloqueado";
   formaPagamento: string | null;
   // --- Fase 3: colunas completas do relatório oficial (ID 28) ---
@@ -165,6 +182,36 @@ export function extrairObsPedido(
 export function extrairFormaPagamento(data: unknown): string | null {
   const v = (data as { forma_pagamento_id?: unknown } | null)?.forma_pagamento_id;
   return Array.isArray(v) && typeof v[1] === "string" ? strOuNull(v[1]) : null;
+}
+
+/** Número do jsonb do Odoo: o Odoo devolve `false` (não nulo) em campo não
+ * aplicável; string/número viram número, o resto vira 0. */
+function numJson(v: unknown): number {
+  const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN;
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** Rentabilidade do PEDIDO, campos JÁ CALCULADOS pelo Odoo em
+ * `raw_pedido_documento.data` (mesma aba Rentabilidade do ERP). Margem e líquido
+ * vêm prontos (NÃO recalcular: é Lucro Real, o líquido já abate créditos). */
+export function extrairRentabilidade(data: unknown): {
+  subtotal: number; custoComercial: number; icms: number; difal: number; fcp: number;
+  pis: number; cofins: number; comissaoPct: number; comissaoValor: number; liquido: number; margemPct: number;
+} {
+  const d = data as Record<string, unknown> | null;
+  return {
+    subtotal: numJson(d?.vr_operacao_tributacao),
+    custoComercial: numJson(d?.vr_custo_comercial),
+    icms: numJson(d?.vr_icms_proprio),
+    difal: numJson(d?.vr_difal),
+    fcp: numJson(d?.vr_fcp),
+    pis: numJson(d?.vr_pis_proprio),
+    cofins: numJson(d?.vr_cofins_proprio),
+    comissaoPct: numJson(d?.al_comissao),
+    comissaoValor: numJson(d?.vr_comissao),
+    liquido: numJson(d?.vr_liquido),
+    margemPct: numJson(d?.al_margem),
+  };
 }
 
 // REGRA_BLOQUEIO (D-b, versão SIMPLES, pendente de veredito do dono , 2026-07-18):
@@ -319,6 +366,9 @@ export async function queryEntregasParciais(
   const obsDe = new Map(obsRaw.map((r) => [r.odooId, extrairObsPedido(r.data)]));
   // Forma de pagamento fiel: cabeçalho do pedido (cobre 100%); parcela é fallback.
   const formaCabecalhoDe = new Map(obsRaw.map((r) => [r.odooId, extrairFormaPagamento(r.data)]));
+  // Rentabilidade do pedido (comissão / subtotal / margem / impostos), do cabeçalho.
+  const rentabDe = new Map(obsRaw.map((r) => [r.odooId, extrairRentabilidade(r.data)]));
+  const rentabZero = extrairRentabilidade(null);
 
   const escopo = filtros.ufs && filtros.ufs.length ? new Set(filtros.ufs) : null;
   const ufDoPedido = (participanteId: number | null): string =>
@@ -391,6 +441,7 @@ export async function queryEntregasParciais(
       valorVendaAAtender: linha.vendaLinha,
       valorCustoAAtender: linha.custoLinha,
       valorCustoTotal: quantidadeTotalItem * custoUnitario,
+      ...(rentabDe.get(it.pedidoId) ?? rentabZero),
       statusFinanceiro:
         p.participanteId != null && bloqueados.has(p.participanteId)
           ? "bloqueado"
