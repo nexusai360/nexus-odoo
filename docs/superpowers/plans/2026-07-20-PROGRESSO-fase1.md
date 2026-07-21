@@ -60,7 +60,36 @@ implementação (UI SEMPRE inline + ui-ux-pro-max). Sem spec.
 - Listas confirmadas: 27 etapas (nome cru -> customizado) e 8 operações do relatório
   (dono NÃO quer mexer no nome das operações).
 
-## FASE 3+ (não iniciadas) , PROMPT DE CONTINUAÇÃO
+## FASE 3 , CONCLUÍDA E PERICIADA (colunas completas do oficial)
+
+Commit `a95cc284`. Planner+review: `2026-07-20-fase3-colunas-completas.md` (com a
+seção "REVIEW ADVERSARIAL APLICADA v2": 1 ALTO + 3 MÉDIO aplicados).
+As 12 colunas do relatório oficial entraram no B-09 **sem migration e sem rebuild
+de worker** (tudo query + UI, padrão da Fase 2):
+- 6 já no fato: Orçamento, Prevista, Contrato (`data_validade`), Emitente,
+  Valor cheio, Vendedor. CNPJ/CEP do `fato_parceiro`; Código do `fato_produto`;
+  Unitário derivado (`valorCheio/qtd`); Observações + Obs entrega via batch em
+  `raw_pedido_documento` (join 100%).
+- Helpers puros `isoData`/`precoUnitarioItem`/`extrairObsPedido` (TDD).
+- DataTable ganhou `ocultaInicial` (aditivo RSC-safe): as 12 novas nascem OCULTAS
+  (opt-in no seletor). Seletor ganhou busca + Marcar/Limpar (guard ≥1 visível).
+  Busca e filtro-por-coluna passam a operar só nas colunas VISÍVEIS.
+- **Verde:** tsc limpo, jest 26 (query) + suíte (falhas só model-catalog
+  PRÉ-EXISTENTE e 2 por ENOSPC de disco, não regressão), eslint limpo.
+- **Perícia contra o cache real:** unitário derivado bate com `vr_unitario`
+  (drift de centavo 1,39% = 3222/231034, aceito); datas sem off-by-one
+  (fato==raw); CNPJ/CEP/obs conferidos em pedidos ABERTA reais; não-regressão
+  (só B-09 declara `ocultaInicial`, as outras 6 telas do DataTable intactas).
+- **PENDÊNCIAS honestas da Fase 3:**
+  - Validação VISUAL por screenshot (dark/light) NÃO capturada (sem ferramenta de
+    screenshot + disco a 98%). Código tsc/eslint/jest verde; dado conferido. Dono
+    valida no browser.
+  - `TODO(dono)`: confirmar semântica de "Contrato" (usa `data_validade`) e a
+    fonte de "Obs entrega" (hoje `obs_produtos`, quase sempre vazia).
+  - **ALERTA DE AMBIENTE:** disco a 98% (408Mi livres). A suíte completa falha por
+    ENOSPC. Liberar espaço antes das fases seguintes (TDD pesado).
+
+## FASE 4+ (não iniciadas) , PROMPT DE CONTINUAÇÃO
 
 Retomar na branch `feat/entregas-parciais-base-calculo`. Fases 1A, 1B e 2
 CONCLUÍDAS e validadas (ler este PROGRESSO + o hub
