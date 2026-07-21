@@ -62,6 +62,8 @@ export interface LinhaEntrega {
   etapaCor: string | false | null;
   status: string;
   forma: string;
+  /** Condição de pagamento do Odoo (condicao_pagamento_id, ex.: "Livre", "Boleto; 6 x"). */
+  condicao: string;
   vendedor: string;
   observacoes: string;
   obsEntrega: string;
@@ -131,48 +133,57 @@ function mesLabel(iso: string): string {
 
 // ===== Colunas do PEDIDO (cabeçalho da lista + tela de detalhe) =====
 
+// Ordem TEMÁTICA (dono, 2026-07-21): colunas do mesmo assunto juntas, numa
+// sequência que faz sentido ao ler da esquerda para a direita. O default visível
+// (`padrao: true`) segue essa mesma ordem; o resto fica no seletor de colunas.
 export const COLUNAS: ColunaDef<LinhaEntrega>[] = [
+  // --- Identificação e status do pedido ---
   { key: "numero", label: "Pedido", tipo: "texto", sortable: true, numeric: false, padrao: true, obrigatoria: true, valor: (l) => l.numero },
   { key: "mercos", label: "Nº Mercos", tipo: "texto", sortable: true, numeric: false, padrao: true, valor: (l) => l.mercos },
   { key: "itens", label: "Produtos", tipo: "numero", sortable: true, numeric: false, padrao: true, valor: (l) => l.qtdItens },
+  { key: "etapa", label: "Etapa", tipo: "tagCor", sortable: true, numeric: false, padrao: true, valor: (l) => formatarNomeEtapa(l.etapa) },
+  // Financeiro é um ícone (liberado/bloqueado): centralizado na coluna, acompanha o resize.
+  { key: "status", label: "Financeiro", tipo: "status", sortable: true, numeric: false, align: "center", padrao: true, valor: (l) => l.status },
+  // --- Cliente e localização ---
   { key: "cliente", label: "Cliente", tipo: "texto", sortable: true, numeric: false, padrao: true, valor: (l) => l.cliente, detalheSpan: 2 },
+  { key: "cnpj", label: "CNPJ", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.cnpj, sortKey: (l) => Number(String(l.cnpj).replace(/\D/g, "")) || 0 },
+  { key: "emitente", label: "Emitente", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.emitente, detalheSpan: 2 },
   { key: "uf", label: "UF", tipo: "texto", sortable: true, numeric: false, padrao: true, valor: (l) => l.uf },
   { key: "cidade", label: "Cidade", tipo: "texto", sortable: true, numeric: false, padrao: true, valor: (l) => l.cidade },
-  { key: "etapa", label: "Etapa", tipo: "tagCor", sortable: true, numeric: false, padrao: true, valor: (l) => formatarNomeEtapa(l.etapa) },
+  { key: "cep", label: "CEP", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.cep, sortKey: (l) => Number(String(l.cep).replace(/\D/g, "")) || 0 },
+  // --- Comercial ---
+  { key: "vendedor", label: "Vendedor", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.vendedor },
+  { key: "operacao", label: "Operação", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.operacao, detalheSpan: 2 },
+  { key: "modalidade", label: "Modalidade", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.modalidade },
+  { key: "forma", label: "Forma de pagamento", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.forma },
+  { key: "condicao", label: "Condição de pagamento", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.condicao },
+  // --- Datas ---
+  { key: "orcamento", label: "Orçamento", tipo: "data", sortable: true, numeric: false, padrao: false, valor: (l) => l.orcamento },
   { key: "prevista", label: "Prevista", tipo: "data", sortable: true, numeric: false, padrao: true, valor: (l) => l.prevista },
-  // Quantidades (unidades): total, atendida, a atender.
+  { key: "contrato", label: "Validade", tipo: "data", sortable: true, numeric: false, padrao: false, valor: (l) => l.contrato },
+  // --- Quantidades (unidades): total, atendida, a atender ---
   { key: "qtdTotal", label: "Qtd total", tipo: "numero", sortable: true, numeric: true, padrao: true, valor: (l) => l.qtdTotal },
   { key: "qtdAtendida", label: "Qtd atendida", tipo: "numero", sortable: true, numeric: true, padrao: true, valor: (l) => l.qtdAtendida },
   { key: "qtd", label: "Qtd a atender", tipo: "numero", sortable: true, numeric: true, padrao: true, valor: (l) => l.qtd },
-  // Valores: custo por padrão; com o toggle "Mostrar venda", a célula mostra
-  // custo (ícone moeda) em cima e venda (ícone tag) embaixo. `valor` = custo
-  // (usado no sort/agrupamento/CSV).
+  // --- Valores da entrega: custo por padrão; com o toggle "Mostrar venda", a
+  // célula mostra custo (ícone moeda) em cima e venda (ícone tag) embaixo.
+  // `valor` = custo (usado no sort/agrupamento/CSV). ---
   { key: "valorTotal", label: "Valor total", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.valorTotalCusto },
   { key: "valorAtendido", label: "Valor atendido", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.valorAtendidoCusto },
   { key: "valorAtender", label: "Valor a atender", tipo: "moeda", sortable: true, numeric: true, padrao: true, valor: (l) => l.vlrCusto },
-  { key: "status", label: "Financeiro", tipo: "status", sortable: true, numeric: false, padrao: true, valor: (l) => l.status },
-  // Rentabilidade do pedido (prontos do Odoo). Margem padrão; resto opcional.
-  { key: "margemPct", label: "Margem", tipo: "percent", sortable: true, numeric: true, padrao: true, valor: (l) => l.margemPct },
+  // --- Rentabilidade do pedido (prontos do Odoo). Margem padrão; resto opcional. ---
   { key: "subtotal", label: "Subtotal", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.subtotal },
+  { key: "custoComercial", label: "Custo comercial", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.custoComercial },
   { key: "comissaoPct", label: "% comissão", tipo: "percent", sortable: true, numeric: true, padrao: false, valor: (l) => l.comissaoPct },
   { key: "comissaoValor", label: "Comissão", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.comissaoValor },
-  { key: "custoComercial", label: "Custo comercial", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.custoComercial },
+  { key: "liquido", label: "Líquido", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.liquido },
+  { key: "margemPct", label: "Margem", tipo: "percent", sortable: true, numeric: true, padrao: true, valor: (l) => l.margemPct },
   { key: "icms", label: "ICMS", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.icms },
   { key: "difal", label: "DIFAL", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.difal },
   { key: "fcp", label: "FCP", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.fcp },
   { key: "pis", label: "PIS", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.pis },
   { key: "cofins", label: "COFINS", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.cofins },
-  { key: "liquido", label: "Líquido", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.liquido },
-  // Cabeçalho (não-default; disponíveis no seletor de colunas / detalhe).
-  { key: "orcamento", label: "Orçamento", tipo: "data", sortable: true, numeric: false, padrao: false, valor: (l) => l.orcamento },
-  { key: "contrato", label: "Validade", tipo: "data", sortable: true, numeric: false, padrao: false, valor: (l) => l.contrato },
-  { key: "emitente", label: "Emitente", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.emitente, detalheSpan: 2 },
-  { key: "cnpj", label: "CNPJ", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.cnpj, sortKey: (l) => Number(String(l.cnpj).replace(/\D/g, "")) || 0 },
-  { key: "cep", label: "CEP", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.cep, sortKey: (l) => Number(String(l.cep).replace(/\D/g, "")) || 0 },
-  { key: "operacao", label: "Operação", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.operacao, detalheSpan: 2 },
-  { key: "modalidade", label: "Modalidade", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.modalidade },
-  { key: "forma", label: "Forma de pagamento", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.forma },
-  { key: "vendedor", label: "Vendedor", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.vendedor },
+  // --- Observações ---
   { key: "observacoes", label: "Observações Pedido", tipo: "texto", sortable: false, numeric: false, padrao: false, valor: (l) => l.observacoes, detalheSpan: 4 },
   { key: "obsEntrega", label: "Observações Gerais", tipo: "texto", sortable: false, numeric: false, padrao: false, valor: (l) => l.obsEntrega, detalheSpan: 4 },
 ];
@@ -209,6 +220,7 @@ export const CAMPOS: CampoDef<LinhaEntrega>[] = [
   { key: "etapa", label: "Etapa", tipo: "opcao", grupo: "Comercial", comum: true, get: (l) => formatarNomeEtapa(l.etapa), grupoKey: (l) => formatarNomeEtapa(l.etapa) },
   { key: "vendedor", label: "Vendedor", tipo: "opcao", grupo: "Comercial", comum: true, get: (l) => l.vendedor },
   { key: "forma", label: "Forma de pagamento", tipo: "opcao", grupo: "Comercial", comum: false, get: (l) => l.forma },
+  { key: "condicao", label: "Condição de pagamento", tipo: "opcao", grupo: "Comercial", comum: false, get: (l) => l.condicao },
   // Datas
   { key: "orcamento", label: "Data do orçamento", tipo: "data", grupo: "Datas", comum: false, get: (l) => l.orcamento, grupoKey: (l) => mesLabel(l.orcamento) },
   { key: "prevista", label: "Data prevista", tipo: "data", grupo: "Datas", comum: true, get: (l) => l.prevista, grupoKey: (l) => mesLabel(l.prevista) },
@@ -495,6 +507,7 @@ export function DetalheEntrega({ l }: { l: LinhaEntrega }) {
             <Campo label="Emitente" valor={l.emitente} span={2} />
             <Campo label="Vendedor" valor={l.vendedor} />
             <Campo label="Forma de pagamento" valor={l.forma} />
+            <Campo label="Condição de pagamento" valor={l.condicao} />
             <Campo label="Operação" valor={l.operacao} span={2} />
             <Campo label="Modalidade" valor={l.modalidade} />
           </div>

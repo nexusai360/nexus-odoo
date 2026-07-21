@@ -250,6 +250,7 @@ function TabelaEntregasParciais({ d }: { d: PedidosData }) {
         // cai no traço quando de fato não há valor. (Fonte em revisão: alguns
         // pedidos vêm sem parcela e a forma real está no cabeçalho do pedido.)
         forma: l.formaPagamento ?? DASH,
+        condicao: l.condicaoPagamento ?? DASH,
         vendedor: nomeVendedor(l.vendedor),
         observacoes: l.observacoes ?? DASH,
         obsEntrega: l.obsEntrega ?? DASH,
@@ -322,7 +323,7 @@ function TabelaEntregasParciais({ d }: { d: PedidosData }) {
       rowKey={(l) => String(l.pedidoId || l.numero)}
       valorSoma={(l) => l.vlrCusto}
       colunaSoma="valorAtender"
-      storageKey="entregas-parciais-tabela-v4"
+      storageKey="entregas-parciais-tabela-v5"
       exportFilename="entregas-parciais"
       labelRegistro="pedidos"
       presets={PRESETS_ENTREGA}

@@ -25,6 +25,9 @@ export interface ColunaDef<T> {
   sortable: boolean;
   /** numérica: alinha à direita e compara como número no sort. */
   numeric: boolean;
+  /** alinhamento da coluna (sobrepõe o default: numérica -> "right", senão "left").
+   * "center" serve para colunas de ícone/status, onde o ícone deve ficar no meio. */
+  align?: "left" | "center" | "right";
   /** visível no conjunto default. */
   padrao: boolean;
   /** obrigatória: sempre visível, não desmarcável nem reordenável. */

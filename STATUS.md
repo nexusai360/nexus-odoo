@@ -3,6 +3,31 @@
 Branch ativa: **`feat/entregas-parciais-base-calculo`** (LOCAL, nada em produção).
 Dev local no ar em `localhost:3000` (containers `db`+`redis` up; Docker reiniciado/destravado em 2026-07-21).
 
+## Onde estamos (2026-07-21, noite) , ORDEM DE COLUNAS + FINANCEIRO CENTRADO + CONDIÇÃO DE PAGAMENTO
+
+Ajustes do dono no B-09 (após ver no browser):
+- **Ordem TEMÁTICA das colunas** (COLUNAS em `entregas-catalogo.tsx`): assuntos
+  juntos numa sequência que faz sentido , Identificação/Status (Pedido, Nº Mercos,
+  Produtos, Etapa, Financeiro) → Cliente e localização (Cliente, CNPJ, Emitente, UF,
+  Cidade, CEP) → Comercial (Vendedor, Operação, Modalidade, Forma, Condição) → Datas
+  (Orçamento, Prevista, Validade) → Quantidades → Valores da entrega → Rentabilidade
+  → Observações. O default visível segue essa ordem. `storageKey` bumpado **v4→v5**
+  para o novo default valer (localStorage antigo sobrescreveria).
+- **Financeiro CENTRALIZADO** na coluna (era à direita): novo `align?: "left"|
+  "center"|"right"` em `ColunaDef` (tipos.ts), aplicado no header e na célula da
+  `tabela-avancada.tsx` (sobrepõe o default numérica→direita). Status usa
+  `align:"center"`. Medido no browser: centro da coluna = centro do ícone = 1302px
+  (acompanha o resize, pois é `text-center`, não margem fixa).
+- **Coluna "Condição de pagamento"** (do Odoo, logo após "Forma de pagamento"):
+  `extrairCondicaoPagamento` lê `raw_pedido_documento.data.condicao_pagamento_id`
+  (many2one [id,nome]), **mesmo jsonb já carregado, SEM migration e SEM rebuild**.
+  PV-2464 = "Livre" (bate com o Odoo). Também no filtro (grupo Comercial) e no detalhe.
+- Toggle custo/venda: o dono avaliou e decidiu **manter como está** (sem mudança).
+- NOTA: o dropdown de produtos na LISTA foi posto em STAND-BY pelo dono (o detalhe já
+  mostra os produtos); a rentabilidade por produto segue viva na tela de detalhe.
+- Validado por Playwright (render-check): nova ordem dos headers, Financeiro centrado
+  (medição), Condição "Livre" no detalhe. tsc/eslint verdes.
+
 ## Onde estamos (2026-07-21, fim de tarde) , RENTABILIDADE POR PRODUTO
 
 **Comissão e Margem A NÍVEL DE PRODUTO no B-09** (dropdown + tela de detalhe),

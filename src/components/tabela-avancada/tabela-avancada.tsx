@@ -543,9 +543,11 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                   {colsVisiveis.map((c, ci) => {
                     const ord = ordemDe(c.key);
                     const primeira = ci === 0;
+                    // Alinhamento: default numérica -> direita, senão esquerda; `align` sobrepõe.
+                    const alinhar = c.align ?? (c.numeric ? "right" : "left");
                     return (
-                      <th key={c.key} ref={setRef(c.key)} className={cn("group/th relative overflow-hidden text-left font-medium", primeira ? (expandirRow ? "pl-8 pr-4" : "pl-2 pr-4") : "px-4", compacto ? "py-2" : "py-3", c.numeric && "text-right")}>
-                        <button type="button" onClick={() => ordenarPor(c.key)} className={cn("flex min-w-0 max-w-full items-center gap-1.5", c.numeric && "ml-auto justify-end", c.sortable ? "cursor-pointer hover:text-foreground" : "cursor-default")}>
+                      <th key={c.key} ref={setRef(c.key)} className={cn("group/th relative overflow-hidden text-left font-medium", primeira ? (expandirRow ? "pl-8 pr-4" : "pl-2 pr-4") : "px-4", compacto ? "py-2" : "py-3", alinhar === "right" && "text-right", alinhar === "center" && "text-center")}>
+                        <button type="button" onClick={() => ordenarPor(c.key)} className={cn("flex min-w-0 max-w-full items-center gap-1.5", alinhar === "right" && "ml-auto justify-end", alinhar === "center" && "mx-auto justify-center", c.sortable ? "cursor-pointer hover:text-foreground" : "cursor-default")}>
                           <span className="truncate">{c.label}</span>
                           {ord ? (
                             <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-violet-500/15 px-1.5 py-0.5 text-[0.6rem] font-semibold text-violet-700 ring-1 ring-violet-500/30 dark:text-violet-300">
@@ -580,8 +582,10 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                     return (
                       <Fragment key={rk}>
                         <tr onClick={() => setDetalhe({ row: it.row, idx: listaOrdenada.indexOf(it.row) })} className={cn("cursor-pointer border-b border-border/60 transition-colors last:border-0 hover:bg-accent/40", aberto && "bg-accent/30")}>
-                          {colsVisiveis.map((c, ci) => (
-                            <td key={c.key} className={cn("overflow-hidden", ci === 0 ? "pl-2 pr-4" : "px-4", compacto ? "py-1.5" : "py-2.5", c.numeric && "text-right")} style={niveis.length && c.key === colsVisiveis[0].key ? { paddingLeft: `${0.5 + it.level * 1.25}rem` } : undefined}>
+                          {colsVisiveis.map((c, ci) => {
+                            const alinhar = c.align ?? (c.numeric ? "right" : "left");
+                            return (
+                            <td key={c.key} className={cn("overflow-hidden", ci === 0 ? "pl-2 pr-4" : "px-4", compacto ? "py-1.5" : "py-2.5", alinhar === "right" && "text-right", alinhar === "center" && "text-center")} style={niveis.length && c.key === colsVisiveis[0].key ? { paddingLeft: `${0.5 + it.level * 1.25}rem` } : undefined}>
                               {ci === 0 && expandirRow ? (
                                 <div className="flex items-center gap-1">
                                   <button type="button" aria-label={aberto ? "Recolher produtos" : "Ver produtos"} aria-expanded={aberto} onClick={(e) => { e.stopPropagation(); toggleExpandRow(rk); }} className="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
@@ -590,10 +594,11 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                                   {celula(it.row, c.key)}
                                 </div>
                               ) : (
-                                <div className={cn("truncate", c.numeric && "text-right")}>{celula(it.row, c.key)}</div>
+                                <div className={cn("truncate", alinhar === "right" && "text-right", alinhar === "center" && "text-center")}>{celula(it.row, c.key)}</div>
                               )}
                             </td>
-                          ))}
+                            );
+                          })}
                         </tr>
                         {aberto && expandirRow && (
                           <tr className="border-b border-border/60 bg-muted/15">

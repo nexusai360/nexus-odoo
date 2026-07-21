@@ -88,6 +88,8 @@ export interface LinhaEntregaParcial {
   margemPct: number;
   statusFinanceiro: "liberado" | "bloqueado";
   formaPagamento: string | null;
+  /** Condição de pagamento do Odoo (condicao_pagamento_id, ex.: "Livre", "Boleto; 6 x"). */
+  condicaoPagamento: string | null;
   // --- Fase 3: colunas completas do relatório oficial (ID 28) ---
   /** Data de orçamento do pedido (ISO `YYYY-MM-DD`) ou null. */
   orcamento: string | null;
@@ -189,6 +191,14 @@ export function extrairObsPedido(
  * `false`/vazio do Odoo => null. */
 export function extrairFormaPagamento(data: unknown): string | null {
   const v = (data as { forma_pagamento_id?: unknown } | null)?.forma_pagamento_id;
+  return Array.isArray(v) && typeof v[1] === "string" ? strOuNull(v[1]) : null;
+}
+
+/** Condição de pagamento do CABEÇALHO (`pedido.documento.condicao_pagamento_id`,
+ * many2one `[id, nome]`, ex.: "Livre", "Boleto; 6 x", "[Sem Pagamento] ..."). Fonte
+ * fiel do Odoo (mesmo campo da tela do pedido). `false`/vazio => null. */
+export function extrairCondicaoPagamento(data: unknown): string | null {
+  const v = (data as { condicao_pagamento_id?: unknown } | null)?.condicao_pagamento_id;
   return Array.isArray(v) && typeof v[1] === "string" ? strOuNull(v[1]) : null;
 }
 
@@ -390,6 +400,8 @@ export async function queryEntregasParciais(
   const obsDe = new Map(obsRaw.map((r) => [r.odooId, extrairObsPedido(r.data)]));
   // Forma de pagamento fiel: cabeçalho do pedido (cobre 100%); parcela é fallback.
   const formaCabecalhoDe = new Map(obsRaw.map((r) => [r.odooId, extrairFormaPagamento(r.data)]));
+  // Condição de pagamento fiel: cabeçalho do pedido (mesmo jsonb já carregado).
+  const condicaoDe = new Map(obsRaw.map((r) => [r.odooId, extrairCondicaoPagamento(r.data)]));
   // Rentabilidade do pedido (comissão / subtotal / margem / impostos), do cabeçalho.
   const rentabDe = new Map(obsRaw.map((r) => [r.odooId, extrairRentabilidade(r.data)]));
   const rentabZero = extrairRentabilidade(null);
@@ -486,6 +498,7 @@ export async function queryEntregasParciais(
           ? "bloqueado"
           : "liberado",
       formaPagamento: formaCabecalhoDe.get(it.pedidoId) ?? formaDe.get(it.pedidoId) ?? null,
+      condicaoPagamento: condicaoDe.get(it.pedidoId) ?? null,
       // --- Fase 3 ---
       orcamento: isoData(p.dataOrcamento),
       prevista: isoData(p.dataPrevista),
