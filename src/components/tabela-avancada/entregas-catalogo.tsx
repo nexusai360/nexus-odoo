@@ -34,6 +34,11 @@ export interface ItemEntrega {
   valorCustoTotal: number; // valor total do item (custo)
   vlrVenda: number;   // a atender (venda)
   vlrCusto: number;   // a atender (custo)
+  // Rentabilidade do ITEM (prontos do Odoo, por produto). Margem = líquido ÷ subtotal.
+  comissaoPct: number;
+  comissaoValor: number;
+  liquido: number;
+  margemPct: number;
 }
 
 /** Pedido (cabeçalho + agregados + itens). */
@@ -351,16 +356,32 @@ export function celula(l: LinhaEntrega, key: string): React.ReactNode {
 
 // ===== Lista de produtos (dropdown da lista + seção do detalhe) =====
 
-const GRID_ITEM = "grid grid-cols-[3.5rem_minmax(0,1fr)_7.5rem_6rem_4rem_4.5rem_5rem_7rem_8rem] gap-3";
+const GRID_ITEM = "grid grid-cols-[3.5rem_minmax(0,1fr)_7.5rem_6rem_4rem_4.5rem_5rem_7rem_8rem_7rem_5.5rem] gap-3";
+
+/** Classe de cor da margem por sinal (mesma leitura do cabeçalho): negativa em
+ * rose, positiva em emerald, zero em muted. */
+function corMargem(v: number): string {
+  return v < 0 ? "text-rose-400" : v > 0 ? "text-emerald-400" : "text-muted-foreground";
+}
+
+/** O Odoo nem sempre materializa a rentabilidade POR ITEM: em ~metade dos itens de
+ * pedidos abertos `al_margem` e `vr_liquido` vêm zerados mesmo com valor e custo reais
+ * (só o cabeçalho fica calculado). Nesses casos a margem do item é "não calculada",
+ * não um genuíno 0% , e como a regra é NUNCA recalcular margem (Lucro Real), a célula
+ * mostra "-" honesto em vez de fabricar um zero. */
+function itemTemMargem(it: ItemEntrega): boolean {
+  return it.margemPct !== 0 || it.liquido !== 0;
+}
 
 /** Produtos de um pedido, um embaixo do outro, colunas alinhadas, divisórias
  * bem leves (sem cara de tabela). Rola no próprio contêiner quando estreito.
- * Quantidades: Total / Atendido / A atender (mesma leitura do Odoo). */
+ * Quantidades: Total / Atendido / A atender (mesma leitura do Odoo). Comissão e
+ * Margem por produto vêm prontas do Odoo (aba Rentabilidade do item). */
 export function ListaProdutos({ itens }: { itens: ItemEntrega[] }) {
   if (!itens.length) return <p className="px-1 text-sm text-muted-foreground">Sem produtos a atender neste pedido.</p>;
   return (
     <div className="overflow-x-auto">
-      <div className="min-w-[58rem]">
+      <div className="min-w-[70rem]">
         <div className={cn(GRID_ITEM, "px-1 pb-2 text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground")}>
           <span>Cód.</span>
           <span>Produto</span>
@@ -371,6 +392,8 @@ export function ListaProdutos({ itens }: { itens: ItemEntrega[] }) {
           <span className="text-right">A atender</span>
           <span className="text-right">Unitário</span>
           <span className="text-right">Valor a atender</span>
+          <span className="text-right">Comissão</span>
+          <span className="text-right">Margem</span>
         </div>
         <div className="divide-y divide-border/40">
           {itens.map((it, i) => (
@@ -384,6 +407,12 @@ export function ListaProdutos({ itens }: { itens: ItemEntrega[] }) {
               <span className="text-right font-medium tabular-nums text-foreground">{it.qtd}</span>
               <span className="text-right tabular-nums text-muted-foreground">{formatBRL(it.unitario)}</span>
               <span className="text-right font-semibold tabular-nums text-foreground">{formatBRL(it.vlrVenda)}</span>
+              <span className="text-right tabular-nums text-muted-foreground" title={`Comissão ${formatPct(it.comissaoPct)}`}>{formatBRL(it.comissaoValor)}</span>
+              {itemTemMargem(it) ? (
+                <span className={cn("text-right font-medium tabular-nums", corMargem(it.margemPct))} title={`Líquido ${formatBRL(it.liquido)}`}>{formatPct(it.margemPct)}</span>
+              ) : (
+                <span className="text-right tabular-nums text-muted-foreground" title="Margem não calculada por item no Odoo (só o cabeçalho do pedido tem)">-</span>
+              )}
             </div>
           ))}
         </div>

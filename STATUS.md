@@ -3,7 +3,29 @@
 Branch ativa: **`feat/entregas-parciais-base-calculo`** (LOCAL, nada em produção).
 Dev local no ar em `localhost:3000` (containers `db`+`redis` up; Docker reiniciado/destravado em 2026-07-21).
 
-## Onde estamos (2026-07-21, tarde) , ÚLTIMO ESTADO
+## Onde estamos (2026-07-21, fim de tarde) , RENTABILIDADE POR PRODUTO
+
+**Comissão e Margem A NÍVEL DE PRODUTO no B-09** (dropdown + tela de detalhe),
+replicando a rentabilidade do pedido para cada item. Dados prontos do Odoo em
+`raw_sped_documento_item.data` (`al_comissao`, `vr_comissao`, `al_margem`,
+`vr_liquido`), extraídos pelo mesmo padrão jsonb, **sem migration e sem rebuild**.
+
+- Query `entregas-parciais.ts`: `extrairRentabilidadeItem`, `odooId` no select do
+  item, carga em lote de `raw_sped_documento_item` (join 1:1 provado: 18895/18895),
+  campos `itemComissaoPct/itemComissaoValor/itemLiquido/itemMargemPct` na linha.
+- `ItemEntrega` ganhou `comissaoPct/comissaoValor/liquido/margemPct`; `ListaProdutos`
+  ganhou 2 colunas (Comissão R$ e Margem %), grid `min-w-[70rem]`. Margem colorida
+  por sinal (rose/emerald), tooltip com Líquido; Comissão com tooltip do %.
+- **PERÍCIA (achado real):** ~52% dos itens de pedidos abertos vêm com
+  `al_margem=0`/`vr_liquido=0` mesmo tendo valor e custo (3375 itens): o Odoo NÃO
+  materializa a margem por item em vários pedidos, só no cabeçalho. Como a regra é
+  **NUNCA recalcular margem** (Lucro Real), a célula mostra **"-" honesto** quando
+  `margemPct==0 && liquido==0`, em vez de fabricar "0,00%". Comissão é sempre real
+  (mostra R$; 0 genuíno quando o item não tem comissão, confirmado em PV-2464).
+- Validado por Playwright (render-check): detalhe de PV-2464 com Margem por item
+  20,64% / 19,86% (verde) e Comissão R$ 0,00 (valor real). tsc/eslint verdes.
+
+## Onde estamos (2026-07-21, tarde) , ESTADO ANTERIOR
 
 9 commits nesta sessão (`3946baf5..520c580a`), LOCAL, nada em prod, sem PR/merge.
 Dev local no ar (rodei `dev:fresh` várias vezes , mudança de query/provider NÃO
@@ -55,12 +77,7 @@ detalhe, rentabilidade (PV-2464 Margem 16,36%), toggle custo/venda, modo estendi
 (1399→2320px em 2560). tsc/eslint verdes.
 
 ### PRÓXIMA SESSÃO (retomar por aqui)
-1. **Replicar comissão/margem A NÍVEL DE PRODUTO** (cada linha do dropdown e da
-   tela de detalhe). Os dados já estão prontos em `raw_sped_documento_item.data`
-   (`al_comissao`, `vr_comissao`, `al_margem`, `vr_liquido` por item). Mesmo padrão
-   de extração jsonb na consulta `src/lib/diretoria/queries/entregas-parciais.ts`
-   (carregar os raw dos itens por odooId e mapear), **sem migration**. Foi o que
-   ficou combinado com o dono ("produto fica pra depois").
+1. ~~Replicar comissão/margem a nível de produto~~ **FEITO** (ver seção do topo).
 2. Continuar os ajustes finos do B-09 conforme o dono validar.
 3. (Futuro, opcional) materializar a rentabilidade nos fatos (migration + builder
    `fato-pedido.ts`/`fato-pedido-item.ts` + rebuild worker via `docker compose

@@ -216,6 +216,11 @@ function TabelaEntregasParciais({ d }: { d: PedidosData }) {
       valorCustoTotal: l.valorCustoTotal,
       vlrVenda: l.valorVendaAAtender,
       vlrCusto: l.valorCustoAAtender,
+      // Rentabilidade do item (prontos do Odoo, por produto).
+      comissaoPct: l.itemComissaoPct,
+      comissaoValor: l.itemComissaoValor,
+      liquido: l.itemLiquido,
+      margemPct: l.itemMargemPct,
     };
     let ped = mapa.get(key);
     if (!ped) {

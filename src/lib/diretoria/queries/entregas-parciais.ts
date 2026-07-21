@@ -61,6 +61,14 @@ export interface LinhaEntregaParcial {
   valorCustoAAtender: number;
   /** Valor total do item a preço de CUSTO (quantidade cheia × custo unitário). */
   valorCustoTotal: number;
+  // --- Rentabilidade DO ITEM (campos prontos do Odoo, raw_sped_documento_item;
+  //     mesma semântica do pedido, mas por produto). Margem = liquido / subtotal. ---
+  /** Alíquota de comissão do item (%) e valor da comissão do item (R$). */
+  itemComissaoPct: number;
+  itemComissaoValor: number;
+  /** Resultado líquido do item (vr_liquido) e margem (%) prontos do Odoo. */
+  itemLiquido: number;
+  itemMargemPct: number;
   // --- Rentabilidade do PEDIDO (campos prontos do Odoo, raw_pedido_documento;
   //     repetidos em toda linha do mesmo pedido). Margem = liquido / subtotal. ---
   /** Base tributável do pedido (vr_operacao_tributacao) = Subtotal do Odoo. */
@@ -214,6 +222,21 @@ export function extrairRentabilidade(data: unknown): {
   };
 }
 
+/** Rentabilidade DO ITEM, campos JÁ CALCULADOS pelo Odoo em
+ * `raw_sped_documento_item.data` (mesma semântica do pedido, por produto). Margem e
+ * líquido vêm PRONTOS (NÃO recalcular: é Lucro Real, o líquido já abate créditos). */
+export function extrairRentabilidadeItem(data: unknown): {
+  itemComissaoPct: number; itemComissaoValor: number; itemLiquido: number; itemMargemPct: number;
+} {
+  const d = data as Record<string, unknown> | null;
+  return {
+    itemComissaoPct: numJson(d?.al_comissao),
+    itemComissaoValor: numJson(d?.vr_comissao),
+    itemLiquido: numJson(d?.vr_liquido),
+    itemMargemPct: numJson(d?.al_margem),
+  };
+}
+
 // REGRA_BLOQUEIO (D-b, versão SIMPLES, pendente de veredito do dono , 2026-07-18):
 // REGRA_BLOQUEIO (decisão do dono, 2026-07-19): segue a fonte da verdade, o ERP Odoo. No Odoo,
 // "conta a receber" é o título FATURADO (nota emitida OU pedido já faturado, que gerou a
@@ -327,6 +350,7 @@ export async function queryEntregasParciais(
     prisma.fatoPedidoItem.findMany({
       where: { pedidoId: { in: ids } },
       select: {
+        odooId: true,
         pedidoId: true,
         produtoId: true,
         produtoNome: true,
@@ -369,6 +393,20 @@ export async function queryEntregasParciais(
   // Rentabilidade do pedido (comissão / subtotal / margem / impostos), do cabeçalho.
   const rentabDe = new Map(obsRaw.map((r) => [r.odooId, extrairRentabilidade(r.data)]));
   const rentabZero = extrairRentabilidade(null);
+
+  // Rentabilidade POR ITEM: um único lote em `raw_sped_documento_item` pelos odooId dos
+  // itens (FatoPedidoItem.odooId = raw_sped_documento_item.odoo_id, join 1:1 provado no
+  // cache). Mesmo padrão jsonb do cabeçalho, sem migration e sem rebuild do worker. Só
+  // registros vivos (rawDeleted: false, A5).
+  const itemOdooIds = itens.map((it) => it.odooId);
+  const itemRaw = itemOdooIds.length
+    ? await prisma.rawSpedDocumentoItem.findMany({
+        where: { odooId: { in: itemOdooIds }, rawDeleted: false },
+        select: { odooId: true, data: true },
+      })
+    : [];
+  const rentabItemDe = new Map(itemRaw.map((r) => [r.odooId, extrairRentabilidadeItem(r.data)]));
+  const rentabItemZero = extrairRentabilidadeItem(null);
 
   const escopo = filtros.ufs && filtros.ufs.length ? new Set(filtros.ufs) : null;
   const ufDoPedido = (participanteId: number | null): string =>
@@ -441,6 +479,7 @@ export async function queryEntregasParciais(
       valorVendaAAtender: linha.vendaLinha,
       valorCustoAAtender: linha.custoLinha,
       valorCustoTotal: quantidadeTotalItem * custoUnitario,
+      ...(rentabItemDe.get(it.odooId) ?? rentabItemZero),
       ...(rentabDe.get(it.pedidoId) ?? rentabZero),
       statusFinanceiro:
         p.participanteId != null && bloqueados.has(p.participanteId)
