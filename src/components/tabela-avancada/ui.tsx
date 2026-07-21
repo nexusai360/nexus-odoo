@@ -377,7 +377,7 @@ export function SeletorColunas({
   const [open, setOpen] = useState(false);
   const [busca, setBusca] = useState("");
   // Drag por pointer events (reordenação AO VIVO, sem o drag nativo do navegador).
-  const [drag, setDrag] = useState<{ key: string; from: number; startY: number; dy: number; h: number; startScroll: number; scroll: number; to: number; pitch: number; top0: number } | null>(null);
+  const [drag, setDrag] = useState<{ key: string; from: number; startY: number; dy: number; h: number; startScroll: number; scroll: number; to: number; pitch: number; top0: number; settling?: boolean; settleGo?: boolean } | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   // Lista rolável + Y atual do ponteiro: base do auto-scroll durante o arraste.
@@ -484,6 +484,9 @@ export function SeletorColunas({
   }
   useEffect(() => {
     if (!drag) return;
+    // Fase de "assentamento" (settle): o item já foi solto e está deslizando para o vão;
+    // não escuta mais ponteiro nem auto-scrolla (o reorder final é agendado no soltar).
+    if (drag.settling) return;
     let raf = 0;
     const mover = (e: PointerEvent) => {
       pointerYRef.current = e.clientY;
@@ -491,18 +494,19 @@ export function SeletorColunas({
       setDrag((d) => (d ? { ...d, dy: e.clientY - d.startY, to } : d));
     };
     // Auto-scroll: com o cursor perto do topo/fundo da lista, rola sozinho (velocidade
-    // proporcional à profundidade na zona de borda), permitindo mover a coluna para
-    // fora da parte visível, tanto para cima quanto para baixo.
+    // com ease , suave perto da borda, mais rápida quanto mais fundo , permitindo mover
+    // a coluna para fora da parte visível, tanto para cima quanto para baixo.
     const tick = () => {
       const el = listaRef.current;
       if (el) {
         const r = el.getBoundingClientRect();
-        const EDGE = 48;
-        const MAX = 16;
+        const EDGE = 56;
+        const MAX = 18;
         const y = pointerYRef.current;
+        const ease = (t: number) => t * t; // acelera suave conforme entra na borda
         let delta = 0;
-        if (y < r.top + EDGE) delta = -Math.ceil(MAX * Math.min(1, (r.top + EDGE - y) / EDGE));
-        else if (y > r.bottom - EDGE) delta = Math.ceil(MAX * Math.min(1, (y - (r.bottom - EDGE)) / EDGE));
+        if (y < r.top + EDGE) delta = -Math.ceil(MAX * ease(Math.min(1, (r.top + EDGE - y) / EDGE)));
+        else if (y > r.bottom - EDGE) delta = Math.ceil(MAX * ease(Math.min(1, (y - (r.bottom - EDGE)) / EDGE)));
         if (delta) {
           const max = el.scrollHeight - el.clientHeight;
           const next = Math.max(0, Math.min(max, el.scrollTop + delta));
@@ -524,9 +528,17 @@ export function SeletorColunas({
         const arr = [...ordemFull];
         const [movido] = arr.splice(drag.from, 1);
         arr.splice(drag.to, 0, movido);
-        onOrdemChange(arr);
+        // Settle em 2 frames (garante a transição CSS): frame A liga a transição com o
+        // transform AINDA no lugar atual; frame B move ao vão -> desliza suave. Só depois
+        // reordena o DOM; como o visual já bate com a nova ordem, não há "pulo".
+        setDrag((d) => (d ? { ...d, settling: true } : d));
+        requestAnimationFrame(() => {
+          setDrag((d) => (d ? { ...d, settling: true, settleGo: true } : d));
+          window.setTimeout(() => { onOrdemChange(arr); setDrag(null); }, 180);
+        });
+      } else {
+        setDrag(null);
       }
-      setDrag(null);
     };
     window.addEventListener("pointermove", mover);
     window.addEventListener("pointerup", soltar);
@@ -544,7 +556,14 @@ export function SeletorColunas({
   // demais abrem espaço, dando o feedback ao vivo de onde ele vai parar.
   function transformDe(i: number): string | undefined {
     if (!drag) return undefined;
-    if (filtradas[i] === drag.key) return `translateY(${deslocDe(drag)}px)`;
+    // Item arrastado: segue o cursor durante o arraste; no settle, desliza até o vão
+    // (deslocamento exato até o slot de destino) para encaixar suave antes de reordenar.
+    if (filtradas[i] === drag.key) {
+      // No settle, só desliza ao vão quando `settleGo` liga (frame B), pois no frame A a
+      // transição precisa já estar ativa com o transform ainda na posição do cursor.
+      const y = drag.settleGo ? (drag.to - drag.from) * drag.pitch : deslocDe(drag);
+      return `translateY(${y}px)`;
+    }
     const to = drag.to;
     if (drag.from < to && i > drag.from && i <= to) return `translateY(${-drag.pitch}px)`;
     if (to < drag.from && i >= to && i < drag.from) return `translateY(${drag.pitch}px)`;
@@ -604,7 +623,7 @@ export function SeletorColunas({
                 <div
                   key={k}
                   data-row-idx={i}
-                  style={{ transform: transformDe(i), transition: arrastado ? "none" : "transform 160ms cubic-bezier(0.2,0,0,1)" }}
+                  style={{ transform: transformDe(i), transition: arrastado && !drag?.settling ? "none" : "transform 160ms cubic-bezier(0.2,0,0,1)" }}
                   className={cn(
                     "relative flex items-center gap-2 rounded-lg px-1.5 py-1.5",
                     arrastado ? "z-10 bg-popover shadow-lg ring-1 ring-violet-500/50" : drag ? "" : "transition-colors hover:bg-accent",
