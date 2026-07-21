@@ -698,7 +698,7 @@ export function DataTable<T extends Record<string, unknown>>({
                                           return (
                                             <Tooltip>
                                               <TooltipTrigger render={<span className="inline-flex cursor-default" />}>
-                                                <Icone className={cn("size-[18px]", s.classe)} strokeWidth={2.25} aria-label={s.rotulo} />
+                                                <Icone className={cn("size-4", s.classe)} strokeWidth={2.25} aria-label={s.rotulo} />
                                               </TooltipTrigger>
                                               <TooltipContent>{s.rotulo}</TooltipContent>
                                             </Tooltip>
