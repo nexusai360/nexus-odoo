@@ -222,6 +222,8 @@ function TabelaEntregasParciais({ d }: { d: PedidosData }) {
       comissaoValor: l.itemComissaoValor,
       liquido: l.itemLiquido,
       margemPct: l.itemMargemPct,
+      descontoValor: l.itemDescontoValor,
+      descontoPct: l.itemDescontoPct,
     };
     let ped = mapa.get(key);
     if (!ped) {
@@ -276,6 +278,8 @@ function TabelaEntregasParciais({ d }: { d: PedidosData }) {
         comissaoValor: l.comissaoValor,
         liquido: l.liquido,
         margemPct: l.margemPct,
+        descontoValor: l.descontoValor,
+        descontoPct: l.descontoPct,
         itens: [],
         produtosTexto: "",
         familias: [],
@@ -323,7 +327,7 @@ function TabelaEntregasParciais({ d }: { d: PedidosData }) {
       rowKey={(l) => String(l.pedidoId || l.numero)}
       valorSoma={(l) => l.vlrCusto}
       colunaSoma="valorAtender"
-      storageKey="entregas-parciais-tabela-v5"
+      storageKey="entregas-parciais-tabela-v6"
       exportFilename="entregas-parciais"
       labelRegistro="pedidos"
       presets={PRESETS_ENTREGA}

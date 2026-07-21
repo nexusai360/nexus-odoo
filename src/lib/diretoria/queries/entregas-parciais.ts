@@ -69,6 +69,9 @@ export interface LinhaEntregaParcial {
   /** Resultado líquido do item (vr_liquido) e margem (%) prontos do Odoo. */
   itemLiquido: number;
   itemMargemPct: number;
+  /** Desconto do item (vr_desconto R$ e al_desconto %) prontos do Odoo. */
+  itemDescontoValor: number;
+  itemDescontoPct: number;
   // --- Rentabilidade do PEDIDO (campos prontos do Odoo, raw_pedido_documento;
   //     repetidos em toda linha do mesmo pedido). Margem = liquido / subtotal. ---
   /** Base tributável do pedido (vr_operacao_tributacao) = Subtotal do Odoo. */
@@ -86,6 +89,9 @@ export interface LinhaEntregaParcial {
   /** Resultado líquido do pedido (vr_liquido) e margem (%) prontos do Odoo. */
   liquido: number;
   margemPct: number;
+  /** Desconto do pedido (vr_desconto R$ e al_desconto %) prontos do Odoo. */
+  descontoValor: number;
+  descontoPct: number;
   statusFinanceiro: "liberado" | "bloqueado";
   formaPagamento: string | null;
   /** Condição de pagamento do Odoo (condicao_pagamento_id, ex.: "Livre", "Boleto; 6 x"). */
@@ -202,6 +208,13 @@ export function extrairCondicaoPagamento(data: unknown): string | null {
   return Array.isArray(v) && typeof v[1] === "string" ? strOuNull(v[1]) : null;
 }
 
+/** Desconto do PEDIDO (cabeçalho): `vr_desconto` (R$) e `al_desconto` (%), prontos do
+ * Odoo. 0 quando não há desconto (a maioria dos pedidos). */
+export function extrairDesconto(data: unknown): { descontoValor: number; descontoPct: number } {
+  const d = data as Record<string, unknown> | null;
+  return { descontoValor: numJson(d?.vr_desconto), descontoPct: numJson(d?.al_desconto) };
+}
+
 /** Número do jsonb do Odoo: o Odoo devolve `false` (não nulo) em campo não
  * aplicável; string/número viram número, o resto vira 0. */
 function numJson(v: unknown): number {
@@ -237,6 +250,7 @@ export function extrairRentabilidade(data: unknown): {
  * líquido vêm PRONTOS (NÃO recalcular: é Lucro Real, o líquido já abate créditos). */
 export function extrairRentabilidadeItem(data: unknown): {
   itemComissaoPct: number; itemComissaoValor: number; itemLiquido: number; itemMargemPct: number;
+  itemDescontoValor: number; itemDescontoPct: number;
 } {
   const d = data as Record<string, unknown> | null;
   return {
@@ -244,6 +258,8 @@ export function extrairRentabilidadeItem(data: unknown): {
     itemComissaoValor: numJson(d?.vr_comissao),
     itemLiquido: numJson(d?.vr_liquido),
     itemMargemPct: numJson(d?.al_margem),
+    itemDescontoValor: numJson(d?.vr_desconto),
+    itemDescontoPct: numJson(d?.al_desconto),
   };
 }
 
@@ -402,6 +418,9 @@ export async function queryEntregasParciais(
   const formaCabecalhoDe = new Map(obsRaw.map((r) => [r.odooId, extrairFormaPagamento(r.data)]));
   // Condição de pagamento fiel: cabeçalho do pedido (mesmo jsonb já carregado).
   const condicaoDe = new Map(obsRaw.map((r) => [r.odooId, extrairCondicaoPagamento(r.data)]));
+  // Desconto do pedido (vr_desconto / al_desconto), do cabeçalho.
+  const descontoDe = new Map(obsRaw.map((r) => [r.odooId, extrairDesconto(r.data)]));
+  const descontoZero = extrairDesconto(null);
   // Rentabilidade do pedido (comissão / subtotal / margem / impostos), do cabeçalho.
   const rentabDe = new Map(obsRaw.map((r) => [r.odooId, extrairRentabilidade(r.data)]));
   const rentabZero = extrairRentabilidade(null);
@@ -493,6 +512,7 @@ export async function queryEntregasParciais(
       valorCustoTotal: quantidadeTotalItem * custoUnitario,
       ...(rentabItemDe.get(it.odooId) ?? rentabItemZero),
       ...(rentabDe.get(it.pedidoId) ?? rentabZero),
+      ...(descontoDe.get(it.pedidoId) ?? descontoZero),
       statusFinanceiro:
         p.participanteId != null && bloqueados.has(p.participanteId)
           ? "bloqueado"

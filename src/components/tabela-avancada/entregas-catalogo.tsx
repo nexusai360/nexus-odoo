@@ -39,6 +39,9 @@ export interface ItemEntrega {
   comissaoValor: number;
   liquido: number;
   margemPct: number;
+  // Desconto do ITEM (prontos do Odoo, por produto).
+  descontoValor: number;
+  descontoPct: number;
 }
 
 /** Pedido (cabeçalho + agregados + itens). */
@@ -90,6 +93,9 @@ export interface LinhaEntrega {
   comissaoValor: number;
   liquido: number;
   margemPct: number;
+  // Desconto do pedido (prontos do Odoo; iguais em toda linha do pedido).
+  descontoValor: number;
+  descontoPct: number;
   // Itens + índices de texto para busca/filtro por produto.
   itens: ItemEntrega[];
   produtosTexto: string; // "código nome | código nome ..." (busca rápida)
@@ -156,7 +162,7 @@ export const COLUNAS: ColunaDef<LinhaEntrega>[] = [
   { key: "operacao", label: "Operação", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.operacao, detalheSpan: 2 },
   { key: "modalidade", label: "Modalidade", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.modalidade },
   { key: "forma", label: "Forma de pagamento", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.forma },
-  { key: "condicao", label: "Condição de pagamento", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.condicao },
+  { key: "condicao", label: "Condição de pagamento", tipo: "texto", sortable: true, numeric: false, padrao: true, valor: (l) => l.condicao },
   // --- Datas ---
   { key: "orcamento", label: "Orçamento", tipo: "data", sortable: true, numeric: false, padrao: false, valor: (l) => l.orcamento },
   { key: "prevista", label: "Prevista", tipo: "data", sortable: true, numeric: false, padrao: true, valor: (l) => l.prevista },
@@ -171,6 +177,8 @@ export const COLUNAS: ColunaDef<LinhaEntrega>[] = [
   { key: "valorTotal", label: "Valor total", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.valorTotalCusto },
   { key: "valorAtendido", label: "Valor atendido", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.valorAtendidoCusto },
   { key: "valorAtender", label: "Valor a atender", tipo: "moeda", sortable: true, numeric: true, padrao: true, valor: (l) => l.vlrCusto },
+  // Desconto do pedido (R$, do Odoo). Visível por padrão a pedido do dono.
+  { key: "desconto", label: "Desconto", tipo: "moeda", sortable: true, numeric: true, padrao: true, valor: (l) => l.descontoValor },
   // --- Rentabilidade do pedido (prontos do Odoo). Margem padrão; resto opcional. ---
   { key: "subtotal", label: "Subtotal", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.subtotal },
   { key: "custoComercial", label: "Custo comercial", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.custoComercial },
@@ -227,6 +235,7 @@ export const CAMPOS: CampoDef<LinhaEntrega>[] = [
   { key: "contrato", label: "Contrato", tipo: "data", grupo: "Datas", comum: false, get: (l) => l.contrato },
   // Financeiro
   { key: "status", label: "Financeiro", tipo: "opcao", grupo: "Financeiro", comum: true, get: (l) => l.status, opcoes: STATUS_OPCOES },
+  { key: "desconto", label: "Desconto (R$)", tipo: "numero", grupo: "Financeiro", comum: false, get: (l) => l.descontoValor },
   { key: "vlrVenda", label: "A atender (venda R$)", tipo: "numero", grupo: "Financeiro", comum: true, get: (l) => l.vlrVenda },
   { key: "vlrCusto", label: "A atender (custo R$)", tipo: "numero", grupo: "Financeiro", comum: false, get: (l) => l.vlrCusto },
   { key: "qtd", label: "Qtd a atender", tipo: "numero", grupo: "Financeiro", comum: false, get: (l) => l.qtd },
@@ -368,7 +377,7 @@ export function celula(l: LinhaEntrega, key: string): React.ReactNode {
 
 // ===== Lista de produtos (dropdown da lista + seção do detalhe) =====
 
-const GRID_ITEM = "grid grid-cols-[3.5rem_minmax(0,1fr)_7.5rem_6rem_4rem_4.5rem_5rem_7rem_8rem_7rem_5.5rem] gap-3";
+const GRID_ITEM = "grid grid-cols-[3.5rem_minmax(0,1fr)_7.5rem_6rem_4rem_4.5rem_5rem_7rem_8rem_6rem_7rem_5.5rem] gap-3";
 
 /** Classe de cor da margem por sinal (mesma leitura do cabeçalho): negativa em
  * rose, positiva em emerald, zero em muted. */
@@ -393,7 +402,7 @@ export function ListaProdutos({ itens }: { itens: ItemEntrega[] }) {
   if (!itens.length) return <p className="px-1 text-sm text-muted-foreground">Sem produtos a atender neste pedido.</p>;
   return (
     <div className="overflow-x-auto">
-      <div className="min-w-[70rem]">
+      <div className="min-w-[76rem]">
         <div className={cn(GRID_ITEM, "px-1 pb-2 text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground")}>
           <span>Cód.</span>
           <span>Produto</span>
@@ -404,6 +413,7 @@ export function ListaProdutos({ itens }: { itens: ItemEntrega[] }) {
           <span className="text-right">A atender</span>
           <span className="text-right">Unitário</span>
           <span className="text-right">Valor a atender</span>
+          <span className="text-right">Desconto</span>
           <span className="text-right">Comissão</span>
           <span className="text-right">Margem</span>
         </div>
@@ -419,6 +429,7 @@ export function ListaProdutos({ itens }: { itens: ItemEntrega[] }) {
               <span className="text-right font-medium tabular-nums text-foreground">{it.qtd}</span>
               <span className="text-right tabular-nums text-muted-foreground">{formatBRL(it.unitario)}</span>
               <span className="text-right font-semibold tabular-nums text-foreground">{formatBRL(it.vlrVenda)}</span>
+              <span className="text-right tabular-nums text-muted-foreground" title={`Desconto ${formatPct(it.descontoPct)}`}>{formatBRL(it.descontoValor)}</span>
               <span className="text-right tabular-nums text-muted-foreground" title={`Comissão ${formatPct(it.comissaoPct)}`}>{formatBRL(it.comissaoValor)}</span>
               {itemTemMargem(it) ? (
                 <span className={cn("text-right font-medium tabular-nums", corMargem(it.margemPct))} title={`Líquido ${formatBRL(it.liquido)}`}>{formatPct(it.margemPct)}</span>
@@ -523,10 +534,11 @@ export function DetalheEntrega({ l }: { l: LinhaEntrega }) {
           </div>
         </Secao>
 
-        {(l.subtotal !== 0 || l.liquido !== 0 || l.custoComercial !== 0) && (
+        {(l.subtotal !== 0 || l.liquido !== 0 || l.custoComercial !== 0 || l.descontoValor !== 0) && (
           <Secao titulo="Rentabilidade do pedido" icone={TrendingUp}>
             <div className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-4">
               <Campo label="Subtotal" valor={formatBRL(l.subtotal)} />
+              <Campo label={`Desconto (${formatPct(l.descontoPct)})`} valor={formatBRL(l.descontoValor)} />
               <Campo label="Custo comercial" valor={formatBRL(l.custoComercial)} />
               <Campo label={`Comissão (${formatPct(l.comissaoPct)})`} valor={formatBRL(l.comissaoValor)} />
               <Campo label="ICMS" valor={formatBRL(l.icms)} />

@@ -3,6 +3,24 @@
 Branch ativa: **`feat/entregas-parciais-base-calculo`** (LOCAL, nada em produção).
 Dev local no ar em `localhost:3000` (containers `db`+`redis` up; Docker reiniciado/destravado em 2026-07-21).
 
+## Onde estamos (2026-07-21, noite 2) , CONDIÇÃO VISÍVEL + COLUNA DE DESCONTO
+
+Dois ajustes do dono no B-09:
+- **Condição de pagamento agora VISÍVEL por padrão** (`padrao: true`). Estava
+  `padrao: false` (existia mas ficava escondida no seletor , por isso ele "não via").
+- **Desconto (novo)** em pedido E produto, do Odoo, SEM migration/rebuild:
+  `extrairDesconto` lê `vr_desconto`(R$)/`al_desconto`(%) do cabeçalho
+  (`raw_pedido_documento`); item lê os mesmos campos de `raw_sped_documento_item`
+  (adicionados a `extrairRentabilidadeItem`). Coluna "Desconto" (R$) na lista
+  (padrao), campo no filtro (Financeiro), seção Rentabilidade do detalhe (com %) e
+  coluna Desconto na grade de produtos do detalhe.
+- `storageKey` bumpado **v5→v6** (o `vis` persistido sem condição/desconto
+  sobrescreveria; v6 aplica o novo default visível).
+- Validado por Playwright (render-check): headers do default trazem "Condição de
+  pagamento" e "Desconto"; PV-2557 no detalhe = **Desconto R$ 44.465,45 (61,88%)**
+  (bate com o banco), produtos com desconto por item (R$ 21.920,96 / 18.886,83).
+  tsc/eslint verdes.
+
 ## Onde estamos (2026-07-21, noite) , ORDEM DE COLUNAS + FINANCEIRO CENTRADO + CONDIÇÃO DE PAGAMENTO
 
 Ajustes do dono no B-09 (após ver no browser):
