@@ -91,6 +91,7 @@ export function DataTableFiltroAvancado({
             size="sm"
             onClick={() => onChange(grupoVazio())}
             disabled={total === 0}
+            aria-label="Limpar filtro personalizado"
             className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground"
           >
             Limpar

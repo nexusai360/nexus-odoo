@@ -9,6 +9,12 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DataTableFiltroAvancado } from "./data-table-filtro";
+import {
+  compilarFiltro,
+  grupoVazio,
+  type Grupo,
+} from "@/lib/reports/filtro-avancado";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -96,6 +102,12 @@ interface DataTableProps<T> {
    * fixa (construtor). Default: false (usa `max-h-[70vh]`, como nas telas).
    */
   alturaFluida?: boolean;
+  /**
+   * Quando true, exibe o botão "Filtros" (filtro personalizado E/OU aninhado)
+   * na toolbar e troca a busca simples pela busca inteligente por facets.
+   * Aditivo: telas sem esta prop seguem idênticas. Default: false.
+   */
+  filtroAvancado?: boolean;
 }
 
 /**
@@ -195,6 +207,7 @@ export function DataTable<T extends Record<string, unknown>>({
   exportFilename = "relatorio",
   compactoInicial = false,
   alturaFluida = false,
+  filtroAvancado = false,
 }: DataTableProps<T>) {
   // --- busca (debounced) ---
   const [query, setQuery] = useState("");
@@ -220,6 +233,16 @@ export function DataTable<T extends Record<string, unknown>>({
   const colunasVisiveis = columns.filter((c) => visiveis[c.key]);
   const chavesVisiveis = useMemo(
     () => colunasVisiveis.map((c) => c.key),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [visiveis, columns],
+  );
+
+  // --- filtro avançado E/OU (só quando filtroAvancado) ---
+  const [grupoFiltro, setGrupoFiltro] = useState<Grupo>(grupoVazio);
+  // Campos oferecidos ao filtro = colunas visíveis (com o tipo, p/ operadores
+  // e input corretos). Filtrar por coluna oculta some linha sem explicação.
+  const camposFiltro = useMemo(
+    () => colunasVisiveis.map((c) => ({ value: c.key, label: c.header, tipo: c.tipo })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [visiveis, columns],
   );
@@ -348,9 +371,16 @@ export function DataTable<T extends Record<string, unknown>>({
     );
   }, [filtered, colFiltros, columns]);
 
+  // Estágio de filtro avançado E/OU (inerte quando desligado ou sem condições).
+  const advFiltered = useMemo(() => {
+    if (!filtroAvancado) return colFiltered;
+    const pred = compilarFiltro(grupoFiltro, columns);
+    return colFiltered.filter(pred);
+  }, [filtroAvancado, colFiltered, grupoFiltro, columns]);
+
   const sorted = useMemo(
-    () => sortRows(colFiltered, sortStack, columns),
-    [colFiltered, sortStack, columns],
+    () => sortRows(advFiltered, sortStack, columns),
+    [advFiltered, sortStack, columns],
   );
 
   // --- paginação derivada ---
@@ -363,7 +393,7 @@ export function DataTable<T extends Record<string, unknown>>({
   // Volta à primeira página quando busca/filtro/ordenação/dados/tamanho mudam.
   useEffect(() => {
     setPagina(1);
-  }, [debouncedQuery, sortStack, rows, porPagina, colFiltros]);
+  }, [debouncedQuery, sortStack, rows, porPagina, colFiltros, grupoFiltro]);
 
   // --- exportação CSV ---
   function handleExport() {
@@ -397,6 +427,15 @@ export function DataTable<T extends Record<string, unknown>>({
             onChange={(e) => handleSearch(e.target.value)}
             className="h-8 max-w-xs text-sm"
             data-table-search
+          />
+        )}
+
+        {/* Filtro personalizado E/OU (aditivo, só quando filtroAvancado) */}
+        {filtroAvancado && (
+          <DataTableFiltroAvancado
+            campos={camposFiltro}
+            grupo={grupoFiltro}
+            onChange={setGrupoFiltro}
           />
         )}
 
