@@ -377,9 +377,12 @@ export function SeletorColunas({
   const [open, setOpen] = useState(false);
   const [busca, setBusca] = useState("");
   // Drag por pointer events (reordenação AO VIVO, sem o drag nativo do navegador).
-  const [drag, setDrag] = useState<{ key: string; from: number; startY: number; dy: number; h: number } | null>(null);
+  const [drag, setDrag] = useState<{ key: string; from: number; startY: number; dy: number; h: number; startScroll: number; scroll: number } | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  // Lista rolável + Y atual do ponteiro: base do auto-scroll durante o arraste.
+  const listaRef = useRef<HTMLDivElement>(null);
+  const pointerYRef = useRef(0);
   const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
 
   const byKey = useMemo(() => Object.fromEntries(colunas.map((c) => [c.key, c])), [colunas]);
@@ -436,19 +439,56 @@ export function SeletorColunas({
 
   // Índice onde o item cairá, dado o deslocamento atual (clampado abaixo das obrigatórias).
   const nObg = ordemFull.filter((k) => byKey[k]?.obrigatoria).length;
-  function alvoDe(d: { from: number; dy: number; h: number }) {
-    const passos = Math.round(d.dy / d.h);
+  // Deslocamento EFETIVO = movimento do cursor + quanto a lista rolou desde o início
+  // do arraste. É o que torna o auto-scroll significativo: rolar a lista equivale a
+  // arrastar mais para aquele lado.
+  function deslocDe(d: { dy: number; startScroll: number; scroll: number }) {
+    return d.dy + (d.scroll - d.startScroll);
+  }
+  function alvoDe(d: { from: number; dy: number; h: number; startScroll: number; scroll: number }) {
+    const passos = Math.round(deslocDe(d) / d.h);
     return Math.min(Math.max(d.from + passos, nObg), ordemFull.length - 1);
   }
   function iniciarDrag(e: React.PointerEvent, key: string, from: number) {
     if (byKey[key]?.obrigatoria || buscando) return;
     const row = (e.currentTarget as HTMLElement).parentElement;
     const h = row?.getBoundingClientRect().height || 34;
-    setDrag({ key, from, startY: e.clientY, dy: 0, h });
+    const sc = listaRef.current?.scrollTop ?? 0;
+    pointerYRef.current = e.clientY;
+    setDrag({ key, from, startY: e.clientY, dy: 0, h, startScroll: sc, scroll: sc });
   }
   useEffect(() => {
     if (!drag) return;
-    const mover = (e: PointerEvent) => setDrag((d) => (d ? { ...d, dy: e.clientY - d.startY } : d));
+    let raf = 0;
+    const mover = (e: PointerEvent) => {
+      pointerYRef.current = e.clientY;
+      setDrag((d) => (d ? { ...d, dy: e.clientY - d.startY } : d));
+    };
+    // Auto-scroll: com o cursor perto do topo/fundo da lista, rola sozinho (velocidade
+    // proporcional à profundidade na zona de borda), permitindo mover a coluna para
+    // fora da parte visível, tanto para cima quanto para baixo.
+    const tick = () => {
+      const el = listaRef.current;
+      if (el) {
+        const r = el.getBoundingClientRect();
+        const EDGE = 48;
+        const MAX = 16;
+        const y = pointerYRef.current;
+        let delta = 0;
+        if (y < r.top + EDGE) delta = -Math.ceil(MAX * Math.min(1, (r.top + EDGE - y) / EDGE));
+        else if (y > r.bottom - EDGE) delta = Math.ceil(MAX * Math.min(1, (y - (r.bottom - EDGE)) / EDGE));
+        if (delta) {
+          const max = el.scrollHeight - el.clientHeight;
+          const next = Math.max(0, Math.min(max, el.scrollTop + delta));
+          if (next !== el.scrollTop) {
+            el.scrollTop = next;
+            setDrag((d) => (d ? { ...d, scroll: next } : d));
+          }
+        }
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
     const soltar = () => {
       setDrag((d) => {
         if (d) {
@@ -467,6 +507,7 @@ export function SeletorColunas({
     window.addEventListener("pointerup", soltar);
     window.addEventListener("pointercancel", soltar);
     return () => {
+      cancelAnimationFrame(raf);
       window.removeEventListener("pointermove", mover);
       window.removeEventListener("pointerup", soltar);
       window.removeEventListener("pointercancel", soltar);
@@ -478,7 +519,7 @@ export function SeletorColunas({
   // demais abrem espaço, dando o feedback ao vivo de onde ele vai parar.
   function transformDe(i: number): string | undefined {
     if (!drag) return undefined;
-    if (filtradas[i] === drag.key) return `translateY(${drag.dy}px)`;
+    if (filtradas[i] === drag.key) return `translateY(${deslocDe(drag)}px)`;
     const to = alvoDe(drag);
     if (drag.from < to && i > drag.from && i <= to) return `translateY(${-drag.h}px)`;
     if (to < drag.from && i >= to && i < drag.from) return `translateY(${drag.h}px)`;
@@ -527,7 +568,7 @@ export function SeletorColunas({
             </div>
           </div>
           {!buscando && <p className="mb-1 px-1 text-[0.7rem] text-muted-foreground/70">Arraste pela alça para reordenar.</p>}
-          <div className={cn("max-h-72 space-y-0.5 overflow-y-auto", drag && "select-none")}>
+          <div ref={listaRef} className={cn("max-h-72 space-y-0.5 overflow-y-auto", drag && "select-none")}>
             {filtradas.map((k, i) => {
               const c = byKey[k];
               if (!c) return null;
