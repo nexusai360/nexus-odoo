@@ -11,7 +11,7 @@
  * Client-side sobre a base já carregada. Persistência por tela (localStorage).
  */
 
-import { useMemo, useRef, useState, useEffect, useLayoutEffect } from "react";
+import { Fragment, useMemo, useRef, useState, useEffect, useLayoutEffect } from "react";
 import {
   Download, SlidersHorizontal, Layers, Star, Search, X, ChevronDown,
   ChevronRight, ChevronLeft, ArrowLeft, List, Columns3, CalendarDays,
@@ -66,6 +66,15 @@ export interface TabelaAvancadaProps<T extends Record<string, unknown>> {
   tituloItem?: (row: T) => string;
   subtituloItem?: (row: T) => string;
   valorItem?: (row: T) => string;
+  /** conteúdo do dropdown expansível por linha (ex.: sub-tabela de produtos do
+   * pedido). Quando presente, cada linha ganha um chevron de expandir. */
+  expandirRow?: (row: T) => React.ReactNode;
+  /** corpo customizado da tela de detalhe (substitui o grid de cards padrão);
+   * recebe a linha e desenha a tela inteira do domínio. */
+  renderDetalhe?: (row: T) => React.ReactNode;
+  /** texto extra por linha para a busca rápida (ex.: nomes/códigos dos produtos
+   * do pedido, que não estão nas colunas visíveis do cabeçalho). */
+  textoBusca?: (row: T) => string;
 }
 
 const VIEWS: { key: View; label: string; icon: typeof List }[] = [
@@ -96,6 +105,9 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   tituloItem,
   subtituloItem,
   valorItem,
+  expandirRow,
+  renderDetalhe,
+  textoBusca,
 }: TabelaAvancadaProps<T>) {
   const [busca, setBusca] = useState("");
   const [chips, setChips] = useState<Chip[]>([]);
@@ -111,6 +123,10 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   const [kanbanDim, setKanbanDim] = useState<string>(kanbanCampo ?? "");
   const [detalhe, setDetalhe] = useState<{ row: T; idx: number } | null>(null);
   const [expandidos, setExpandidos] = useState<Set<string>>(new Set());
+  const [expandRows, setExpandRows] = useState<Set<string>>(new Set());
+  function toggleExpandRow(k: string) {
+    setExpandRows((prev) => { const n = new Set(prev); if (n.has(k)) n.delete(k); else n.add(k); return n; });
+  }
   const [favoritos, setFavoritos] = useState<Favorito[]>([]);
   const [avancadoOpen, setAvancadoOpen] = useState(false);
   const [salvarOpen, setSalvarOpen] = useState(false);
@@ -179,9 +195,9 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
       const col = colunaByKey[c.campo];
       return col ? String(col.valor(row)) === c.valor : true;
     }
-    // texto: varre colunas visíveis
+    // texto: varre colunas visíveis + texto extra (ex.: produtos do pedido)
     const visiveisCols = colunas.filter((x) => vis.includes(x.key));
-    const hay = visiveisCols.map((x) => String(x.valor(row))).join(" ").toLowerCase();
+    const hay = (visiveisCols.map((x) => String(x.valor(row))).join(" ") + " " + (textoBusca?.(row) ?? "")).toLowerCase();
     return hay.includes((c.valor ?? "").toLowerCase());
   }
 
@@ -207,7 +223,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
 
   const lista = useMemo(() => {
     const visiveisCols = colunas.filter((c) => vis.includes(c.key));
-    const hay = (row: T) => visiveisCols.map((c) => String(c.valor(row))).join(" ").toLowerCase();
+    const hay = (row: T) => (visiveisCols.map((c) => String(c.valor(row))).join(" ") + " " + (textoBusca?.(row) ?? "")).toLowerCase();
     return base.filter((row) =>
       (!buscaAtiva || hay(row).includes(buscaAtiva)) &&
       grupoChips.every((cs) => cs.some((c) => matchFacet(c, row))) &&
@@ -537,15 +553,35 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                         </span>
                       </td>
                     </tr>
-                  ) : (
-                    <tr key={rowKey(it.row, idx)} onClick={() => setDetalhe({ row: it.row, idx: listaOrdenada.indexOf(it.row) })} className="cursor-pointer border-b border-border/60 transition-colors last:border-0 hover:bg-accent/40">
-                      {colsVisiveis.map((c) => (
-                        <td key={c.key} className={cn("overflow-hidden px-4", compacto ? "py-1.5" : "py-3", c.numeric && "text-right")} style={niveis.length && c.key === colsVisiveis[0].key ? { paddingLeft: `${1 + it.level * 1.25}rem` } : undefined}>
-                          <div className={cn("truncate", c.numeric && "text-right")}>{celula(it.row, c.key)}</div>
-                        </td>
-                      ))}
-                    </tr>
-                  ),
+                  ) : (() => {
+                    const rk = rowKey(it.row, idx);
+                    const aberto = expandRows.has(rk);
+                    return (
+                      <Fragment key={rk}>
+                        <tr onClick={() => setDetalhe({ row: it.row, idx: listaOrdenada.indexOf(it.row) })} className={cn("cursor-pointer border-b border-border/60 transition-colors last:border-0 hover:bg-accent/40", aberto && "bg-accent/30")}>
+                          {colsVisiveis.map((c, ci) => (
+                            <td key={c.key} className={cn("overflow-hidden px-4", compacto ? "py-1.5" : "py-3", c.numeric && "text-right")} style={niveis.length && c.key === colsVisiveis[0].key ? { paddingLeft: `${1 + it.level * 1.25}rem` } : undefined}>
+                              {ci === 0 && expandirRow ? (
+                                <div className="flex min-w-0 items-center gap-1.5">
+                                  <button type="button" aria-label={aberto ? "Recolher produtos" : "Ver produtos"} aria-expanded={aberto} onClick={(e) => { e.stopPropagation(); toggleExpandRow(rk); }} className="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+                                    {aberto ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
+                                  </button>
+                                  <div className="min-w-0 truncate">{celula(it.row, c.key)}</div>
+                                </div>
+                              ) : (
+                                <div className={cn("truncate", c.numeric && "text-right")}>{celula(it.row, c.key)}</div>
+                              )}
+                            </td>
+                          ))}
+                        </tr>
+                        {aberto && expandirRow && (
+                          <tr className="border-b border-border/60 bg-muted/15">
+                            <td colSpan={colCount} className="p-0">{expandirRow(it.row)}</td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    );
+                  })(),
                 )}
                 {flat.length === 0 && (
                   <tr><td colSpan={colCount} className="px-4 py-12 text-center text-sm text-muted-foreground">Nenhum registro corresponde aos filtros. <button type="button" onClick={limparTudo} className="cursor-pointer font-medium text-violet-600 hover:underline dark:text-violet-400">Limpar filtros</button>.</td></tr>
@@ -593,6 +629,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
           celula={celula}
           tituloItem={tituloItem}
           subtituloItem={subtituloItem}
+          renderDetalhe={renderDetalhe}
           onVoltar={() => setDetalhe(null)}
           onNavegar={(delta) => {
             const ni = Math.min(Math.max(0, detalhe.idx + delta), listaOrdenada.length - 1);
@@ -629,7 +666,7 @@ function brlSoma(v: number): string { return brlFmt.format(v || 0); }
 /** Tela de detalhes de UMA linha: destaque no número, campos organizados por
  * largura, observações em bloco largo, filtro por número + voltar/navegar. */
 function DetalhePedido<T extends Record<string, unknown>>({
-  row, idx, total, todos, colunas, celula, tituloItem, subtituloItem, onVoltar, onNavegar, onIr,
+  row, idx, total, todos, colunas, celula, tituloItem, subtituloItem, renderDetalhe, onVoltar, onNavegar, onIr,
 }: {
   row: T;
   idx: number;
@@ -639,6 +676,7 @@ function DetalhePedido<T extends Record<string, unknown>>({
   celula: (row: T, key: string) => React.ReactNode;
   tituloItem?: (row: T) => string;
   subtituloItem?: (row: T) => string;
+  renderDetalhe?: (row: T) => React.ReactNode;
   onVoltar: () => void;
   onNavegar: (delta: number) => void;
   onIr: (row: T) => void;
@@ -688,26 +726,30 @@ function DetalhePedido<T extends Record<string, unknown>>({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto p-4 sm:p-5">
-        {/* Destaque do pedido */}
-        <div className="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-border/60 pb-3">
-          <h2 className="text-2xl font-bold tabular-nums text-foreground">{tituloItem ? tituloItem(row) : ""}</h2>
-          {subtituloItem && <span className="text-sm text-muted-foreground">{subtituloItem(row)}</span>}
+      {renderDetalhe ? (
+        <div className="min-h-0 flex-1 overflow-auto">{renderDetalhe(row)}</div>
+      ) : (
+        <div className="min-h-0 flex-1 overflow-auto p-4 sm:p-5">
+          {/* Destaque do pedido */}
+          <div className="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-border/60 pb-3">
+            <h2 className="text-2xl font-bold tabular-nums text-foreground">{tituloItem ? tituloItem(row) : ""}</h2>
+            {subtituloItem && <span className="text-sm text-muted-foreground">{subtituloItem(row)}</span>}
+          </div>
+          {/* Campos: cada um ocupa a largura do seu detalheSpan (texto completo, sem truncar) */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {colunas.map((c) => (
+              <div key={c.key} className={cn("min-w-0 rounded-lg border border-border/60 bg-background/40 p-3", spanClass(c.detalheSpan))}>
+                <p className="mb-1 text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground">{c.label}</p>
+                {c.tipo === "texto" ? (
+                  <p className="break-words text-sm text-foreground">{String(c.valor(row)) || "-"}</p>
+                ) : (
+                  <div className="text-sm text-foreground">{celula(row, c.key)}</div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
-        {/* Campos: cada um ocupa a largura do seu detalheSpan (texto completo, sem truncar) */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {colunas.map((c) => (
-            <div key={c.key} className={cn("min-w-0 rounded-lg border border-border/60 bg-background/40 p-3", spanClass(c.detalheSpan))}>
-              <p className="mb-1 text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground">{c.label}</p>
-              {c.tipo === "texto" ? (
-                <p className="break-words text-sm text-foreground">{String(c.valor(row)) || "-"}</p>
-              ) : (
-                <div className="text-sm text-foreground">{celula(row, c.key)}</div>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
+      )}
     </div>
   );
 }

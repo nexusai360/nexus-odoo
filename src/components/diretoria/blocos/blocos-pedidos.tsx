@@ -25,7 +25,10 @@ import {
   AGRUPAMENTOS as AGRUPAMENTOS_ENTREGA,
   celula as celulaEntrega,
   formatBRL as formatBRLEntrega,
+  dropdownProdutos,
+  DetalheEntrega,
   type LinhaEntrega,
+  type ItemEntrega,
 } from "@/components/tabela-avancada/entregas-catalogo";
 import { cn } from "@/lib/utils";
 import { brl, brlCompacto, num, DASH, rotuloUf, ufValida, nomeLimpo } from "@/components/diretoria/kit/format";
@@ -195,39 +198,77 @@ const PRESETS_ENTREGA: PresetFiltro[] = [
 ];
 
 function TabelaEntregasParciais({ d }: { d: PedidosData }) {
-  const linhas: LinhaEntrega[] = d.entregasParciais.linhas.map((l) => ({
-    pedidoId: l.pedidoId ?? 0,
-    numero: l.numero ?? DASH,
-    mercos: l.numeroMercos ?? DASH,
-    // Fase 3: datas (ISO ou DASH; a coluna tipo "data" formata DD/MM/AAAA).
-    orcamento: l.orcamento ?? DASH,
-    prevista: l.prevista ?? DASH,
-    contrato: l.validade ?? DASH,
-    emitente: nomeLimpo(l.emitente) || DASH,
-    cliente: nomeLimpo(l.cliente) || DASH,
-    cnpj: l.cnpj ?? DASH,
-    cep: l.cep ?? DASH,
-    uf: l.uf === "??" ? DASH : rotuloUf(l.uf),
-    cidade: l.cidade ?? DASH,
-    codigo: l.codigoProduto ?? DASH,
-    produto: l.produto ?? DASH,
-    familia: l.familia ?? DASH,
-    marca: l.marca ?? DASH,
-    operacao: l.operacao ?? DASH,
-    modalidade: l.modalidade ?? DASH,
-    etapa: l.etapa ?? DASH,
-    etapaCor: l.etapaCor,
-    qtd: l.qtdAAtender,
-    unitario: l.unitario,
-    valorCheio: l.valorCheio,
-    vlrVenda: l.valorVendaAAtender,
-    vlrCusto: l.valorCustoAAtender,
-    status: l.statusFinanceiro === "bloqueado" ? "Bloqueado" : "Liberado",
-    forma: l.formaPagamento ?? "Não informado",
-    vendedor: nomeVendedor(l.vendedor),
-    observacoes: l.observacoes ?? DASH,
-    obsEntrega: l.obsEntrega ?? DASH,
-  }));
+  // Agrupa as linhas de item (uma por produto) em PEDIDOS: cada pedido vira uma
+  // linha com cabeçalho + agregados + itens aninhados (dropdown/detalhe).
+  const mapa = new Map<string, LinhaEntrega>();
+  for (const l of d.entregasParciais.linhas) {
+    const key = String(l.pedidoId || l.numero || DASH);
+    const item: ItemEntrega = {
+      codigo: l.codigoProduto ?? DASH,
+      produto: l.produto ?? DASH,
+      familia: l.familia ?? DASH,
+      marca: l.marca ?? DASH,
+      qtd: l.qtdAAtender,
+      unitario: l.unitario,
+      valorCheio: l.valorCheio,
+      vlrVenda: l.valorVendaAAtender,
+      vlrCusto: l.valorCustoAAtender,
+    };
+    let ped = mapa.get(key);
+    if (!ped) {
+      ped = {
+        pedidoId: l.pedidoId ?? 0,
+        numero: l.numero ?? DASH,
+        mercos: l.numeroMercos ?? DASH,
+        // datas (ISO ou DASH; a coluna tipo "data" formata DD/MM/AAAA).
+        orcamento: l.orcamento ?? DASH,
+        prevista: l.prevista ?? DASH,
+        contrato: l.validade ?? DASH,
+        // Nome completo (limpa o CNPJ embutido, sem cortar): o detalhe mostra
+        // inteiro; a lista trunca por CSS quando falta largura.
+        emitente: nomeLimpo(l.emitente, 999) || DASH,
+        cliente: nomeLimpo(l.cliente, 999) || DASH,
+        cnpj: l.cnpj ?? DASH,
+        cep: l.cep ?? DASH,
+        uf: l.uf === "??" ? DASH : rotuloUf(l.uf),
+        cidade: l.cidade ?? DASH,
+        operacao: l.operacao ?? DASH,
+        modalidade: l.modalidade ?? DASH,
+        etapa: l.etapa ?? DASH,
+        etapaCor: l.etapaCor,
+        status: l.statusFinanceiro === "bloqueado" ? "Bloqueado" : "Liberado",
+        forma: l.formaPagamento ?? "Não informado",
+        vendedor: nomeVendedor(l.vendedor),
+        observacoes: l.observacoes ?? DASH,
+        obsEntrega: l.obsEntrega ?? DASH,
+        qtdItens: 0,
+        qtd: 0,
+        valorCheio: 0,
+        vlrVenda: 0,
+        vlrCusto: 0,
+        itens: [],
+        produtosTexto: "",
+        familias: [],
+        marcas: [],
+      };
+      mapa.set(key, ped);
+    }
+    ped.itens.push(item);
+  }
+  const linhas: LinhaEntrega[] = [];
+  for (const ped of mapa.values()) {
+    ped.qtdItens = ped.itens.length;
+    ped.qtd = ped.itens.reduce((s, i) => s + (i.qtd || 0), 0);
+    ped.valorCheio = ped.itens.reduce((s, i) => s + (i.valorCheio || 0), 0);
+    ped.vlrVenda = ped.itens.reduce((s, i) => s + (i.vlrVenda || 0), 0);
+    ped.vlrCusto = ped.itens.reduce((s, i) => s + (i.vlrCusto || 0), 0);
+    ped.produtosTexto = ped.itens.map((i) => `${i.codigo} ${i.produto}`).join(" | ");
+    ped.familias = [...new Set(ped.itens.map((i) => i.familia).filter((v) => v && v !== DASH))];
+    ped.marcas = [...new Set(ped.itens.map((i) => i.marca).filter((v) => v && v !== DASH))];
+    linhas.push(ped);
+  }
+  // Pedidos maiores (maior saldo a atender, a venda) primeiro.
+  linhas.sort((a, b) => b.vlrVenda - a.vlrVenda);
   if (linhas.length === 0) {
     return (
       <div className="rounded-xl border border-border bg-card px-4 py-12 text-center text-sm text-muted-foreground">
@@ -244,17 +285,21 @@ function TabelaEntregasParciais({ d }: { d: PedidosData }) {
       campoByKey={CAMPO_ENTREGA_BY_KEY}
       agrupamentos={AGRUPAMENTOS_ENTREGA}
       celula={celulaEntrega}
+      rowKey={(l) => String(l.pedidoId || l.numero)}
       valorSoma={(l) => l.vlrVenda}
       colunaSoma="vlrVenda"
-      storageKey="entregas-parciais-tabela"
+      storageKey="entregas-parciais-tabela-v2"
       exportFilename="entregas-parciais"
-      labelRegistro="itens"
+      labelRegistro="pedidos"
       presets={PRESETS_ENTREGA}
       kanbanCampo="etapa"
       calendarioCampo="prevista"
       tituloItem={(l) => l.numero}
       subtituloItem={(l) => l.cliente}
       valorItem={(l) => formatBRLEntrega(l.vlrVenda)}
+      expandirRow={dropdownProdutos}
+      renderDetalhe={(l) => <DetalheEntrega l={l} />}
+      textoBusca={(l) => l.produtosTexto}
     />
   );
 }

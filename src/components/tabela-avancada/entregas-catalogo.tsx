@@ -1,20 +1,37 @@
 "use client";
 
 /**
- * Catálogo do B-09 (Entregas Parciais) para a tabela avançada: shape da linha,
- * colunas (exibição/sort), campos por domínio (filtro/agrupamento), agrupamentos
- * e o render de célula por tipo. Reusa a cor de etapa (Fase 2) e o ícone de
- * status financeiro (Fase 2). É o único acoplamento a domínio da tabela nova.
+ * Catálogo do B-09 (Entregas Parciais) para a tabela avançada, no modelo POR
+ * PEDIDO: cada linha é um pedido (cabeçalho + agregados) com seus itens aninhados
+ * (`itens`). As colunas do cabeçalho vivem em `COLUNAS`; os produtos aparecem no
+ * dropdown expansível da lista e na seção "Produtos" da tela de detalhe, ambos
+ * reusando `ListaProdutos`. O número do pedido é uma tag que abre o pedido no
+ * Odoo. Reusa a cor de etapa e o ícone de status financeiro (Fase 2). É o único
+ * acoplamento a domínio da tabela nova.
  */
 
-import { CircleCheck, CircleX, ExternalLink } from "lucide-react";
+import { CircleCheck, CircleX, ExternalLink, Package, MapPin, FileText, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { corEtapaValida, derivarCorTag } from "@/lib/diretoria/etapa-cor";
 import { formatarNomeEtapa } from "@/lib/diretoria/etapa-formato";
 import type { ColunaDef, CampoDef } from "./tipos";
 
-// ===== Shape da linha (montado em blocos-pedidos.tsx) =====
+// ===== Shapes (montados em blocos-pedidos.tsx) =====
 
+/** Item (produto) de um pedido. */
+export interface ItemEntrega {
+  codigo: string;
+  produto: string;
+  familia: string;
+  marca: string;
+  qtd: number;        // qtd a atender
+  unitario: number;
+  valorCheio: number;
+  vlrVenda: number;   // a atender (venda)
+  vlrCusto: number;   // a atender (custo)
+}
+
+/** Pedido (cabeçalho + agregados + itens). */
 export interface LinhaEntrega {
   /** id interno do registro `pedido.documento` no Odoo (monta a URL da tag). */
   pedidoId: number;
@@ -29,24 +46,26 @@ export interface LinhaEntrega {
   cep: string;
   uf: string;
   cidade: string;
-  codigo: string;
-  produto: string;
-  familia: string;
-  marca: string;
   operacao: string;
   modalidade: string;
   etapa: string;
   etapaCor: string | false | null;
-  qtd: number;
-  unitario: number;
-  valorCheio: number;
-  vlrVenda: number;
-  vlrCusto: number;
   status: string;
   forma: string;
   vendedor: string;
   observacoes: string;
   obsEntrega: string;
+  // Agregados do pedido (somados a partir dos itens em saldo).
+  qtdItens: number;   // nº de produtos (linhas) do pedido
+  qtd: number;        // soma da qtd a atender
+  valorCheio: number; // soma do valor cheio
+  vlrVenda: number;   // soma a atender (venda)
+  vlrCusto: number;   // soma a atender (custo)
+  // Itens + índices de texto para busca/filtro por produto.
+  itens: ItemEntrega[];
+  produtosTexto: string; // "código nome | código nome ..." (busca rápida)
+  familias: string[];    // distintas (filtro por tags)
+  marcas: string[];      // distintas (filtro por tags)
   [k: string]: unknown;
 }
 
@@ -78,33 +97,30 @@ function mesLabel(iso: string): string {
   return m ? `${nomesMes[Number(m[2]) - 1]}/${m[1]}` : "sem data";
 }
 
-// ===== Colunas =====
+// ===== Colunas do PEDIDO (cabeçalho da lista + tela de detalhe) =====
 
 export const COLUNAS: ColunaDef<LinhaEntrega>[] = [
   { key: "numero", label: "Pedido", tipo: "texto", sortable: true, numeric: false, padrao: true, obrigatoria: true, valor: (l) => l.numero },
   { key: "mercos", label: "Nº Mercos", tipo: "texto", sortable: true, numeric: false, padrao: true, valor: (l) => l.mercos },
-  { key: "orcamento", label: "Orçamento", tipo: "data", sortable: true, numeric: false, padrao: false, valor: (l) => l.orcamento },
-  { key: "prevista", label: "Prevista", tipo: "data", sortable: true, numeric: false, padrao: false, valor: (l) => l.prevista },
-  { key: "contrato", label: "Contrato", tipo: "data", sortable: true, numeric: false, padrao: false, valor: (l) => l.contrato },
-  { key: "emitente", label: "Emitente", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.emitente, detalheSpan: 2 },
+  { key: "itens", label: "Produtos", tipo: "numero", sortable: true, numeric: false, padrao: true, valor: (l) => l.qtdItens },
   { key: "cliente", label: "Cliente", tipo: "texto", sortable: true, numeric: false, padrao: true, valor: (l) => l.cliente, detalheSpan: 2 },
-  { key: "cnpj", label: "CNPJ", tipo: "texto", sortable: false, numeric: false, padrao: false, valor: (l) => l.cnpj },
-  { key: "cep", label: "CEP", tipo: "texto", sortable: false, numeric: false, padrao: false, valor: (l) => l.cep },
   { key: "uf", label: "UF", tipo: "texto", sortable: true, numeric: false, padrao: true, valor: (l) => l.uf },
   { key: "cidade", label: "Cidade", tipo: "texto", sortable: true, numeric: false, padrao: true, valor: (l) => l.cidade },
-  { key: "codigo", label: "Código", tipo: "texto", sortable: false, numeric: false, padrao: false, valor: (l) => l.codigo },
-  { key: "produto", label: "Produto", tipo: "texto", sortable: true, numeric: false, padrao: true, valor: (l) => l.produto, detalheSpan: 2 },
-  { key: "familia", label: "Família", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.familia },
-  { key: "marca", label: "Marca", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.marca },
-  { key: "operacao", label: "Operação", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.operacao, detalheSpan: 2 },
-  { key: "modalidade", label: "Modalidade", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.modalidade },
   { key: "etapa", label: "Etapa", tipo: "tagCor", sortable: true, numeric: false, padrao: true, valor: (l) => formatarNomeEtapa(l.etapa) },
+  { key: "prevista", label: "Prevista", tipo: "data", sortable: true, numeric: false, padrao: true, valor: (l) => l.prevista },
   { key: "qtd", label: "Qtd a atender", tipo: "numero", sortable: true, numeric: true, padrao: true, valor: (l) => l.qtd },
-  { key: "unitario", label: "Unitário", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.unitario },
-  { key: "valorCheio", label: "Valor cheio", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.valorCheio },
   { key: "vlrVenda", label: "A atender (venda)", tipo: "moeda", sortable: true, numeric: true, padrao: true, valor: (l) => l.vlrVenda },
   { key: "vlrCusto", label: "A atender (custo)", tipo: "moeda", sortable: true, numeric: true, padrao: true, valor: (l) => l.vlrCusto },
   { key: "status", label: "Financeiro", tipo: "status", sortable: true, numeric: false, padrao: true, valor: (l) => l.status },
+  // Não-default (disponíveis no seletor de colunas / detalhe).
+  { key: "orcamento", label: "Orçamento", tipo: "data", sortable: true, numeric: false, padrao: false, valor: (l) => l.orcamento },
+  { key: "contrato", label: "Contrato", tipo: "data", sortable: true, numeric: false, padrao: false, valor: (l) => l.contrato },
+  { key: "emitente", label: "Emitente", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.emitente, detalheSpan: 2 },
+  { key: "cnpj", label: "CNPJ", tipo: "texto", sortable: false, numeric: false, padrao: false, valor: (l) => l.cnpj },
+  { key: "cep", label: "CEP", tipo: "texto", sortable: false, numeric: false, padrao: false, valor: (l) => l.cep },
+  { key: "operacao", label: "Operação", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.operacao, detalheSpan: 2 },
+  { key: "modalidade", label: "Modalidade", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.modalidade },
+  { key: "valorCheio", label: "Valor cheio (total)", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.valorCheio },
   { key: "forma", label: "Forma de pagamento", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.forma },
   { key: "vendedor", label: "Vendedor", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.vendedor },
   { key: "observacoes", label: "Observações", tipo: "texto", sortable: false, numeric: false, padrao: false, valor: (l) => l.observacoes, detalheSpan: 4 },
@@ -135,11 +151,10 @@ export const CAMPOS: CampoDef<LinhaEntrega>[] = [
   { key: "uf", label: "UF", tipo: "opcao", grupo: "Cliente", comum: true, get: (l) => l.uf },
   { key: "cidade", label: "Cidade", tipo: "texto", grupo: "Cliente", comum: false, get: (l) => l.cidade },
   { key: "cep", label: "CEP", tipo: "texto", grupo: "Cliente", comum: false, get: (l) => l.cep },
-  // Produto
-  { key: "produto", label: "Produto", tipo: "texto", grupo: "Produto", comum: true, get: (l) => l.produto },
-  { key: "codigo", label: "Código", tipo: "texto", grupo: "Produto", comum: false, get: (l) => l.codigo },
-  { key: "familia", label: "Família", tipo: "opcao", grupo: "Produto", comum: true, get: (l) => l.familia },
-  { key: "marca", label: "Marca", tipo: "opcao", grupo: "Produto", comum: true, get: (l) => l.marca },
+  // Produto (agregado do pedido: casa se QUALQUER item do pedido corresponder)
+  { key: "produto", label: "Produto", tipo: "texto", grupo: "Produto", comum: true, get: (l) => l.produtosTexto },
+  { key: "familia", label: "Família", tipo: "tags", grupo: "Produto", comum: true, get: (l) => l.familias },
+  { key: "marca", label: "Marca", tipo: "tags", grupo: "Produto", comum: true, get: (l) => l.marcas },
   // Comercial
   { key: "etapa", label: "Etapa", tipo: "opcao", grupo: "Comercial", comum: true, get: (l) => formatarNomeEtapa(l.etapa), grupoKey: (l) => formatarNomeEtapa(l.etapa) },
   { key: "vendedor", label: "Vendedor", tipo: "opcao", grupo: "Comercial", comum: true, get: (l) => l.vendedor },
@@ -153,6 +168,7 @@ export const CAMPOS: CampoDef<LinhaEntrega>[] = [
   { key: "vlrVenda", label: "A atender (venda R$)", tipo: "numero", grupo: "Financeiro", comum: true, get: (l) => l.vlrVenda },
   { key: "vlrCusto", label: "A atender (custo R$)", tipo: "numero", grupo: "Financeiro", comum: false, get: (l) => l.vlrCusto },
   { key: "qtd", label: "Qtd a atender", tipo: "numero", grupo: "Financeiro", comum: false, get: (l) => l.qtd },
+  { key: "itens", label: "Nº de produtos", tipo: "numero", grupo: "Financeiro", comum: false, get: (l) => l.qtdItens },
   // Observações
   { key: "observacoes", label: "Observações", tipo: "texto", grupo: "Observações", comum: false, get: (l) => l.observacoes },
   { key: "obsEntrega", label: "Obs entrega", tipo: "texto", grupo: "Observações", comum: false, get: (l) => l.obsEntrega },
@@ -162,7 +178,7 @@ export const CAMPO_BY_KEY: Record<string, CampoDef<LinhaEntrega>> = Object.fromE
   CAMPOS.map((c) => [c.key, c]),
 );
 
-/** Campos oferecidos no "Agrupar por" (dimensões que fazem sentido agrupar). */
+/** Campos oferecidos no "Agrupar por" (dimensões do pedido que fazem sentido). */
 export const AGRUPAMENTOS: { campo: string; label: string }[] = [
   { campo: "etapa", label: "Etapa" },
   { campo: "cliente", label: "Cliente" },
@@ -170,8 +186,6 @@ export const AGRUPAMENTOS: { campo: string; label: string }[] = [
   { campo: "vendedor", label: "Vendedor" },
   { campo: "status", label: "Financeiro" },
   { campo: "operacao", label: "Operação" },
-  { campo: "marca", label: "Marca" },
-  { campo: "familia", label: "Família" },
   { campo: "prevista", label: "Mês previsto" },
 ];
 
@@ -180,9 +194,11 @@ export const AGRUPAMENTOS: { campo: string; label: string }[] = [
 /** Número do pedido como tag translúcida (foreground/10: preta translúcida no
  * claro, branca translúcida no escuro). Clicável quando há id do Odoo; o clique
  * não propaga para não abrir o detalhe da linha por baixo. */
-export function TagPedido({ numero, pedidoId }: { numero: string; pedidoId: number }) {
-  const base =
-    "inline-flex max-w-full items-center gap-1 truncate rounded-md bg-foreground/10 px-2 py-0.5 text-xs font-semibold text-foreground ring-1 ring-inset ring-foreground/15 transition-colors";
+export function TagPedido({ numero, pedidoId, grande }: { numero: string; pedidoId: number; grande?: boolean }) {
+  const base = cn(
+    "inline-flex max-w-full items-center gap-1 truncate rounded-md bg-foreground/10 font-semibold text-foreground ring-1 ring-inset ring-foreground/15 transition-colors",
+    grande ? "gap-1.5 px-3 py-1 text-lg" : "px-2 py-0.5 text-xs",
+  );
   const podeAbrir = Number.isFinite(pedidoId) && pedidoId > 0 && !!numero && numero !== "-";
   if (!podeAbrir) return <span className={base}>{numero}</span>;
   return (
@@ -196,18 +212,56 @@ export function TagPedido({ numero, pedidoId }: { numero: string; pedidoId: numb
       className={cn(base, "cursor-pointer hover:bg-foreground/20 hover:ring-foreground/25")}
     >
       <span className="truncate tabular-nums">{numero}</span>
-      <ExternalLink className="size-3 shrink-0 text-muted-foreground" aria-hidden />
+      <ExternalLink className={cn("shrink-0 text-muted-foreground", grande ? "size-4" : "size-3")} aria-hidden />
     </a>
   );
 }
 
-// ===== Render de célula por tipo =====
+/** Etapa como pill colorida (reusa a cor da Fase 2). */
+function PillEtapa({ l }: { l: LinhaEntrega }) {
+  const estilo = derivarCorTag(corEtapaValida(l.etapaCor));
+  const nome = formatarNomeEtapa(l.etapa);
+  return (
+    <span
+      className={cn(
+        "inline-flex max-w-full items-center truncate whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium",
+        !estilo && "bg-muted text-muted-foreground",
+      )}
+      style={estilo ?? undefined}
+    >
+      {nome}
+    </span>
+  );
+}
+
+/** Status financeiro: ícone + (opcional) rótulo. */
+function StatusFinanceiro({ status, comRotulo }: { status: string; comRotulo?: boolean }) {
+  const bloqueado = status === "Bloqueado";
+  const Icone = bloqueado ? CircleX : CircleCheck;
+  return (
+    <span className="inline-flex items-center gap-1.5" title={status}>
+      <Icone className={cn("size-4", bloqueado ? "text-rose-400" : "text-emerald-400")} strokeWidth={2.25} aria-label={status} />
+      {comRotulo && <span className={cn("text-xs font-medium", bloqueado ? "text-rose-500" : "text-emerald-500")}>{status}</span>}
+    </span>
+  );
+}
+
+// ===== Render de célula por tipo (cabeçalho do pedido) =====
 
 export function celula(l: LinhaEntrega, key: string): React.ReactNode {
   const col = COLUNA_BY_KEY[key];
   if (!col) return null;
   // Pedido: tag translúcida clicável (abre no Odoo).
   if (key === "numero") return <TagPedido numero={l.numero} pedidoId={l.pedidoId} />;
+  // Produtos: contagem de itens do pedido.
+  if (key === "itens") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+        <Package className="size-3 shrink-0" aria-hidden />
+        {l.qtdItens} {l.qtdItens === 1 ? "produto" : "produtos"}
+      </span>
+    );
+  }
   switch (col.tipo) {
     case "moeda":
       return <span className="whitespace-nowrap tabular-nums">{formatBRL(Number(l[key] ?? 0))}</span>;
@@ -215,35 +269,161 @@ export function celula(l: LinhaEntrega, key: string): React.ReactNode {
       return <span className="whitespace-nowrap tabular-nums">{String(l[key] ?? "")}</span>;
     case "data":
       return <span className="whitespace-nowrap text-muted-foreground">{formatarDataBR(String(l[key] ?? ""))}</span>;
-    case "status": {
-      const bloqueado = l.status === "Bloqueado";
-      const Icone = bloqueado ? CircleX : CircleCheck;
-      return (
-        <span className="inline-flex items-center" title={l.status}>
-          <Icone
-            className={cn("size-4", bloqueado ? "text-rose-400" : "text-emerald-400")}
-            strokeWidth={2.25}
-            aria-label={l.status}
-          />
-        </span>
-      );
-    }
-    case "tagCor": {
-      const estilo = derivarCorTag(corEtapaValida(l.etapaCor));
-      const nome = formatarNomeEtapa(l.etapa);
-      return (
-        <span
-          className={cn(
-            "inline-flex max-w-full items-center truncate whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium",
-            !estilo && "bg-muted text-muted-foreground",
-          )}
-          style={estilo ?? undefined}
-        >
-          {nome}
-        </span>
-      );
-    }
+    case "status":
+      return <StatusFinanceiro status={l.status} />;
+    case "tagCor":
+      return <PillEtapa l={l} />;
     default:
       return <span className="truncate text-foreground">{String(l[key] ?? "")}</span>;
   }
+}
+
+// ===== Lista de produtos (dropdown da lista + seção do detalhe) =====
+
+const GRID_ITEM = "grid grid-cols-[3.5rem_minmax(0,1fr)_9rem_7rem_5rem_7.5rem_8.5rem] gap-3";
+
+/** Produtos de um pedido, um embaixo do outro, colunas alinhadas, divisórias
+ * bem leves (sem cara de tabela). Rola no próprio contêiner quando estreito. */
+export function ListaProdutos({ itens }: { itens: ItemEntrega[] }) {
+  if (!itens.length) return <p className="px-1 text-sm text-muted-foreground">Sem produtos a atender neste pedido.</p>;
+  return (
+    <div className="overflow-x-auto">
+      <div className="min-w-[52rem]">
+        <div className={cn(GRID_ITEM, "px-1 pb-2 text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground")}>
+          <span>Cód.</span>
+          <span>Produto</span>
+          <span>Família</span>
+          <span>Marca</span>
+          <span className="text-right">Qtd</span>
+          <span className="text-right">Unitário</span>
+          <span className="text-right">A atender</span>
+        </div>
+        <div className="divide-y divide-border/40">
+          {itens.map((it, i) => (
+            <div key={i} className={cn(GRID_ITEM, "items-baseline px-1 py-2 text-sm")}>
+              <span className="truncate tabular-nums text-muted-foreground">{it.codigo}</span>
+              <span className="min-w-0 break-words font-medium text-foreground">{it.produto}</span>
+              <span className="truncate text-muted-foreground">{it.familia}</span>
+              <span className="truncate text-muted-foreground">{it.marca}</span>
+              <span className="text-right tabular-nums text-foreground">{it.qtd}</span>
+              <span className="text-right tabular-nums text-muted-foreground">{formatBRL(it.unitario)}</span>
+              <span className="text-right font-semibold tabular-nums text-foreground">{formatBRL(it.vlrVenda)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Dropdown expansível de uma linha da lista (produtos do pedido, recuados). */
+export function dropdownProdutos(l: LinhaEntrega): React.ReactNode {
+  return (
+    <div className="border-l-2 border-foreground/15 bg-background/30 px-4 py-3 pl-8 sm:pl-11">
+      <ListaProdutos itens={l.itens} />
+    </div>
+  );
+}
+
+// ===== Tela de detalhe do pedido (redesenhada) =====
+
+function Secao({ titulo, icone: Icone, children }: { titulo: string; icone: typeof Package; children: React.ReactNode }) {
+  return (
+    <section className="border-t border-border/60 pt-5 first:border-0 first:pt-0">
+      <h3 className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <Icone className="size-3.5" aria-hidden /> {titulo}
+      </h3>
+      {children}
+    </section>
+  );
+}
+
+function Campo({ label, valor, span }: { label: string; valor: string; span?: 2 | 4 }) {
+  return (
+    <div className={cn("min-w-0", span === 4 ? "col-span-2 md:col-span-4" : span === 2 ? "col-span-2" : "")}>
+      <dt className="text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground">{label}</dt>
+      <dd className="mt-0.5 break-words text-sm text-foreground">{valor && valor !== "-" ? valor : "-"}</dd>
+    </div>
+  );
+}
+
+function Stat({ label, valor, destaque }: { label: string; valor: string; destaque?: boolean }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className={cn("mt-0.5 truncate tabular-nums", destaque ? "text-lg font-bold text-foreground" : "text-base font-semibold text-foreground")}>{valor}</p>
+    </div>
+  );
+}
+
+/** Corpo da tela de detalhe de um pedido (passado como `renderDetalhe`). */
+export function DetalheEntrega({ l }: { l: LinhaEntrega }) {
+  const temObs = (l.observacoes && l.observacoes !== "-") || (l.obsEntrega && l.obsEntrega !== "-");
+  return (
+    <div className="space-y-6 p-4 sm:p-6">
+      {/* Cabeçalho: número em evidência + etapa + financeiro, cliente abaixo */}
+      <header className="flex flex-col gap-2">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <TagPedido numero={l.numero} pedidoId={l.pedidoId} grande />
+          <PillEtapa l={l} />
+          <StatusFinanceiro status={l.status} comRotulo />
+        </div>
+        <p className="text-base font-medium text-foreground">{l.cliente}</p>
+        {l.cnpj && l.cnpj !== "-" && <p className="text-xs text-muted-foreground">CNPJ {l.cnpj}</p>}
+      </header>
+
+      {/* Resumo de valores */}
+      <div className="grid grid-cols-2 gap-4 rounded-xl border border-border/60 bg-background/40 p-4 sm:grid-cols-4">
+        <Stat label="A atender (venda)" valor={formatBRL(l.vlrVenda)} destaque />
+        <Stat label="A atender (custo)" valor={formatBRL(l.vlrCusto)} />
+        <Stat label="Valor cheio (total)" valor={formatBRL(l.valorCheio)} />
+        <Stat label="Qtd a atender" valor={`${l.qtd}`} />
+      </div>
+
+      <dl className="space-y-5">
+        <Secao titulo="Identificação" icone={ClipboardList}>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-4">
+            <Campo label="Nº Mercos" valor={l.mercos} />
+            <Campo label="Orçamento" valor={formatarDataBR(l.orcamento)} />
+            <Campo label="Prevista" valor={formatarDataBR(l.prevista)} />
+            <Campo label="Contrato" valor={formatarDataBR(l.contrato)} />
+            <Campo label="Emitente" valor={l.emitente} span={2} />
+            <Campo label="Vendedor" valor={l.vendedor} />
+            <Campo label="Forma de pagamento" valor={l.forma} />
+            <Campo label="Operação" valor={l.operacao} span={2} />
+            <Campo label="Modalidade" valor={l.modalidade} />
+          </div>
+        </Secao>
+
+        <Secao titulo="Cliente e endereço" icone={MapPin}>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-4">
+            <Campo label="Cliente" valor={l.cliente} span={2} />
+            <Campo label="CNPJ" valor={l.cnpj} />
+            <Campo label="CEP" valor={l.cep} />
+            <Campo label="UF" valor={l.uf} />
+            <Campo label="Cidade" valor={l.cidade} />
+          </div>
+        </Secao>
+
+        <Secao titulo={`Produtos (${l.itens.length})`} icone={Package}>
+          <ListaProdutos itens={l.itens} />
+        </Secao>
+
+        {temObs && (
+          <Secao titulo="Observações" icone={FileText}>
+            <div className="space-y-3">
+              <div>
+                <p className="text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground">Observações do pedido</p>
+                <p className="mt-1 whitespace-pre-line break-words text-sm text-foreground">{l.observacoes && l.observacoes !== "-" ? l.observacoes : "-"}</p>
+              </div>
+              <div>
+                <p className="text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground">Obs de entrega</p>
+                <p className="mt-1 whitespace-pre-line break-words text-sm text-foreground">{l.obsEntrega && l.obsEntrega !== "-" ? l.obsEntrega : "-"}</p>
+              </div>
+            </div>
+          </Secao>
+        )}
+      </dl>
+    </div>
+  );
 }
