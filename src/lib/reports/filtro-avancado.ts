@@ -18,8 +18,19 @@ export type Operador =
   | "igual"
   | "diferente"
   | "contem"
+  | "nao_contem"
+  | "vazio"
+  | "preenchido"
   | "maior"
-  | "menor";
+  | "menor"
+  | "esta_em_lista";
+
+/**
+ * Separador usado para serializar a lista de valores do operador
+ * `esta_em_lista` dentro de `Condicao.valor` (que é sempre string). Usa o
+ * caractere de controle "unit separator" (U+001F), improvável no dado real.
+ */
+export const SEP_LISTA = "";
 
 export interface Condicao {
   campo: string;
@@ -41,13 +52,45 @@ export interface OperadorMeta {
   label: string;
 }
 
+/**
+ * Operadores VISÍVEIS no builder manual. `esta_em_lista` é intencionalmente
+ * omitido: ele é programático (usado pela busca inteligente por facets), não
+ * editável à mão. Use `operadoresParaTipo` para filtrar esta lista pelo tipo
+ * da coluna escolhida.
+ */
 export const OPERADORES: OperadorMeta[] = [
   { value: "igual", label: "igual a" },
   { value: "diferente", label: "diferente de" },
   { value: "contem", label: "contém" },
+  { value: "nao_contem", label: "não contém" },
+  { value: "vazio", label: "é vazio" },
+  { value: "preenchido", label: "não é vazio" },
   { value: "maior", label: "maior que" },
   { value: "menor", label: "menor que" },
 ];
+
+/** Fábrica de grupo vazio (objeto novo a cada chamada, nunca compartilhado). */
+export function grupoVazio(): Grupo {
+  return { conector: "E", itens: [] };
+}
+
+/**
+ * Operadores válidos para o tipo de uma coluna. Colunas ordenáveis
+ * (data/numero/moeda/percentual) ganham `maior`/`menor` e perdem
+ * `contem`/`nao_contem` (que não fazem sentido); texto/tag o inverso.
+ * `vazio`/`preenchido` valem para todos.
+ */
+export function operadoresParaTipo(tipo: string): Operador[] {
+  if (
+    tipo === "data" ||
+    tipo === "numero" ||
+    tipo === "moeda" ||
+    tipo === "percentual"
+  ) {
+    return ["igual", "diferente", "maior", "menor", "vazio", "preenchido"];
+  }
+  return ["igual", "diferente", "contem", "nao_contem", "vazio", "preenchido"];
+}
 
 // ---------------------------------------------------------------------------
 // Type guard
@@ -92,38 +135,64 @@ export function compilarFiltro<T extends Record<string, unknown>>(
 
     const rawVal = row[c.campo];
     const tipo = typeMap[c.campo] ?? "texto";
-    const isNumeric = tipo === "numero" || tipo === "moeda";
+    const isNumeric =
+      tipo === "numero" || tipo === "moeda" || tipo === "percentual";
+    const isData = tipo === "data";
+    const s = String(rawVal ?? "");
 
     switch (c.operador) {
       case "igual":
-        if (isNumeric) {
-          const n = Number(c.valor);
-          return Number(rawVal) === n;
-        }
-        return String(rawVal ?? "").toLowerCase() === c.valor.toLowerCase();
+        if (isNumeric) return Number(rawVal) === Number(c.valor);
+        return s.toLowerCase() === c.valor.toLowerCase();
 
       case "diferente":
-        if (isNumeric) {
-          const n = Number(c.valor);
-          return Number(rawVal) !== n;
-        }
-        return String(rawVal ?? "").toLowerCase() !== c.valor.toLowerCase();
+        if (isNumeric) return Number(rawVal) !== Number(c.valor);
+        return s.toLowerCase() !== c.valor.toLowerCase();
 
       case "contem":
-        return String(rawVal ?? "")
-          .toLowerCase()
-          .includes(c.valor.toLowerCase());
+        // Guard: enquanto o usuário não digitou, a condição é inerte (não zera
+        // a tabela). `includes("")` seria sempre true de qualquer forma.
+        if (c.valor === "") return true;
+        return s.toLowerCase().includes(c.valor.toLowerCase());
+
+      case "nao_contem":
+        // Guard: sem valor, inerte. Sem o guard, `!includes("")` seria sempre
+        // false e a tabela ficaria vazia sem explicação.
+        if (c.valor === "") return true;
+        return !s.toLowerCase().includes(c.valor.toLowerCase());
+
+      case "vazio":
+        return s.trim() === "";
+
+      case "preenchido":
+        return s.trim() !== "";
 
       case "maior": {
-        const n = Number(c.valor);
-        if (Number.isNaN(n)) return false;
-        return Number(rawVal) > n;
+        if (isNumeric) {
+          const n = Number(c.valor);
+          return Number.isNaN(n) ? false : Number(rawVal) > n;
+        }
+        // Data ISO (YYYY-MM-DD): comparação lexicográfica = cronológica.
+        if (isData) return s !== "" && s > c.valor;
+        return s.toLowerCase() > c.valor.toLowerCase();
       }
 
       case "menor": {
-        const n = Number(c.valor);
-        if (Number.isNaN(n)) return false;
-        return Number(rawVal) < n;
+        if (isNumeric) {
+          const n = Number(c.valor);
+          return Number.isNaN(n) ? false : Number(rawVal) < n;
+        }
+        if (isData) return s !== "" && s < c.valor;
+        return s.toLowerCase() < c.valor.toLowerCase();
+      }
+
+      case "esta_em_lista": {
+        const vals = c.valor
+          .split(SEP_LISTA)
+          .filter((v) => v !== "")
+          .map((v) => v.toLowerCase());
+        if (vals.length === 0) return true; // inerte
+        return vals.includes(s.toLowerCase());
       }
 
       default:

@@ -2,6 +2,9 @@
 import {
   compilarFiltro,
   isGrupo,
+  grupoVazio,
+  operadoresParaTipo,
+  SEP_LISTA,
   type Condicao,
   type Grupo,
 } from "./filtro-avancado";
@@ -275,5 +278,172 @@ describe("compilarFiltro , campo não declarado em columns", () => {
       COLS,
     ) as (row: typeof extRow) => boolean;
     expect(pred(extRow)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Fase 4 , helpers grupoVazio / operadoresParaTipo
+// ---------------------------------------------------------------------------
+
+describe("grupoVazio", () => {
+  it("retorna { conector: E, itens: [] } novo a cada chamada", () => {
+    expect(grupoVazio()).toEqual({ conector: "E", itens: [] });
+    expect(grupoVazio()).not.toBe(grupoVazio());
+  });
+});
+
+describe("operadoresParaTipo", () => {
+  it("data e numero usam comparadores de ordem, sem contem/nao_contem", () => {
+    expect(operadoresParaTipo("data")).toEqual([
+      "igual",
+      "diferente",
+      "maior",
+      "menor",
+      "vazio",
+      "preenchido",
+    ]);
+    expect(operadoresParaTipo("numero")).toEqual([
+      "igual",
+      "diferente",
+      "maior",
+      "menor",
+      "vazio",
+      "preenchido",
+    ]);
+    expect(operadoresParaTipo("moeda")).toEqual(operadoresParaTipo("numero"));
+  });
+  it("texto e tag usam contem/nao_contem, sem maior/menor", () => {
+    expect(operadoresParaTipo("texto")).toEqual([
+      "igual",
+      "diferente",
+      "contem",
+      "nao_contem",
+      "vazio",
+      "preenchido",
+    ]);
+    expect(operadoresParaTipo("tag")).toEqual(operadoresParaTipo("texto"));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Fase 4 , guards de valor vazio (não zerar a tabela)
+// ---------------------------------------------------------------------------
+
+describe("compilarFiltro , guard de valor vazio", () => {
+  it("contem com valor vazio é inerte (passa tudo)", () => {
+    const pred = compilarFiltro(grupo("E", cond("nome", "contem", "")), COLS);
+    expect(ROWS.every(pred)).toBe(true);
+  });
+  it("nao_contem com valor vazio é inerte (passa tudo)", () => {
+    const pred = compilarFiltro(
+      grupo("E", cond("nome", "nao_contem", "")),
+      COLS,
+    );
+    expect(ROWS.every(pred)).toBe(true);
+  });
+  it("nao_contem com valor filtra corretamente", () => {
+    const pred = compilarFiltro(
+      grupo("E", cond("nome", "nao_contem", "beta")),
+      COLS,
+    );
+    const result = ROWS.filter(pred);
+    expect(result.map((r) => r.nome)).toEqual([
+      "Esteira Alpha",
+      "Haltere Gamma",
+      "Barra Delta",
+    ]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Fase 4 , vazio / preenchido (trim, ignora valor)
+// ---------------------------------------------------------------------------
+
+describe("compilarFiltro , vazio / preenchido", () => {
+  type LinhaObs = { obs: string | null };
+  const colsObs: ColumnDef<LinhaObs>[] = [
+    { key: "obs", header: "Obs", tipo: "texto" },
+  ];
+  it("vazio é verdadeiro para '', null e só espaços", () => {
+    const pred = compilarFiltro(
+      grupo("E", cond("obs", "vazio", "")),
+      colsObs as unknown as ColumnDef<Row>[],
+    ) as unknown as (r: LinhaObs) => boolean;
+    expect(pred({ obs: "" })).toBe(true);
+    expect(pred({ obs: null })).toBe(true);
+    expect(pred({ obs: "   " })).toBe(true);
+    expect(pred({ obs: "algo" })).toBe(false);
+  });
+  it("preenchido é o complemento de vazio", () => {
+    const pred = compilarFiltro(
+      grupo("E", cond("obs", "preenchido", "")),
+      colsObs as unknown as ColumnDef<Row>[],
+    ) as unknown as (r: LinhaObs) => boolean;
+    expect(pred({ obs: "algo" })).toBe(true);
+    expect(pred({ obs: "  " })).toBe(false);
+    expect(pred({ obs: null })).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Fase 4 , coluna data (ISO lexicográfico = cronológico, não Number)
+// ---------------------------------------------------------------------------
+
+describe("compilarFiltro , coluna data", () => {
+  type LinhaData = { prev: string };
+  const colsData: ColumnDef<LinhaData>[] = [
+    { key: "prev", header: "Prevista", tipo: "data" },
+  ];
+  const predData = (c: Condicao) =>
+    compilarFiltro(
+      grupo("E", c),
+      colsData as unknown as ColumnDef<Row>[],
+    ) as unknown as (r: LinhaData) => boolean;
+
+  it("maior compara datas cronologicamente", () => {
+    const p = predData(cond("prev", "maior", "2026-07-10"));
+    expect(p({ prev: "2026-07-15" })).toBe(true);
+    expect(p({ prev: "2026-07-01" })).toBe(false);
+  });
+  it("menor compara datas cronologicamente", () => {
+    const p = predData(cond("prev", "menor", "2026-07-10"));
+    expect(p({ prev: "2026-07-01" })).toBe(true);
+    expect(p({ prev: "2026-12-31" })).toBe(false);
+  });
+  it("igual casa a data ISO exata", () => {
+    const p = predData(cond("prev", "igual", "2026-07-15"));
+    expect(p({ prev: "2026-07-15" })).toBe(true);
+    expect(p({ prev: "2026-07-16" })).toBe(false);
+  });
+  it("data vazia não passa em maior/menor", () => {
+    const p = predData(cond("prev", "maior", "2026-01-01"));
+    expect(p({ prev: "" })).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Fase 4 , esta_em_lista (membership OU dentro do campo)
+// ---------------------------------------------------------------------------
+
+describe("compilarFiltro , esta_em_lista", () => {
+  type LinhaUf = { uf: string };
+  const colsUf: ColumnDef<LinhaUf>[] = [
+    { key: "uf", header: "UF", tipo: "texto" },
+  ];
+  it("casa qualquer valor da lista, case-insensitive", () => {
+    const pred = compilarFiltro(
+      grupo("E", cond("uf", "esta_em_lista", ["SP", "RJ"].join(SEP_LISTA))),
+      colsUf as unknown as ColumnDef<Row>[],
+    ) as unknown as (r: LinhaUf) => boolean;
+    expect(pred({ uf: "SP" })).toBe(true);
+    expect(pred({ uf: "rj" })).toBe(true);
+    expect(pred({ uf: "ES" })).toBe(false);
+  });
+  it("lista vazia é inerte (passa tudo)", () => {
+    const pred = compilarFiltro(
+      grupo("E", cond("uf", "esta_em_lista", "")),
+      colsUf as unknown as ColumnDef<Row>[],
+    ) as unknown as (r: LinhaUf) => boolean;
+    expect(pred({ uf: "qualquer" })).toBe(true);
   });
 });
