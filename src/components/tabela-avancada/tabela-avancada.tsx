@@ -543,7 +543,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                     const ord = ordemDe(c.key);
                     const primeira = ci === 0;
                     return (
-                      <th key={c.key} ref={setRef(c.key)} className={cn("group/th relative overflow-hidden text-left font-medium", primeira ? "pl-2 pr-4" : "px-4", compacto ? "py-2" : "py-3", c.numeric && "text-right")}>
+                      <th key={c.key} ref={setRef(c.key)} className={cn("group/th relative overflow-hidden text-left font-medium", primeira ? "pl-8 pr-4" : "px-4", compacto ? "py-2" : "py-3", c.numeric && "text-right")}>
                         <button type="button" onClick={() => ordenarPor(c.key)} className={cn("flex min-w-0 max-w-full items-center gap-1.5", c.numeric && "ml-auto justify-end", c.sortable ? "cursor-pointer hover:text-foreground" : "cursor-default")}>
                           <span className="truncate">{c.label}</span>
                           {ord ? (
@@ -580,7 +580,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                       <Fragment key={rk}>
                         <tr onClick={() => setDetalhe({ row: it.row, idx: listaOrdenada.indexOf(it.row) })} className={cn("cursor-pointer border-b border-border/60 transition-colors last:border-0 hover:bg-accent/40", aberto && "bg-accent/30")}>
                           {colsVisiveis.map((c, ci) => (
-                            <td key={c.key} className={cn("overflow-hidden", ci === 0 ? "pl-2 pr-4" : "px-4", compacto ? "py-1.5" : "py-3", c.numeric && "text-right")} style={niveis.length && c.key === colsVisiveis[0].key ? { paddingLeft: `${0.5 + it.level * 1.25}rem` } : undefined}>
+                            <td key={c.key} className={cn("overflow-hidden", ci === 0 ? "pl-2 pr-4" : "px-4", compacto ? "py-1.5" : "py-2.5", c.numeric && "text-right")} style={niveis.length && c.key === colsVisiveis[0].key ? { paddingLeft: `${0.5 + it.level * 1.25}rem` } : undefined}>
                               {ci === 0 && expandirRow ? (
                                 <div className="flex items-center gap-1">
                                   <button type="button" aria-label={aberto ? "Recolher produtos" : "Ver produtos"} aria-expanded={aberto} onClick={(e) => { e.stopPropagation(); toggleExpandRow(rk); }} className="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">

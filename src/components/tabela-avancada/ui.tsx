@@ -619,44 +619,30 @@ export function useResizeColunas(storageKey: string, containerRef?: React.RefObj
   }, [larguras]);
 
   // Duplo-clique na alça: ajusta a coluna ao MENOR tamanho que mostra TODO o conteúdo
-  // sem abreviar. Mede a largura REAL do texto via Range (independe da largura atual
-  // da coluna, então funciona tanto encolhendo quanto aumentando) + offsetWidth de
-  // elementos inline (pills/badges, que já encolhem ao conteúdo).
+  // sem abreviar. Mede a largura NATURAL da coluna deixando a tabela em `table-auto`
+  // por um instante: o navegador dimensiona a coluna ao MAIOR conteúdo entre o
+  // CABEÇALHO (título + setas de ordenar) e TODAS as células visíveis (incluindo a
+  // tag do pedido com ícone e o chevron do dropdown). Medimos e restauramos na mesma
+  // passada síncrona, sem repaint. Funciona encolhendo e aumentando.
   const resetColuna = useCallback((key: string) => {
     const th = thRefs.current[key];
-    const table = th?.closest("table");
+    const table = th?.closest("table") as HTMLTableElement | null;
     if (!th || !table || typeof document === "undefined") {
       setLarguras((prev) => { const next = { ...prev }; delete next[key]; return next; });
       return;
     }
-    const idx = th.cellIndex;
-    let conteudo = 0;
-    const medir = (cell: HTMLElement) => {
-      const walker = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT);
-      let node = walker.nextNode();
-      while (node) {
-        if (node.textContent && node.textContent.trim()) {
-          const range = document.createRange();
-          range.selectNodeContents(node);
-          const rects = range.getClientRects();
-          for (let i = 0; i < rects.length; i++) if (rects[i].width > conteudo) conteudo = rects[i].width;
-        }
-        node = walker.nextNode();
-      }
-      cell.querySelectorAll<HTMLElement>("*").forEach((el) => {
-        if (getComputedStyle(el).display.startsWith("inline") && el.offsetWidth > conteudo) conteudo = el.offsetWidth;
-      });
-    };
-    table.querySelectorAll("tr").forEach((tr) => {
-      const cell = tr.children[idx] as HTMLElement | undefined;
-      if (!cell || (cell as HTMLTableCellElement).colSpan > 1) return;
-      medir(cell);
-    });
-    const PAD = 34; // padding horizontal da célula (px-4) + folga
+    const cols = Array.from(table.querySelectorAll("colgroup col")) as HTMLElement[];
+    const larguraPrev = cols.map((c) => c.style.width);
+    const layoutPrev = table.style.tableLayout;
+    table.style.tableLayout = "auto";
+    cols.forEach((c) => { c.style.width = "auto"; });
+    const natural = th.getBoundingClientRect().width; // força layout, já com padding
+    table.style.tableLayout = layoutPrev;
+    cols.forEach((c, i) => { c.style.width = larguraPrev[i]; });
     const MIN = 56;
     const visivel = containerRef?.current?.clientWidth ?? (typeof window !== "undefined" ? window.innerWidth : 1200);
     const MAX = Math.max(MIN + 40, Math.round(visivel * 0.85));
-    const largura = Math.min(Math.max(Math.ceil(conteudo) + PAD, MIN), MAX);
+    const largura = Math.min(Math.max(Math.ceil(natural) + 2, MIN), MAX);
     setLarguras((prev) => ({ ...prev, [key]: largura }));
   }, [containerRef]);
 
