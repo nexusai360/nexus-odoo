@@ -9,7 +9,7 @@
  * sidebar recolhido). NÃO se aplica fora da Diretoria.
  */
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronsLeftRight, ChevronsRightLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -51,13 +51,38 @@ const LARGURA_NORMAL =
 const LARGURA_ESTENDIDA = "max-w-none px-[25px]";
 
 /** Contêiner das páginas da Diretoria (substitui PageShell wide). Reage ao modo
- * estendido, esticando o conteúdo até a borda. Sem transição de largura própria:
- * a mudança é instantânea e os dois lados acompanham juntos o reflow do layout
- * (o lado direito não ganha uma animação independente). */
+ * estendido, esticando o conteúdo até a borda.
+ *
+ * A troca de largura é animada com a Web Animations API (FLIP): mede a largura
+ * atual, deixa o React aplicar a nova classe, mede o destino real e anima o
+ * `max-width` de um para o outro. Como `max-width: none` NÃO é animável por CSS
+ * (daí a "piscada"), fazemos a interpolação em px, do valor atual até a largura
+ * de destino. Os blocos do grid (com `anim-off`) acompanham quadro a quadro, sem
+ * animação própria, então tudo cresce/encolhe JUNTO e suave. */
 export function DiretoriaShell({ children, className }: { children: ReactNode; className?: string }) {
   const { estendido } = useModoEstendido();
+  const ref = useRef<HTMLDivElement>(null);
+  const larguraAnterior = useRef<number | null>(null);
+  const primeira = useRef(true);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const destino = el.getBoundingClientRect().width; // já com a classe nova aplicada
+    const anterior = larguraAnterior.current;
+    larguraAnterior.current = destino;
+    if (primeira.current) { primeira.current = false; return; } // não anima no mount
+    if (anterior == null || Math.abs(anterior - destino) < 1) return;
+    const reduz = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reduz) return;
+    el.animate(
+      [{ maxWidth: `${anterior}px` }, { maxWidth: `${destino}px` }],
+      { duration: 300, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
+    );
+  }, [estendido]);
+
   return (
-    <div className={cn("mx-auto", estendido ? LARGURA_ESTENDIDA : LARGURA_NORMAL, className)}>
+    <div ref={ref} className={cn("mx-auto", estendido ? LARGURA_ESTENDIDA : LARGURA_NORMAL, className)}>
       {children}
     </div>
   );
