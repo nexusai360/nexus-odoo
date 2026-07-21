@@ -338,11 +338,15 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   const colCount = colsVisiveis.length;
 
   return (
-    <div>
+    <div className="flex h-full min-h-0 flex-col">
       {/* Toolbar */}
-      <div className="mb-3 flex flex-wrap items-center gap-2">
+      <div className="mb-3 flex shrink-0 flex-wrap items-center gap-2">
         <Btn variant="outline" onClick={exportar}><Download className="size-4" /> Exportar</Btn>
         <Btn variant={compacto ? "primary" : "outline"} onClick={() => setCompacto((v) => !v)}><Rows3 className="size-4" /> Compacto</Btn>
+        {/* Seletor de colunas: só no modo lista, na toolbar (não vaza ao rolar). */}
+        {view === "lista" && (
+          <SeletorColunas rotulo="Colunas" colunas={colunas} ordem={ordem} visiveis={vis} onOrdemChange={setOrdem} onVisiveisChange={setVis} />
+        )}
 
         {/* View switcher */}
         <div className="ml-auto inline-flex items-center rounded-lg border border-border bg-card p-0.5">
@@ -358,7 +362,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
       </div>
 
       {/* Searchbar com chips + caret */}
-      <div className="mb-3 flex items-start gap-2">
+      <div className="mb-3 flex shrink-0 items-start gap-2">
         <div className="relative flex min-h-9 flex-1 flex-wrap items-center gap-1.5 rounded-lg border border-border bg-card px-2 py-1">
           <Search className="ml-1 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           {chips.map((c) => (
@@ -470,7 +474,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
       </div>
 
       {/* contador + remover ordenação */}
-      <div className="mb-3 flex flex-wrap items-center gap-1.5">
+      <div className="mb-3 flex shrink-0 flex-wrap items-center gap-1.5">
         {sorts.length > 0 && (
           <button type="button" onClick={() => setSorts([])} className="inline-flex cursor-pointer items-center gap-1 rounded-full px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
             <ArrowUpDown className="size-3.5" /> Remover ordenação
@@ -481,17 +485,16 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
 
       {/* ===== VISÃO LISTA ===== */}
       {view === "lista" && (
-        <div className="rounded-xl border border-border bg-card">
-          <div ref={scrollRef} className="max-h-[calc(100vh-19rem)] overflow-auto">
+        <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-card">
+          <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto">
             <table className={cn("w-full min-w-[60rem]", compacto ? "text-xs" : "text-sm", colFixo ? "table-fixed" : "table-auto")}>
               {colFixo && (
                 <colgroup>
                   {colsVisiveis.map((c) => <col key={c.key} style={{ width: larguras[c.key] }} />)}
-                  <col />
                 </colgroup>
               )}
               <thead className="sticky top-0 z-10 bg-card">
-                <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
+                <tr className="border-b border-border text-left text-sm font-semibold text-muted-foreground">
                   {colsVisiveis.map((c) => {
                     const ord = ordemDe(c.key);
                     return (
@@ -509,19 +512,14 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                       </th>
                     );
                   })}
-                  <th className="w-10 px-2 py-3 text-right">
-                    <div className="flex justify-end">
-                      <SeletorColunas colunas={colunas} ordem={ordem} visiveis={vis} onOrdemChange={setOrdem} onVisiveisChange={setVis} scrollRef={scrollRef} />
-                    </div>
-                  </th>
                 </tr>
               </thead>
               <tbody>
                 {flat.map((it, idx) =>
                   it.kind === "grupo" ? (
                     <tr key={it.id} className="cursor-pointer bg-muted/30 hover:bg-muted/50" onClick={() => setExpandidos((prev) => { const n = new Set(prev); if (n.has(it.id)) n.delete(it.id); else n.add(it.id); return n; })}>
-                      <td colSpan={colCount + 1} className="px-3 py-2">
-                        <span className="flex items-center gap-1.5 text-xs font-semibold text-foreground" style={{ paddingLeft: `${it.level * 1.25}rem` }}>
+                      <td colSpan={colCount} className="px-3 py-2">
+                        <span className="flex items-center gap-1.5 text-[0.8125rem] font-semibold text-foreground" style={{ paddingLeft: `${it.level * 1.25}rem` }}>
                           {it.colapsado ? <ChevronRight className="size-3.5 text-muted-foreground" /> : <ChevronDown className="size-3.5 text-muted-foreground" />}
                           {it.label}
                           <span className="font-normal text-muted-foreground">· {it.count}{valorSoma ? ` · ${brlSoma(it.soma)}` : ""}</span>
@@ -535,12 +533,11 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                           <div className={cn("truncate", c.numeric && "text-right")}>{celula(it.row, c.key)}</div>
                         </td>
                       ))}
-                      <td />
                     </tr>
                   ),
                 )}
                 {flat.length === 0 && (
-                  <tr><td colSpan={colCount + 1} className="px-4 py-12 text-center text-sm text-muted-foreground">Nenhum registro corresponde aos filtros. <button type="button" onClick={limparTudo} className="cursor-pointer font-medium text-violet-600 hover:underline dark:text-violet-400">Limpar filtros</button>.</td></tr>
+                  <tr><td colSpan={colCount} className="px-4 py-12 text-center text-sm text-muted-foreground">Nenhum registro corresponde aos filtros. <button type="button" onClick={limparTudo} className="cursor-pointer font-medium text-violet-600 hover:underline dark:text-violet-400">Limpar filtros</button>.</td></tr>
                 )}
               </tbody>
               {niveis.length === 0 && flat.length > 0 && valorSoma && colsVisiveis.some((c) => c.key === colunaSoma) && (
@@ -551,7 +548,6 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                         {i === 0 ? <span className="text-muted-foreground">{lista.length} {labelRegistro}</span> : c.key === colunaSoma ? <span className="text-foreground">{brlSoma(somaTotal)}</span> : ""}
                       </td>
                     ))}
-                    <td />
                   </tr>
                 </tfoot>
               )}
@@ -563,12 +559,16 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
 
       {/* ===== KANBAN ===== */}
       {view === "kanban" && kanbanCampo && (
-        <KanbanView lista={lista} campo={kanbanCampo} campoByKey={campoByLike} tituloItem={tituloItem} subtituloItem={subtituloItem} valorItem={valorItem} />
+        <div className="min-h-0 flex-1 overflow-auto">
+          <KanbanView lista={lista} campo={kanbanCampo} campoByKey={campoByLike} tituloItem={tituloItem} subtituloItem={subtituloItem} valorItem={valorItem} />
+        </div>
       )}
 
       {/* ===== CALENDÁRIO ===== */}
       {view === "calendario" && calendarioCampo && (
-        <CalendarioView lista={lista} campoData={calendarioCampo} colunaByKey={colunaByKey as unknown as Record<string, { valor: (r: T) => string | number }>} tituloItem={tituloItem} valorItem={valorItem} />
+        <div className="min-h-0 flex-1 overflow-auto">
+          <CalendarioView lista={lista} campoData={calendarioCampo} colunaByKey={colunaByKey as unknown as Record<string, { valor: (r: T) => string | number }>} tituloItem={tituloItem} valorItem={valorItem} />
+        </div>
       )}
 
       {/* Modais */}

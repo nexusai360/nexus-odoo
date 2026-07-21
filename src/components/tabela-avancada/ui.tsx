@@ -363,6 +363,7 @@ export function SeletorColunas({
   onOrdemChange,
   onVisiveisChange,
   scrollRef,
+  rotulo,
 }: {
   colunas: ColunaOpc[];
   ordem: string[];
@@ -370,6 +371,8 @@ export function SeletorColunas({
   onOrdemChange: (next: string[]) => void;
   onVisiveisChange: (next: string[]) => void;
   scrollRef?: React.RefObject<HTMLElement | null>;
+  /** Quando presente, o gatilho vira um botão de barra com texto (ex.: "Colunas"). */
+  rotulo?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [busca, setBusca] = useState("");
@@ -491,11 +494,20 @@ export function SeletorColunas({
         aria-label="Escolher colunas"
         aria-expanded={open}
         className={cn(
-          "flex size-7 cursor-pointer items-center justify-center rounded-md transition-colors",
-          open ? "bg-violet-500/15 text-violet-600 dark:text-violet-300" : "text-muted-foreground hover:bg-accent hover:text-foreground",
+          rotulo
+            ? "inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border px-3 text-sm transition-colors"
+            : "flex size-7 cursor-pointer items-center justify-center rounded-md transition-colors",
+          rotulo
+            ? open
+              ? "border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300"
+              : "border-border bg-card text-foreground hover:bg-accent"
+            : open
+              ? "bg-violet-500/15 text-violet-600 dark:text-violet-300"
+              : "text-muted-foreground hover:bg-accent hover:text-foreground",
         )}
       >
         <SlidersHorizontal className="size-4" />
+        {rotulo && <span>{rotulo}</span>}
       </button>
       {open && typeof document !== "undefined" && createPortal(
         <div

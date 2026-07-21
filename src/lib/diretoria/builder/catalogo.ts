@@ -9,13 +9,14 @@ export type FonteDado = "real" | "estimado" | "sem_fonte";
 export type DominioComponente = "G" | "C" | "B" | "A" | "K";
 
 /**
- * Grid de OITAVOS (8×8): 8 colunas na horizontal e 8 unidades na vertical.
- * Mínimo de qualquer bloco é nível 2 (nunca 1); máximo 8 (tela cheia). Vale para
- * largura E altura. Atualizado conforme o cliente (2026-06-29).
+ * Grid: 8 colunas na horizontal; na vertical vai até 12 unidades (cada unidade =
+ * 100px). Mínimo de qualquer bloco é nível 2 (nunca 1). A LARGURA máxima é 8 (a
+ * própria grade); a ALTURA máxima depende do tipo (tabelas vão até 12 para caber
+ * quase uma tela cheia, pedido do cliente 2026-07-21). Atualizado 2026-06-29 / 2026-07-21.
  */
 export const GRID_COLS = 8;
 export const LARGURAS = [2, 3, 4, 5, 6, 7, 8] as const;
-export const ALTURAS = [2, 3, 4, 5, 6, 7, 8] as const;
+export const ALTURAS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
 
 export interface Travas {
   larguraMin: number;
@@ -31,7 +32,9 @@ export function travasDoTipo(tipo: TipoComponente): Travas {
       // Faixa de KPIs (ex.: A-01 = 4 cards): pode ocupar de 2 a 8 colunas; baixa.
       return { larguraMin: 2, larguraMax: 8, alturaMin: 2, alturaMax: 3 };
     case "tabela":
-      return { larguraMin: 3, larguraMax: 8, alturaMin: 3, alturaMax: 8 };
+      // Tabelas podem crescer até 12 na vertical (quase tela cheia) , pedido do
+      // cliente (2026-07-21) para a tabela de Entregas parciais ter mais espaço.
+      return { larguraMin: 3, larguraMax: 8, alturaMin: 3, alturaMax: 12 };
     case "grafico":
       // Antes travava em 6×6 (cliente reclamou que a vertical não ia até 8).
       return { larguraMin: 3, larguraMax: 8, alturaMin: 3, alturaMax: 8 };
