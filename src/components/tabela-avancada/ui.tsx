@@ -377,7 +377,7 @@ export function SeletorColunas({
   const [open, setOpen] = useState(false);
   const [busca, setBusca] = useState("");
   // Drag por pointer events (reordenação AO VIVO, sem o drag nativo do navegador).
-  const [drag, setDrag] = useState<{ key: string; from: number; startY: number; dy: number; h: number; startScroll: number; scroll: number } | null>(null);
+  const [drag, setDrag] = useState<{ key: string; from: number; startY: number; dy: number; h: number; startScroll: number; scroll: number; to: number; pitch: number; top0: number } | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   // Lista rolável + Y atual do ponteiro: base do auto-scroll durante o arraste.
@@ -437,32 +437,58 @@ export function SeletorColunas({
   function selecionarTudo() { onVisiveisChange(colunas.map((c) => c.key)); }
   function limpar() { onVisiveisChange(colunas.filter((c) => c.obrigatoria).map((c) => c.key)); }
 
-  // Índice onde o item cairá, dado o deslocamento atual (clampado abaixo das obrigatórias).
   const nObg = ordemFull.filter((k) => byKey[k]?.obrigatoria).length;
-  // Deslocamento EFETIVO = movimento do cursor + quanto a lista rolou desde o início
-  // do arraste. É o que torna o auto-scroll significativo: rolar a lista equivale a
-  // arrastar mais para aquele lado.
+  // Deslocamento visual do item arrastado = movimento do cursor + quanto a lista rolou
+  // desde o início do arraste (para o item seguir o cursor mesmo com auto-scroll).
   function deslocDe(d: { dy: number; startScroll: number; scroll: number }) {
     return d.dy + (d.scroll - d.startScroll);
   }
-  function alvoDe(d: { from: number; dy: number; h: number; startScroll: number; scroll: number }) {
-    const passos = Math.round(deslocDe(d) / d.h);
-    return Math.min(Math.max(d.from + passos, nObg), ordemFull.length - 1);
+  // Destino = a LINHA que está sob o cursor (posição real na lista), não um deslocamento
+  // arredondado. Usa o PITCH real (altura da linha + o gap do `space-y-0.5`) e a posição
+  // da 1ª linha medidos no início do arraste, então o vão abre exatamente onde o cursor
+  // está e, ao soltar, a coluna cai sob o mouse , sem "pular" linha e sem drift.
+  function calcTo(d: { from: number; pitch: number; top0: number }, pointerY: number): number {
+    const el = listaRef.current;
+    if (!el) return d.from;
+    const rect = el.getBoundingClientRect();
+    const rel = pointerY - rect.top + el.scrollTop;
+    // Limiar no PONTO MÉDIO da linha (round): o vão abre entre as duas linhas mais
+    // próximas do cursor (metade de cima -> antes; metade de baixo -> depois), em vez
+    // de só quando o cursor entra na próxima linha inteira.
+    const linha = Math.round((rel - d.top0) / d.pitch);
+    return Math.min(Math.max(linha, nObg), ordemFull.length - 1);
   }
   function iniciarDrag(e: React.PointerEvent, key: string, from: number) {
     if (byKey[key]?.obrigatoria || buscando) return;
     const row = (e.currentTarget as HTMLElement).parentElement;
     const h = row?.getBoundingClientRect().height || 34;
-    const sc = listaRef.current?.scrollTop ?? 0;
+    const el = listaRef.current;
+    const sc = el?.scrollTop ?? 0;
+    // Mede o pitch real (linha->linha, já com o gap) e a posição da 1ª linha.
+    let pitch = h, top0 = 0;
+    if (el) {
+      const linhasEl = el.querySelectorAll<HTMLElement>("[data-row-idx]");
+      const lr = el.getBoundingClientRect();
+      if (linhasEl.length >= 2) {
+        const r0 = linhasEl[0].getBoundingClientRect();
+        const r1 = linhasEl[1].getBoundingClientRect();
+        pitch = (r1.top - r0.top) || h;
+        top0 = r0.top - lr.top + el.scrollTop;
+      } else if (linhasEl.length === 1) {
+        const r0 = linhasEl[0].getBoundingClientRect();
+        top0 = r0.top - lr.top + el.scrollTop;
+      }
+    }
     pointerYRef.current = e.clientY;
-    setDrag({ key, from, startY: e.clientY, dy: 0, h, startScroll: sc, scroll: sc });
+    setDrag({ key, from, startY: e.clientY, dy: 0, h, startScroll: sc, scroll: sc, to: from, pitch, top0 });
   }
   useEffect(() => {
     if (!drag) return;
     let raf = 0;
     const mover = (e: PointerEvent) => {
       pointerYRef.current = e.clientY;
-      setDrag((d) => (d ? { ...d, dy: e.clientY - d.startY } : d));
+      const to = calcTo(drag, e.clientY);
+      setDrag((d) => (d ? { ...d, dy: e.clientY - d.startY, to } : d));
     };
     // Auto-scroll: com o cursor perto do topo/fundo da lista, rola sozinho (velocidade
     // proporcional à profundidade na zona de borda), permitindo mover a coluna para
@@ -482,7 +508,8 @@ export function SeletorColunas({
           const next = Math.max(0, Math.min(max, el.scrollTop + delta));
           if (next !== el.scrollTop) {
             el.scrollTop = next;
-            setDrag((d) => (d ? { ...d, scroll: next } : d));
+            const to = calcTo(drag, pointerYRef.current);
+            setDrag((d) => (d ? { ...d, scroll: next, to } : d));
           }
         }
       }
@@ -493,11 +520,10 @@ export function SeletorColunas({
     // nas deps), então no pointerup ele é o estado mais recente. Fazemos o reorder
     // FORA do updater de setDrag (senão chamaríamos setState do pai durante o render).
     const soltar = () => {
-      const to = alvoDe(drag);
-      if (to !== drag.from) {
+      if (drag.to !== drag.from) {
         const arr = [...ordemFull];
         const [movido] = arr.splice(drag.from, 1);
-        arr.splice(to, 0, movido);
+        arr.splice(drag.to, 0, movido);
         onOrdemChange(arr);
       }
       setDrag(null);
@@ -519,9 +545,9 @@ export function SeletorColunas({
   function transformDe(i: number): string | undefined {
     if (!drag) return undefined;
     if (filtradas[i] === drag.key) return `translateY(${deslocDe(drag)}px)`;
-    const to = alvoDe(drag);
-    if (drag.from < to && i > drag.from && i <= to) return `translateY(${-drag.h}px)`;
-    if (to < drag.from && i >= to && i < drag.from) return `translateY(${drag.h}px)`;
+    const to = drag.to;
+    if (drag.from < to && i > drag.from && i <= to) return `translateY(${-drag.pitch}px)`;
+    if (to < drag.from && i >= to && i < drag.from) return `translateY(${drag.pitch}px)`;
     return "translateY(0px)";
   }
 
@@ -577,6 +603,7 @@ export function SeletorColunas({
               return (
                 <div
                   key={k}
+                  data-row-idx={i}
                   style={{ transform: transformDe(i), transition: arrastado ? "none" : "transform 160ms cubic-bezier(0.2,0,0,1)" }}
                   className={cn(
                     "relative flex items-center gap-2 rounded-lg px-1.5 py-1.5",
