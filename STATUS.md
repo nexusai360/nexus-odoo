@@ -3,7 +3,76 @@
 Branch ativa: **`feat/entregas-parciais-base-calculo`** (LOCAL, nada em produção).
 Dev local no ar em `localhost:3000` (containers `db`+`redis` up; Docker reiniciado/destravado em 2026-07-21).
 
-## Onde estamos (2026-07-21)
+## Onde estamos (2026-07-21, tarde) , ÚLTIMO ESTADO
+
+9 commits nesta sessão (`3946baf5..520c580a`), LOCAL, nada em prod, sem PR/merge.
+Dev local no ar (rodei `dev:fresh` várias vezes , mudança de query/provider NÃO
+aplica por fast-refresh, exige **hard reload** Cmd+Shift+R no browser).
+
+**1) B-09 reformulado para modelo POR PEDIDO (era 1 linha por item):**
+- 748 itens viraram **67 pedidos** (1 linha = 1 pedido em todas as visões).
+- Coluna **Pedido = tag clicável** que abre o pedido no Odoo (URL do modelo
+  `pedido.documento` montada de `linha.pedidoId`; confirmado no banco:
+  3210=PV-2511/26, 3500=PV-2684/26).
+- **Dropdown** expansível com os produtos; **detalhe redesenhado** em seções (sem
+  cards retangulares; lista de produtos limpa, sem gridlines).
+- Genérico `tabela-avancada.tsx` ganhou `expandirRow`/`renderDetalhe`/`textoBusca`/
+  `permiteVenda` + `OpcoesTabelaContext`. Catálogo virou `LinhaEntrega`(pedido) +
+  `ItemEntrega`; agregação em `blocos-pedidos.tsx`. storageKey da tabela em **v4**.
+
+**2) Ajustes de UI:** pedido completo (sem truncar), chevron à esquerda, quinas do
+card (overflow-hidden), hover por coluna (setas + divisória roxa), duplo-clique
+auto-fit. Nome do cliente completo (`nomeLimpo` maxLen 999).
+
+**3) Forma de pagamento CORRIGIDA NA FONTE:** vinha das parcelas (só ~40% dos
+pedidos em aberto têm parcela) → agora de `raw_pedido_documento.data.forma_pagamento_id`
+(cabeçalho, cobre 100%). PV-2464 passou de "-" para **Boleto**.
+
+**4) Quantidade** (Total/Atendida/A atender) e **Valor** (Total/Atendido/A atender)
++ **toggle custo/venda com ícones** (Coins âmbar em cima / Tag verde embaixo), botão
+"Mostrar venda".
+
+**5) RENTABILIDADE do PEDIDO** (comissão/subtotal/margem/impostos) , extraída direto
+do jsonb `raw_pedido_documento.data` (campos PRONTOS do Odoo, aba Rentabilidade):
+`vr_operacao_tributacao`(subtotal), `vr_custo_comercial`, `vr_icms_proprio`,
+`vr_difal`, `vr_fcp`, `vr_pis_proprio`, `vr_cofins_proprio`, `al_comissao`,
+`vr_comissao`, `vr_liquido`, `al_margem`. **PERÍCIA CRÍTICA: Margem = Líquido ÷
+Subtotal, e líquido/margem vêm PRONTOS , NÃO recalcular** (subtração simples das
+colunas de imposto bruto dá margem errada, porque é Lucro Real e o `vr_liquido` já
+abate créditos). Coluna **Margem** (colorida) + seção "Rentabilidade do pedido" no
+detalhe; novo `CelulaTipo "percent"`. "Contrato" → **"Validade"**.
+
+**6) MODO ESTENDIDO (tela larga) em TODAS as telas da Diretoria** (só lá):
+`src/components/diretoria/modo-estendido.tsx` (`ModoEstendidoProvider` no
+`diretoria/layout.tsx` + localStorage; `DiretoriaShell` substitui `PageShell wide`;
+`BotaoModoEstendido` no padrão do "Editar layout"). Ligado: `max-w-none` + margem
+25px. **Animação suave via Web Animations API (FLIP no max-width)** porque
+`max-width:none` não é animável por CSS (dava a piscada); blocos do grid com
+`.anim-off` (transition:none no modo visualização) acompanham quadro a quadro.
+
+Validado por E2E Playwright (usuário `render-check`): 67 pedidos, tag, dropdown,
+detalhe, rentabilidade (PV-2464 Margem 16,36%), toggle custo/venda, modo estendido
+(1399→2320px em 2560). tsc/eslint verdes.
+
+### PRÓXIMA SESSÃO (retomar por aqui)
+1. **Replicar comissão/margem A NÍVEL DE PRODUTO** (cada linha do dropdown e da
+   tela de detalhe). Os dados já estão prontos em `raw_sped_documento_item.data`
+   (`al_comissao`, `vr_comissao`, `al_margem`, `vr_liquido` por item). Mesmo padrão
+   de extração jsonb na consulta `src/lib/diretoria/queries/entregas-parciais.ts`
+   (carregar os raw dos itens por odooId e mapear), **sem migration**. Foi o que
+   ficou combinado com o dono ("produto fica pra depois").
+2. Continuar os ajustes finos do B-09 conforme o dono validar.
+3. (Futuro, opcional) materializar a rentabilidade nos fatos (migration + builder
+   `fato-pedido.ts`/`fato-pedido-item.ts` + rebuild worker via `docker compose
+   build app`) se quiser performance/uso por outros consumidores , investigação já
+   feita (relatório do agente nesta sessão).
+
+Obs.: os PDFs em `docs/nova-implementacao-dashboards/` NÃO são desta frente (outra
+atividade); deixados intactos, fora dos meus commits.
+
+---
+
+## Onde estamos (2026-07-21, manhã)
 
 **Tabela avançada do B-09 (Entregas Parciais) , réplica da tabela do ERP Nexus , ENTREGUE e no ar.**
 
