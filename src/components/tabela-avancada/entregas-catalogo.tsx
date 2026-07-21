@@ -7,7 +7,7 @@
  * status financeiro (Fase 2). É o único acoplamento a domínio da tabela nova.
  */
 
-import { CircleCheck, CircleX } from "lucide-react";
+import { CircleCheck, CircleX, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { corEtapaValida, derivarCorTag } from "@/lib/diretoria/etapa-cor";
 import { formatarNomeEtapa } from "@/lib/diretoria/etapa-formato";
@@ -16,6 +16,8 @@ import type { ColunaDef, CampoDef } from "./tipos";
 // ===== Shape da linha (montado em blocos-pedidos.tsx) =====
 
 export interface LinhaEntrega {
+  /** id interno do registro `pedido.documento` no Odoo (monta a URL da tag). */
+  pedidoId: number;
   numero: string;
   mercos: string;
   orcamento: string;
@@ -56,6 +58,12 @@ const brl = new Intl.NumberFormat("pt-BR", {
 });
 export function formatBRL(v: number): string {
   return Number.isFinite(v) ? brl.format(v) : "R$ 0,00";
+}
+
+/** URL do pedido no Odoo (Tauga). Só o `id` muda entre pedidos; o resto é fixo
+ * para a tela de formulário do modelo `pedido.documento`. */
+export function urlPedidoOdoo(pedidoId: number): string {
+  return `https://grupojht.tauga.online/web#id=${pedidoId}&cids=1&menu_id=111&action=487&model=pedido.documento&view_type=form`;
 }
 
 /** ISO (YYYY-MM-DD…) -> DD/MM/AAAA. Não-ISO (ex.: "—") volta intacto. */
@@ -167,11 +175,39 @@ export const AGRUPAMENTOS: { campo: string; label: string }[] = [
   { campo: "prevista", label: "Mês previsto" },
 ];
 
+// ===== Tag do pedido (abre o pedido no Odoo em nova aba) =====
+
+/** Número do pedido como tag translúcida (foreground/10: preta translúcida no
+ * claro, branca translúcida no escuro). Clicável quando há id do Odoo; o clique
+ * não propaga para não abrir o detalhe da linha por baixo. */
+export function TagPedido({ numero, pedidoId }: { numero: string; pedidoId: number }) {
+  const base =
+    "inline-flex max-w-full items-center gap-1 truncate rounded-md bg-foreground/10 px-2 py-0.5 text-xs font-semibold text-foreground ring-1 ring-inset ring-foreground/15 transition-colors";
+  const podeAbrir = Number.isFinite(pedidoId) && pedidoId > 0 && !!numero && numero !== "-";
+  if (!podeAbrir) return <span className={base}>{numero}</span>;
+  return (
+    <a
+      href={urlPedidoOdoo(pedidoId)}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(e) => e.stopPropagation()}
+      title={`Abrir ${numero} no Odoo`}
+      aria-label={`Abrir pedido ${numero} no Odoo, nova aba`}
+      className={cn(base, "cursor-pointer hover:bg-foreground/20 hover:ring-foreground/25")}
+    >
+      <span className="truncate tabular-nums">{numero}</span>
+      <ExternalLink className="size-3 shrink-0 text-muted-foreground" aria-hidden />
+    </a>
+  );
+}
+
 // ===== Render de célula por tipo =====
 
 export function celula(l: LinhaEntrega, key: string): React.ReactNode {
   const col = COLUNA_BY_KEY[key];
   if (!col) return null;
+  // Pedido: tag translúcida clicável (abre no Odoo).
+  if (key === "numero") return <TagPedido numero={l.numero} pedidoId={l.pedidoId} />;
   switch (col.tipo) {
     case "moeda":
       return <span className="whitespace-nowrap tabular-nums">{formatBRL(Number(l[key] ?? 0))}</span>;

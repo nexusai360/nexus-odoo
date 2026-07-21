@@ -196,6 +196,7 @@ const PRESETS_ENTREGA: PresetFiltro[] = [
 
 function TabelaEntregasParciais({ d }: { d: PedidosData }) {
   const linhas: LinhaEntrega[] = d.entregasParciais.linhas.map((l) => ({
+    pedidoId: l.pedidoId ?? 0,
     numero: l.numero ?? DASH,
     mercos: l.numeroMercos ?? DASH,
     // Fase 3: datas (ISO ou DASH; a coluna tipo "data" formata DD/MM/AAAA).
