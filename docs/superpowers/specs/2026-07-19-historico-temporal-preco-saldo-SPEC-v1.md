@@ -1,7 +1,7 @@
 # SPEC v1 , Histórico temporal de preço e de saldo de estoque
 
 **Frente B do PLAN 4/6.** Origem: reunião com o dono em 2026-07-19
-(`docs/superpowers/research/2026-07-19-reuniao-transcricao-BRUTA.md`).
+(`docs/transcricoes-reunioes/2026-07-19-reuniao-transcricao-BRUTA.md`).
 
 ## 1. O pedido, na voz do dono
 

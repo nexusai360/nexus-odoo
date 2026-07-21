@@ -72,7 +72,7 @@
 - Modify: `src/lib/reports/queries/estoque.ts:378` (`queryValorArmazem`, caminho de prefixo) , fix mínimo `AND raw_deleted=false` (NÃO reescrever o caminho de prefixo).
 - Modify: `mcp/tools/estoque/locais-por-produto.ts:161` , alinhar o `includes("demonstra")` à regra da fonte única (Task B4).
 - Doc: `src/lib/agent/evals/golden/golden-nex.json` , registrar/alinhar a divergência futura dos golden evals (Task B4).
-- Doc: atualizar `docs/superpowers/research/2026-07-19-pericia-completa-reuniao.md` §5/§11 (414 é lixo, não bug).
+- Doc: atualizar `docs/transcricoes-reunioes/2026-07-19-pericia-completa-reuniao.md` §5/§11 (414 é lixo, não bug).
 
 **Frente C , Demonstração em 2 blocos**
 - Create: `src/lib/estoque/subtipo-demonstracao.ts` (deriva "nosso" | "cliente") + `.test.ts`.
@@ -597,7 +597,7 @@ git commit -m "B4: porCategoria de locais-por-produto usa a fonte unica (conta d
 ### Task B3: Corrigir a premissa do doc-mãe sobre o id 414
 
 **Files:**
-- Modify: `docs/superpowers/research/2026-07-19-pericia-completa-reuniao.md` (§5, §7 linha H, §11)
+- Modify: `docs/transcricoes-reunioes/2026-07-19-pericia-completa-reuniao.md` (§5, §7 linha H, §11)
 
 **Interfaces:** nenhuma (documentação).
 
@@ -608,7 +608,7 @@ Substituir "existe no raw mas está fora do fato (bug 389 de 390)" pela verdade 
 - [ ] **Step 2: Commit**
 
 ```bash
-git add docs/superpowers/research/2026-07-19-pericia-completa-reuniao.md
+git add docs/transcricoes-reunioes/2026-07-19-pericia-completa-reuniao.md
 git commit -m "B3: doc-mae, id 414 e lixo deletado no Odoo (nao bug); regra JDSDEMO cobre o futuro"
 ```
 

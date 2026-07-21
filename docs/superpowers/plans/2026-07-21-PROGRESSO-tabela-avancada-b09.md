@@ -79,3 +79,18 @@ RESPOSTA AO DONO: grid = 8 horizontais x 8 verticais (agora ate 12 na vertical p
 
 PENDENTE: dono avaliar no browser (especialmente detalhe do pedido e kanban por
 dimensao) e pedir ajustes finos ou autorizar merge. Nada em prod sem sim dele.
+
+## CALIBRACAO (2026-07-21, 2a rodada de ajustes) , ENTREGUE
+
+Commit apos 18594c0d. tsc/eslint limpos, 0 erros de runtime, validado por screenshot.
+- **Calendario**: dias vazios da semana = "Sem registro" (nao virgula); tela do dia
+  vazio redesenhada (icone CalendarOff + msg clean); range da semana com hifen
+  "dd/mm/aaaa - dd/mm/aaaa"; cabecalho reorganizado (periodo CENTRALIZADO entre as
+  setinhas, seletor Dia/Semana/Mes a DIREITA, botao "Hoje" REMOVIDO).
+- **Detalhe do pedido** (DetalhePedido redesenhado): numero em destaque (2xl) +
+  cliente; campos por `detalheSpan` (cliente/produto/emitente/operacao largos=2,
+  observacoes/obsEntrega=linha inteira=4), texto completo sem truncar; filtro por
+  NUMERO do pedido no topo (digita->filtra sugestoes->clica->navega). `ColunaDef`
+  ganhou `detalheSpan`; catalogo marca os longos.
+
+PENDENTE: dono avaliar; possiveis novos ajustes finos; depois autorizar merge.

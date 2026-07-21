@@ -1,7 +1,7 @@
 # SPEC v2 , Histórico temporal de preço e de saldo de estoque
 
 **Frente B do PLAN 4/6.** Origem: reunião com o dono em 2026-07-19
-(`docs/superpowers/research/2026-07-19-reuniao-transcricao-BRUTA.md`).
+(`docs/transcricoes-reunioes/2026-07-19-reuniao-transcricao-BRUTA.md`).
 Esta é a v2: a v1 passou por uma review adversarial que derrubou a justificativa central
 do desenho e achou dez outros problemas materiais. Os achados estão aplicados aqui, cada um
 marcado com `[R1-n]`.
