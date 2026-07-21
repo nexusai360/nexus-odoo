@@ -4,6 +4,8 @@
  * seu shape de linha.
  */
 
+import type { ReactNode } from "react";
+
 import type { CampoTipo } from "./motor-filtro";
 
 /** Como uma célula é renderizada. */
@@ -39,6 +41,10 @@ export interface ColunaDef<T> {
   sortKey?: (row: T) => string | number;
   /** largura do campo na TELA DE DETALHE (1 = normal, 2 = largo, 4 = linha inteira). */
   detalheSpan?: 1 | 2 | 4;
+  /** Conteúdo da linha de TOTAL (rodapé fixo) desta coluna, calculado sobre TODAS as
+   * linhas filtradas (não só a página atual). Ausente = célula de total vazia.
+   * O domínio decide o agregado (soma, contagem, margem geral, tag de contagem…). */
+  rodape?: (rows: T[]) => ReactNode;
 }
 
 /** Campo para filtro/busca/agrupamento (curado por domínio). */

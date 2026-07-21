@@ -3,6 +3,32 @@
 Branch ativa: **`feat/entregas-parciais-base-calculo`** (LOCAL, nada em produção).
 Dev local no ar em `localhost:3000` (containers `db`+`redis` up; Docker reiniciado/destravado em 2026-07-21).
 
+## Onde estamos (2026-07-21, noite 3) , LINHA DE TOTAL FIXA + CABEÇALHO + RENOMES + AUTO-SCROLL
+
+Vários ajustes do dono no B-09:
+- **Linha de TOTAL fixa (sticky) no rodapé** com somatórios por coluna, calculados
+  sobre TODAS as linhas filtradas (não só a página). Novo `rodape?: (rows) => Node`
+  em `ColunaDef`; `tabela-avancada` renderiza `<tfoot sticky bottom-0>`. Totais:
+  Pedido = contagem (70 pedidos); Produtos = tag com total de linhas (753); Qtd.
+  Total/Atendida/A Atender = soma; Valor Atendido/A Atender = soma (custo/venda pelo
+  toggle); Desconto/Subtotal/Comissão(R$)/Custo Comercial/ICMS/DIFAL/FCP/PIS/COFINS/
+  IRPJ/CSLL/Lucro Líquido = soma. **Margem geral = Σlíquido÷Σsubtotal** e **% Comissão
+  geral = Σcomissão÷Σsubtotal** (fórmula do Odoo, nunca média de %). Financeiro =
+  bloco central "Nverde | Nvermelho" (liberados|bloqueados). Validado: Valor A Atender
+  total = R$ 5.935.873,07 (= KPI Falta entregar custo); Margem 9,75%; Financeiro 68|2.
+- **Cabeçalho com cor distinta** (`bg-muted` + borda 2px) para separar do corpo.
+- **IRPJ e CSLL** (novas colunas): `vr_irpj`/`vr_csll` do `raw_pedido_documento`
+  (extrairRentabilidade), sem migration/rebuild. Também no detalhe.
+- **"Valor total" REMOVIDA da lista** (duplicava Custo Comercial; decisão do dono).
+- **Renomes** (colunas): Qtd. Total / Qtd. Atendida / Qtd. A Atender / Valor Atendido /
+  Valor A Atender / % Comissão / Valor Comissão / Custo Comercial / Lucro Líquido /
+  Condição de Pagamento. Detalhe idem (Custo Comercial, IRPJ, CSLL, Lucro Líquido).
+- **Auto-scroll no seletor de Colunas durante o arraste** (`ui.tsx`): com o cursor
+  perto do topo/fundo da lista, ela rola sozinha (rAF, velocidade por profundidade da
+  borda); o alvo passou a ser ciente do scroll (deslocamento efetivo = cursor + scroll),
+  permitindo levar uma coluna da última posição para o topo e vice-versa.
+- tsc/eslint verdes; validado por Playwright (render-check), 0 erros de runtime.
+
 ## Onde estamos (2026-07-21, noite 2) , CONDIÇÃO VISÍVEL + COLUNA DE DESCONTO
 
 Dois ajustes do dono no B-09:

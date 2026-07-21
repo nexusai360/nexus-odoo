@@ -89,6 +89,8 @@ export interface LinhaEntrega {
   fcp: number;
   pis: number;
   cofins: number;
+  irpj: number;
+  csll: number;
   comissaoPct: number;
   comissaoValor: number;
   liquido: number;
@@ -137,6 +139,49 @@ function mesLabel(iso: string): string {
   return m ? `${nomesMes[Number(m[2]) - 1]}/${m[1]}` : "sem data";
 }
 
+// ===== Totais do rodapé fixo (calculados sobre TODAS as linhas filtradas) =====
+
+const num0 = (v: number) => (Number.isFinite(v) ? v : 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 });
+const somaDe = (rows: LinhaEntrega[], sel: (l: LinhaEntrega) => number): number =>
+  rows.reduce((s, l) => s + (sel(l) || 0), 0);
+
+function celTotMoeda(v: number): React.ReactNode {
+  return <span className="whitespace-nowrap tabular-nums">{formatBRL(v)}</span>;
+}
+function celTotNum(v: number): React.ReactNode {
+  return <span className="whitespace-nowrap tabular-nums">{num0(v)}</span>;
+}
+/** Total em R$ (rodapé). */
+const totMoeda = (sel: (l: LinhaEntrega) => number) => (rows: LinhaEntrega[]): React.ReactNode => celTotMoeda(somaDe(rows, sel));
+/** Total numérico (quantidades). */
+const totNum = (sel: (l: LinhaEntrega) => number) => (rows: LinhaEntrega[]): React.ReactNode => celTotNum(somaDe(rows, sel));
+
+/** Total da coluna Pedido: contagem de pedidos. */
+function rodapePedidos(rows: LinhaEntrega[]): React.ReactNode {
+  return <span className="whitespace-nowrap tabular-nums text-muted-foreground">{num0(rows.length)} {rows.length === 1 ? "pedido" : "pedidos"}</span>;
+}
+/** Total da coluna Produtos: tag com o total de linhas de produto. */
+function rodapeProdutos(rows: LinhaEntrega[]): React.ReactNode {
+  const t = somaDe(rows, (l) => l.qtdItens);
+  return (
+    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-md bg-background px-2 py-0.5 text-xs font-medium text-muted-foreground ring-1 ring-inset ring-border">
+      <Package className="size-3 shrink-0" aria-hidden />{num0(t)} {t === 1 ? "produto" : "produtos"}
+    </span>
+  );
+}
+
+/** Total de valor com custo/venda: segue o toggle "Mostrar venda" (mesma leitura da célula). */
+function TotalValorCV({ custo, venda }: { custo: number; venda: number }) {
+  const { mostrarVenda } = useContext(OpcoesTabelaContext);
+  if (!mostrarVenda) return <span className="whitespace-nowrap tabular-nums">{formatBRL(custo)}</span>;
+  return (
+    <span className="inline-flex flex-col items-end gap-0.5 leading-tight">
+      <span className="inline-flex items-center gap-1 whitespace-nowrap text-xs tabular-nums text-amber-500" title="Custo"><Coins className="size-3 shrink-0" aria-hidden />{formatBRL(custo)}</span>
+      <span className="inline-flex items-center gap-1 whitespace-nowrap text-xs tabular-nums text-emerald-500" title="Venda"><Tag className="size-3 shrink-0" aria-hidden />{formatBRL(venda)}</span>
+    </span>
+  );
+}
+
 // ===== Colunas do PEDIDO (cabeçalho da lista + tela de detalhe) =====
 
 // Ordem TEMÁTICA (dono, 2026-07-21): colunas do mesmo assunto juntas, numa
@@ -144,12 +189,24 @@ function mesLabel(iso: string): string {
 // (`padrao: true`) segue essa mesma ordem; o resto fica no seletor de colunas.
 export const COLUNAS: ColunaDef<LinhaEntrega>[] = [
   // --- Identificação e status do pedido ---
-  { key: "numero", label: "Pedido", tipo: "texto", sortable: true, numeric: false, padrao: true, obrigatoria: true, valor: (l) => l.numero },
+  { key: "numero", label: "Pedido", tipo: "texto", sortable: true, numeric: false, padrao: true, obrigatoria: true, valor: (l) => l.numero, rodape: rodapePedidos },
   { key: "mercos", label: "Nº Mercos", tipo: "texto", sortable: true, numeric: false, padrao: true, valor: (l) => l.mercos },
-  { key: "itens", label: "Produtos", tipo: "numero", sortable: true, numeric: false, padrao: true, valor: (l) => l.qtdItens },
+  { key: "itens", label: "Produtos", tipo: "numero", sortable: true, numeric: false, padrao: true, valor: (l) => l.qtdItens, rodape: rodapeProdutos },
   { key: "etapa", label: "Etapa", tipo: "tagCor", sortable: true, numeric: false, padrao: true, valor: (l) => formatarNomeEtapa(l.etapa) },
   // Financeiro é um ícone (liberado/bloqueado): centralizado na coluna, acompanha o resize.
-  { key: "status", label: "Financeiro", tipo: "status", sortable: true, numeric: false, align: "center", padrao: true, valor: (l) => l.status },
+  // Total: nº de liberados (verde) | nº de bloqueados (vermelho), como um bloco central.
+  { key: "status", label: "Financeiro", tipo: "status", sortable: true, numeric: false, align: "center", padrao: true, valor: (l) => l.status,
+    rodape: (rows) => {
+      const lib = rows.filter((l) => l.status === "Liberado").length;
+      const bloq = rows.filter((l) => l.status === "Bloqueado").length;
+      return (
+        <span className="inline-flex items-center justify-center gap-1.5 tabular-nums" title={`${lib} liberado(s), ${bloq} bloqueado(s)`}>
+          <span className="text-emerald-500">{num0(lib)}</span>
+          <span className="text-muted-foreground/40">|</span>
+          <span className="text-rose-500">{num0(bloq)}</span>
+        </span>
+      );
+    } },
   // --- Cliente e localização ---
   { key: "cliente", label: "Cliente", tipo: "texto", sortable: true, numeric: false, padrao: true, valor: (l) => l.cliente, detalheSpan: 2 },
   { key: "cnpj", label: "CNPJ", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.cnpj, sortKey: (l) => Number(String(l.cnpj).replace(/\D/g, "")) || 0 },
@@ -162,35 +219,42 @@ export const COLUNAS: ColunaDef<LinhaEntrega>[] = [
   { key: "operacao", label: "Operação", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.operacao, detalheSpan: 2 },
   { key: "modalidade", label: "Modalidade", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.modalidade },
   { key: "forma", label: "Forma de pagamento", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.forma },
-  { key: "condicao", label: "Condição de pagamento", tipo: "texto", sortable: true, numeric: false, padrao: true, valor: (l) => l.condicao },
+  { key: "condicao", label: "Condição de Pagamento", tipo: "texto", sortable: true, numeric: false, padrao: true, valor: (l) => l.condicao },
   // --- Datas ---
   { key: "orcamento", label: "Orçamento", tipo: "data", sortable: true, numeric: false, padrao: false, valor: (l) => l.orcamento },
   { key: "prevista", label: "Prevista", tipo: "data", sortable: true, numeric: false, padrao: true, valor: (l) => l.prevista },
   { key: "contrato", label: "Validade", tipo: "data", sortable: true, numeric: false, padrao: false, valor: (l) => l.contrato },
   // --- Quantidades (unidades): total, atendida, a atender ---
-  { key: "qtdTotal", label: "Qtd total", tipo: "numero", sortable: true, numeric: true, padrao: true, valor: (l) => l.qtdTotal },
-  { key: "qtdAtendida", label: "Qtd atendida", tipo: "numero", sortable: true, numeric: true, padrao: true, valor: (l) => l.qtdAtendida },
-  { key: "qtd", label: "Qtd a atender", tipo: "numero", sortable: true, numeric: true, padrao: true, valor: (l) => l.qtd },
+  { key: "qtdTotal", label: "Qtd. Total", tipo: "numero", sortable: true, numeric: true, padrao: true, valor: (l) => l.qtdTotal, rodape: totNum((l) => l.qtdTotal) },
+  { key: "qtdAtendida", label: "Qtd. Atendida", tipo: "numero", sortable: true, numeric: true, padrao: true, valor: (l) => l.qtdAtendida, rodape: totNum((l) => l.qtdAtendida) },
+  { key: "qtd", label: "Qtd. A Atender", tipo: "numero", sortable: true, numeric: true, padrao: true, valor: (l) => l.qtd, rodape: totNum((l) => l.qtd) },
   // --- Valores da entrega: custo por padrão; com o toggle "Mostrar venda", a
   // célula mostra custo (ícone moeda) em cima e venda (ícone tag) embaixo.
   // `valor` = custo (usado no sort/agrupamento/CSV). ---
-  { key: "valorTotal", label: "Valor total", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.valorTotalCusto },
-  { key: "valorAtendido", label: "Valor atendido", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.valorAtendidoCusto },
-  { key: "valorAtender", label: "Valor a atender", tipo: "moeda", sortable: true, numeric: true, padrao: true, valor: (l) => l.vlrCusto },
+  { key: "valorAtendido", label: "Valor Atendido", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.valorAtendidoCusto,
+    rodape: (rows) => <TotalValorCV custo={somaDe(rows, (l) => l.valorAtendidoCusto)} venda={somaDe(rows, (l) => l.valorAtendidoVenda)} /> },
+  { key: "valorAtender", label: "Valor A Atender", tipo: "moeda", sortable: true, numeric: true, padrao: true, valor: (l) => l.vlrCusto,
+    rodape: (rows) => <TotalValorCV custo={somaDe(rows, (l) => l.vlrCusto)} venda={somaDe(rows, (l) => l.vlrVenda)} /> },
   // Desconto do pedido (R$, do Odoo). Visível por padrão a pedido do dono.
-  { key: "desconto", label: "Desconto", tipo: "moeda", sortable: true, numeric: true, padrao: true, valor: (l) => l.descontoValor },
+  { key: "desconto", label: "Desconto", tipo: "moeda", sortable: true, numeric: true, padrao: true, valor: (l) => l.descontoValor, rodape: totMoeda((l) => l.descontoValor) },
   // --- Rentabilidade do pedido (prontos do Odoo). Margem padrão; resto opcional. ---
-  { key: "subtotal", label: "Subtotal", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.subtotal },
-  { key: "custoComercial", label: "Custo comercial", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.custoComercial },
-  { key: "comissaoPct", label: "% comissão", tipo: "percent", sortable: true, numeric: true, padrao: false, valor: (l) => l.comissaoPct },
-  { key: "comissaoValor", label: "Comissão", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.comissaoValor },
-  { key: "liquido", label: "Líquido", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.liquido },
-  { key: "margemPct", label: "Margem", tipo: "percent", sortable: true, numeric: true, padrao: true, valor: (l) => l.margemPct },
-  { key: "icms", label: "ICMS", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.icms },
-  { key: "difal", label: "DIFAL", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.difal },
-  { key: "fcp", label: "FCP", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.fcp },
-  { key: "pis", label: "PIS", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.pis },
-  { key: "cofins", label: "COFINS", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.cofins },
+  { key: "subtotal", label: "Subtotal", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.subtotal, rodape: totMoeda((l) => l.subtotal) },
+  { key: "custoComercial", label: "Custo Comercial", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.custoComercial, rodape: totMoeda((l) => l.custoComercial) },
+  // % comissão geral = Σ comissão ÷ Σ subtotal (não é média de %).
+  { key: "comissaoPct", label: "% Comissão", tipo: "percent", sortable: true, numeric: true, padrao: false, valor: (l) => l.comissaoPct,
+    rodape: (rows) => { const sub = somaDe(rows, (l) => l.subtotal); const com = somaDe(rows, (l) => l.comissaoValor); const p = sub ? (com / sub) * 100 : 0; return <span className="whitespace-nowrap tabular-nums">{formatPct(p)}</span>; } },
+  { key: "comissaoValor", label: "Valor Comissão", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.comissaoValor, rodape: totMoeda((l) => l.comissaoValor) },
+  { key: "liquido", label: "Lucro Líquido", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.liquido, rodape: totMoeda((l) => l.liquido) },
+  // Margem geral = Σ líquido ÷ Σ subtotal (mesma fórmula do Odoo, nunca média de %).
+  { key: "margemPct", label: "Margem", tipo: "percent", sortable: true, numeric: true, padrao: true, valor: (l) => l.margemPct,
+    rodape: (rows) => { const sub = somaDe(rows, (l) => l.subtotal); const liq = somaDe(rows, (l) => l.liquido); const m = sub ? (liq / sub) * 100 : 0; return <span className={cn("whitespace-nowrap tabular-nums", corMargem(m))}>{formatPct(m)}</span>; } },
+  { key: "icms", label: "ICMS", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.icms, rodape: totMoeda((l) => l.icms) },
+  { key: "difal", label: "DIFAL", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.difal, rodape: totMoeda((l) => l.difal) },
+  { key: "fcp", label: "FCP", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.fcp, rodape: totMoeda((l) => l.fcp) },
+  { key: "pis", label: "PIS", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.pis, rodape: totMoeda((l) => l.pis) },
+  { key: "cofins", label: "COFINS", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.cofins, rodape: totMoeda((l) => l.cofins) },
+  { key: "irpj", label: "IRPJ", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.irpj, rodape: totMoeda((l) => l.irpj) },
+  { key: "csll", label: "CSLL", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.csll, rodape: totMoeda((l) => l.csll) },
   // --- Observações ---
   { key: "observacoes", label: "Observações Pedido", tipo: "texto", sortable: false, numeric: false, padrao: false, valor: (l) => l.observacoes, detalheSpan: 4 },
   { key: "obsEntrega", label: "Observações Gerais", tipo: "texto", sortable: false, numeric: false, padrao: false, valor: (l) => l.obsEntrega, detalheSpan: 4 },
@@ -342,7 +406,6 @@ export function celula(l: LinhaEntrega, key: string): React.ReactNode {
   // Pedido: tag translúcida clicável (abre no Odoo).
   if (key === "numero") return <TagPedido numero={l.numero} pedidoId={l.pedidoId} />;
   // Colunas de valor: custo por padrão, custo+venda com o toggle.
-  if (key === "valorTotal") return <CelulaValorCV custo={l.valorTotalCusto} venda={l.valorCheio} />;
   if (key === "valorAtendido") return <CelulaValorCV custo={l.valorAtendidoCusto} venda={l.valorAtendidoVenda} />;
   if (key === "valorAtender") return <CelulaValorCV custo={l.vlrCusto} venda={l.vlrVenda} />;
   // Desconto: a chave da coluna ("desconto") difere do campo da linha
@@ -542,14 +605,16 @@ export function DetalheEntrega({ l }: { l: LinhaEntrega }) {
             <div className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-4">
               <Campo label="Subtotal" valor={formatBRL(l.subtotal)} />
               <Campo label={`Desconto (${formatPct(l.descontoPct)})`} valor={formatBRL(l.descontoValor)} />
-              <Campo label="Custo comercial" valor={formatBRL(l.custoComercial)} />
+              <Campo label="Custo Comercial" valor={formatBRL(l.custoComercial)} />
               <Campo label={`Comissão (${formatPct(l.comissaoPct)})`} valor={formatBRL(l.comissaoValor)} />
               <Campo label="ICMS" valor={formatBRL(l.icms)} />
               <Campo label="DIFAL" valor={formatBRL(l.difal)} />
               <Campo label="FCP" valor={formatBRL(l.fcp)} />
               <Campo label="PIS" valor={formatBRL(l.pis)} />
               <Campo label="COFINS" valor={formatBRL(l.cofins)} />
-              <Campo label="Líquido" valor={formatBRL(l.liquido)} />
+              <Campo label="IRPJ" valor={formatBRL(l.irpj)} />
+              <Campo label="CSLL" valor={formatBRL(l.csll)} />
+              <Campo label="Lucro Líquido" valor={formatBRL(l.liquido)} />
               <div className="min-w-0">
                 <dt className="text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground">Margem</dt>
                 <dd className={cn("mt-0.5 text-sm font-semibold tabular-nums", l.margemPct < 0 ? "text-rose-400" : l.margemPct > 0 ? "text-emerald-400" : "text-muted-foreground")}>{formatPct(l.margemPct)}</dd>

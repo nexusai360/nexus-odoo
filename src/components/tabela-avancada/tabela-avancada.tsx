@@ -102,7 +102,6 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   celula,
   rowKey = (_r, i) => String(i),
   valorSoma,
-  colunaSoma,
   storageKey,
   exportFilename,
   labelRegistro = "registros",
@@ -269,7 +268,6 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
     return arr;
   }, [lista, sorts, colunaByKey]);
 
-  const somaTotal = valorSoma ? lista.reduce((s, r) => s + valorSoma(r), 0) : 0;
   const filtrosAtivos = chips.length + (arvore ? 1 : 0);
 
   // ===== Paginação =====
@@ -548,8 +546,8 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                   {colsVisiveis.map((c) => <col key={c.key} style={{ width: larguras[c.key] }} />)}
                 </colgroup>
               )}
-              <thead className="sticky top-0 z-10 bg-card">
-                <tr className="border-b border-border text-left text-sm font-semibold text-muted-foreground">
+              <thead className="sticky top-0 z-20 bg-muted">
+                <tr className="border-b-2 border-border text-left text-sm font-semibold text-muted-foreground">
                   {colsVisiveis.map((c, ci) => {
                     const ord = ordemDe(c.key);
                     const primeira = ci === 0;
@@ -623,14 +621,17 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                   <tr><td colSpan={colCount} className="px-4 py-12 text-center text-sm text-muted-foreground">Nenhum registro corresponde aos filtros. <button type="button" onClick={limparTudo} className="cursor-pointer font-medium text-violet-600 hover:underline dark:text-violet-400">Limpar filtros</button>.</td></tr>
                 )}
               </tbody>
-              {niveis.length === 0 && flat.length > 0 && valorSoma && colsVisiveis.some((c) => c.key === colunaSoma) && (
-                <tfoot>
-                  <tr className="border-t border-border bg-muted/30 text-sm font-semibold">
-                    {colsVisiveis.map((c, i) => (
-                      <td key={c.key} className={cn("px-4 py-3", c.numeric && "text-right tabular-nums")}>
-                        {i === 0 ? <span className="text-muted-foreground">{lista.length} {labelRegistro}</span> : c.key === colunaSoma ? <span className="text-foreground">{brlSoma(somaTotal)}</span> : ""}
-                      </td>
-                    ))}
+              {niveis.length === 0 && lista.length > 0 && colsVisiveis.some((c) => c.rodape) && (
+                <tfoot className="sticky bottom-0 z-20">
+                  <tr className="border-t-2 border-border bg-muted text-sm font-semibold text-foreground">
+                    {colsVisiveis.map((c, ci) => {
+                      const alinhar = c.align ?? (c.numeric ? "right" : "left");
+                      return (
+                        <td key={c.key} className={cn(ci === 0 ? "pl-2 pr-4" : "px-4", compacto ? "py-2" : "py-3", alinhar === "right" && "text-right tabular-nums", alinhar === "center" && "text-center")}>
+                          {c.rodape ? c.rodape(lista) : null}
+                        </td>
+                      );
+                    })}
                   </tr>
                 </tfoot>
               )}

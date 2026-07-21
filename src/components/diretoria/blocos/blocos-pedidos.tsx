@@ -274,6 +274,8 @@ function TabelaEntregasParciais({ d }: { d: PedidosData }) {
         fcp: l.fcp,
         pis: l.pis,
         cofins: l.cofins,
+        irpj: l.irpj,
+        csll: l.csll,
         comissaoPct: l.comissaoPct,
         comissaoValor: l.comissaoValor,
         liquido: l.liquido,
