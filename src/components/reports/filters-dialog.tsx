@@ -27,9 +27,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   ChevronDown,
   Filter,
-  Plus,
   RotateCcw,
-  Trash2,
   Warehouse,
   Layers,
   ArrowLeftRight,
@@ -47,12 +45,8 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { FilterOptions } from "@/components/reports/report-filters";
-import {
-  type Grupo,
-  type Condicao,
-  type GrupoItem,
-  OPERADORES,
-} from "@/lib/reports/filtro-avancado";
+import { type Grupo, grupoVazio } from "@/lib/reports/filtro-avancado";
+import { GrupoBuilder } from "@/components/reports/filtro-avancado-builder";
 
 // ---------------------------------------------------------------------------
 // Tipos internos
@@ -216,225 +210,6 @@ function FacetSection({
 }
 
 // ---------------------------------------------------------------------------
-// Construtor de condições avançado
-// ---------------------------------------------------------------------------
-
-interface CondicaoRowProps {
-  condicao: Condicao;
-  campos: { value: string; label: string }[];
-  onChange: (next: Condicao) => void;
-  onRemove: () => void;
-}
-
-function CondicaoRow({ condicao, campos, onChange, onRemove }: CondicaoRowProps) {
-  return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      {/* Campo */}
-      <select
-        value={condicao.campo}
-        onChange={(e) => onChange({ ...condicao, campo: e.target.value })}
-        aria-label="Campo da condição"
-        className="h-8 flex-1 min-w-[120px] rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/50 cursor-pointer"
-      >
-        <option value="">-- campo --</option>
-        {campos.map((c) => (
-          <option key={c.value} value={c.value}>
-            {c.label}
-          </option>
-        ))}
-      </select>
-
-      {/* Operador */}
-      <select
-        value={condicao.operador}
-        onChange={(e) =>
-          onChange({
-            ...condicao,
-            operador: e.target.value as Condicao["operador"],
-          })
-        }
-        aria-label="Operador da condição"
-        className="h-8 rounded-md border border-input bg-transparent px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/50 cursor-pointer"
-      >
-        {OPERADORES.map((op) => (
-          <option key={op.value} value={op.value}>
-            {op.label}
-          </option>
-        ))}
-      </select>
-
-      {/* Valor */}
-      <Input
-        value={condicao.valor}
-        onChange={(e) => onChange({ ...condicao, valor: e.target.value })}
-        placeholder="valor…"
-        aria-label="Valor da condição"
-        className="h-8 flex-1 min-w-[100px] text-sm"
-      />
-
-      {/* Remover */}
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        onClick={onRemove}
-        aria-label="Remover condição"
-        className="h-8 w-8 cursor-pointer text-muted-foreground hover:text-destructive"
-      >
-        <Trash2 className="size-3.5" aria-hidden />
-      </Button>
-    </div>
-  );
-}
-
-interface GrupoBuilderProps {
-  grupo: Grupo;
-  campos: { value: string; label: string }[];
-  onChange: (next: Grupo) => void;
-  onRemove?: () => void;
-  depth?: number;
-}
-
-function GrupoBuilder({
-  grupo,
-  campos,
-  onChange,
-  onRemove,
-  depth = 0,
-}: GrupoBuilderProps) {
-  function setConector(conector: "E" | "OU") {
-    onChange({ ...grupo, conector });
-  }
-
-  function updateItem(i: number, item: GrupoItem) {
-    const itens = [...grupo.itens];
-    itens[i] = item;
-    onChange({ ...grupo, itens });
-  }
-
-  function removeItem(i: number) {
-    const itens = grupo.itens.filter((_, idx) => idx !== i);
-    onChange({ ...grupo, itens });
-  }
-
-  function addCondicao() {
-    const nova: Condicao = {
-      campo: campos[0]?.value ?? "",
-      operador: "igual",
-      valor: "",
-    };
-    onChange({ ...grupo, itens: [...grupo.itens, nova] });
-  }
-
-  function addGrupo() {
-    const novo: Grupo = { conector: "E", itens: [] };
-    onChange({ ...grupo, itens: [...grupo.itens, novo] });
-  }
-
-  const isNested = depth > 0;
-
-  return (
-    <div
-      className={cn(
-        "space-y-2 rounded-lg border border-border p-3",
-        isNested && "border-violet-500/30 bg-violet-500/5",
-      )}
-    >
-      {/* Header do grupo: conector + remover */}
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-muted-foreground">
-          {isNested ? "Subgrupo:" : "Combinar com:"}
-        </span>
-        {(["E", "OU"] as const).map((c) => (
-          <button
-            key={c}
-            type="button"
-            onClick={() => setConector(c)}
-            aria-pressed={grupo.conector === c}
-            className={cn(
-              "rounded-md border px-2.5 py-1 text-xs font-semibold transition-colors cursor-pointer",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
-              grupo.conector === c
-                ? "border-violet-500 bg-violet-500/15 text-violet-500"
-                : "border-border text-muted-foreground hover:bg-muted/40",
-            )}
-          >
-            {c}
-          </button>
-        ))}
-        {isNested && onRemove && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            onClick={onRemove}
-            aria-label="Remover subgrupo"
-            className="ml-auto h-7 w-7 cursor-pointer text-muted-foreground hover:text-destructive"
-          >
-            <Trash2 className="size-3.5" aria-hidden />
-          </Button>
-        )}
-      </div>
-
-      {/* Itens do grupo */}
-      <div className="space-y-2">
-        {grupo.itens.map((item, i) =>
-          "campo" in item ? (
-            <CondicaoRow
-              key={i}
-              condicao={item as Condicao}
-              campos={campos}
-              onChange={(next) => updateItem(i, next)}
-              onRemove={() => removeItem(i)}
-            />
-          ) : (
-            <GrupoBuilder
-              key={i}
-              grupo={item as Grupo}
-              campos={campos}
-              onChange={(next) => updateItem(i, next)}
-              onRemove={() => removeItem(i)}
-              depth={depth + 1}
-            />
-          ),
-        )}
-        {grupo.itens.length === 0 && (
-          <p className="text-xs text-muted-foreground italic">
-            Nenhuma condição , adicione abaixo.
-          </p>
-        )}
-      </div>
-
-      {/* Ações do grupo */}
-      <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={addCondicao}
-          className="h-7 gap-1.5 cursor-pointer text-xs"
-        >
-          <Plus className="size-3.5" aria-hidden />
-          Condição
-        </Button>
-        {depth < 2 && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={addGrupo}
-            className="h-7 gap-1.5 cursor-pointer text-xs"
-          >
-            <Plus className="size-3.5" aria-hidden />
-            Subgrupo
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // FiltersDialog principal
 // ---------------------------------------------------------------------------
 
@@ -507,10 +282,6 @@ function simpleStateFromParams(
   return state;
 }
 
-function GRUPO_VAZIO(): Grupo {
-  return { conector: "E", itens: [] };
-}
-
 export function FiltersDialog({
   open,
   onOpenChange,
@@ -529,13 +300,13 @@ export function FiltersDialog({
   const [simpleDraft, setSimpleDraft] = useState<SimpleState>(() =>
     simpleStateFromParams(searchParams, facetas),
   );
-  const [advDraft, setAdvDraft] = useState<Grupo>(GRUPO_VAZIO);
+  const [advDraft, setAdvDraft] = useState<Grupo>(grupoVazio);
 
   // Sync draft com params ao abrir
   useEffect(() => {
     if (!open) return;
     setSimpleDraft(simpleStateFromParams(searchParams, facetas));
-    setAdvDraft(GRUPO_VAZIO());
+    setAdvDraft(grupoVazio());
     setOpenSection(null);
     setTab("simples");
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -550,7 +321,7 @@ export function FiltersDialog({
       for (const f of facetas) cleared[f.key] = new Set();
       setSimpleDraft(cleared);
     } else {
-      setAdvDraft(GRUPO_VAZIO());
+      setAdvDraft(grupoVazio());
     }
   }
 
