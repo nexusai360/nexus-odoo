@@ -47,15 +47,17 @@ export function useModoEstendido() {
 /** Largura padrão das telas da Diretoria = PageShell `wide`. */
 const LARGURA_NORMAL =
   "max-w-[clamp(1280px,calc(1280px+(100vw-1366px)*0.10),1400px)] px-4 sm:px-6 lg:px-8 xl:px-10";
-/** Largura estendida: sem teto, margem lateral mínima (~12px). */
-const LARGURA_ESTENDIDA = "max-w-none px-3";
+/** Largura estendida: sem teto, margem lateral de 25px de cada lado. */
+const LARGURA_ESTENDIDA = "max-w-none px-[25px]";
 
 /** Contêiner das páginas da Diretoria (substitui PageShell wide). Reage ao modo
- * estendido, esticando o conteúdo até a borda. */
+ * estendido, esticando o conteúdo até a borda. Sem transição de largura própria:
+ * a mudança é instantânea e os dois lados acompanham juntos o reflow do layout
+ * (o lado direito não ganha uma animação independente). */
 export function DiretoriaShell({ children, className }: { children: ReactNode; className?: string }) {
   const { estendido } = useModoEstendido();
   return (
-    <div className={cn("mx-auto transition-[max-width,padding] duration-200", estendido ? LARGURA_ESTENDIDA : LARGURA_NORMAL, className)}>
+    <div className={cn("mx-auto", estendido ? LARGURA_ESTENDIDA : LARGURA_NORMAL, className)}>
       {children}
     </div>
   );

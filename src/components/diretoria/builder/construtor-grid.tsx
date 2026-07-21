@@ -269,6 +269,11 @@ export function ConstrutorGrid<T>({
       {/* UX de edição: alças DISCRETAS , cinza translúcido por padrão, violeta só
           no hover da própria alça. Nada de "rabisco" colorido em todas as quinas. */}
       <style>{`
+        /* Fora do modo edição: sem animação de item no resize. Assim, ao estender
+           a tela ou abrir/fechar o sidebar, os blocos reposicionam JUNTOS e na
+           hora (sem o lado direito animar por conta própria). Em edição, mantém a
+           animação natural do arrastar. */
+        .diretoria-construtor.anim-off .react-grid-item{ transition: none !important; }
         .diretoria-construtor .react-grid-placeholder{
           background: color-mix(in srgb, var(--primary) 12%, transparent) !important;
           border: 1.5px dashed color-mix(in srgb, var(--primary) 45%, transparent) !important;
@@ -324,7 +329,7 @@ export function ConstrutorGrid<T>({
         </div>
       ) : (
       <Grid
-        className="diretoria-construtor"
+        className={`diretoria-construtor${editando ? "" : " anim-off"}`}
         layout={layout}
         cols={GRID_COLS}
         rowHeight={ROW_H}
