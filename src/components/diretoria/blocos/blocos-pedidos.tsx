@@ -16,6 +16,17 @@ import { RankingCards } from "@/components/diretoria/charts/ranking-cards";
 import { DonutChart } from "@/components/diretoria/charts/donut-chart";
 import { BrazilMap } from "@/components/diretoria/brazil-map/brazil-map";
 import { DataTable, type ColumnDef } from "@/components/charts/data-table";
+import { TabelaAvancada, type PresetFiltro } from "@/components/tabela-avancada/tabela-avancada";
+import {
+  COLUNAS as COLUNAS_ENTREGA,
+  COLUNA_BY_KEY as COLUNA_ENTREGA_BY_KEY,
+  CAMPOS as CAMPOS_ENTREGA,
+  CAMPO_BY_KEY as CAMPO_ENTREGA_BY_KEY,
+  AGRUPAMENTOS as AGRUPAMENTOS_ENTREGA,
+  celula as celulaEntrega,
+  formatBRL as formatBRLEntrega,
+  type LinhaEntrega,
+} from "@/components/tabela-avancada/entregas-catalogo";
 import { cn } from "@/lib/utils";
 import { brl, brlCompacto, num, DASH, rotuloUf, ufValida, nomeLimpo } from "@/components/diretoria/kit/format";
 import type { PedidosData } from "@/components/diretoria/pedidos/pedidos-screen";
@@ -179,8 +190,12 @@ function nomeVendedor(raw: string | null): string {
   const nome = raw.split(" - ")[0].trim();
   return nome || raw.trim() || DASH;
 }
+const PRESETS_ENTREGA: PresetFiltro[] = [
+  { id: "fin-bloq", label: "Financeiro bloqueado", campo: "status", valor: "Bloqueado" },
+];
+
 function TabelaEntregasParciais({ d }: { d: PedidosData }) {
-  const linhas = d.entregasParciais.linhas.map((l) => ({
+  const linhas: LinhaEntrega[] = d.entregasParciais.linhas.map((l) => ({
     numero: l.numero ?? DASH,
     mercos: l.numeroMercos ?? DASH,
     // Fase 3: datas (ISO ou DASH; a coluna tipo "data" formata DD/MM/AAAA).
@@ -212,52 +227,33 @@ function TabelaEntregasParciais({ d }: { d: PedidosData }) {
     observacoes: l.observacoes ?? DASH,
     obsEntrega: l.obsEntrega ?? DASH,
   }));
-  const colunas: ColumnDef<(typeof linhas)[number]>[] = [
-    { key: "numero", header: "Pedido", tipo: "texto" },
-    { key: "mercos", header: "Nº Mercos", tipo: "texto" },
-    // Fase 3: nascem OCULTAS (opt-in no seletor "Colunas") para não inundar a tela.
-    { key: "orcamento", header: "Orçamento", tipo: "data", ocultaInicial: true },
-    { key: "prevista", header: "Prevista", tipo: "data", ocultaInicial: true },
-    // TODO(dono): confirmar semântica de "Contrato" (usa data_validade do cabeçalho, D-F3-5).
-    { key: "contrato", header: "Contrato", tipo: "data", ocultaInicial: true },
-    { key: "emitente", header: "Emitente", tipo: "texto", ocultaInicial: true },
-    { key: "cliente", header: "Cliente", tipo: "texto" },
-    { key: "cnpj", header: "CNPJ", tipo: "texto", ocultaInicial: true },
-    { key: "cep", header: "CEP", tipo: "texto", ocultaInicial: true },
-    { key: "uf", header: "UF", tipo: "texto" },
-    { key: "cidade", header: "Cidade", tipo: "texto" },
-    { key: "codigo", header: "Código", tipo: "texto", ocultaInicial: true },
-    { key: "produto", header: "Produto", tipo: "texto" },
-    { key: "familia", header: "Família", tipo: "texto" },
-    { key: "marca", header: "Marca", tipo: "texto" },
-    { key: "operacao", header: "Operação", tipo: "texto" },
-    { key: "modalidade", header: "Modalidade", tipo: "texto" },
-    { key: "etapa", header: "Etapa", tipo: "tag", corKey: "etapaCor" },
-    { key: "qtd", header: "Qtd a atender", tipo: "numero" },
-    { key: "unitario", header: "Unitário", tipo: "moeda", ocultaInicial: true },
-    { key: "valorCheio", header: "Valor cheio", tipo: "moeda", ocultaInicial: true },
-    { key: "vlrVenda", header: "A atender (venda)", tipo: "moeda" },
-    { key: "vlrCusto", header: "A atender (custo)", tipo: "moeda" },
-    { key: "status", header: "Financeiro", tipo: "status", statusMapa: {
-      Liberado: { icone: "circle-check", classe: "text-emerald-400", rotulo: "Liberado" },
-      Bloqueado: { icone: "circle-x", classe: "text-rose-400", rotulo: "Bloqueado" },
-    } },
-    { key: "forma", header: "Forma de pagamento", tipo: "texto" },
-    { key: "vendedor", header: "Vendedor", tipo: "texto", ocultaInicial: true },
-    { key: "observacoes", header: "Observações", tipo: "texto", ocultaInicial: true },
-    // TODO(dono): confirmar fonte de "Obs entrega" (hoje obs_produtos, D-F3-4).
-    { key: "obsEntrega", header: "Obs entrega", tipo: "texto", ocultaInicial: true },
-  ];
+  if (linhas.length === 0) {
+    return (
+      <div className="rounded-xl border border-border bg-card px-4 py-12 text-center text-sm text-muted-foreground">
+        Nenhuma entrega parcial para o período/empresa selecionados.
+      </div>
+    );
+  }
   return (
-    <DataTable
-      columns={colunas}
-      rows={linhas}
-      searchable
-      filtroAvancado
-      compactoInicial
-      alturaFluida
+    <TabelaAvancada<LinhaEntrega>
+      base={linhas}
+      colunas={COLUNAS_ENTREGA}
+      colunaByKey={COLUNA_ENTREGA_BY_KEY}
+      campos={CAMPOS_ENTREGA}
+      campoByKey={CAMPO_ENTREGA_BY_KEY}
+      agrupamentos={AGRUPAMENTOS_ENTREGA}
+      celula={celulaEntrega}
+      valorSoma={(l) => l.vlrVenda}
+      colunaSoma="vlrVenda"
+      storageKey="entregas-parciais-tabela"
       exportFilename="entregas-parciais"
-      estado={linhas.length === 0 ? "vazio" : "ok"}
+      labelRegistro="itens"
+      presets={PRESETS_ENTREGA}
+      kanbanCampo="etapa"
+      calendarioCampo="prevista"
+      tituloItem={(l) => l.numero}
+      subtituloItem={(l) => l.cliente}
+      valorItem={(l) => formatBRLEntrega(l.vlrVenda)}
     />
   );
 }
