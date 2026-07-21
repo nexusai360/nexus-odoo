@@ -345,6 +345,9 @@ export function celula(l: LinhaEntrega, key: string): React.ReactNode {
   if (key === "valorTotal") return <CelulaValorCV custo={l.valorTotalCusto} venda={l.valorCheio} />;
   if (key === "valorAtendido") return <CelulaValorCV custo={l.valorAtendidoCusto} venda={l.valorAtendidoVenda} />;
   if (key === "valorAtender") return <CelulaValorCV custo={l.vlrCusto} venda={l.vlrVenda} />;
+  // Desconto: a chave da coluna ("desconto") difere do campo da linha
+  // (`descontoValor`), então precisa de caso próprio (senão renderiza R$ 0,00).
+  if (key === "desconto") return <span className="whitespace-nowrap tabular-nums text-muted-foreground" title={`Desconto ${formatPct(l.descontoPct)}`}>{formatBRL(l.descontoValor)}</span>;
   // Produtos: contagem de itens do pedido.
   if (key === "itens") {
     return (
