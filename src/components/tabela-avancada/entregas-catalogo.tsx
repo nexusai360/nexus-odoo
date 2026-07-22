@@ -440,6 +440,9 @@ export function celula(l: LinhaEntrega, key: string): React.ReactNode {
   if (key === "desconto") return <span className="whitespace-nowrap tabular-nums text-muted-foreground" title={`Desconto ${formatPct(l.descontoPct)}`}>{formatBRL(l.descontoValor)}</span>;
   // Subtotal Pedido: mesmo valor bruto dos produtos, na cor cinza (como Desconto).
   if (key === "subtotalPedido") return <span className="whitespace-nowrap tabular-nums text-muted-foreground">{formatBRL(l.valorProduto)}</span>;
+  // CBS/IBS (reforma, alíquotas simbólicas): cor cinza, como Desconto/Subtotal Pedido.
+  if (key === "cbs") return <span className="whitespace-nowrap tabular-nums text-muted-foreground">{formatBRL(l.cbs)}</span>;
+  if (key === "ibs") return <span className="whitespace-nowrap tabular-nums text-muted-foreground">{formatBRL(l.ibs)}</span>;
   // Entrega (prevista): data em branco + ícone (bolinha) de status por prazo.
   if (key === "prevista") {
     const iso = String(l.prevista ?? "");
