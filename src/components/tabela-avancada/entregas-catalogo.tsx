@@ -10,8 +10,8 @@
  * acoplamento a domínio da tabela nova.
  */
 
-import { useContext } from "react";
-import { CircleCheck, CircleX, ExternalLink, Package, MapPin, FileText, ClipboardList, Coins, Tag } from "lucide-react";
+import { useContext, useState } from "react";
+import { CircleCheck, CircleX, ExternalLink, Package, MapPin, FileText, ClipboardList, Coins, Tag, Copy, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { corEtapaValida, derivarCorTag } from "@/lib/diretoria/etapa-cor";
 import { formatarNomeEtapa } from "@/lib/diretoria/etapa-formato";
@@ -417,16 +417,19 @@ function CelulaValorCV({ custo, venda }: { custo: number; venda: number }) {
  * de cor no dado (é lógica de tela do ERP), então usamos limiares de negócio: vencida =
  * vermelho, faltando ≤7 dias = âmbar, com folga = neutro. Vira um ÍCONE (bolinha), não
  * texto colorido, para não poluir. */
-function statusEntrega(iso: string): { cor: string; label: string } | null {
+function statusEntrega(iso: string): { cor: string; label: string; texto: string | null } | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
   if (!m) return null;
   const alvo = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
   const dias = Math.round((alvo.getTime() - hoje.getTime()) / 86_400_000);
-  if (dias < 0) return { cor: "bg-rose-500", label: `Entrega atrasada (${-dias} dia${-dias === 1 ? "" : "s"})` };
-  if (dias <= 7) return { cor: "bg-amber-500", label: dias === 0 ? "Entrega hoje" : `Faltam ${dias} dia${dias === 1 ? "" : "s"}` };
-  return { cor: "bg-foreground/30", label: "No prazo" };
+  const plural = (n: number) => `${n} dia${n === 1 ? "" : "s"}`;
+  // `texto`: complemento curto exibido entre parênteses na ficha (só a bolinha
+  // é colorida; o texto fica neutro). Com folga, não há complemento.
+  if (dias < 0) return { cor: "bg-rose-500", texto: `há ${plural(-dias)}`, label: `Entrega atrasada (${plural(-dias)})` };
+  if (dias <= 7) return { cor: "bg-amber-500", texto: dias === 0 ? "hoje" : `em ${plural(dias)}`, label: dias === 0 ? "Entrega hoje" : `Faltam ${plural(dias)}` };
+  return { cor: "bg-foreground/30", texto: null, label: "No prazo" };
 }
 
 export function celula(l: LinhaEntrega, key: string): React.ReactNode {
@@ -569,7 +572,7 @@ export function dropdownProdutos(l: LinhaEntrega): React.ReactNode {
 
 // ===== Tela de detalhe do pedido (redesenhada) =====
 
-function Secao({ titulo, icone: Icone, children }: { titulo: string; icone: typeof Package; children: React.ReactNode }) {
+function Secao({ titulo, icone: Icone, sufixo, children }: { titulo: string; icone: typeof Package; sufixo?: React.ReactNode; children: React.ReactNode }) {
   return (
     <section className="border-t border-border/60 pt-6 first:border-0 first:pt-0">
       <h3 className="mb-4 flex items-center gap-2.5">
@@ -577,6 +580,7 @@ function Secao({ titulo, icone: Icone, children }: { titulo: string; icone: type
           <Icone className="size-4" aria-hidden />
         </span>
         <span className="text-sm font-semibold tracking-tight text-foreground">{titulo}</span>
+        {sufixo}
       </h3>
       {children}
     </section>
@@ -593,12 +597,48 @@ function SubGrupo({ titulo, children }: { titulo: string; children: React.ReactN
   );
 }
 
-function Campo({ label, valor, span, mono }: { label: string; valor: string; span?: 2 | 4; mono?: boolean }) {
+function Campo({ label, valor, span, mono, muted }: { label: string; valor: string; span?: 2 | 4; mono?: boolean; muted?: boolean }) {
   return (
     <div className={cn("min-w-0", span === 4 ? "col-span-2 md:col-span-4" : span === 2 ? "col-span-2" : "")}>
       <dt className="text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground">{label}</dt>
-      <dd className={cn("mt-0.5 break-words text-sm text-foreground", mono && "tabular-nums")}>{valor && valor !== "-" ? valor : "-"}</dd>
+      <dd className={cn("mt-0.5 break-words text-sm", muted ? "text-muted-foreground" : "text-foreground", mono && "tabular-nums")}>{valor && valor !== "-" ? valor : "-"}</dd>
     </div>
+  );
+}
+
+/** Campo de ENTREGA: data com a mesma bolinha de prazo do modo lista (só a
+ * bolinha é colorida) e um complemento neutro entre parênteses quando atrasado
+ * ("há X dias") ou próximo ("em X dias"). Com folga, apenas a bolinha cinza. */
+function CampoEntrega({ iso }: { iso: string }) {
+  const st = statusEntrega(iso);
+  return (
+    <div className="min-w-0">
+      <dt className="text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground">Entrega</dt>
+      <dd className="mt-0.5 flex items-center gap-1.5 text-sm text-foreground">
+        {st && <span className={cn("size-2 shrink-0 rounded-full", st.cor)} title={st.label} aria-label={st.label} />}
+        <span className="tabular-nums">{formatarDataBR(iso)}</span>
+        {st?.texto && <span className="text-muted-foreground">({st.texto})</span>}
+      </dd>
+    </div>
+  );
+}
+
+/** Botão de copiar um valor curto (ex.: CNPJ) para a área de transferência,
+ * no padrão do projeto (ícone Copy vira Check por ~1.5s). */
+function BotaoCopiar({ texto, ariaLabel }: { texto: string; ariaLabel: string }) {
+  const [copiado, setCopiado] = useState(false);
+  function copiar() {
+    if (typeof navigator === "undefined" || !navigator.clipboard) return;
+    void navigator.clipboard.writeText(texto).then(() => {
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 1500);
+    });
+  }
+  return (
+    <button type="button" onClick={copiar} aria-label={copiado ? "Copiado" : ariaLabel} title={copiado ? "Copiado" : ariaLabel}
+      className="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md border border-border bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      {copiado ? <Check className="size-3 text-emerald-500" aria-hidden /> : <Copy className="size-3" aria-hidden />}
+    </button>
   );
 }
 
@@ -624,7 +664,12 @@ export function DetalheEntrega({ l }: { l: LinhaEntrega }) {
           <StatusFinanceiro status={l.status} comRotulo />
         </div>
         <p className="text-base font-medium text-foreground">{l.cliente}</p>
-        {l.cnpj && l.cnpj !== "-" && <p className="text-xs text-muted-foreground">CNPJ {l.cnpj}</p>}
+        {l.cnpj && l.cnpj !== "-" && (
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs tabular-nums text-muted-foreground">{l.cnpj}</span>
+            <BotaoCopiar texto={l.cnpj} ariaLabel="Copiar CNPJ" />
+          </div>
+        )}
       </header>
 
       {/* Resumo de valores */}
@@ -636,15 +681,15 @@ export function DetalheEntrega({ l }: { l: LinhaEntrega }) {
       </div>
 
       <dl className="space-y-5">
-        <Secao titulo="Dados do pedido" icone={ClipboardList}>
+        <Secao titulo="Dados do Pedido" icone={ClipboardList}>
           <div className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-4">
             <Campo label="Nº Mercos" valor={l.mercos} />
             <Campo label="Orçamento" valor={formatarDataBR(l.orcamento)} />
-            <Campo label="Entrega" valor={formatarDataBR(l.prevista)} />
             <Campo label="Validade" valor={formatarDataBR(l.contrato)} />
+            <CampoEntrega iso={String(l.prevista ?? "")} />
             <Campo label="Operação" valor={l.operacao} span={2} />
-            <Campo label="Modalidade" valor={l.modalidade} />
             <Campo label="Emitente" valor={l.emitente} />
+            <Campo label="Modalidade" valor={l.modalidade} />
           </div>
         </Secao>
 
@@ -652,12 +697,16 @@ export function DetalheEntrega({ l }: { l: LinhaEntrega }) {
           <div className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-4">
             <Campo label="Vendedor" valor={l.vendedor} />
             <Campo label="Forma de pagamento" valor={l.forma} />
-            <Campo label="Condição de pagamento" valor={l.condicao} span={2} />
+            <Campo label="Condição de pagamento" valor={l.condicao} />
+            <Campo mono label={`Comissão (${formatPct(l.comissaoPct)})`} valor={formatBRL(l.comissaoValor)} />
+            <Campo mono label="Subtotal Pedido" valor={formatBRL(l.valorProduto)} />
+            <Campo mono label={`Desconto (${formatPct(l.descontoPct)})`} valor={formatBRL(l.descontoValor)} />
+            <Campo mono label="Valor Pedido" valor={formatBRL(l.subtotal)} />
           </div>
         </Secao>
 
-        <Secao titulo="Cliente e endereço" icone={MapPin}>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-4">
+        <Secao titulo="Cliente e Endereço" icone={MapPin}>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-3">
             <Campo label="Cliente" valor={l.cliente} span={2} />
             <Campo label="CNPJ" valor={l.cnpj} />
             <Campo label="CEP" valor={l.cep} />
@@ -667,21 +716,16 @@ export function DetalheEntrega({ l }: { l: LinhaEntrega }) {
         </Secao>
 
         {(l.subtotal !== 0 || l.liquido !== 0 || l.custoComercial !== 0 || l.descontoValor !== 0) && (
-          <Secao titulo="Financeiro do pedido" icone={Coins}>
+          <Secao titulo="Financeiro do Pedido" icone={Coins}>
             <div className="space-y-6">
-              <SubGrupo titulo="Valores da venda">
-                <div className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-3">
-                  <Campo mono label="Valor Produto" valor={formatBRL(l.valorTotalCusto)} />
-                  <Campo mono label="Subtotal Pedido" valor={formatBRL(l.valorProduto)} />
-                  <Campo mono label="Valor Pedido" valor={formatBRL(l.subtotal)} />
-                  <Campo mono label={`Desconto (${formatPct(l.descontoPct)})`} valor={formatBRL(l.descontoValor)} />
-                  <Campo mono label="Custo Comercial" valor={formatBRL(l.custoComercial)} />
-                  <Campo mono label={`Comissão (${formatPct(l.comissaoPct)})`} valor={formatBRL(l.comissaoValor)} />
-                </div>
-              </SubGrupo>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-3">
+                <Campo mono label="Valor Pedido" valor={formatBRL(l.subtotal)} />
+                <Campo mono label="Custo Comercial" valor={formatBRL(l.custoComercial)} />
+                <Campo mono label={`Comissão (${formatPct(l.comissaoPct)})`} valor={formatBRL(l.comissaoValor)} />
+              </div>
 
               <SubGrupo titulo="Tributos">
-                <div className="grid grid-cols-2 gap-x-6 gap-y-4 rounded-xl border border-border/60 bg-background/40 p-4 md:grid-cols-3 lg:grid-cols-5">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-3 lg:grid-cols-5">
                   <Campo mono label="ICMS" valor={formatBRL(l.icms)} />
                   <Campo mono label="DIFAL" valor={formatBRL(l.difal)} />
                   <Campo mono label="FCP" valor={formatBRL(l.fcp)} />
@@ -689,8 +733,8 @@ export function DetalheEntrega({ l }: { l: LinhaEntrega }) {
                   <Campo mono label="COFINS" valor={formatBRL(l.cofins)} />
                   <Campo mono label="IRPJ" valor={formatBRL(l.irpj)} />
                   <Campo mono label="CSLL" valor={formatBRL(l.csll)} />
-                  <Campo mono label="CBS" valor={formatBRL(l.cbs)} />
-                  <Campo mono label="IBS" valor={formatBRL(l.ibs)} />
+                  <Campo mono muted label="CBS*" valor={formatBRL(l.cbs)} />
+                  <Campo mono muted label="IBS*" valor={formatBRL(l.ibs)} />
                 </div>
               </SubGrupo>
 
@@ -707,13 +751,9 @@ export function DetalheEntrega({ l }: { l: LinhaEntrega }) {
                 </div>
               </SubGrupo>
             </div>
-            <p className="mt-4 text-[0.7rem] text-muted-foreground">Valores prontos do Odoo (aba Rentabilidade). Margem = Líquido ÷ Subtotal; o líquido já abate os créditos tributários (Lucro Real).</p>
+            <p className="mt-4 text-[0.7rem] text-muted-foreground">Valores prontos do Odoo (aba Rentabilidade). Margem = Lucro Líquido ÷ Valor Pedido; o líquido já abate os créditos tributários (Lucro Real). CBS e IBS (*) entram com a reforma tributária, ainda em transição.</p>
           </Secao>
         )}
-
-        <Secao titulo={`Produtos (${l.itens.length})`} icone={Package}>
-          <ListaProdutos itens={l.itens} />
-        </Secao>
 
         {temObs && (
           <Secao titulo="Observações" icone={FileText}>
@@ -729,6 +769,12 @@ export function DetalheEntrega({ l }: { l: LinhaEntrega }) {
             </div>
           </Secao>
         )}
+
+        <Secao titulo="Produtos" icone={Package} sufixo={
+          <span className="inline-flex items-center rounded-md bg-violet-500/10 px-1.5 py-0.5 text-xs font-semibold text-violet-600 dark:text-violet-300">{l.itens.length}</span>
+        }>
+          <ListaProdutos itens={l.itens} />
+        </Secao>
       </dl>
     </div>
   );
