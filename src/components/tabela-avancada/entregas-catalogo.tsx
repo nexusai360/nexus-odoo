@@ -587,11 +587,12 @@ function Secao({ titulo, icone: Icone, sufixo, children }: { titulo: string; ico
   );
 }
 
-/** Subtítulo de um agrupamento interno de uma seção (ex.: blocos do Financeiro). */
+/** Subtítulo de um agrupamento interno de uma seção (ex.: blocos do Financeiro).
+ * Um pouco maior que os labels dos campos, para separar os blocos. */
 function SubGrupo({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="mb-3 text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/80">{titulo}</p>
+      <p className="mb-3 text-[0.8125rem] font-semibold uppercase tracking-wider text-muted-foreground/80">{titulo}</p>
       {children}
     </div>
   );
@@ -699,15 +700,12 @@ export function DetalheEntrega({ l }: { l: LinhaEntrega }) {
             <Campo label="Forma de pagamento" valor={l.forma} />
             <Campo label="Condição de pagamento" valor={l.condicao} />
             <Campo mono label={`Comissão (${formatPct(l.comissaoPct)})`} valor={formatBRL(l.comissaoValor)} />
-            <Campo mono label="Subtotal Pedido" valor={formatBRL(l.valorProduto)} />
-            <Campo mono label={`Desconto (${formatPct(l.descontoPct)})`} valor={formatBRL(l.descontoValor)} />
-            <Campo mono label="Valor Pedido" valor={formatBRL(l.subtotal)} />
           </div>
         </Secao>
 
         <Secao titulo="Cliente e Endereço" icone={MapPin}>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-3">
-            <Campo label="Cliente" valor={l.cliente} span={2} />
+          <div className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-4">
+            <Campo label="Cliente" valor={l.cliente} span={4} />
             <Campo label="CNPJ" valor={l.cnpj} />
             <Campo label="CEP" valor={l.cep} />
             <Campo label="UF" valor={l.uf} />
@@ -718,11 +716,15 @@ export function DetalheEntrega({ l }: { l: LinhaEntrega }) {
         {(l.subtotal !== 0 || l.liquido !== 0 || l.custoComercial !== 0 || l.descontoValor !== 0) && (
           <Secao titulo="Financeiro do Pedido" icone={Coins}>
             <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-3">
-                <Campo mono label="Valor Pedido" valor={formatBRL(l.subtotal)} />
-                <Campo mono label="Custo Comercial" valor={formatBRL(l.custoComercial)} />
-                <Campo mono label={`Comissão (${formatPct(l.comissaoPct)})`} valor={formatBRL(l.comissaoValor)} />
-              </div>
+              <SubGrupo titulo="Valores">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-3">
+                  <Campo mono label="Subtotal Pedido" valor={formatBRL(l.valorProduto)} />
+                  <Campo mono label={`Desconto (${formatPct(l.descontoPct)})`} valor={formatBRL(l.descontoValor)} />
+                  <Campo mono label="Valor Pedido" valor={formatBRL(l.subtotal)} />
+                  <Campo mono label="Custo" valor={formatBRL(l.custoComercial)} />
+                  <Campo mono label={`Comissão (${formatPct(l.comissaoPct)})`} valor={formatBRL(l.comissaoValor)} />
+                </div>
+              </SubGrupo>
 
               <SubGrupo titulo="Tributos">
                 <div className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-3 lg:grid-cols-5">

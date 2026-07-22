@@ -15,7 +15,7 @@ import { Fragment, createContext, useMemo, useRef, useState, useEffect, useLayou
 import {
   Download, SlidersHorizontal, Layers, Star, Search, X, ChevronDown,
   ChevronRight, ChevronLeft, ArrowLeft, List, Columns3, CalendarDays,
-  Trash2, Check, ArrowUp, ArrowDown, ArrowUpDown, Rows3, Tag, RectangleHorizontal,
+  Trash2, Check, ArrowUp, ArrowDown, ArrowUpDown, Rows3, Tag, ReceiptText,
 } from "lucide-react";
 
 /** Opções da tabela que as células precisam ler (ex.: mostrar preço de venda
@@ -420,7 +420,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
               <button type="button" onClick={() => { if (listaOrdenada.length) setDetalhe({ row: listaOrdenada[0], idx: 0 }); }}
                 disabled={listaOrdenada.length === 0} aria-label="Pedido" aria-pressed={!!detalhe}
                 className={cn("flex size-8 items-center justify-center rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-40", detalhe ? "bg-violet-500/15 text-violet-600 dark:text-violet-300" : "cursor-pointer text-muted-foreground hover:text-foreground")}>
-                <RectangleHorizontal className="size-4" />
+                <ReceiptText className="size-4" />
               </button>
             </Tooltip>
           )}
