@@ -454,6 +454,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
     // Compacto e "Mostrar venda" também fazem parte da visão salva (default false p/ favoritos antigos).
     setCompacto(f.snap.compacto ?? false);
     setMostrarVenda(f.snap.mostrarVenda ?? false);
+    setCompactoAtivo(null); // favoritos não guardam modelo compacto: sai de qualquer modelo ativo.
   }
 
   // ===== Modo compacto (modelos nomeados) =====
