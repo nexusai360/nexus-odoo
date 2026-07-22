@@ -294,3 +294,6 @@ MERGE para produção. **Nada vai para produção sem "sim" explícito do dono.*
   fases desta branch foram commitadas assim).
 - Proibido travessão em qualquer texto. UI sempre inline + `ui-ux-pro-max`.
 - Metodologia ágil (D0): planner -> 1 review -> planner v2 -> implementação -> perícia.
+
+## Retomada 2026-07-22 (tabela/Filtrar e agrupar)
+Sessao entregou o refino completo do painel "Filtrar e agrupar" e da TabelaAvancada (ver docs/agents/HISTORY.md 2026-07-22). Tudo commitado e pushado. Branch segue LOCAL, nada em producao.
