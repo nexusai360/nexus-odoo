@@ -11,6 +11,7 @@ import { rawDelegateKey } from "../jobs";
 import { runBuilders } from "../fatos/registry";
 import { capturarPreco } from "../fatos/captura-preco";
 import { capturarSaldo } from "../fatos/captura-saldo";
+import { capturarPedidoValor } from "../fatos/captura-pedido-valor";
 
 export interface CycleContext {
   prisma: PrismaClient;
@@ -113,6 +114,15 @@ export async function processIncrementalCycle(
         await capturarPreco(ctx.prisma);
       } catch (err) {
         console.error("[worker] captura de preco falhou:", err);
+      }
+    }
+    // Captura do historico de VALORES do pedido: so no cron, e so se fato_pedido foi reconstruido
+    // com sucesso. O builder adia sozinho quando o job de atendimento nao esta fresco (jobOk).
+    if (origem === "cron" && status.find((s) => s.nome === "fato_pedido")?.ok) {
+      try {
+        await capturarPedidoValor(ctx.prisma);
+      } catch (err) {
+        console.error("[worker] captura de valor do pedido falhou:", err);
       }
     }
   } catch (err) {

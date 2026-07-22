@@ -22,11 +22,18 @@ export interface EstadoGuarda {
 }
 
 export const TETO_BAIXAS = 50;
+/**
+ * Teto proprio da serie `pedido_valor`: pedidos concluidos/faturados saem do escopo de
+ * fato_pedido em lotes maiores que o desaparecimento de ~1 chave de estoque/preco, entao o teto
+ * de 50 recusaria baixas legitimas. Calibrado com folga; medir a taxa real de baixa no E2E antes
+ * de apertar (review M4 2026-07-22).
+ */
+export const TETO_BAIXAS_PEDIDO = 200;
 export const RECUSADAS_ATE_REBASE = 3;
 
-export function decidirRodada(e: EstadoGuarda): DecisaoRodada {
+export function decidirRodada(e: EstadoGuarda, teto: number = TETO_BAIXAS): DecisaoRodada {
   if (!e.temBaseAnterior) return { status: "base", motivo: null };
-  if (e.baixasNestaRodada <= TETO_BAIXAS) return { status: "ok", motivo: null };
+  if (e.baixasNestaRodada <= teto) return { status: "ok", motivo: null };
   if (e.recusadasSeguidas >= RECUSADAS_ATE_REBASE) {
     return {
       status: "base",
@@ -35,6 +42,6 @@ export function decidirRodada(e: EstadoGuarda): DecisaoRodada {
   }
   return {
     status: "recusada",
-    motivo: `${e.baixasNestaRodada} baixas acima do teto de ${TETO_BAIXAS}: rodada recusada`,
+    motivo: `${e.baixasNestaRodada} baixas acima do teto de ${teto}: rodada recusada`,
   };
 }
