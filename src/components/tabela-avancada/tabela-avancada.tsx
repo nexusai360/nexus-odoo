@@ -15,7 +15,7 @@ import { Fragment, createContext, useMemo, useRef, useState, useEffect, useLayou
 import {
   Download, SlidersHorizontal, Layers, Star, Search, X, ChevronDown,
   ChevronRight, ChevronLeft, ArrowLeft, List, Columns3, CalendarDays,
-  Trash2, Check, ArrowUp, ArrowDown, ArrowUpDown, Rows3, Tag, Filter, Plus, IdCard,
+  Trash2, Check, ArrowUp, ArrowDown, ArrowUpDown, Rows3, Tag, Filter, Plus, IdCard, Pencil,
 } from "lucide-react";
 
 /** Conta as regras (folhas) de uma árvore de filtro personalizado, para o rótulo do chip. */
@@ -29,7 +29,7 @@ function contarRegras(g: GrupoRegras | null): number {
 export const OpcoesTabelaContext = createContext<{ mostrarVenda: boolean }>({ mostrarVenda: false });
 import { cn } from "@/lib/utils";
 import {
-  Popover, Tooltip, Modal, Btn, Select, SeletorColunas, Paginacao,
+  Popover, Tooltip, Modal, Btn, Select, SeletorColunas, Paginacao, CheckboxView,
   useResizeColunas, ResizeHandle,
 } from "./ui";
 import { Tooltip as TooltipUI, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -45,6 +45,9 @@ type View = "lista" | "kanban" | "calendario";
 export interface Chip { id: string; campo: string; kind: string; valor: string; label: string; op?: string; valor2?: string }
 interface Nivel { campo: string; label: string }
 interface Sort { campo: string; dir: "asc" | "desc" }
+/** Modelo do modo compacto: um subconjunto NOMEADO das colunas ativas, aplicável na hora.
+ * Ex.: "Compacto financeiro", "Compacto entrega". As colunas obrigatórias entram sempre. */
+interface VisaoCompacta { id: string; nome: string; colunas: string[] }
 interface Favorito {
   id: string;
   nome: string;
@@ -104,6 +107,7 @@ const VIEWS: { key: View; label: string; icon: typeof List }[] = [
 ];
 
 let favSeq = 0;
+let vcSeq = 0;
 
 /** Sobe a árvore a partir de `start` e retorna o ancestral mais próximo que
  * rola na vertical (para encadear o scroll da lista com o da página). */
@@ -154,6 +158,12 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   const [porPagina, setPorPagina] = useState(50);
   const [compacto, setCompacto] = useState(compactoInicial ?? false);
   const [mostrarVenda, setMostrarVenda] = useState(false);
+  // Modo compacto por MODELOS: subconjuntos nomeados das colunas ativas (persistidos).
+  const [visoesCompactas, setVisoesCompactas] = useState<VisaoCompacta[]>([]);
+  const [compactoAtivo, setCompactoAtivo] = useState<string | null>(null); // id do modelo aplicado
+  const [compEditId, setCompEditId] = useState<string | null>(null); // null=fechado; ""=novo; id=editando
+  const [compNome, setCompNome] = useState("");
+  const [compCols, setCompCols] = useState<string[]>([]);
   const [kanbanDim, setKanbanDim] = useState<string>(kanbanCampo ?? "");
   const [detalhe, setDetalhe] = useState<{ row: T; idx: number } | null>(null);
   const [expandidos, setExpandidos] = useState<Set<string>>(new Set());
@@ -239,6 +249,8 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
         if (typeof s.mostrarVenda === "boolean") setMostrarVenda(s.mostrarVenda);
         if (s.arvore) setArvore(s.arvore);
         if (Array.isArray(s.favoritos)) setFavoritos(s.favoritos);
+        if (Array.isArray(s.visoesCompactas)) setVisoesCompactas(s.visoesCompactas);
+        if (typeof s.compactoAtivo === "string") setCompactoAtivo(s.compactoAtivo);
       }
     } catch { /* ignore */ }
     setHidratado(true);
@@ -246,9 +258,9 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   useEffect(() => {
     if (!hidratado) return;
     try {
-      window.localStorage.setItem(storageKey, JSON.stringify({ ordem, vis, sorts, niveis, chips, view, busca, porPagina, compacto, mostrarVenda, arvore, favoritos }));
+      window.localStorage.setItem(storageKey, JSON.stringify({ ordem, vis, sorts, niveis, chips, view, busca, porPagina, compacto, mostrarVenda, arvore, favoritos, visoesCompactas, compactoAtivo }));
     } catch { /* ignore */ }
-  }, [hidratado, storageKey, ordem, vis, sorts, niveis, chips, view, busca, porPagina, compacto, mostrarVenda, arvore, favoritos]);
+  }, [hidratado, storageKey, ordem, vis, sorts, niveis, chips, view, busca, porPagina, compacto, mostrarVenda, arvore, favoritos, visoesCompactas, compactoAtivo]);
 
   // ===== Busca inteligente (facets das colunas de texto visíveis) =====
   const sugestoes = useMemo(() => {
@@ -390,13 +402,25 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
     return i < 0 ? null : { pos: i + 1, dir: sorts[i].dir };
   }
 
+  // Modelo compacto ativo (subconjunto nomeado de colunas). Quando aplicado, ele MANDA nas
+  // colunas exibidas (independe do checkbox de Colunas); só as obrigatórias entram sempre.
+  const modeloCompacto = useMemo(
+    () => (compactoAtivo ? visoesCompactas.find((v) => v.id === compactoAtivo) ?? null : null),
+    [compactoAtivo, visoesCompactas],
+  );
+  const colunasCompacto = useMemo(
+    () => (modeloCompacto ? new Set(modeloCompacto.colunas) : null),
+    [modeloCompacto],
+  );
+
   // ===== Colunas visíveis (na ordem salva; obrigatórias sempre) =====
   // Memoizado: referência estável evita reflow por render (o useLayoutEffect de medir larguras
   // só roda quando as colunas realmente mudam, não a cada clique/hover/resize).
-  const colsVisiveis = useMemo(
-    () => ordem.map((k) => colunaByKey[k]).filter(Boolean).filter((c) => c.obrigatoria || vis.includes(c.key)),
-    [ordem, colunaByKey, vis],
-  );
+  const colsVisiveis = useMemo(() => {
+    const todas = ordem.map((k) => colunaByKey[k]).filter(Boolean);
+    if (colunasCompacto) return todas.filter((c) => c.obrigatoria || colunasCompacto.has(c.key));
+    return todas.filter((c) => c.obrigatoria || vis.includes(c.key));
+  }, [ordem, colunaByKey, vis, colunasCompacto]);
 
   // Totais do rodapé (Σ sobre TODAS as linhas filtradas). Memoizado para NÃO recomputar a cada
   // clique de botão, hover de cabeçalho ou frame de resize , só quando as linhas, as colunas ou
@@ -409,7 +433,10 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
 
   // Larguras redimensionáveis
   const { larguras, setRef, medirFaltantes, iniciarResize, resetColuna, resizingKey } = useResizeColunas(`${storageKey}:larg`, scrollRef);
-  const colFixo = colsVisiveis.length > 0 && colsVisiveis.every((c) => larguras[c.key] != null);
+  // Com um MODELO compacto ativo, a tabela roda em table-auto e as colunas de texto são capadas
+  // (via max-w + truncate) para o modo compacto ficar de fato compacto; sem modelo, respeita as
+  // larguras salvas (table-fixed).
+  const colFixo = !modeloCompacto && colsVisiveis.length > 0 && colsVisiveis.every((c) => larguras[c.key] != null);
   useLayoutEffect(() => { medirFaltantes(colsVisiveis.map((c) => c.key)); }, [colsVisiveis, medirFaltantes]);
 
   // ===== Favoritos =====
@@ -427,6 +454,38 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
     // Compacto e "Mostrar venda" também fazem parte da visão salva (default false p/ favoritos antigos).
     setCompacto(f.snap.compacto ?? false);
     setMostrarVenda(f.snap.mostrarVenda ?? false);
+  }
+
+  // ===== Modo compacto (modelos nomeados) =====
+  function aplicarCompacto(id: string | null) { setCompacto(true); setCompactoAtivo(id); }
+  function desligarCompacto() { setCompacto(false); setCompactoAtivo(null); }
+  function novoCompacto() {
+    setCompEditId(""); // "" = novo
+    setCompNome("");
+    // Começa vazio: o usuário escolhe as POUCAS colunas do modo compacto (as obrigatórias entram
+    // sozinhas e nem aparecem na lista). Modo compacto = escolher o essencial, não trimar tudo.
+    setCompCols([]);
+  }
+  function editarCompacto(v: VisaoCompacta) { setCompEditId(v.id); setCompNome(v.nome); setCompCols(v.colunas); }
+  function toggleCompCol(k: string) { setCompCols((prev) => (prev.includes(k) ? prev.filter((x) => x !== k) : [...prev, k])); }
+  function salvarCompacto() {
+    const nome = compNome.trim() || "Compacto";
+    if (compEditId) {
+      const id = compEditId;
+      setVisoesCompactas((prev) => prev.map((v) => (v.id === id ? { ...v, nome, colunas: compCols } : v)));
+      aplicarCompacto(id);
+    } else {
+      const id = `vc${vcSeq++}`;
+      setVisoesCompactas((prev) => [...prev, { id, nome, colunas: compCols }]);
+      aplicarCompacto(id);
+    }
+    setCompEditId(null);
+    setToast(`Modo compacto "${nome}" salvo.`);
+  }
+  function excluirCompacto(id: string) {
+    setVisoesCompactas((prev) => prev.filter((v) => v.id !== id));
+    if (compactoAtivo === id) setCompactoAtivo(null);
+    if (compEditId === id) setCompEditId(null);
   }
 
   // ===== Exportar CSV (linhas filtradas/ordenadas, colunas visíveis) =====
@@ -461,7 +520,91 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
       {/* Toolbar */}
       <div className="mb-3 flex shrink-0 flex-wrap items-center gap-2">
         <Btn variant="outline" onClick={exportar}><Download className="size-4" /> Exportar</Btn>
-        <Btn variant={compacto ? "soft" : "outline"} aria-pressed={compacto} onClick={() => setCompacto((v) => !v)}><Rows3 className="size-4" /> Compacto</Btn>
+        {/* Compacto: popover com MODELOS nomeados (subconjuntos de colunas), aplicáveis na hora,
+            no padrão do "Filtrar e agrupar" (lista à esquerda, editor à direita). */}
+        <Popover
+          align="left"
+          width="w-[40rem] max-w-[calc(100vw-2rem)]"
+          trigger={({ toggle, open }) => (
+            <button type="button" onClick={toggle} aria-expanded={open}
+              className={cn("inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition-colors",
+                compacto ? "border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300" : "border-border bg-card text-foreground hover:bg-accent")}>
+              <Rows3 className="size-4" /> {modeloCompacto ? `Compacto: ${modeloCompacto.nome}` : "Compacto"} <ChevronDown className="size-3.5" />
+            </button>
+          )}
+        >
+          {() => {
+            const colunasAtivas = ordem.map((k) => colunaByKey[k]).filter(Boolean).filter((c) => !c.obrigatoria && vis.includes(c.key));
+            const editando = compEditId !== null;
+            return (
+              <div className="grid grid-cols-1 gap-3 p-1 sm:grid-cols-2">
+                {/* Esquerda: ligar/desligar + modelos salvos */}
+                <div>
+                  <p className="mb-1.5 flex items-center gap-1.5 px-1 text-sm font-semibold uppercase tracking-wide text-violet-600 dark:text-violet-400"><Rows3 className="size-3.5" /> Modo compacto</p>
+                  <div className="space-y-0.5">
+                    <button type="button" onClick={() => aplicarCompacto(null)} className={cn("flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] transition-colors", compacto && !compactoAtivo ? "bg-violet-500/10 text-violet-700 dark:text-violet-300" : "text-muted-foreground hover:bg-accent hover:text-foreground")}>
+                      <Check className={cn("size-4 shrink-0", compacto && !compactoAtivo ? "text-violet-500" : "text-transparent")} />
+                      <span className="flex-1">Compacto (todas as colunas)</span>
+                    </button>
+                    {compacto && (
+                      <button type="button" onClick={desligarCompacto} className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+                        <X className="size-4 shrink-0" /> <span className="flex-1">Desligar compacto</span>
+                      </button>
+                    )}
+                  </div>
+                  <p className="mb-1 mt-3 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Meus modelos</p>
+                  <div className="max-h-[15rem] space-y-0.5 overflow-y-auto pr-0.5">
+                    {visoesCompactas.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">Nenhum modelo salvo. Crie um para escolher só as colunas que importam.</p>}
+                    {visoesCompactas.map((v) => (
+                      <div key={v.id} className={cn("group flex items-center gap-1 rounded-lg px-1.5 py-0.5", compactoAtivo === v.id ? "bg-violet-500/10" : "hover:bg-accent")}>
+                        <button type="button" onClick={() => aplicarCompacto(v.id)} className="flex flex-1 cursor-pointer items-center gap-2 py-1 text-left text-[0.8125rem]">
+                          <Check className={cn("size-4 shrink-0", compactoAtivo === v.id ? "text-violet-500" : "text-transparent")} />
+                          <Rows3 className="size-3.5 shrink-0 text-violet-500" />
+                          <span className={cn("truncate", compactoAtivo === v.id ? "text-violet-700 dark:text-violet-300" : "text-foreground")}>{v.nome}</span>
+                          <span className="ml-auto shrink-0 text-[0.7rem] tabular-nums text-muted-foreground">{v.colunas.length} col</span>
+                        </button>
+                        <button type="button" onClick={() => editarCompacto(v)} aria-label={`Editar ${v.nome}`} className="shrink-0 cursor-pointer rounded p-1 text-muted-foreground/0 transition-colors group-hover:text-muted-foreground hover:text-violet-600"><Pencil className="size-3.5" /></button>
+                        <button type="button" onClick={() => excluirCompacto(v.id)} aria-label={`Excluir ${v.nome}`} className="shrink-0 cursor-pointer rounded p-1 text-muted-foreground/0 transition-colors group-hover:text-muted-foreground hover:text-rose-500"><Trash2 className="size-3.5" /></button>
+                      </div>
+                    ))}
+                  </div>
+                  <button type="button" onClick={novoCompacto} className="mt-2 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-violet-600 px-2 py-2 text-[0.8125rem] font-semibold text-white transition-colors hover:bg-violet-700">
+                    <Plus className="size-4" /> Criar modelo compacto
+                  </button>
+                </div>
+                {/* Direita: editor do modelo (nome + escolha das colunas) */}
+                <div className="sm:border-l sm:border-border sm:pl-3">
+                  {editando ? (
+                    <>
+                      <p className="mb-1.5 px-1 text-sm font-semibold uppercase tracking-wide text-violet-600 dark:text-violet-400">{compEditId ? "Editar modelo" : "Novo modelo"}</p>
+                      <input value={compNome} onChange={(e) => setCompNome(e.target.value)} placeholder="Nome (ex.: Compacto financeiro)" aria-label="Nome do modelo compacto" className="mb-2 h-9 w-full rounded-lg border border-border bg-card px-2.5 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+                      <p className="mb-1 px-1 text-xs text-muted-foreground">Colunas visíveis neste modo ({compCols.length} de {colunasAtivas.length}):</p>
+                      <div className="max-h-[13rem] space-y-0.5 overflow-y-auto pr-0.5">
+                        {colunasAtivas.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">Ative colunas no botão Colunas primeiro.</p>}
+                        {colunasAtivas.map((c) => (
+                          <button key={c.key} type="button" onClick={() => toggleCompCol(c.key)} className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] text-foreground transition-colors hover:bg-accent">
+                            <CheckboxView checked={compCols.includes(c.key)} />
+                            <span className="truncate">{c.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                      <div className="mt-2 flex gap-2">
+                        <button type="button" onClick={salvarCompacto} disabled={compCols.length === 0} className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-violet-600 px-2 py-2 text-[0.8125rem] font-semibold text-white transition-colors hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50">
+                          <Check className="size-4" /> Salvar e aplicar
+                        </button>
+                        <button type="button" onClick={() => setCompEditId(null)} className="cursor-pointer rounded-lg border border-border bg-card px-3 py-2 text-[0.8125rem] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">Cancelar</button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex h-full min-h-[10rem] items-center justify-center px-4 text-center text-xs text-muted-foreground">
+                      Clique num modelo à esquerda para aplicar na hora, ou crie um novo para escolher quais colunas ver no modo compacto.
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          }}
+        </Popover>
         {/* Toggle custo/venda: colunas de valor passam a mostrar custo + venda com ícones. */}
         {permiteVenda && (
           <Btn variant={mostrarVenda ? "soft" : "outline"} aria-pressed={mostrarVenda} onClick={() => setMostrarVenda((v) => !v)}>
@@ -716,7 +859,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                           {colsVisiveis.map((c, ci) => {
                             const alinhar = c.align ?? (c.numeric ? "right" : "left");
                             return (
-                            <td key={c.key} className={cn("overflow-hidden", ci === 0 ? "pl-4 pr-4" : "px-4", compacto ? "py-1" : "py-1.5", alinhar === "right" && "text-right", alinhar === "center" && "text-center")} style={niveis.length && c.key === colsVisiveis[0].key ? { paddingLeft: `${1 + it.level * 1.25}rem` } : undefined}>
+                            <td key={c.key} className={cn("overflow-hidden", ci === 0 ? "pl-4 pr-4" : "px-4", compacto ? "py-1" : "py-1.5", modeloCompacto && !c.numeric && "max-w-[15rem]", alinhar === "right" && "text-right", alinhar === "center" && "text-center")} style={niveis.length && c.key === colsVisiveis[0].key ? { paddingLeft: `${1 + it.level * 1.25}rem` } : undefined}>
                               {ci === 0 && expandirRow ? (
                                 <div className="flex items-center gap-1">
                                   <button type="button" aria-label={aberto ? "Recolher produtos" : "Ver produtos"} aria-expanded={aberto} onClick={(e) => { e.stopPropagation(); toggleExpandRow(rk); }} className="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
