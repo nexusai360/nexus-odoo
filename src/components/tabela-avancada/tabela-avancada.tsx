@@ -564,11 +564,15 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                     // Alinhamento: default numérica -> direita, senão esquerda; `align` sobrepõe.
                     const alinhar = c.align ?? (c.numeric ? "right" : "left");
                     return (
-                      <th key={c.key} ref={setRef(c.key)} className={cn("group/th relative overflow-hidden text-left font-medium", primeira ? (expandirRow ? "pl-8 pr-4" : "pl-2 pr-4") : "px-4", compacto ? "py-2" : "py-3", alinhar === "right" && "text-right", alinhar === "center" && "text-center")}>
+                      <th key={c.key} ref={setRef(c.key)} className={cn("group/th relative overflow-hidden text-left font-medium", primeira ? (expandirRow ? "pl-8 pr-4" : "pl-4 pr-4") : "px-4", compacto ? "py-2" : "py-3", alinhar === "right" && "text-right", alinhar === "center" && "text-center")}>
+                        {/* Acento roxo decorativo da ESQUERDA no hover, espelhando o ResizeHandle da direita. */}
+                        <span aria-hidden className="pointer-events-none absolute left-0 top-0 z-10 flex h-full w-3 translate-x-0.5 items-center justify-center">
+                          <span className="h-1/2 w-0.5 rounded-full bg-transparent transition-all group-hover/th:h-2/3 group-hover/th:bg-violet-400/50" />
+                        </span>
                         <button type="button" onClick={() => ordenarPor(c.key)} className={cn("flex min-w-0 max-w-full items-center gap-1.5", alinhar === "right" && "ml-auto justify-end", alinhar === "center" && "mx-auto justify-center", c.sortable ? "cursor-pointer hover:text-foreground" : "cursor-default")}>
                           {c.tooltipHeader ? (
                             <TooltipUI>
-                              <TooltipTrigger render={<span className="cursor-help truncate underline decoration-dotted decoration-muted-foreground/50 underline-offset-2" />}>{c.label}</TooltipTrigger>
+                              <TooltipTrigger render={<span className="truncate" />}>{c.label}</TooltipTrigger>
                               <TooltipContent>{c.tooltipHeader}</TooltipContent>
                             </TooltipUI>
                           ) : (
@@ -610,7 +614,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                           {colsVisiveis.map((c, ci) => {
                             const alinhar = c.align ?? (c.numeric ? "right" : "left");
                             return (
-                            <td key={c.key} className={cn("overflow-hidden", ci === 0 ? "pl-2 pr-4" : "px-4", compacto ? "py-1.5" : "py-2.5", alinhar === "right" && "text-right", alinhar === "center" && "text-center")} style={niveis.length && c.key === colsVisiveis[0].key ? { paddingLeft: `${0.5 + it.level * 1.25}rem` } : undefined}>
+                            <td key={c.key} className={cn("overflow-hidden", ci === 0 ? "pl-4 pr-4" : "px-4", compacto ? "py-1.5" : "py-2.5", alinhar === "right" && "text-right", alinhar === "center" && "text-center")} style={niveis.length && c.key === colsVisiveis[0].key ? { paddingLeft: `${1 + it.level * 1.25}rem` } : undefined}>
                               {ci === 0 && expandirRow ? (
                                 <div className="flex items-center gap-1">
                                   <button type="button" aria-label={aberto ? "Recolher produtos" : "Ver produtos"} aria-expanded={aberto} onClick={(e) => { e.stopPropagation(); toggleExpandRow(rk); }} className="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
@@ -644,7 +648,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                     {colsVisiveis.map((c, ci) => {
                       const alinhar = c.align ?? (c.numeric ? "right" : "left");
                       return (
-                        <td key={c.key} className={cn(ci === 0 ? "pl-2 pr-4" : "px-4", compacto ? "py-2" : "py-3", alinhar === "right" && "text-right tabular-nums", alinhar === "center" && "text-center")}>
+                        <td key={c.key} className={cn(ci === 0 ? "pl-4 pr-4" : "px-4", compacto ? "py-2" : "py-3", alinhar === "right" && "text-right tabular-nums", alinhar === "center" && "text-center")}>
                           {c.rodape ? c.rodape(lista) : null}
                         </td>
                       );
