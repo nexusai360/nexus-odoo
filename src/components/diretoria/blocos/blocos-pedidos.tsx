@@ -195,7 +195,14 @@ function nomeVendedor(raw: string | null): string {
   return nome || raw.trim() || DASH;
 }
 const PRESETS_ENTREGA: PresetFiltro[] = [
-  { id: "fin-bloq", label: "Financeiro bloqueado", campo: "status", valor: "Bloqueado" },
+  // Prazo de entrega (usa o campo calculado entregaStatus; mesma régua da bolinha da coluna).
+  { id: "entrega-vencida", label: "Entrega vencida", campo: "entregaStatus", kind: "regra", op: "igual", valor: "Atrasada" },
+  { id: "entrega-7d", label: "Entrega em até 7 dias", campo: "entregaStatus", kind: "regra", op: "igual", valor: "Vence em até 7 dias" },
+  // Financeiro / comercial.
+  { id: "fin-bloq", label: "Bloqueado financeiramente", campo: "status", valor: "Bloqueado" },
+  { id: "com-desconto", label: "Com desconto", campo: "desconto", kind: "regra", op: "maior", valor: "0" },
+  { id: "margem-neg", label: "Margem negativa", campo: "margem", kind: "regra", op: "menor", valor: "0" },
+  { id: "frete-fob", label: "Frete por conta do cliente (FOB)", campo: "modalidade", valor: "FOB (destinatario)" },
 ];
 
 function TabelaEntregasParciais({ d }: { d: PedidosData }) {

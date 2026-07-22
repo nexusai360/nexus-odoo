@@ -143,6 +143,21 @@ function mesLabel(iso: string): string {
   return m ? `${nomesMes[Number(m[2]) - 1]}/${m[1]}` : "sem data";
 }
 
+/** Categoria ESTÁVEL do prazo de entrega (para filtrar e agrupar; mesma régua da bolinha da
+ * coluna Entrega, mas sem a contagem de dias que muda a cada dia). */
+export const CATEGORIAS_ENTREGA = ["Atrasada", "Vence em até 7 dias", "No prazo", "Sem data prevista"] as const;
+export function categoriaEntrega(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!m) return "Sem data prevista";
+  const alvo = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  const dias = Math.round((alvo.getTime() - hoje.getTime()) / 86_400_000);
+  if (dias < 0) return "Atrasada";
+  if (dias <= 7) return "Vence em até 7 dias";
+  return "No prazo";
+}
+
 // ===== Totais do rodapé fixo (calculados sobre TODAS as linhas filtradas) =====
 
 const num0 = (v: number) => (Number.isFinite(v) ? v : 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 });
@@ -309,14 +324,35 @@ export const CAMPOS: CampoDef<LinhaEntrega>[] = [
   // Datas
   { key: "orcamento", label: "Data do orçamento", tipo: "data", grupo: "Datas", comum: false, get: (l) => l.orcamento, grupoKey: (l) => mesLabel(l.orcamento) },
   { key: "prevista", label: "Data prevista", tipo: "data", grupo: "Datas", comum: true, get: (l) => l.prevista, grupoKey: (l) => mesLabel(l.prevista) },
+  { key: "entregaStatus", label: "Status de entrega", tipo: "opcao", grupo: "Datas", comum: true, get: (l) => categoriaEntrega(l.prevista), grupoKey: (l) => categoriaEntrega(l.prevista), opcoes: CATEGORIAS_ENTREGA.map((c) => ({ valor: c, label: c })) },
   { key: "contrato", label: "Contrato", tipo: "data", grupo: "Datas", comum: false, get: (l) => l.contrato },
   // Financeiro
   { key: "status", label: "Financeiro", tipo: "opcao", grupo: "Financeiro", comum: true, get: (l) => l.status, opcoes: STATUS_OPCOES },
   { key: "desconto", label: "Desconto (R$)", tipo: "numero", grupo: "Financeiro", comum: false, get: (l) => l.descontoValor },
   { key: "vlrVenda", label: "A atender (venda R$)", tipo: "numero", grupo: "Financeiro", comum: true, get: (l) => l.vlrVenda },
   { key: "vlrCusto", label: "A atender (custo R$)", tipo: "numero", grupo: "Financeiro", comum: false, get: (l) => l.vlrCusto },
+  { key: "margem", label: "Margem (%)", tipo: "numero", grupo: "Financeiro", comum: false, get: (l) => l.margemPct },
   { key: "qtd", label: "Qtd a atender", tipo: "numero", grupo: "Financeiro", comum: false, get: (l) => l.qtd },
+  { key: "qtdTotal", label: "Qtd produto", tipo: "numero", grupo: "Financeiro", comum: false, get: (l) => l.qtdTotal },
+  { key: "qtdAtendida", label: "Qtd atendida", tipo: "numero", grupo: "Financeiro", comum: false, get: (l) => l.qtdAtendida },
   { key: "itens", label: "Nº de produtos", tipo: "numero", grupo: "Financeiro", comum: false, get: (l) => l.qtdItens },
+  // Valores e rentabilidade (do Odoo)
+  { key: "valorProduto", label: "Valor produto (custo)", tipo: "numero", grupo: "Valores", comum: false, get: (l) => l.valorTotalCusto },
+  { key: "valorPedido", label: "Valor pedido", tipo: "numero", grupo: "Valores", comum: false, get: (l) => l.subtotal },
+  { key: "custoComercial", label: "Custo comercial", tipo: "numero", grupo: "Valores", comum: false, get: (l) => l.custoComercial },
+  { key: "comissaoValor", label: "Comissão (R$)", tipo: "numero", grupo: "Valores", comum: false, get: (l) => l.comissaoValor },
+  { key: "comissaoPct", label: "Comissão (%)", tipo: "numero", grupo: "Valores", comum: false, get: (l) => l.comissaoPct },
+  { key: "liquido", label: "Lucro líquido", tipo: "numero", grupo: "Valores", comum: false, get: (l) => l.liquido },
+  // Impostos (do Odoo)
+  { key: "icms", label: "ICMS", tipo: "numero", grupo: "Impostos", comum: false, get: (l) => l.icms },
+  { key: "difal", label: "DIFAL", tipo: "numero", grupo: "Impostos", comum: false, get: (l) => l.difal },
+  { key: "fcp", label: "FCP", tipo: "numero", grupo: "Impostos", comum: false, get: (l) => l.fcp },
+  { key: "pis", label: "PIS", tipo: "numero", grupo: "Impostos", comum: false, get: (l) => l.pis },
+  { key: "cofins", label: "COFINS", tipo: "numero", grupo: "Impostos", comum: false, get: (l) => l.cofins },
+  { key: "irpj", label: "IRPJ", tipo: "numero", grupo: "Impostos", comum: false, get: (l) => l.irpj },
+  { key: "csll", label: "CSLL", tipo: "numero", grupo: "Impostos", comum: false, get: (l) => l.csll },
+  { key: "cbs", label: "CBS", tipo: "numero", grupo: "Impostos", comum: false, get: (l) => l.cbs },
+  { key: "ibs", label: "IBS", tipo: "numero", grupo: "Impostos", comum: false, get: (l) => l.ibs },
   // Observações
   { key: "observacoes", label: "Observações", tipo: "texto", grupo: "Observações", comum: false, get: (l) => l.observacoes },
   { key: "obsEntrega", label: "Obs entrega", tipo: "texto", grupo: "Observações", comum: false, get: (l) => l.obsEntrega },
@@ -329,12 +365,19 @@ export const CAMPO_BY_KEY: Record<string, CampoDef<LinhaEntrega>> = Object.fromE
 /** Campos oferecidos no "Agrupar por" (dimensões do pedido que fazem sentido). */
 export const AGRUPAMENTOS: { campo: string; label: string }[] = [
   { campo: "etapa", label: "Etapa" },
+  { campo: "entregaStatus", label: "Status de entrega" },
+  { campo: "modalidade", label: "Modalidade de frete" },
   { campo: "cliente", label: "Cliente" },
   { campo: "uf", label: "UF" },
+  { campo: "cidade", label: "Cidade" },
   { campo: "vendedor", label: "Vendedor" },
   { campo: "status", label: "Financeiro" },
   { campo: "operacao", label: "Operação" },
+  { campo: "forma", label: "Forma de pagamento" },
+  { campo: "condicao", label: "Condição de pagamento" },
+  { campo: "emitente", label: "Emitente" },
   { campo: "prevista", label: "Mês previsto" },
+  { campo: "orcamento", label: "Mês do orçamento" },
 ];
 
 // ===== Tag do pedido (abre o pedido no Odoo em nova aba) =====
