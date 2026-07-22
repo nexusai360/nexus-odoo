@@ -391,7 +391,21 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   }
 
   // ===== Colunas visíveis (na ordem salva; obrigatórias sempre) =====
-  const colsVisiveis = ordem.map((k) => colunaByKey[k]).filter(Boolean).filter((c) => c.obrigatoria || vis.includes(c.key));
+  // Memoizado: referência estável evita reflow por render (o useLayoutEffect de medir larguras
+  // só roda quando as colunas realmente mudam, não a cada clique/hover/resize).
+  const colsVisiveis = useMemo(
+    () => ordem.map((k) => colunaByKey[k]).filter(Boolean).filter((c) => c.obrigatoria || vis.includes(c.key)),
+    [ordem, colunaByKey, vis],
+  );
+
+  // Totais do rodapé (Σ sobre TODAS as linhas filtradas). Memoizado para NÃO recomputar a cada
+  // clique de botão, hover de cabeçalho ou frame de resize , só quando as linhas, as colunas ou
+  // o toggle custo/venda mudam. Era o custo escondido que deixava a tabela "lenta".
+  const rodapeValores = useMemo(
+    () => colsVisiveis.map((c) => (c.rodape ? c.rodape(lista) : null)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [colsVisiveis, lista, mostrarVenda],
+  );
 
   // Larguras redimensionáveis
   const { larguras, setRef, medirFaltantes, iniciarResize, resetColuna, resizingKey } = useResizeColunas(`${storageKey}:larg`, scrollRef);
@@ -447,10 +461,10 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
       {/* Toolbar */}
       <div className="mb-3 flex shrink-0 flex-wrap items-center gap-2">
         <Btn variant="outline" onClick={exportar}><Download className="size-4" /> Exportar</Btn>
-        <Btn variant={compacto ? "primary" : "outline"} onClick={() => setCompacto((v) => !v)}><Rows3 className="size-4" /> Compacto</Btn>
+        <Btn variant={compacto ? "soft" : "outline"} aria-pressed={compacto} onClick={() => setCompacto((v) => !v)}><Rows3 className="size-4" /> Compacto</Btn>
         {/* Toggle custo/venda: colunas de valor passam a mostrar custo + venda com ícones. */}
         {permiteVenda && (
-          <Btn variant={mostrarVenda ? "primary" : "outline"} onClick={() => setMostrarVenda((v) => !v)}>
+          <Btn variant={mostrarVenda ? "soft" : "outline"} aria-pressed={mostrarVenda} onClick={() => setMostrarVenda((v) => !v)}>
             <Tag className="size-4" /> {mostrarVenda ? "Custo + venda" : "Mostrar venda"}
           </Btn>
         )}
@@ -737,7 +751,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                       const alinhar = c.align ?? (c.numeric ? "right" : "left");
                       return (
                         <td key={c.key} className={cn(ci === 0 ? "pl-4 pr-4" : "px-4", compacto ? "py-1.5" : "py-2", alinhar === "right" && "text-right tabular-nums", alinhar === "center" && "text-center")}>
-                          {c.rodape ? c.rodape(lista) : null}
+                          {rodapeValores[ci]}
                         </td>
                       );
                     })}

@@ -338,13 +338,15 @@ export function Btn({
   children,
   ...props
 }: {
-  variant?: "primary" | "outline" | "ghost" | "danger";
+  variant?: "primary" | "outline" | "ghost" | "danger" | "soft";
 } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
   const base =
     "inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-lg px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
   const styles = {
     primary: "bg-violet-600 text-white hover:bg-violet-700",
     outline: "border border-border bg-card text-foreground hover:bg-accent",
+    // `soft`: estado ATIVO translúcido (igual ao botão Colunas / Filtrar), não roxo sólido.
+    soft: "border border-violet-500/40 bg-violet-500/10 text-violet-700 hover:bg-violet-500/15 dark:text-violet-300",
     ghost: "text-muted-foreground hover:bg-accent hover:text-foreground",
     danger: "text-rose-600 hover:bg-rose-500/10 dark:text-rose-400",
   }[variant];
@@ -690,6 +692,8 @@ export function useResizeColunas(storageKey: string, containerRef?: React.RefObj
   const [hidratado, setHidratado] = useState(false);
   const thRefs = useRef<Record<string, HTMLTableCellElement | null>>({});
   const [drag, setDrag] = useState<{ key: string; startX: number; startW: number } | null>(null);
+  // Última largura calculada durante o arraste (aplicada ao <col> por DOM; comitada 1x no soltar).
+  const dragWRef = useRef<number | null>(null);
 
   useEffect(() => {
     try { const r = window.localStorage.getItem(storageKey); if (r) setLarguras(JSON.parse(r)); } catch { /* ignore */ }
@@ -759,10 +763,29 @@ export function useResizeColunas(storageKey: string, containerRef?: React.RefObj
     // Máximo = 85% da largura VISÍVEL da tabela (não deixa a coluna estourar a tela).
     const visivel = containerRef?.current?.clientWidth ?? (typeof window !== "undefined" ? window.innerWidth : 1200);
     const MAX = Math.max(MIN + 40, Math.round(visivel * 0.85));
-    // Instantâneo: aplica a nova largura a cada movimento do ponteiro (a tabela é table-fixed,
-    // então só a coluna arrastada e o contêiner refluem; é barato e responde na hora).
-    const mover = (e: PointerEvent) => setLarguras((prev) => ({ ...prev, [drag.key]: Math.min(Math.max(Math.round(drag.startW + (e.clientX - drag.startX)), MIN), MAX) }));
-    const soltar = () => setDrag(null);
+    // Instantâneo E barato: durante o arraste, escrevemos a largura DIRETO no <col> via DOM
+    // (a tabela é table-fixed, então o navegador reflui só aquela coluna, sem React no meio).
+    // Nada de setState nem localStorage por frame , isso é o que deixava o arraste "atrasado".
+    // Comitamos ao estado UMA vez no soltar (aí sim persiste e sincroniza o React).
+    const th = thRefs.current[drag.key];
+    const table = th?.closest("table") as HTMLTableElement | null;
+    const colEl = table
+      ? (Array.from(table.querySelectorAll("colgroup col")).find(
+          (c) => (c as HTMLElement).dataset.colkey === drag.key,
+        ) as HTMLElement | undefined)
+      : undefined;
+    dragWRef.current = null;
+    const mover = (e: PointerEvent) => {
+      const w = Math.min(Math.max(Math.round(drag.startW + (e.clientX - drag.startX)), MIN), MAX);
+      dragWRef.current = w;
+      if (colEl) colEl.style.width = `${w}px`;
+      else setLarguras((prev) => ({ ...prev, [drag.key]: w })); // fallback: sem colgroup ainda
+    };
+    const soltar = () => {
+      const w = dragWRef.current;
+      if (w != null) setLarguras((prev) => ({ ...prev, [drag.key]: w }));
+      setDrag(null);
+    };
     window.addEventListener("pointermove", mover);
     window.addEventListener("pointerup", soltar);
     window.addEventListener("pointercancel", soltar);
