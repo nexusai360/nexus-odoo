@@ -8,6 +8,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Plus, Trash2, CornerDownRight, Layers, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Modal, Btn, Select } from "./ui";
@@ -53,31 +54,39 @@ function SeletorCampo({ value, campos, onChange }: { value: string; campos: Camp
   // Nasce mostrando TODOS os campos (a maioria das colunas é filtrável); o toggle reduz aos comuns.
   const [todos, setTodos] = useState(true);
   const [open, setOpen] = useState(false);
-  const wrapRef = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
   const lista = useMemo(() => {
     const b = busca.trim().toLowerCase();
     return campos.filter((c) => (todos || c.comum) && (!b || c.label.toLowerCase().includes(b)));
   }, [busca, todos, campos]);
   const atual = campos.find((c) => c.key === value);
 
-  // Fecha por clique fora (o listener é anexado no próximo tick para não pegar o
-  // clique de abertura). NÃO usa onBlur , o autoFocus do input roubava o foco e
-  // fechava o dropdown na hora (era o "erro" do filtro personalizado).
+  // O dropdown vai num PORTAL (position: fixed) para NÃO ser cortado pelo scroll do modal
+  // (o corpo do Modal tem overflow-y-auto, que recortava a lista de campos). Fecha por clique
+  // fora considerando o botão E o popup portado.
   useEffect(() => {
     if (!open) return;
-    const onDoc = (e: MouseEvent) => { if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false); };
+    const el = btnRef.current;
+    if (el) { const r = el.getBoundingClientRect(); setPos({ top: r.bottom + 4, left: r.left, width: Math.max(r.width, 320) }); }
+    const onDoc = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (btnRef.current?.contains(t) || popRef.current?.contains(t)) return;
+      setOpen(false);
+    };
     const id = window.setTimeout(() => document.addEventListener("mousedown", onDoc), 0);
     return () => { window.clearTimeout(id); document.removeEventListener("mousedown", onDoc); };
   }, [open]);
 
   return (
-    <div ref={wrapRef} className="relative">
-      <button type="button" onClick={() => setOpen((v) => !v)} className={cn(SEL, "flex min-w-[10rem] cursor-pointer items-center justify-between gap-2")}>
+    <div className="relative">
+      <button ref={btnRef} type="button" onClick={() => setOpen((v) => !v)} className={cn(SEL, "flex min-w-[10rem] cursor-pointer items-center justify-between gap-2")}>
         <span className="truncate">{atual?.label ?? "Campo"}</span>
         <span className="text-muted-foreground">▾</span>
       </button>
-      {open && (
-        <div className="absolute left-0 top-10 z-50 w-80 rounded-xl border border-border bg-popover p-1.5 shadow-xl">
+      {open && pos && typeof document !== "undefined" && createPortal(
+        <div ref={popRef} style={{ position: "fixed", top: pos.top, left: pos.left, width: pos.width }} className="z-[130] rounded-xl border border-border bg-popover p-1.5 shadow-xl">
           <input autoFocus value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar campo..." className="mb-1 h-8 w-full rounded-lg border border-border bg-card px-2.5 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
           <div className="max-h-80 overflow-y-auto">
             {lista.map((c) => (
@@ -91,7 +100,8 @@ function SeletorCampo({ value, campos, onChange }: { value: string; campos: Camp
           <button type="button" onClick={() => setTodos((v) => !v)} className="mt-1 w-full cursor-pointer rounded-lg border-t border-border px-2.5 py-1.5 text-left text-xs font-medium text-violet-600 hover:bg-accent dark:text-violet-400">
             {todos ? "Mostrar só campos comuns" : "Mostrar todos os campos"}
           </button>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

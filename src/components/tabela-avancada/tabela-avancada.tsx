@@ -526,7 +526,6 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                     return (
                       <button key={q.id} type="button" onClick={() => (ativo ? removeChip(chipId) : addChip(chip))} className={cn("flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] transition-colors", ativo ? "bg-violet-500/10 text-violet-700 dark:text-violet-300" : "text-muted-foreground hover:bg-accent hover:text-foreground")}>
                         <Check className={cn("size-4 shrink-0", ativo ? "text-violet-500" : "text-transparent")} />
-                        <Filter className={cn("size-3.5 shrink-0", ativo ? "text-violet-500" : "text-muted-foreground/70")} aria-hidden />
                         <span className="flex-1">{q.label}</span>
                       </button>
                     );

@@ -397,7 +397,7 @@ export const AGRUPAMENTOS: { campo: string; label: string }[] = [
   { campo: "entregaStatus", label: "Status de entrega" },
   { campo: "modalidade", label: "Modalidade de frete" },
   { campo: "cliente", label: "Cliente" },
-  { campo: "tipoDoc", label: "Tipo de documento (PJ/PF)" },
+  { campo: "tipoDoc", label: "Tipo de documento" },
   { campo: "uf", label: "UF" },
   { campo: "cidade", label: "Cidade" },
   { campo: "vendedor", label: "Vendedor" },
