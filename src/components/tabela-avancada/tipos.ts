@@ -30,6 +30,8 @@ export interface ColunaDef<T> {
   /** alinhamento da coluna (sobrepõe o default: numérica -> "right", senão "left").
    * "center" serve para colunas de ícone/status, onde o ícone deve ficar no meio. */
   align?: "left" | "center" | "right";
+  /** tooltip mostrado ao passar o mouse no cabeçalho da coluna (ex.: nota de rodapé). */
+  tooltipHeader?: string;
   /** visível no conjunto default. */
   padrao: boolean;
   /** obrigatória: sempre visível, não desmarcável nem reordenável. */

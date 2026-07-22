@@ -268,6 +268,7 @@ function TabelaEntregasParciais({ d }: { d: PedidosData }) {
         vlrCusto: 0,
         // Rentabilidade (nível pedido, igual em toda linha; vem do cabeçalho).
         subtotal: l.subtotal,
+        valorProduto: l.valorProduto,
         custoComercial: l.custoComercial,
         icms: l.icms,
         difal: l.difal,

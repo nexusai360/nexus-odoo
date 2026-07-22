@@ -83,6 +83,8 @@ export interface LinhaEntrega {
   vlrCusto: number;      // soma a atender (custo)
   // Rentabilidade do pedido (prontos do Odoo; iguais em toda linha do pedido).
   subtotal: number;
+  /** Total da coluna "Produto" do Odoo (vr_produtos = "Subtotal" do cabeçalho Odoo). */
+  valorProduto: number;
   custoComercial: number;
   icms: number;
   difal: number;
@@ -224,10 +226,10 @@ export const COLUNAS: ColunaDef<LinhaEntrega>[] = [
   { key: "condicao", label: "Condição de Pagamento", tipo: "texto", sortable: true, numeric: false, padrao: true, valor: (l) => l.condicao },
   // --- Datas ---
   { key: "orcamento", label: "Orçamento", tipo: "data", sortable: true, numeric: false, padrao: false, valor: (l) => l.orcamento },
-  { key: "prevista", label: "Prevista", tipo: "data", sortable: true, numeric: false, padrao: true, valor: (l) => l.prevista },
+  { key: "prevista", label: "Entrega", tipo: "data", sortable: true, numeric: false, padrao: true, valor: (l) => l.prevista },
   { key: "contrato", label: "Validade", tipo: "data", sortable: true, numeric: false, padrao: false, valor: (l) => l.contrato },
   // --- Quantidades (unidades): total, atendida, a atender ---
-  { key: "qtdTotal", label: "Qtd. Total", tipo: "numero", sortable: true, numeric: true, padrao: true, valor: (l) => l.qtdTotal, rodape: totNum((l) => l.qtdTotal) },
+  { key: "qtdTotal", label: "Qtd. Produto", tipo: "numero", sortable: true, numeric: true, padrao: true, valor: (l) => l.qtdTotal, rodape: totNum((l) => l.qtdTotal) },
   { key: "qtdAtendida", label: "Qtd. Atendida", tipo: "numero", sortable: true, numeric: true, padrao: true, valor: (l) => l.qtdAtendida, rodape: totNum((l) => l.qtdAtendida) },
   { key: "qtd", label: "Qtd. A Atender", tipo: "numero", sortable: true, numeric: true, padrao: true, valor: (l) => l.qtd, rodape: totNum((l) => l.qtd) },
   // --- Valores da entrega: custo por padrão; com o toggle "Mostrar venda", a
@@ -239,8 +241,13 @@ export const COLUNAS: ColunaDef<LinhaEntrega>[] = [
     rodape: (rows) => <TotalValorCV custo={somaDe(rows, (l) => l.vlrCusto)} venda={somaDe(rows, (l) => l.vlrVenda)} /> },
   // Desconto do pedido (R$, do Odoo). Visível por padrão a pedido do dono.
   { key: "desconto", label: "Desconto", tipo: "moeda", sortable: true, numeric: true, padrao: true, valor: (l) => l.descontoValor, rodape: totMoeda((l) => l.descontoValor) },
+  // Valor Produto = total da coluna "Produto" do Odoo (vr_produtos, bruto). Puxado do sistema.
+  { key: "valorProduto", label: "Valor Produto", tipo: "moeda", sortable: true, numeric: true, padrao: true, valor: (l) => l.valorProduto, rodape: totMoeda((l) => l.valorProduto) },
+  // Subtotal Pedido = "Subtotal" do cabeçalho do Odoo (mesmo vr_produtos). Cor cinza (como Desconto).
+  { key: "subtotalPedido", label: "Subtotal Pedido", tipo: "moeda", sortable: true, numeric: true, padrao: true, valor: (l) => l.valorProduto, rodape: totMoeda((l) => l.valorProduto) },
   // --- Rentabilidade do pedido (prontos do Odoo). Margem padrão; resto opcional. ---
-  { key: "subtotal", label: "Subtotal", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.subtotal, rodape: totMoeda((l) => l.subtotal) },
+  // Valor Pedido = "Total geral" do Odoo (vr_operacao_tributacao). Mantém a cor branca.
+  { key: "subtotal", label: "Valor Pedido", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.subtotal, rodape: totMoeda((l) => l.subtotal) },
   { key: "custoComercial", label: "Custo Comercial", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.custoComercial, rodape: totMoeda((l) => l.custoComercial) },
   // % comissão geral = Σ comissão ÷ Σ subtotal (não é média de %).
   { key: "comissaoPct", label: "% Comissão", tipo: "percent", sortable: true, numeric: true, padrao: false, valor: (l) => l.comissaoPct,
@@ -257,8 +264,8 @@ export const COLUNAS: ColunaDef<LinhaEntrega>[] = [
   { key: "cofins", label: "COFINS", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.cofins, rodape: totMoeda((l) => l.cofins) },
   { key: "irpj", label: "IRPJ", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.irpj, rodape: totMoeda((l) => l.irpj) },
   { key: "csll", label: "CSLL", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.csll, rodape: totMoeda((l) => l.csll) },
-  { key: "cbs", label: "CBS", tipo: "moeda", sortable: true, numeric: true, padrao: true, valor: (l) => l.cbs, rodape: totMoeda((l) => l.cbs) },
-  { key: "ibs", label: "IBS", tipo: "moeda", sortable: true, numeric: true, padrao: true, valor: (l) => l.ibs, rodape: totMoeda((l) => l.ibs) },
+  { key: "cbs", label: "CBS*", tooltipHeader: "Alíquotas Simbólicas", tipo: "moeda", sortable: true, numeric: true, padrao: true, valor: (l) => l.cbs, rodape: totMoeda((l) => l.cbs) },
+  { key: "ibs", label: "IBS*", tooltipHeader: "Alíquotas Simbólicas", tipo: "moeda", sortable: true, numeric: true, padrao: true, valor: (l) => l.ibs, rodape: totMoeda((l) => l.ibs) },
   // --- Observações ---
   { key: "observacoes", label: "Observações Pedido", tipo: "texto", sortable: false, numeric: false, padrao: false, valor: (l) => l.observacoes, detalheSpan: 4 },
   { key: "obsEntrega", label: "Observações Gerais", tipo: "texto", sortable: false, numeric: false, padrao: false, valor: (l) => l.obsEntrega, detalheSpan: 4 },
@@ -404,6 +411,22 @@ function CelulaValorCV({ custo, venda }: { custo: number; venda: number }) {
 
 // ===== Render de célula por tipo (cabeçalho do pedido) =====
 
+/** Status da data de ENTREGA (prevista) em relação a hoje. O Odoo não expõe os limiares
+ * de cor no dado (é lógica de tela do ERP), então usamos limiares de negócio: vencida =
+ * vermelho, faltando ≤7 dias = âmbar, com folga = neutro. Vira um ÍCONE (bolinha), não
+ * texto colorido, para não poluir. */
+function statusEntrega(iso: string): { cor: string; label: string } | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!m) return null;
+  const alvo = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  const dias = Math.round((alvo.getTime() - hoje.getTime()) / 86_400_000);
+  if (dias < 0) return { cor: "bg-rose-500", label: `Entrega atrasada (${-dias} dia${-dias === 1 ? "" : "s"})` };
+  if (dias <= 7) return { cor: "bg-amber-500", label: dias === 0 ? "Entrega hoje" : `Faltam ${dias} dia${dias === 1 ? "" : "s"}` };
+  return { cor: "bg-foreground/30", label: "No prazo" };
+}
+
 export function celula(l: LinhaEntrega, key: string): React.ReactNode {
   const col = COLUNA_BY_KEY[key];
   if (!col) return null;
@@ -415,6 +438,19 @@ export function celula(l: LinhaEntrega, key: string): React.ReactNode {
   // Desconto: a chave da coluna ("desconto") difere do campo da linha
   // (`descontoValor`), então precisa de caso próprio (senão renderiza R$ 0,00).
   if (key === "desconto") return <span className="whitespace-nowrap tabular-nums text-muted-foreground" title={`Desconto ${formatPct(l.descontoPct)}`}>{formatBRL(l.descontoValor)}</span>;
+  // Subtotal Pedido: mesmo valor bruto dos produtos, na cor cinza (como Desconto).
+  if (key === "subtotalPedido") return <span className="whitespace-nowrap tabular-nums text-muted-foreground">{formatBRL(l.valorProduto)}</span>;
+  // Entrega (prevista): data em branco + ícone (bolinha) de status por prazo.
+  if (key === "prevista") {
+    const iso = String(l.prevista ?? "");
+    const st = statusEntrega(iso);
+    return (
+      <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-foreground">
+        {st && <span className={cn("size-2 shrink-0 rounded-full", st.cor)} title={st.label} aria-label={st.label} />}
+        {formatarDataBR(iso)}
+      </span>
+    );
+  }
   // Produtos: contagem de itens do pedido.
   if (key === "itens") {
     return (
@@ -607,7 +643,9 @@ export function DetalheEntrega({ l }: { l: LinhaEntrega }) {
         {(l.subtotal !== 0 || l.liquido !== 0 || l.custoComercial !== 0 || l.descontoValor !== 0) && (
           <Secao titulo="Rentabilidade do pedido" icone={TrendingUp}>
             <div className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-4">
-              <Campo label="Subtotal" valor={formatBRL(l.subtotal)} />
+              <Campo label="Valor Produto" valor={formatBRL(l.valorProduto)} />
+              <Campo label="Subtotal Pedido" valor={formatBRL(l.valorProduto)} />
+              <Campo label="Valor Pedido" valor={formatBRL(l.subtotal)} />
               <Campo label={`Desconto (${formatPct(l.descontoPct)})`} valor={formatBRL(l.descontoValor)} />
               <Campo label="Custo Comercial" valor={formatBRL(l.custoComercial)} />
               <Campo label={`Comissão (${formatPct(l.comissaoPct)})`} valor={formatBRL(l.comissaoValor)} />

@@ -74,8 +74,11 @@ export interface LinhaEntregaParcial {
   itemDescontoPct: number;
   // --- Rentabilidade do PEDIDO (campos prontos do Odoo, raw_pedido_documento;
   //     repetidos em toda linha do mesmo pedido). Margem = liquido / subtotal. ---
-  /** Base tributável do pedido (vr_operacao_tributacao) = Subtotal do Odoo. */
+  /** Base tributável do pedido (vr_operacao_tributacao) = "Total geral" do Odoo. */
   subtotal: number;
+  /** Total da coluna "Produto" do Odoo (vr_produtos = soma bruta dos produtos, antes do
+   * desconto) = "Subtotal" do cabeçalho do Odoo. Puxado do sistema, não somado por nós. */
+  valorProduto: number;
   /** Custo comercial (vr_custo_comercial; o custo da aba Rentabilidade). */
   custoComercial: number;
   icms: number;
@@ -232,12 +235,13 @@ function numJson(v: unknown): number {
  * `raw_pedido_documento.data` (mesma aba Rentabilidade do ERP). Margem e líquido
  * vêm prontos (NÃO recalcular: é Lucro Real, o líquido já abate créditos). */
 export function extrairRentabilidade(data: unknown): {
-  subtotal: number; custoComercial: number; icms: number; difal: number; fcp: number;
+  subtotal: number; valorProduto: number; custoComercial: number; icms: number; difal: number; fcp: number;
   pis: number; cofins: number; irpj: number; csll: number; cbs: number; ibs: number; comissaoPct: number; comissaoValor: number; liquido: number; margemPct: number;
 } {
   const d = data as Record<string, unknown> | null;
   return {
     subtotal: numJson(d?.vr_operacao_tributacao),
+    valorProduto: numJson(d?.vr_produtos),
     custoComercial: numJson(d?.vr_custo_comercial),
     icms: numJson(d?.vr_icms_proprio),
     difal: numJson(d?.vr_difal),
