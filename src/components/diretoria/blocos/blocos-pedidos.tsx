@@ -172,7 +172,7 @@ function KpisEntregasParciais({ d }: { d: PedidosData }) {
         <ToggleCorteEntregas />
       </div>
       <div className="grid flex-1 content-center grid-cols-2 gap-2.5 lg:grid-cols-4">
-        <KpiButton rotulo="Pedidos" valor={num.format(i.qtdPedidos)} icone={ClipboardList} tone="info" hint={i.qtdPedidosSemSaldo > 0 ? `Com saldo a entregar · +${num.format(i.qtdPedidosSemSaldo)} abertos sem saldo (já entregues)` : "Com saldo a entregar no período"} />
+        <KpiButton rotulo="Pedidos" valor={num.format(i.qtdPedidos)} icone={ClipboardList} tone="info" hint={i.qtdPedidosSemSaldo > 0 ? `Com saldo a entregar. +${num.format(i.qtdPedidosSemSaldo)} abertos sem saldo (já entregues)` : "Com saldo a entregar no período"} />
         <KpiButton rotulo="Total dos pedidos" valor={brlCompacto(i.totalPedido)} valorCompleto={brl.format(i.totalPedido)} icone={Receipt} hint="Valor cheio, a venda (inclui o já entregue)" />
         <KpiButton rotulo="Falta entregar (venda)" valor={brlCompacto(i.aAtenderVenda)} valorCompleto={brl.format(i.aAtenderVenda)} icone={Wallet} hint="Saldo a atender, a preço de venda" />
         <KpiButton rotulo="Falta entregar (custo)" valor={brlCompacto(i.aAtenderCusto)} valorCompleto={brl.format(i.aAtenderCusto)} icone={Coins} tone="success" hint="Saldo a atender, a custo (mesma métrica do card: bate para o mesmo período e empresa)" />
