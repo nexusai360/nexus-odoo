@@ -213,7 +213,7 @@ export const COLUNAS: ColunaDef<LinhaEntrega>[] = [
     } },
   // --- Cliente e localização ---
   { key: "cliente", label: "Cliente", tipo: "texto", sortable: true, numeric: false, padrao: true, valor: (l) => l.cliente, detalheSpan: 2 },
-  { key: "cnpj", label: "CNPJ", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.cnpj, sortKey: (l) => Number(String(l.cnpj).replace(/\D/g, "")) || 0 },
+  { key: "cnpj", label: "CNPJ/CPF", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.cnpj, sortKey: (l) => Number(String(l.cnpj).replace(/\D/g, "")) || 0 },
   { key: "emitente", label: "Emitente", tipo: "texto", sortable: true, numeric: false, padrao: false, valor: (l) => l.emitente, detalheSpan: 2 },
   { key: "uf", label: "UF", tipo: "texto", sortable: true, numeric: false, padrao: true, valor: (l) => l.uf },
   { key: "cidade", label: "Cidade", tipo: "texto", sortable: true, numeric: false, padrao: true, valor: (l) => l.cidade },
@@ -248,7 +248,7 @@ export const COLUNAS: ColunaDef<LinhaEntrega>[] = [
   // --- Rentabilidade do pedido (prontos do Odoo). Margem padrão; resto opcional. ---
   // Valor Pedido = "Total geral" do Odoo (vr_operacao_tributacao). Mantém a cor branca.
   { key: "subtotal", label: "Valor Pedido", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.subtotal, rodape: totMoeda((l) => l.subtotal) },
-  { key: "custoComercial", label: "Custo Comercial", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.custoComercial, rodape: totMoeda((l) => l.custoComercial) },
+  { key: "custoComercial", label: "Custo", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.custoComercial, rodape: totMoeda((l) => l.custoComercial) },
   // % comissão geral = Σ comissão ÷ Σ subtotal (não é média de %).
   { key: "comissaoPct", label: "% Comissão", tipo: "percent", sortable: true, numeric: true, padrao: false, valor: (l) => l.comissaoPct,
     rodape: (rows) => { const sub = somaDe(rows, (l) => l.subtotal); const com = somaDe(rows, (l) => l.comissaoValor); const p = sub ? (com / sub) * 100 : 0; return <span className="whitespace-nowrap tabular-nums">{formatPct(p)}</span>; } },
@@ -264,8 +264,8 @@ export const COLUNAS: ColunaDef<LinhaEntrega>[] = [
   { key: "cofins", label: "COFINS", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.cofins, rodape: totMoeda((l) => l.cofins) },
   { key: "irpj", label: "IRPJ", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.irpj, rodape: totMoeda((l) => l.irpj) },
   { key: "csll", label: "CSLL", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.csll, rodape: totMoeda((l) => l.csll) },
-  { key: "cbs", label: "CBS*", tooltipHeader: "Alíquotas Simbólicas", tipo: "moeda", sortable: true, numeric: true, padrao: true, valor: (l) => l.cbs, rodape: totMoeda((l) => l.cbs) },
-  { key: "ibs", label: "IBS*", tooltipHeader: "Alíquotas Simbólicas", tipo: "moeda", sortable: true, numeric: true, padrao: true, valor: (l) => l.ibs, rodape: totMoeda((l) => l.ibs) },
+  { key: "cbs", label: "CBS*", tooltipHeader: "Alíquota Simbólica", tipo: "moeda", sortable: true, numeric: true, padrao: true, valor: (l) => l.cbs, rodape: totMoeda((l) => l.cbs) },
+  { key: "ibs", label: "IBS*", tooltipHeader: "Alíquota Simbólica", tipo: "moeda", sortable: true, numeric: true, padrao: true, valor: (l) => l.ibs, rodape: totMoeda((l) => l.ibs) },
   // --- Observações ---
   { key: "observacoes", label: "Observações Pedido", tipo: "texto", sortable: false, numeric: false, padrao: false, valor: (l) => l.observacoes, detalheSpan: 4 },
   { key: "obsEntrega", label: "Observações Gerais", tipo: "texto", sortable: false, numeric: false, padrao: false, valor: (l) => l.obsEntrega, detalheSpan: 4 },
@@ -290,7 +290,7 @@ export const CAMPOS: CampoDef<LinhaEntrega>[] = [
   { key: "modalidade", label: "Modalidade", tipo: "opcao", grupo: "Pedido", comum: false, get: (l) => l.modalidade },
   // Cliente
   { key: "cliente", label: "Cliente", tipo: "texto", grupo: "Cliente", comum: true, get: (l) => l.cliente },
-  { key: "cnpj", label: "CNPJ", tipo: "texto", grupo: "Cliente", comum: false, get: (l) => l.cnpj },
+  { key: "cnpj", label: "CNPJ/CPF", tipo: "texto", grupo: "Cliente", comum: false, get: (l) => l.cnpj },
   { key: "emitente", label: "Emitente", tipo: "opcao", grupo: "Cliente", comum: false, get: (l) => l.emitente },
   { key: "uf", label: "UF", tipo: "opcao", grupo: "Cliente", comum: true, get: (l) => l.uf },
   { key: "cidade", label: "Cidade", tipo: "texto", grupo: "Cliente", comum: false, get: (l) => l.cidade },

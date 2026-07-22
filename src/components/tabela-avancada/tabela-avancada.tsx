@@ -26,6 +26,7 @@ import {
   Popover, Tooltip, Modal, Btn, Select, SeletorColunas, Paginacao,
   useResizeColunas, ResizeHandle,
 } from "./ui";
+import { Tooltip as TooltipUI, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { FiltroAvancado, type CampoUI } from "./filtro-avancado";
 import { KanbanView, CalendarioView } from "./visoes";
 import { testaNo, type GrupoRegras, type CampoLike } from "./motor-filtro";
@@ -564,8 +565,15 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                     const alinhar = c.align ?? (c.numeric ? "right" : "left");
                     return (
                       <th key={c.key} ref={setRef(c.key)} className={cn("group/th relative overflow-hidden text-left font-medium", primeira ? (expandirRow ? "pl-8 pr-4" : "pl-2 pr-4") : "px-4", compacto ? "py-2" : "py-3", alinhar === "right" && "text-right", alinhar === "center" && "text-center")}>
-                        <button type="button" onClick={() => ordenarPor(c.key)} title={c.tooltipHeader} className={cn("flex min-w-0 max-w-full items-center gap-1.5", alinhar === "right" && "ml-auto justify-end", alinhar === "center" && "mx-auto justify-center", c.sortable ? "cursor-pointer hover:text-foreground" : "cursor-default")}>
-                          <span className="truncate">{c.label}</span>
+                        <button type="button" onClick={() => ordenarPor(c.key)} className={cn("flex min-w-0 max-w-full items-center gap-1.5", alinhar === "right" && "ml-auto justify-end", alinhar === "center" && "mx-auto justify-center", c.sortable ? "cursor-pointer hover:text-foreground" : "cursor-default")}>
+                          {c.tooltipHeader ? (
+                            <TooltipUI>
+                              <TooltipTrigger render={<span className="cursor-help truncate underline decoration-dotted decoration-muted-foreground/50 underline-offset-2" />}>{c.label}</TooltipTrigger>
+                              <TooltipContent>{c.tooltipHeader}</TooltipContent>
+                            </TooltipUI>
+                          ) : (
+                            <span className="truncate">{c.label}</span>
+                          )}
                           {ord ? (
                             <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-violet-500/15 px-1.5 py-0.5 text-[0.6rem] font-semibold text-violet-700 ring-1 ring-violet-500/30 dark:text-violet-300">
                               {sorts.length > 1 && <span className="tabular-nums">{ord.pos}</span>}
