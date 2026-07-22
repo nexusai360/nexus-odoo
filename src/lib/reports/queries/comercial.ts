@@ -353,14 +353,15 @@ export async function queryPedidoSituacao(
 }> {
   const alvo = filtros.numero.trim();
   // Busca reversa por Mercos: se o alvo parece um número de Mercos (4-7 dígitos puros),
-  // casa numeroMercos EXATO primeiro. O Mercos é 1:N com pedidos do Odoo, então tratamos a
-  // lista; a precedência evita o `contains` casar o miolo NNNN de um PV alheio por substring.
+  // casa pelo ARRAY `numerosMercos` (índice GIN, operador `has`). Isso acha o pedido mesmo
+  // quando ele referencia VÁRIOS Mercos (ex.: troca "48524, 48529"), coisa que o antigo match
+  // exato no display não fazia. O Mercos é 1:N com pedidos do Odoo, então tratamos a lista.
   let pedido: Awaited<ReturnType<typeof prisma.fatoPedido.findFirst>> = null;
   if (/^[0-9]{4,7}$/.test(alvo)) {
     // Respeita a data de início das análises: pedidos pré-corte não entram na lista nem
     // fazem a busca cair no ramo "vários pedidos" indevidamente (regra durável nº1).
     const porMercos = await prisma.fatoPedido.findMany({
-      where: { numeroMercos: alvo, dataOrcamento: { gte: corteAtualDate() } },
+      where: { numerosMercos: { has: alvo }, dataOrcamento: { gte: corteAtualDate() } },
       orderBy: { dataOrcamento: "desc" },
     });
     if (porMercos.length > 1) {

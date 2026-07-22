@@ -621,9 +621,9 @@ describe("CORTE , piso da data de início das análises nas consultas de pedido"
     } as unknown as import("@/generated/prisma/client").PrismaClient;
 
     const r = await queryPedidoSituacao(mockPrisma, { numero: "43203" });
-    // buscou por numeroMercos exato + corte de dados, nao por contains do numero Odoo
+    // buscou pelo array numerosMercos (has) + corte de dados, nao por contains do numero Odoo
     const whereMercos = (mockPrisma.fatoPedido.findMany as jest.Mock).mock.calls[0][0].where;
-    expect(whereMercos.numeroMercos).toBe("43203");
+    expect(whereMercos.numerosMercos).toEqual({ has: "43203" });
     expect(whereMercos.dataOrcamento?.gte).toBeInstanceOf(Date); // respeita o corte
     expect((mockPrisma.fatoPedido.findFirst as jest.Mock)).not.toHaveBeenCalled();
     expect(r.encontrado).toBe(true);
