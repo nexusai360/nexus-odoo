@@ -15,7 +15,15 @@ import { CircleCheck, CircleX, Package, MapPin, FileText, ClipboardList, Coins, 
 import { cn } from "@/lib/utils";
 import { corEtapaValida, derivarCorTag } from "@/lib/diretoria/etapa-cor";
 import { formatarNomeEtapa } from "@/lib/diretoria/etapa-formato";
-import { OpcoesTabelaContext } from "./tabela-avancada";
+import { OpcoesTabelaContext, TabelaAvancada } from "./tabela-avancada";
+import {
+  COLUNAS as COLUNAS_PRODUTO,
+  COLUNA_BY_KEY as COLUNA_PRODUTO_BY_KEY,
+  CAMPOS as CAMPOS_PRODUTO,
+  CAMPO_BY_KEY as CAMPO_PRODUTO_BY_KEY,
+  AGRUPAMENTOS as AGRUPAMENTOS_PRODUTO,
+  celula as celulaProduto,
+} from "./produtos-catalogo";
 import type { ColunaDef, CampoDef } from "./tipos";
 
 // ===== Shapes (montados em blocos-pedidos.tsx) =====
@@ -42,6 +50,8 @@ export interface ItemEntrega {
   // Desconto do ITEM (prontos do Odoo, por produto).
   descontoValor: number;
   descontoPct: number;
+  // Necessário para servir de linha da TabelaAvancada genérica (Record<string, unknown>).
+  [k: string]: unknown;
 }
 
 /** Pedido (cabeçalho + agregados + itens). */
@@ -872,7 +882,27 @@ export function DetalheEntrega({ l }: { l: LinhaEntrega }) {
         <Secao titulo="Produtos" icone={Package} sufixo={
           <span className="inline-flex items-center rounded-md bg-violet-500/10 px-1.5 py-0.5 text-xs font-semibold text-violet-600 dark:text-violet-300">{l.itens.length}</span>
         }>
-          <ListaProdutos itens={l.itens} />
+          {/* Mesma TabelaAvancada dos Pedidos, agora sobre os itens: cabeçalho e
+              total fixos, scroll próprio (altura contida), colunas/sort/resize,
+              busca, filtros, agrupar, compacto e mostrar venda. */}
+          <div className="flex h-[34rem] min-h-0 flex-col">
+            <TabelaAvancada<ItemEntrega>
+              base={l.itens}
+              colunas={COLUNAS_PRODUTO}
+              colunaByKey={COLUNA_PRODUTO_BY_KEY}
+              campos={CAMPOS_PRODUTO}
+              campoByKey={CAMPO_PRODUTO_BY_KEY}
+              agrupamentos={AGRUPAMENTOS_PRODUTO}
+              celula={celulaProduto}
+              rowKey={(it) => String(it.codigo)}
+              valorSoma={(it) => it.vlrCusto}
+              colunaSoma="valorAtender"
+              storageKey="b09-produtos-detalhe-v1"
+              exportFilename="produtos-pedido"
+              labelRegistro="produtos"
+              permiteVenda
+            />
+          </div>
         </Secao>
       </dl>
     </div>
