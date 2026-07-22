@@ -3,6 +3,41 @@
 Branch ativa: **`feat/entregas-parciais-base-calculo`** (LOCAL, nada em produção).
 Dev local no ar em `localhost:3000` (containers `db`+`redis` up; Docker reiniciado/destravado em 2026-07-21).
 
+## Onde estamos (2026-07-22, madrugada) , FECHAMENTO DA SESSÃO B-09
+
+Branch `feat/entregas-parciais-base-calculo`, LOCAL, **sem merge** (aguarda o dono).
+Working tree limpo (os PDFs em `docs/nova-implementacao-dashboards/` NÃO são desta
+frente , deixados intactos). Dev local no ar; toda mudança de query exige hard reload.
+
+Entregue nesta sessão (todos com tsc/eslint verdes e validação Playwright):
+- **Rentabilidade por PRODUTO** (comissão/margem/desconto por item no dropdown/detalhe).
+- **Ordem temática das colunas**, **cabeçalho com cor distinta**, **Financeiro centrado**.
+- **Linha de TOTAL fixa (sticky)** com somatórios por coluna (margem/%comissão gerais
+  calculadas = Σ/Σ; Financeiro = liberados|bloqueados verde|vermelho).
+- **Condição de pagamento** (visível), **Desconto**, **IRPJ/CSLL**, **CBS*/IBS***
+  (tooltip customizado "Alíquota Simbólica", não-nativo).
+- **Valor Produto** e **Subtotal Pedido** (= `vr_produtos`), **Valor Pedido** (era
+  "Subtotal" = Total geral), **Qtd. Produto**, **CNPJ/CPF**, **Custo**.
+- **Entrega** (era "Prevista"): data branca + bolinha de status por prazo
+  (vencida=rose / ≤7d=amber / folga=neutro).
+- **Drag-and-drop do seletor de colunas** reescrito: auto-scroll com ease, destino pela
+  linha sob o cursor (pitch real, sem drift), assentamento suave, sem piscada, sem o
+  erro "setState durante render". Hidratação passou a **anexar colunas novas** (ordem)
+  e a **mostrar colunas `padrao` novas** mesmo com estado salvo.
+- **Extrator inteligente de Nº Mercos** (fuzzy/multi/fallback) , commits do parceiro
+  de sessão (5b6d3112/52307099/9c5d2bea).
+- **Acentuação/cedilha:** investigado , NÃO há bug; o dado tem acento (raw+fato) e a
+  tela mostra certo (ex.: "EDIFÍCIO"); os sem acento são assim no próprio Odoo.
+
+**PLANO DA PRÓXIMA FRENTE (histórico + Agente Nex):**
+`docs/superpowers/specs/2026-07-22-historico-pedidos-agente-nex.md` , mapa campo-a-campo
+(Odoo→raw/fato→UI), inventário do histórico que JÁ existe (estoque/preço/etapa populados,
+padrão append-por-mudança em `src/worker/fatos/captura-*.ts`), gap dos valores do pedido,
+3 fases e esboço das tools novas. **Começar pela Fase A** (expor histórico que já existe).
+
+storageKey da tabela em **v6** (com merge de colunas novas na hidratação , não precisa
+mais bumpar para adicionar coluna).
+
 ## Onde estamos (2026-07-21, noite 3) , LINHA DE TOTAL FIXA + CABEÇALHO + RENOMES + AUTO-SCROLL
 
 Vários ajustes do dono no B-09:
