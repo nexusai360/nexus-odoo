@@ -48,8 +48,16 @@ adversarial da spec + 1 do plano (decisão do dono para esta frente), depois imp
 - **C4** aging de etapa , SEM tool nova (já existem `comercial_pedido_historico_etapas` e
   `_travados_por_etapa`). **C5** `docs/kpis-diretoria.md` atualizado com a fonte do histórico do pedido.
 
+As guardas de drift (fatos-catalog, bi-schema-reference, golden-schema) foram atualizadas para a
+nova tabela/tools (parte legítima da frente). tsc/eslint verdes; suíte inteira verde EXCETO uma
+falha **pré-existente e alheia a esta frente**: `src/worker/catalog/model-catalog.test.ts` (11
+modelos Odoo , auditoria.regra, contabil.lancamento, crm.pipeline etc. , presentes no catálogo mas
+ausentes do discovery output). Confirmado pré-existente: `model-catalog.ts` é idêntico ao baseline
+bc281fbb; não foi tocado por esta frente. Fica para quem cuidar do catálogo de discovery do Odoo.
+
 Commits desta frente: c62fdfe2 (docs) · d94cff98 (Onda A) · 2f7992db (B0) · 282a1b33 (B1) ·
-1ae3e051 (B2-B5) · +C1. Tudo LOCAL, **sem merge** (aguarda o dono). tsc/eslint/jest verdes.
+1ae3e051 (B2-B5) · 43ff945b (C1) · 8376406a (docs C5) · +guardas de drift. Tudo LOCAL, **sem
+merge** (aguarda o dono).
 
 ## Onde estamos (2026-07-22, madrugada) , FECHAMENTO DA SESSÃO B-09
 

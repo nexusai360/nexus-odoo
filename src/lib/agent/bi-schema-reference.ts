@@ -338,6 +338,43 @@ TABLE fato_pedido_historico (
   atualizado_em    TIMESTAMPTZ
 );
 
+-- ─── COMERCIAL / HISTÓRICO DE VALORES DO PEDIDO ──────────────────────────────
+-- Serie append-por-mudanca dos VALORES do pedido: 1 linha por pedido_id sempre que muda o
+-- nucleo (etapa, saldo a atender venda, al_margem, vr_desconto, vr_cbs, vr_ibs); o resto vem
+-- snapshotado junto. vigente=true marca a linha atual de cada pedido (para o "agora" filtre
+-- WHERE vigente). Para "qual era a margem em D" pegue o ultimo capturado_em <= D. evento='baixa'
+-- (valores NULL) quando o pedido saiu do escopo. Valores prontos do Odoo, NUNCA recalculados.
+-- A serie comeca em 2026-07 (antes disso nao ha pontos).
+TABLE fato_pedido_valor_historico (
+  id                     UUID PRIMARY KEY,
+  rodada_id              UUID,
+  capturado_em           TIMESTAMPTZ,
+  pedido_id              INT,        -- FK -> fato_pedido.odoo_id
+  etapa_id               INT,
+  etapa_nome             TEXT,
+  vr_produtos            NUMERIC,
+  vr_operacao_tributacao NUMERIC,    -- "valor pedido" (total geral)
+  vr_desconto            NUMERIC,
+  vr_custo_comercial     NUMERIC,
+  vr_comissao            NUMERIC,
+  al_margem              NUMERIC,    -- % de margem, pronta do Odoo
+  vr_liquido             NUMERIC,
+  vr_icms_proprio        NUMERIC,
+  vr_difal               NUMERIC,
+  vr_fcp                 NUMERIC,
+  vr_pis_proprio         NUMERIC,
+  vr_cofins_proprio      NUMERIC,
+  vr_irpj                NUMERIC,
+  vr_csll                NUMERIC,
+  vr_cbs                 NUMERIC,    -- reforma tributaria
+  vr_ibs                 NUMERIC,
+  saldo_atender_custo    NUMERIC,
+  saldo_atender_venda    NUMERIC,
+  data_prevista          TIMESTAMPTZ,
+  evento                 TEXT,       -- 'mudanca' | 'baixa'
+  vigente                BOOLEAN     -- exatamente 1 vigente por pedido_id (indice unico parcial)
+);
+
 -- ─── COMERCIAL / ITENS DO PEDIDO ─────────────────────────────────────────────
 -- 1 linha = 1 produto de um pedido (derivado de raw_sped_documento_item). Para
 -- "produto com mais demanda" some quantidade agrupando por produto_id nos pedidos

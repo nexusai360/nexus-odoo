@@ -13,14 +13,16 @@ describe("FATO_CATALOG , drift contra as fontes de verdade", () => {
     // registry):
     // - fato_build_state: estado interno, nao um fato de negocio;
     // - fato_estoque_saldo_snapshot: foto diaria, populada pelo job de manutencao;
-    // - fato_preco_historico / fato_estoque_saldo_historico / fato_captura_rodada: series
-    //   append-por-mudanca da Frente B, capturadas acopladas ao ciclo (captura-preco/saldo),
-    //   nao reconstruidas por um builder do FATO_BUILDERS.
+    // - fato_preco_historico / fato_estoque_saldo_historico / fato_pedido_valor_historico /
+    //   fato_captura_rodada: series append-por-mudanca (Frente B + Onda historico do pedido),
+    //   capturadas acopladas ao ciclo (captura-preco/saldo/pedido-valor), nao reconstruidas por
+    //   um builder do FATO_BUILDERS.
     const SEM_BUILDER = new Set([
       "fato_build_state",
       "fato_estoque_saldo_snapshot",
       "fato_preco_historico",
       "fato_estoque_saldo_historico",
+      "fato_pedido_valor_historico",
       "fato_captura_rodada",
     ]);
     const fatosSchema = [...schema.matchAll(/@@map\("(fato_[a-z_]+)"\)/g)]

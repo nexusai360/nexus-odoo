@@ -1596,5 +1596,26 @@
     "dominio": "estoque",
     "classe": "prosseguir",
     "toolEsperada": "estoque_comparativo"
+  },
+  {
+    "id": "cov-estoque-evolucao-preco",
+    "pergunta": "Como o preço do produto 13200 evoluiu na tabela 3 ao longo do tempo?",
+    "dominio": "estoque",
+    "classe": "prosseguir",
+    "toolEsperada": "estoque_evolucao_preco"
+  },
+  {
+    "id": "cov-estoque-evolucao-saldo",
+    "pergunta": "Como o saldo do produto 162 evoluiu ao longo do tempo?",
+    "dominio": "estoque",
+    "classe": "prosseguir",
+    "toolEsperada": "estoque_evolucao_saldo"
+  },
+  {
+    "id": "cov-comercial-evolucao-pedido",
+    "pergunta": "Como o pedido 2016 evoluiu ao longo do tempo (margem, saldo a atender, impostos)?",
+    "dominio": "comercial",
+    "classe": "prosseguir",
+    "toolEsperada": "comercial_evolucao_pedido"
   }
 ]
