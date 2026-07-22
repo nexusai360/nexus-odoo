@@ -15,7 +15,7 @@ import { Fragment, createContext, useMemo, useRef, useState, useEffect, useLayou
 import {
   Download, SlidersHorizontal, Layers, Star, Search, X, ChevronDown,
   ChevronRight, ChevronLeft, ArrowLeft, List, Columns3, CalendarDays,
-  Trash2, Check, ArrowUp, ArrowDown, ArrowUpDown, Rows3, Tag, ReceiptText, Filter, Plus,
+  Trash2, Check, ArrowUp, ArrowDown, ArrowUpDown, Rows3, Tag, Filter, Plus, IdCard,
 } from "lucide-react";
 
 /** Conta as regras (folhas) de uma árvore de filtro personalizado, para o rótulo do chip. */
@@ -454,7 +454,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                   <button type="button" onClick={() => { if (listaOrdenada.length) setDetalhe({ row: listaOrdenada[0], idx: 0 }); }}
                     disabled={listaOrdenada.length === 0} aria-label="Pedido" aria-pressed={!!detalhe}
                     className={cn("flex size-8 items-center justify-center rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-40", detalhe ? "bg-violet-500/15 text-violet-600 dark:text-violet-300" : "cursor-pointer text-muted-foreground hover:text-foreground")}>
-                    <ReceiptText className="size-4" />
+                    <IdCard className="size-4" />
                   </button>
                 </Tooltip>
               )}
@@ -616,12 +616,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                     // Alinhamento: default numérica -> direita, senão esquerda; `align` sobrepõe.
                     const alinhar = c.align ?? (c.numeric ? "right" : "left");
                     return (
-                      <th key={c.key} ref={setRef(c.key)} className={cn("group/th relative overflow-hidden text-left font-medium", primeira ? (expandirRow ? "pl-8 pr-4" : "pl-4 pr-4") : "px-4", compacto ? "py-2" : "py-3", alinhar === "right" && "text-right", alinhar === "center" && "text-center")}>
-                        {/* Alça de redimensionamento da ESQUERDA: FUNCIONAL, redimensiona a coluna
-                            ANTERIOR (a borda esquerda desta coluna é a borda direita da de trás). */}
-                        {ci > 0 && (
-                          <ResizeHandle lado="left" onPointerDown={(e) => iniciarResize(e, colsVisiveis[ci - 1].key)} onReset={() => resetColuna(colsVisiveis[ci - 1].key)} ativo={resizingKey === colsVisiveis[ci - 1].key} />
-                        )}
+                      <th key={c.key} ref={setRef(c.key)} className={cn("group/th relative overflow-hidden text-left font-medium", primeira ? (expandirRow ? "pl-8 pr-4" : "pl-4 pr-4") : "px-4", compacto ? "py-1.5" : "py-2", alinhar === "right" && "text-right", alinhar === "center" && "text-center")}>
                         <button type="button" onClick={() => ordenarPor(c.key)} className={cn("flex min-w-0 max-w-full items-center gap-1.5", alinhar === "right" && "ml-auto justify-end", alinhar === "center" && "mx-auto justify-center", c.sortable ? "cursor-pointer hover:text-foreground" : "cursor-default")}>
                           {c.tooltipHeader ? (
                             <TooltipUI>
@@ -667,7 +662,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                           {colsVisiveis.map((c, ci) => {
                             const alinhar = c.align ?? (c.numeric ? "right" : "left");
                             return (
-                            <td key={c.key} className={cn("overflow-hidden", ci === 0 ? "pl-4 pr-4" : "px-4", compacto ? "py-1.5" : "py-2.5", alinhar === "right" && "text-right", alinhar === "center" && "text-center")} style={niveis.length && c.key === colsVisiveis[0].key ? { paddingLeft: `${1 + it.level * 1.25}rem` } : undefined}>
+                            <td key={c.key} className={cn("overflow-hidden", ci === 0 ? "pl-4 pr-4" : "px-4", compacto ? "py-1" : "py-1.5", alinhar === "right" && "text-right", alinhar === "center" && "text-center")} style={niveis.length && c.key === colsVisiveis[0].key ? { paddingLeft: `${1 + it.level * 1.25}rem` } : undefined}>
                               {ci === 0 && expandirRow ? (
                                 <div className="flex items-center gap-1">
                                   <button type="button" aria-label={aberto ? "Recolher produtos" : "Ver produtos"} aria-expanded={aberto} onClick={(e) => { e.stopPropagation(); toggleExpandRow(rk); }} className="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
@@ -701,7 +696,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                     {colsVisiveis.map((c, ci) => {
                       const alinhar = c.align ?? (c.numeric ? "right" : "left");
                       return (
-                        <td key={c.key} className={cn(ci === 0 ? "pl-4 pr-4" : "px-4", compacto ? "py-2" : "py-3", alinhar === "right" && "text-right tabular-nums", alinhar === "center" && "text-center")}>
+                        <td key={c.key} className={cn(ci === 0 ? "pl-4 pr-4" : "px-4", compacto ? "py-1.5" : "py-2", alinhar === "right" && "text-right tabular-nums", alinhar === "center" && "text-center")}>
                           {c.rodape ? c.rodape(lista) : null}
                         </td>
                       );
