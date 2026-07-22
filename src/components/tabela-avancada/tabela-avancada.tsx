@@ -167,6 +167,8 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   const [nomeFav, setNomeFav] = useState("");
   const [toast, setToast] = useState<string | null>(null);
   const [sugOpen, setSugOpen] = useState(false);
+  // Coluna sob o mouse no cabeçalho: acende as DUAS divisórias vizinhas (esquerda e direita).
+  const [hoverCol, setHoverCol] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const campoByLike = campoByKey as unknown as Record<string, CampoLike>;
@@ -650,7 +652,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                     // Alinhamento: default numérica -> direita, senão esquerda; `align` sobrepõe.
                     const alinhar = c.align ?? (c.numeric ? "right" : "left");
                     return (
-                      <th key={c.key} ref={setRef(c.key)} className={cn("group/th relative overflow-hidden text-left font-medium", primeira ? (expandirRow ? "pl-8 pr-4" : "pl-4 pr-4") : "px-4", compacto ? "py-1.5" : "py-2", alinhar === "right" && "text-right", alinhar === "center" && "text-center")}>
+                      <th key={c.key} ref={setRef(c.key)} onMouseEnter={() => setHoverCol(ci)} onMouseLeave={() => setHoverCol((h) => (h === ci ? null : h))} className={cn("group/th relative overflow-hidden text-left font-medium", primeira ? (expandirRow ? "pl-8 pr-4" : "pl-4 pr-4") : "px-4", compacto ? "py-1.5" : "py-2", alinhar === "right" && "text-right", alinhar === "center" && "text-center")}>
                         <button type="button" onClick={() => ordenarPor(c.key)} className={cn("flex min-w-0 max-w-full items-center gap-1.5", alinhar === "right" && "ml-auto justify-end", alinhar === "center" && "mx-auto justify-center", c.sortable ? "cursor-pointer hover:text-foreground" : "cursor-default")}>
                           {c.tooltipHeader ? (
                             <TooltipUI>
@@ -669,7 +671,11 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                             <ArrowUpDown className="size-3 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/th:opacity-70" aria-hidden />
                           ) : null}
                         </button>
-                        <ResizeHandle onPointerDown={(e) => iniciarResize(e, c.key)} onReset={() => resetColuna(c.key)} ativo={resizingKey === c.key} />
+                        {/* Uma divisória por interseção (borda direita da coluna). Acende quando o
+                            mouse está NESTA coluna ou na SEGUINTE (a borda direita desta é a borda
+                            esquerda da próxima), então ao passar numa coluna as duas divisórias
+                            vizinhas ficam visíveis, e ambas arrastam de verdade. */}
+                        <ResizeHandle onPointerDown={(e) => iniciarResize(e, c.key)} onReset={() => resetColuna(c.key)} ativo={resizingKey === c.key} realce={hoverCol === ci || hoverCol === ci + 1} />
                       </th>
                     );
                   })}

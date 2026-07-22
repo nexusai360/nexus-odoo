@@ -759,27 +759,14 @@ export function useResizeColunas(storageKey: string, containerRef?: React.RefObj
     // Máximo = 85% da largura VISÍVEL da tabela (não deixa a coluna estourar a tela).
     const visivel = containerRef?.current?.clientWidth ?? (typeof window !== "undefined" ? window.innerWidth : 1200);
     const MAX = Math.max(MIN + 40, Math.round(visivel * 0.85));
-    // FLUIDEZ: durante o arraste, alteramos a largura DIRETO no <col> (via rAF), SEM setState
-    // a cada pointermove (que re-renderizava a tabela inteira e travava). Só commitamos ao
-    // soltar. O <col> é achado por data-colkey no colgroup.
-    const th = thRefs.current[drag.key];
-    const table = th?.closest("table") as HTMLTableElement | null;
-    const col = table?.querySelector(`col[data-colkey="${drag.key}"]`) as HTMLElement | null;
-    let ultima = drag.startW;
-    let raf = 0;
-    const mover = (e: PointerEvent) => {
-      ultima = Math.min(Math.max(Math.round(drag.startW + (e.clientX - drag.startX)), MIN), MAX);
-      if (!raf) raf = requestAnimationFrame(() => { raf = 0; if (col) col.style.width = `${ultima}px`; });
-    };
-    const soltar = () => {
-      if (raf) cancelAnimationFrame(raf);
-      setLarguras((prev) => ({ ...prev, [drag.key]: ultima }));
-      setDrag(null);
-    };
+    // Instantâneo: aplica a nova largura a cada movimento do ponteiro (a tabela é table-fixed,
+    // então só a coluna arrastada e o contêiner refluem; é barato e responde na hora).
+    const mover = (e: PointerEvent) => setLarguras((prev) => ({ ...prev, [drag.key]: Math.min(Math.max(Math.round(drag.startW + (e.clientX - drag.startX)), MIN), MAX) }));
+    const soltar = () => setDrag(null);
     window.addEventListener("pointermove", mover);
     window.addEventListener("pointerup", soltar);
     window.addEventListener("pointercancel", soltar);
-    return () => { if (raf) cancelAnimationFrame(raf); window.removeEventListener("pointermove", mover); window.removeEventListener("pointerup", soltar); window.removeEventListener("pointercancel", soltar); };
+    return () => { window.removeEventListener("pointermove", mover); window.removeEventListener("pointerup", soltar); window.removeEventListener("pointercancel", soltar); };
   }, [drag, containerRef]);
 
   return { larguras, setRef, medirFaltantes, iniciarResize, resetColuna, resizingKey: drag?.key ?? null };
@@ -787,7 +774,7 @@ export function useResizeColunas(storageKey: string, containerRef?: React.RefObj
 
 /** Alça de redimensionamento na divisória direita do cabeçalho (cursor col-resize).
  * Duplo-clique restaura a largura original da coluna. */
-export function ResizeHandle({ onPointerDown, onReset, ativo, lado = "right" }: { onPointerDown: (e: React.PointerEvent) => void; onReset?: () => void; ativo?: boolean; lado?: "left" | "right" }) {
+export function ResizeHandle({ onPointerDown, onReset, ativo, realce }: { onPointerDown: (e: React.PointerEvent) => void; onReset?: () => void; ativo?: boolean; realce?: boolean }) {
   return (
     <span
       onPointerDown={onPointerDown}
@@ -797,9 +784,11 @@ export function ResizeHandle({ onPointerDown, onReset, ativo, lado = "right" }: 
       aria-orientation="vertical"
       aria-label="Redimensionar coluna (duplo-clique restaura)"
       title="Arraste para redimensionar · duplo-clique para restaurar"
-      className={cn("group/rz absolute top-0 z-20 flex h-full w-3 cursor-col-resize touch-none select-none items-center justify-center", lado === "right" ? "right-0 -translate-x-0.5" : "left-0 translate-x-0.5")}
+      className="group/rz absolute right-0 top-0 z-20 flex h-full w-3 -translate-x-0.5 cursor-col-resize touch-none select-none items-center justify-center"
     >
-      <span className={cn("w-0.5 rounded-full transition-all", ativo ? "h-2/3 bg-violet-500" : "h-1/2 bg-transparent group-hover/th:h-2/3 group-hover/th:bg-violet-400/50 group-hover/rz:bg-violet-400/90")} />
+      {/* `realce` é controlado por JS: acende quando o mouse está em QUALQUER uma das duas
+          colunas vizinhas desta divisória (não dá para saber isso só com CSS/group-hover). */}
+      <span className={cn("w-0.5 rounded-full transition-all", ativo ? "h-2/3 bg-violet-500" : realce ? "h-2/3 bg-violet-400/70" : "h-1/2 bg-transparent group-hover/rz:h-2/3 group-hover/rz:bg-violet-400/90")} />
     </span>
   );
 }
