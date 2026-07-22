@@ -11,7 +11,7 @@
  */
 
 import { useContext, useState } from "react";
-import { CircleCheck, CircleX, ExternalLink, Package, MapPin, FileText, ClipboardList, Coins, Tag, Copy, Check } from "lucide-react";
+import { CircleCheck, CircleX, Package, MapPin, FileText, ClipboardList, Coins, Tag, Copy, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { corEtapaValida, derivarCorTag } from "@/lib/diretoria/etapa-cor";
 import { formatarNomeEtapa } from "@/lib/diretoria/etapa-formato";
@@ -158,6 +158,15 @@ export function categoriaEntrega(iso: string): string {
   return "No prazo";
 }
 
+/** Tipo do documento do cliente pela contagem de dígitos: 14 = CNPJ (PJ), 11 = CPF (PF). */
+export const TIPOS_DOC = ["CNPJ", "CPF", "Sem documento"] as const;
+export function tipoDocumento(cnpjCpf: string): string {
+  const d = (cnpjCpf || "").replace(/\D/g, "");
+  if (d.length === 14) return "CNPJ";
+  if (d.length === 11) return "CPF";
+  return "Sem documento";
+}
+
 // ===== Totais do rodapé fixo (calculados sobre TODAS as linhas filtradas) =====
 
 const num0 = (v: number) => (Number.isFinite(v) ? v : 0).toLocaleString("pt-BR", { maximumFractionDigits: 2 });
@@ -299,7 +308,7 @@ const STATUS_OPCOES = [
   { valor: "Bloqueado", label: "Bloqueado" },
 ];
 
-export const CAMPOS: CampoDef<LinhaEntrega>[] = [
+const CAMPOS_DEF: CampoDef<LinhaEntrega>[] = [
   // Pedido
   { key: "numero", label: "Pedido", tipo: "texto", grupo: "Pedido", comum: true, get: (l) => l.numero },
   { key: "mercos", label: "Nº Mercos", tipo: "texto", grupo: "Pedido", comum: false, get: (l) => l.mercos },
@@ -308,6 +317,7 @@ export const CAMPOS: CampoDef<LinhaEntrega>[] = [
   // Cliente
   { key: "cliente", label: "Cliente", tipo: "texto", grupo: "Cliente", comum: true, get: (l) => l.cliente },
   { key: "cnpj", label: "CNPJ/CPF", tipo: "texto", grupo: "Cliente", comum: false, get: (l) => l.cnpj },
+  { key: "tipoDoc", label: "Tipo de documento", tipo: "opcao", grupo: "Cliente", comum: true, get: (l) => tipoDocumento(l.cnpj), grupoKey: (l) => tipoDocumento(l.cnpj), opcoes: TIPOS_DOC.map((t) => ({ valor: t, label: t })) },
   { key: "emitente", label: "Emitente", tipo: "opcao", grupo: "Cliente", comum: false, get: (l) => l.emitente },
   { key: "uf", label: "UF", tipo: "opcao", grupo: "Cliente", comum: true, get: (l) => l.uf },
   { key: "cidade", label: "Cidade", tipo: "texto", grupo: "Cliente", comum: false, get: (l) => l.cidade },
@@ -358,6 +368,25 @@ export const CAMPOS: CampoDef<LinhaEntrega>[] = [
   { key: "obsEntrega", label: "Obs entrega", tipo: "texto", grupo: "Observações", comum: false, get: (l) => l.obsEntrega },
 ];
 
+// Ordem dos campos no filtro avançado = ORDEM PADRÃO das colunas (não a que o usuário
+// reordenou). Campos sem coluna correspondente vão para o fim, preservando a ordem de origem.
+const ORDEM_COLUNAS = COLUNAS.map((c) => c.key);
+const ALIAS_CAMPO_COLUNA: Record<string, string> = {
+  margem: "margemPct",
+  valorPedido: "subtotal",
+  vlrVenda: "valorAtender",
+  vlrCusto: "valorAtender",
+};
+function posDoCampoNaColuna(key: string): number {
+  const colKey = ALIAS_CAMPO_COLUNA[key] ?? key;
+  const i = ORDEM_COLUNAS.indexOf(colKey);
+  return i < 0 ? Number.MAX_SAFE_INTEGER : i;
+}
+export const CAMPOS: CampoDef<LinhaEntrega>[] = CAMPOS_DEF
+  .map((c, i) => ({ c, i }))
+  .sort((a, b) => posDoCampoNaColuna(a.c.key) - posDoCampoNaColuna(b.c.key) || a.i - b.i)
+  .map(({ c }) => c);
+
 export const CAMPO_BY_KEY: Record<string, CampoDef<LinhaEntrega>> = Object.fromEntries(
   CAMPOS.map((c) => [c.key, c]),
 );
@@ -368,6 +397,7 @@ export const AGRUPAMENTOS: { campo: string; label: string }[] = [
   { campo: "entregaStatus", label: "Status de entrega" },
   { campo: "modalidade", label: "Modalidade de frete" },
   { campo: "cliente", label: "Cliente" },
+  { campo: "tipoDoc", label: "Tipo de documento (PJ/PF)" },
   { campo: "uf", label: "UF" },
   { campo: "cidade", label: "Cidade" },
   { campo: "vendedor", label: "Vendedor" },
@@ -391,7 +421,8 @@ export function TagPedido({ numero, pedidoId, grande }: { numero: string; pedido
     grande ? "gap-1.5 px-3 py-1 text-lg" : "px-2 py-0.5 text-xs",
   );
   const podeAbrir = Number.isFinite(pedidoId) && pedidoId > 0 && !!numero && numero !== "-";
-  if (!podeAbrir) return <span className={base}>{numero}</span>;
+  const Doc = <FileText className={cn("shrink-0 text-muted-foreground", grande ? "size-4" : "size-3.5")} aria-hidden />;
+  if (!podeAbrir) return <span className={base}>{Doc}<span className="tabular-nums">{numero}</span></span>;
   return (
     <a
       href={urlPedidoOdoo(pedidoId)}
@@ -402,8 +433,8 @@ export function TagPedido({ numero, pedidoId, grande }: { numero: string; pedido
       aria-label={`Abrir pedido ${numero} no Odoo, nova aba`}
       className={cn(base, "cursor-pointer hover:bg-foreground/20 hover:ring-foreground/25")}
     >
+      {Doc}
       <span className="tabular-nums">{numero}</span>
-      <ExternalLink className={cn("shrink-0 text-muted-foreground", grande ? "size-4" : "size-3")} aria-hidden />
     </a>
   );
 }

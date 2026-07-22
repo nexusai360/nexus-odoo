@@ -198,6 +198,9 @@ const PRESETS_ENTREGA: PresetFiltro[] = [
   // Prazo de entrega (usa o campo calculado entregaStatus; mesma régua da bolinha da coluna).
   { id: "entrega-vencida", label: "Entrega vencida", campo: "entregaStatus", kind: "regra", op: "igual", valor: "Atrasada" },
   { id: "entrega-7d", label: "Entrega em até 7 dias", campo: "entregaStatus", kind: "regra", op: "igual", valor: "Vence em até 7 dias" },
+  // Tipo de cliente (documento).
+  { id: "doc-cnpj", label: "Somente CNPJ (PJ)", campo: "tipoDoc", kind: "regra", op: "igual", valor: "CNPJ" },
+  { id: "doc-cpf", label: "Somente CPF (PF)", campo: "tipoDoc", kind: "regra", op: "igual", valor: "CPF" },
   // Financeiro / comercial.
   { id: "fin-bloq", label: "Bloqueado financeiramente", campo: "status", valor: "Bloqueado" },
   { id: "com-desconto", label: "Com desconto", campo: "desconto", kind: "regra", op: "maior", valor: "0" },

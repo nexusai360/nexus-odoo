@@ -267,7 +267,7 @@ export function Modal({
   subtitle?: string;
   children: ReactNode;
   footer?: ReactNode;
-  size?: "md" | "lg" | "xl";
+  size?: "md" | "lg" | "xl" | "2xl";
 }) {
   useEffect(() => {
     if (!open) return;
@@ -282,7 +282,7 @@ export function Modal({
 
   if (!open || typeof document === "undefined") return null;
 
-  const maxW = size === "xl" ? "max-w-4xl" : size === "lg" ? "max-w-2xl" : "max-w-lg";
+  const maxW = size === "2xl" ? "max-w-6xl" : size === "xl" ? "max-w-4xl" : size === "lg" ? "max-w-2xl" : "max-w-lg";
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto p-4 sm:p-6">

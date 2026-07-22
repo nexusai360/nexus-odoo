@@ -50,7 +50,8 @@ function opcoesDoCampoUI(campo: CampoUI, base: unknown[]): { valor: string; labe
 
 function SeletorCampo({ value, campos, onChange }: { value: string; campos: CampoUI[]; onChange: (k: string) => void }) {
   const [busca, setBusca] = useState("");
-  const [todos, setTodos] = useState(false);
+  // Nasce mostrando TODOS os campos (a maioria das colunas é filtrável); o toggle reduz aos comuns.
+  const [todos, setTodos] = useState(true);
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const lista = useMemo(() => {
@@ -76,9 +77,9 @@ function SeletorCampo({ value, campos, onChange }: { value: string; campos: Camp
         <span className="text-muted-foreground">▾</span>
       </button>
       {open && (
-        <div className="absolute left-0 top-10 z-50 w-64 rounded-xl border border-border bg-popover p-1.5 shadow-xl">
+        <div className="absolute left-0 top-10 z-50 w-80 rounded-xl border border-border bg-popover p-1.5 shadow-xl">
           <input autoFocus value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar campo..." className="mb-1 h-8 w-full rounded-lg border border-border bg-card px-2.5 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
-          <div className="max-h-56 overflow-y-auto">
+          <div className="max-h-80 overflow-y-auto">
             {lista.map((c) => (
               <button key={c.key} type="button" onClick={() => { onChange(c.key); setOpen(false); setBusca(""); }} className={cn("flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-accent", c.key === value ? "text-foreground" : "text-muted-foreground")}>
                 <span className="truncate">{c.label}</span>
@@ -208,9 +209,9 @@ export function FiltroAvancado({
     <Modal
       open={open}
       onClose={onClose}
-      title="Filtro personalizado"
+      title="Filtro avançado"
       subtitle="Combine regras com E (todas) ou OU (qualquer). Aninhe grupos para lógica composta."
-      size="lg"
+      size="2xl"
       footer={
         <>
           <span className="mr-auto inline-flex items-center gap-1.5 text-sm text-muted-foreground">

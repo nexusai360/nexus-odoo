@@ -15,7 +15,7 @@ import { Fragment, createContext, useMemo, useRef, useState, useEffect, useLayou
 import {
   Download, SlidersHorizontal, Layers, Star, Search, X, ChevronDown,
   ChevronRight, ChevronLeft, ArrowLeft, List, Columns3, CalendarDays,
-  Trash2, Check, ArrowUp, ArrowDown, ArrowUpDown, Rows3, Tag, ReceiptText, Filter,
+  Trash2, Check, ArrowUp, ArrowDown, ArrowUpDown, Rows3, Tag, ReceiptText, Filter, Plus,
 } from "lucide-react";
 
 /** Conta as regras (folhas) de uma árvore de filtro personalizado, para o rótulo do chip. */
@@ -458,22 +458,24 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
           <Search className="ml-1 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           {chips.map((c) => (
             <span key={c.id} className="inline-flex items-center gap-1 rounded-md bg-violet-500/12 px-2 py-0.5 text-xs font-medium text-violet-700 ring-1 ring-violet-500/30 dark:text-violet-300">
-              {c.label}
+              <Filter className="size-3 shrink-0" aria-hidden /> {c.label}
               <button type="button" onClick={() => removeChip(c.id)} aria-label={`Remover ${c.label}`} className="cursor-pointer text-violet-500/70 hover:text-violet-600"><X className="size-3" /></button>
             </span>
           ))}
-          {niveis.map((n) => (
+          {niveis.map((n, i) => (
             <span key={n.campo} className="inline-flex items-center gap-1 rounded-md bg-emerald-500/12 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-500/30 dark:text-emerald-300">
-              <Layers className="size-3" /> {n.label}
+              <Layers className="size-3 shrink-0" aria-hidden />
+              <span className="inline-flex size-4 items-center justify-center rounded-full bg-emerald-500/20 text-[0.65rem] font-bold tabular-nums">{i + 1}</span>
+              {n.label}
               <button type="button" onClick={() => toggleNivel(n)} aria-label={`Remover agrupamento ${n.label}`} className="cursor-pointer text-emerald-500/70 hover:text-emerald-600"><X className="size-3" /></button>
             </span>
           ))}
           {arvore && (() => { const nr = contarRegras(arvore); return (
             <span className="inline-flex items-center gap-1 rounded-md bg-violet-500/12 px-2 py-0.5 text-xs font-medium text-violet-700 ring-1 ring-violet-500/30 dark:text-violet-300">
-              <button type="button" onClick={() => setAvancadoOpen(true)} title="Editar filtro personalizado" className="inline-flex cursor-pointer items-center gap-1 hover:text-violet-600 dark:hover:text-violet-200">
-                <Filter className="size-3" /> Filtro personalizado{nr ? ` · ${nr} ${nr === 1 ? "regra" : "regras"}` : ""}
+              <button type="button" onClick={() => setAvancadoOpen(true)} title="Editar filtro avançado" className="inline-flex cursor-pointer items-center gap-1 hover:text-violet-600 dark:hover:text-violet-200">
+                <Filter className="size-3 shrink-0" aria-hidden /> Filtro avançado{nr ? ` · ${nr} ${nr === 1 ? "regra" : "regras"}` : ""}
               </button>
-              <button type="button" onClick={() => setArvore(null)} aria-label="Remover filtro personalizado" className="cursor-pointer text-violet-500/70 hover:text-violet-600"><X className="size-3" /></button>
+              <button type="button" onClick={() => setArvore(null)} aria-label="Remover filtro avançado" className="cursor-pointer text-violet-500/70 hover:text-violet-600"><X className="size-3" /></button>
             </span>
           ); })()}
           <input
@@ -523,13 +525,15 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                     const chip: Chip = { id: chipId, campo: q.campo, kind: q.kind ?? "col", valor: q.valor, label: q.label, ...(q.op ? { op: q.op } : {}), ...(q.valor2 != null ? { valor2: q.valor2 } : {}) };
                     return (
                       <button key={q.id} type="button" onClick={() => (ativo ? removeChip(chipId) : addChip(chip))} className={cn("flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] transition-colors", ativo ? "bg-violet-500/10 text-violet-700 dark:text-violet-300" : "text-muted-foreground hover:bg-accent hover:text-foreground")}>
-                        <Check className={cn("size-4 shrink-0", ativo ? "text-violet-500" : "text-transparent")} /> {q.label}
+                        <Check className={cn("size-4 shrink-0", ativo ? "text-violet-500" : "text-transparent")} />
+                        <Filter className={cn("size-3.5 shrink-0", ativo ? "text-violet-500" : "text-muted-foreground/70")} aria-hidden />
+                        <span className="flex-1">{q.label}</span>
                       </button>
                     );
                   })}
                 </div>
-                <button type="button" onClick={() => { setAvancadoOpen(true); close(); }} className="mt-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-violet-500/40 bg-violet-500/10 px-2 py-2 text-[0.8125rem] font-semibold text-violet-700 transition-colors hover:bg-violet-500/20 dark:text-violet-300">
-                  <Filter className="size-4" /> Criar filtro personalizado
+                <button type="button" onClick={() => { setAvancadoOpen(true); close(); }} className="mt-2 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-violet-600 px-2 py-2 text-[0.8125rem] font-semibold text-white transition-colors hover:bg-violet-700">
+                  <Plus className="size-4" /> Criar filtro avançado
                 </button>
               </div>
               {/* Agrupar */}
