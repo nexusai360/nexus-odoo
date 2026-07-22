@@ -241,8 +241,10 @@ export const COLUNAS: ColunaDef<LinhaEntrega>[] = [
     rodape: (rows) => <TotalValorCV custo={somaDe(rows, (l) => l.vlrCusto)} venda={somaDe(rows, (l) => l.vlrVenda)} /> },
   // Desconto do pedido (R$, do Odoo). Visível por padrão a pedido do dono.
   { key: "desconto", label: "Desconto", tipo: "moeda", sortable: true, numeric: true, padrao: true, valor: (l) => l.descontoValor, rodape: totMoeda((l) => l.descontoValor) },
-  // Valor Produto = total da coluna "Produto" do Odoo (vr_produtos, bruto). Puxado do sistema.
-  { key: "valorProduto", label: "Valor Produto", tipo: "moeda", sortable: true, numeric: true, padrao: true, valor: (l) => l.valorProduto, rodape: totMoeda((l) => l.valorProduto) },
+  // Valor Produto = CUSTO total dos produtos = Σ (quantidade × preço de custo unitário) por
+  // item (= Valor Atendido + Valor A Atender, a custo). NÃO é o preço de venda.
+  { key: "valorProduto", label: "Valor Produto", tipo: "moeda", sortable: true, numeric: true, padrao: true, valor: (l) => l.valorTotalCusto,
+    rodape: (rows) => <TotalValorCV custo={somaDe(rows, (l) => l.valorTotalCusto)} venda={somaDe(rows, (l) => l.valorCheio)} /> },
   // Subtotal Pedido = "Subtotal" do cabeçalho do Odoo (mesmo vr_produtos). Cor cinza (como Desconto).
   { key: "subtotalPedido", label: "Subtotal Pedido", tipo: "moeda", sortable: true, numeric: true, padrao: true, valor: (l) => l.valorProduto, rodape: totMoeda((l) => l.valorProduto) },
   // --- Rentabilidade do pedido (prontos do Odoo). Margem padrão; resto opcional. ---
@@ -438,6 +440,9 @@ export function celula(l: LinhaEntrega, key: string): React.ReactNode {
   // Desconto: a chave da coluna ("desconto") difere do campo da linha
   // (`descontoValor`), então precisa de caso próprio (senão renderiza R$ 0,00).
   if (key === "desconto") return <span className="whitespace-nowrap tabular-nums text-muted-foreground" title={`Desconto ${formatPct(l.descontoPct)}`}>{formatBRL(l.descontoValor)}</span>;
+  // Valor Produto: CUSTO total (custo por padrão; com "Mostrar venda", custo+venda como
+  // Valor Atendido/A Atender). venda = valorCheio (Σ preço de venda × quantidade).
+  if (key === "valorProduto") return <CelulaValorCV custo={l.valorTotalCusto} venda={l.valorCheio} />;
   // Subtotal Pedido: mesmo valor bruto dos produtos, na cor cinza (como Desconto).
   if (key === "subtotalPedido") return <span className="whitespace-nowrap tabular-nums text-muted-foreground">{formatBRL(l.valorProduto)}</span>;
   // CBS/IBS (reforma, alíquotas simbólicas): cor cinza, como Desconto/Subtotal Pedido.
@@ -646,7 +651,7 @@ export function DetalheEntrega({ l }: { l: LinhaEntrega }) {
         {(l.subtotal !== 0 || l.liquido !== 0 || l.custoComercial !== 0 || l.descontoValor !== 0) && (
           <Secao titulo="Rentabilidade do pedido" icone={TrendingUp}>
             <div className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-4">
-              <Campo label="Valor Produto" valor={formatBRL(l.valorProduto)} />
+              <Campo label="Valor Produto" valor={formatBRL(l.valorTotalCusto)} />
               <Campo label="Subtotal Pedido" valor={formatBRL(l.valorProduto)} />
               <Campo label="Valor Pedido" valor={formatBRL(l.subtotal)} />
               <Campo label={`Desconto (${formatPct(l.descontoPct)})`} valor={formatBRL(l.descontoValor)} />
