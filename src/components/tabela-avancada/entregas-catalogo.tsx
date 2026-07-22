@@ -748,17 +748,12 @@ export function DetalheEntrega({ l }: { l: LinhaEntrega }) {
   const [mostrarVenda, setMostrarVenda] = useState(false);
   return (
     <div className="space-y-6 p-4 sm:p-6">
-      {/* Cabeçalho: número em evidência + etapa + financeiro (+ toggle de venda à
-          direita), cliente abaixo */}
+      {/* Cabeçalho: número em evidência + etapa + financeiro, cliente abaixo */}
       <header className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2.5">
           <TagPedido numero={l.numero} pedidoId={l.pedidoId} grande />
           <PillEtapa l={l} />
           <StatusFinanceiro status={l.status} comRotulo />
-          <button type="button" onClick={() => setMostrarVenda((v) => !v)} aria-pressed={mostrarVenda}
-            className={cn("ml-auto shrink-0 cursor-pointer rounded-md border px-2.5 py-1 text-xs font-medium transition-colors", mostrarVenda ? "border-violet-500/40 bg-violet-500/10 text-violet-600 dark:text-violet-300" : "border-border bg-card text-muted-foreground hover:text-foreground")}>
-            {mostrarVenda ? "Ocultar venda" : "Mostrar venda"}
-          </button>
         </div>
         <p className="text-base font-medium text-foreground">{l.cliente}</p>
         {l.cnpj && l.cnpj !== "-" && (
@@ -769,21 +764,29 @@ export function DetalheEntrega({ l }: { l: LinhaEntrega }) {
         )}
       </header>
 
-      {/* Resumo numa linha só: quantidades (apertadas) à esquerda e os valores em
-          CUSTO na sequência à direita; com "Mostrar venda", o valor de venda
-          equivalente aparece pequeno logo abaixo de cada valor de custo. */}
-      <div className="rounded-xl border border-border/60 bg-background/40 p-4">
-        <div className="flex flex-wrap items-stretch gap-y-4">
-          <div className="flex shrink-0 divide-x divide-border/50">
-            <ColResumo className="px-2.5 first:pl-0" titulo="QTD. Pedido" valor={String(l.qtdTotal)} />
-            <ColResumo className="px-2.5" titulo="Atendida" valor={String(l.qtdAtendida)} />
-            <ColResumo className="px-2.5" titulo="A Atender" valor={String(l.qtd)} destaque />
-          </div>
-          <div className="mx-3 hidden w-px self-stretch bg-border/60 sm:block" />
-          <div className="flex flex-1 divide-x divide-border/50">
-            <ColResumo className="flex-1 px-3 first:pl-0" titulo="Valor Produto" valor={formatBRL(l.valorTotalCusto)} venda={mostrarVenda ? formatBRL(l.valorCheio) : undefined} />
-            <ColResumo className="flex-1 px-3" titulo="Valor Atendido" valor={formatBRL(l.valorAtendidoCusto)} venda={mostrarVenda ? formatBRL(l.valorAtendidoVenda) : undefined} />
-            <ColResumo className="flex-1 px-3" titulo="Valor A Atender" valor={formatBRL(l.vlrCusto)} venda={mostrarVenda ? formatBRL(l.vlrVenda) : undefined} destaque />
+      {/* Resumo numa linha só: quantidades à esquerda e os valores em CUSTO na
+          sequência à direita; com "Mostrar venda" (botão logo acima, colado ao
+          card), o valor de venda aparece pequeno abaixo de cada valor de custo. */}
+      <div className="space-y-2">
+        <div className="flex justify-end">
+          <button type="button" onClick={() => setMostrarVenda((v) => !v)} aria-pressed={mostrarVenda}
+            className={cn("shrink-0 cursor-pointer rounded-md border px-2.5 py-1 text-xs font-medium transition-colors", mostrarVenda ? "border-violet-500/40 bg-violet-500/10 text-violet-600 dark:text-violet-300" : "border-border bg-card text-muted-foreground hover:text-foreground")}>
+            {mostrarVenda ? "Ocultar venda" : "Mostrar venda"}
+          </button>
+        </div>
+        <div className="rounded-xl border border-border/60 bg-background/40 p-4">
+          <div className="flex flex-wrap items-stretch gap-y-4">
+            <div className="flex shrink-0 divide-x divide-border/50">
+              <ColResumo className="px-3 first:pl-0" titulo="QTD. Pedido" valor={String(l.qtdTotal)} />
+              <ColResumo className="px-3" titulo="QTD. Atendida" valor={String(l.qtdAtendida)} />
+              <ColResumo className="px-3" titulo="QTD. A Atender" valor={String(l.qtd)} destaque />
+            </div>
+            <div className="mx-3 hidden w-px self-stretch bg-border/60 sm:block" />
+            <div className="flex flex-1 divide-x divide-border/50">
+              <ColResumo className="flex-1 px-3 first:pl-0" titulo="Valor Produto" valor={formatBRL(l.valorTotalCusto)} venda={mostrarVenda ? formatBRL(l.valorCheio) : undefined} />
+              <ColResumo className="flex-1 px-3" titulo="Valor Atendido" valor={formatBRL(l.valorAtendidoCusto)} venda={mostrarVenda ? formatBRL(l.valorAtendidoVenda) : undefined} />
+              <ColResumo className="flex-1 px-3" titulo="Valor A Atender" valor={formatBRL(l.vlrCusto)} venda={mostrarVenda ? formatBRL(l.vlrVenda) : undefined} destaque />
+            </div>
           </div>
         </div>
       </div>
