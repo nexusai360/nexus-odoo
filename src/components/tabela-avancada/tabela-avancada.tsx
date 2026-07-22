@@ -105,6 +105,18 @@ const VIEWS: { key: View; label: string; icon: typeof List }[] = [
 
 let favSeq = 0;
 
+/** Sobe a árvore a partir de `start` e retorna o ancestral mais próximo que
+ * rola na vertical (para encadear o scroll da lista com o da página). */
+function acharScrollerVertical(start: HTMLElement): HTMLElement | null {
+  let node = start.parentElement;
+  while (node) {
+    const oy = getComputedStyle(node).overflowY;
+    if ((oy === "auto" || oy === "scroll") && node.scrollHeight - node.clientHeight > 1) return node;
+    node = node.parentElement;
+  }
+  return null;
+}
+
 export function TabelaAvancada<T extends Record<string, unknown>>({
   base,
   colunas,
@@ -164,6 +176,28 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
     const t = setTimeout(() => setToast(null), 3000);
     return () => clearTimeout(t);
   }, [toast]);
+
+  // Scroll chaining explícito: ao atingir o topo/fundo da lista, empurra o
+  // scroller da página (que o browser às vezes não encadeia no mesmo gesto de
+  // roda). Só age no eixo vertical, para não atrapalhar o scroll horizontal.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    function onWheel(e: WheelEvent) {
+      if (!el || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+      const noTopo = el.scrollTop <= 0;
+      const noFundo = Math.ceil(el.scrollTop + el.clientHeight) >= el.scrollHeight - 1;
+      if ((e.deltaY < 0 && noTopo) || (e.deltaY > 0 && noFundo)) {
+        const pai = acharScrollerVertical(el);
+        if (pai) {
+          pai.scrollTop += e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+          e.preventDefault();
+        }
+      }
+    }
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [view]);
 
   // ===== Persistência (por tela) =====
   const [hidratado, setHidratado] = useState(false);
