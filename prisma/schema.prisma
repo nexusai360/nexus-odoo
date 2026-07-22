@@ -2244,6 +2244,54 @@ model FatoCapturaRodada {
   @@map("fato_captura_rodada")
 }
 
+/// Historico temporal dos VALORES do PEDIDO (append-por-mudanca). Uma linha por `pedido_id`
+/// sempre que um campo do NUCLEO muda (etapa, saldo a atender, margem, desconto, CBS, IBS); o
+/// resto e' snapshotado junto. evento='baixa' com valores NULL quando o pedido sai do escopo de
+/// fato_pedido. `vigente` marca a ultima linha de cada pedido. Todos os valores vem PRONTOS do
+/// Odoo (raw_pedido_documento.data) , margem/imposto NUNCA recalculados.
+/// ATENCAO: o indice UNICO PARCIAL `fato_pedido_valor_historico_vigente_key` (WHERE vigente) so
+/// existe na migration (SQL cru); o Prisma 7 nao o modela. NAO remover em `migrate dev` de outra
+/// worktree , ele garante um-vigente-por-pedido e a leitura O(pedidos) da captura.
+model FatoPedidoValorHistorico {
+  id          String   @id @default(uuid()) @db.Uuid
+  rodadaId    String   @map("rodada_id") @db.Uuid
+  capturadoEm DateTime @map("capturado_em")
+  pedidoId    Int      @map("pedido_id")
+
+  etapaId   Int?      @map("etapa_id")
+  etapaNome String?   @map("etapa_nome")
+
+  vrProdutos           Decimal? @map("vr_produtos") @db.Decimal(18, 2)
+  vrOperacaoTributacao Decimal? @map("vr_operacao_tributacao") @db.Decimal(18, 2)
+  vrDesconto           Decimal? @map("vr_desconto") @db.Decimal(18, 2)
+  vrCustoComercial     Decimal? @map("vr_custo_comercial") @db.Decimal(18, 2)
+  vrComissao           Decimal? @map("vr_comissao") @db.Decimal(18, 2)
+  alMargem             Decimal? @map("al_margem") @db.Decimal(18, 4)
+  vrLiquido            Decimal? @map("vr_liquido") @db.Decimal(18, 2)
+
+  vrIcmsProprio   Decimal? @map("vr_icms_proprio") @db.Decimal(18, 2)
+  vrDifal         Decimal? @map("vr_difal") @db.Decimal(18, 2)
+  vrFcp           Decimal? @map("vr_fcp") @db.Decimal(18, 2)
+  vrPisProprio    Decimal? @map("vr_pis_proprio") @db.Decimal(18, 2)
+  vrCofinsProprio Decimal? @map("vr_cofins_proprio") @db.Decimal(18, 2)
+  vrIrpj          Decimal? @map("vr_irpj") @db.Decimal(18, 2)
+  vrCsll          Decimal? @map("vr_csll") @db.Decimal(18, 2)
+  vrCbs           Decimal? @map("vr_cbs") @db.Decimal(18, 2)
+  vrIbs           Decimal? @map("vr_ibs") @db.Decimal(18, 2)
+
+  saldoAtenderCusto Decimal?  @map("saldo_atender_custo") @db.Decimal(18, 2)
+  saldoAtenderVenda Decimal?  @map("saldo_atender_venda") @db.Decimal(18, 2)
+  dataPrevista      DateTime? @map("data_prevista")
+
+  evento  String
+  vigente Boolean
+
+  @@index([pedidoId, capturadoEm])
+  @@index([capturadoEm])
+  @@index([rodadaId])
+  @@map("fato_pedido_valor_historico")
+}
+
 /// Movimento de estoque (entrada/saída). Derivado de raw_estoque_extrato
 /// por rebuild completo. odooId é PK porque o builder recria a tabela inteira.
 model FatoEstoqueMovimento {
