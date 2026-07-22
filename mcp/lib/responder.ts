@@ -2172,6 +2172,16 @@ const fmtFaturamentoPorRegime: FormatadorCanonico = (env) => {
   return partes.filter(Boolean).join("\n");
 };
 
+const fmtEvolucaoPedido: FormatadorCanonico = (env) => {
+  const ped = Number(env._DESTAQUE?.pedidoId ?? 0);
+  const n = Number(env._DESTAQUE?.totalPontos ?? 0);
+  const etapa = String(env._DESTAQUE?.etapaAtual ?? "");
+  const margem = String(env._DESTAQUE?.margemAtual ?? "");
+  if (n === 0) return `Sem historico de valores para o pedido ${ped} (a serie comeca em 2026-07).`;
+  const cauda = margem ? `, margem ${margem}` : "";
+  return `Pedido ${ped}: ${n} ponto(s) no historico de valores. Etapa atual ${etapa || "?"}${cauda}.`;
+};
+
 const FORMATADORES: Record<string, FormatadorCanonico> = {
   // financeiro
   financeiro_contas_a_receber: fmtContasAReceber,
@@ -2305,6 +2315,7 @@ const FORMATADORES: Record<string, FormatadorCanonico> = {
   comercial_cotacoes: fmtComercialCotacoes,
   comercial_comissoes: fmtComercialComissoes,
   comercial_detalhar_pedido: fmtComercialDetalharPedido,
+  comercial_evolucao_pedido: fmtEvolucaoPedido,
   // cadastros
   cadastro_buscar_parceiro: fmtBuscarParceiro,
   cadastro_parceiros_por_uf: fmtParceirosPorUF,

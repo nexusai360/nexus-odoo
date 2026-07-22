@@ -26,6 +26,7 @@ import { comercialPedidoSituacao } from "./pedido-situacao.js";
 import { comercialDemandaPorProduto } from "./demanda-por-produto.js";
 import { comercialEstoqueDisponivel } from "./estoque-disponivel.js";
 import { comercialSeriaisProduto } from "./seriais-produto.js";
+import { comercialEvolucaoPedido } from "./evolucao-pedido.js";
 
 export const comercialTools: ToolEntry[] = [
   comercialPedidosPeriodo as ToolEntry,
@@ -57,4 +58,6 @@ export const comercialTools: ToolEntry[] = [
   comercialDemandaPorProduto as ToolEntry,
   comercialEstoqueDisponivel as ToolEntry,
   comercialSeriaisProduto as ToolEntry,
+  // 2026-07-22 , historico temporal dos valores do pedido (fato_pedido_valor_historico)
+  comercialEvolucaoPedido as ToolEntry,
 ];

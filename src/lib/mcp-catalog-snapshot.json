@@ -1833,6 +1833,26 @@
       "examples": []
     },
     {
+      "id": "comercial_evolucao_pedido",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Evolucao dos valores de um pedido ao longo do tempo: etapa, saldo a atender, margem, desconto e impostos (incl. CBS/IBS) a cada mudanca. Use para 'como o pedido X evoluiu', 'a margem do pedido X mudou?', 'historico de valores do pedido X'. Requer `pedidoId`.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "pedidoId"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "pedidoId",
+          "type": "integer",
+          "optional": false
+        }
+      ],
+      "examples": []
+    },
+    {
       "id": "fiscal_faturamento_periodo",
       "operation": "read",
       "module": "fiscal",
@@ -4706,6 +4726,6 @@
       "examples": []
     }
   ],
-  "count": 131,
-  "generatedAt": "2026-07-22T07:56:53.150Z"
+  "count": 132,
+  "generatedAt": "2026-07-22T08:19:00.826Z"
 }

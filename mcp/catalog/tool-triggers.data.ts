@@ -19,6 +19,7 @@ export const TOOL_TRIGGERS: Record<string, string[]> = {
   "comercial_cotacoes": ["quais cotacoes estao abertas", "quantas cotacoes de venda temos", "lista de propostas comerciais", "cotacoes de compra e venda"],
   "comercial_parcelas_a_vencer": ["quais parcelas vencem nos proximos 30 dias", "quanto temos a receber no proximo mes", "parcelas a vencer", "valor total a receber em breve"],
   "comercial_pedido_historico_etapas": ["quanto tempo o pedido 123 ficou em cada etapa", "qual etapa do pedido demorou mais", "tem retrabalho no pedido", "quantas vezes o pedido passou pela etapa preparacao"],
+  "comercial_evolucao_pedido": ["como o pedido 123 evoluiu ao longo do tempo", "a margem do pedido mudou", "historico de valores do pedido 123", "como o saldo a atender do pedido mudou", "evolucao da margem e impostos do pedido"],
   "comercial_pedido_travados_por_etapa": ["quais pedidos estao travados no fluxo", "pedidos parados ha mais de 60 dias", "qual o pedido mais antigo travado numa etapa", "pedidos sem avancar de etapa"],
   "comercial_pedidos_atrasados": ["quais parcelas estao vencidas", "valor total de parcelas atrasadas", "quantas parcelas estao em atraso", "quais clientes tem parcelas vencidas"],
   "comercial_pedidos_listar_top_valor": ["qual o pedido com maior valor", "lista os top 10 pedidos por valor", "qual o pedido mais antigo em aberto", "pedidos do cliente Smartfit"],
