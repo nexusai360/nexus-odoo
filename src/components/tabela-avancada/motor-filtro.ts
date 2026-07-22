@@ -83,7 +83,7 @@ export interface CampoLike {
   opcoes?: { valor: string; label: string }[];
 }
 
-function testaRegra(
+export function testaRegra(
   p: unknown,
   r: Regra,
   campoBy: Record<string, CampoLike>,

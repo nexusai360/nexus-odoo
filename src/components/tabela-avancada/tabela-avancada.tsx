@@ -15,8 +15,14 @@ import { Fragment, createContext, useMemo, useRef, useState, useEffect, useLayou
 import {
   Download, SlidersHorizontal, Layers, Star, Search, X, ChevronDown,
   ChevronRight, ChevronLeft, ArrowLeft, List, Columns3, CalendarDays,
-  Trash2, Check, ArrowUp, ArrowDown, ArrowUpDown, Rows3, Tag, ReceiptText,
+  Trash2, Check, ArrowUp, ArrowDown, ArrowUpDown, Rows3, Tag, ReceiptText, Filter,
 } from "lucide-react";
+
+/** Conta as regras (folhas) de uma árvore de filtro personalizado, para o rótulo do chip. */
+function contarRegras(g: GrupoRegras | null): number {
+  if (!g) return 0;
+  return g.filhos.reduce((n, f) => n + (f.tipo === "grupo" ? contarRegras(f) : 1), 0);
+}
 
 /** Opções da tabela que as células precisam ler (ex.: mostrar preço de venda
  * junto do custo nas colunas de valor). Provido pela TabelaAvancada. */
@@ -29,21 +35,24 @@ import {
 import { Tooltip as TooltipUI, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { FiltroAvancado, type CampoUI } from "./filtro-avancado";
 import { KanbanView, CalendarioView } from "./visoes";
-import { testaNo, type GrupoRegras, type CampoLike } from "./motor-filtro";
+import { testaNo, testaRegra, type GrupoRegras, type CampoLike } from "./motor-filtro";
 import type { ColunaDef, CampoDef } from "./tipos";
 
 type View = "lista" | "kanban" | "calendario";
 
-/** Facet serializável (predicado derivado de kind/campo/valor). */
-export interface Chip { id: string; campo: string; kind: string; valor: string; label: string }
+/** Facet serializável (predicado derivado de kind/campo/valor). `kind: "regra"` avalia um
+ * operador (maior/menor/vazio/...) via o motor de filtro; "col" é igualdade; "texto" é busca. */
+export interface Chip { id: string; campo: string; kind: string; valor: string; label: string; op?: string; valor2?: string }
 interface Nivel { campo: string; label: string }
 interface Sort { campo: string; dir: "asc" | "desc" }
 interface Favorito {
   id: string;
   nome: string;
-  snap: { chips: Chip[]; niveis: Nivel[]; busca: string; vis: string[]; ordem: string[]; sorts: Sort[]; arvore: GrupoRegras | null };
+  snap: { chips: Chip[]; niveis: Nivel[]; busca: string; vis: string[]; ordem: string[]; sorts: Sort[]; arvore: GrupoRegras | null; compacto?: boolean; mostrarVenda?: boolean };
 }
-export interface PresetFiltro { id: string; label: string; campo: string; valor: string }
+/** Filtro rápido pré-setado. Por padrão é igualdade (`kind: "col"`); com `kind: "regra"` +
+ * `op` vira um predicado com operador (ex.: desconto "maior" que "0"), avaliado pelo motor. */
+export interface PresetFiltro { id: string; label: string; campo: string; valor: string; kind?: string; op?: string; valor2?: string }
 
 export interface TabelaAvancadaProps<T extends Record<string, unknown>> {
   base: T[];
@@ -220,6 +229,11 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   }, [busca, base, vis, colunas]);
 
   function matchFacet(c: Chip, row: T): boolean {
+    if (c.kind === "regra") {
+      // Preset com operador (maior/menor/vazio/antes...): avalia via o motor de filtro,
+      // usando o CAMPO (CampoDef) e não a coluna. Reusa exatamente a lógica do filtro avançado.
+      return testaRegra(row, { id: c.id, tipo: "regra", campo: c.campo, op: c.op ?? "igual", valor: c.valor, valor2: c.valor2 }, campoByLike);
+    }
     if (c.kind === "col") {
       const col = colunaByKey[c.campo];
       return col ? String(col.valor(row)) === c.valor : true;
@@ -346,7 +360,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
 
   // ===== Favoritos =====
   function salvarFavorito() {
-    const fav: Favorito = { id: `f${favSeq++}`, nome: nomeFav.trim() || "Visão salva", snap: { chips, niveis, busca, vis, ordem, sorts, arvore } };
+    const fav: Favorito = { id: `f${favSeq++}`, nome: nomeFav.trim() || "Visão salva", snap: { chips, niveis, busca, vis, ordem, sorts, arvore, compacto, mostrarVenda } };
     setFavoritos((prev) => [...prev, fav]);
     setNomeFav(""); setSalvarOpen(false);
     setToast(`Visão "${fav.nome}" salva.`);
@@ -356,6 +370,9 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
     setSorts(f.snap.sorts); setArvore(f.snap.arvore);
     if (f.snap.vis) setVis(f.snap.vis);
     if (f.snap.ordem) setOrdem(f.snap.ordem);
+    // Compacto e "Mostrar venda" também fazem parte da visão salva (default false p/ favoritos antigos).
+    setCompacto(f.snap.compacto ?? false);
+    setMostrarVenda(f.snap.mostrarVenda ?? false);
   }
 
   // ===== Exportar CSV (linhas filtradas/ordenadas, colunas visíveis) =====
@@ -451,6 +468,14 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
               <button type="button" onClick={() => toggleNivel(n)} aria-label={`Remover agrupamento ${n.label}`} className="cursor-pointer text-emerald-500/70 hover:text-emerald-600"><X className="size-3" /></button>
             </span>
           ))}
+          {arvore && (() => { const nr = contarRegras(arvore); return (
+            <span className="inline-flex items-center gap-1 rounded-md bg-violet-500/12 px-2 py-0.5 text-xs font-medium text-violet-700 ring-1 ring-violet-500/30 dark:text-violet-300">
+              <button type="button" onClick={() => setAvancadoOpen(true)} title="Editar filtro personalizado" className="inline-flex cursor-pointer items-center gap-1 hover:text-violet-600 dark:hover:text-violet-200">
+                <Filter className="size-3" /> Filtro personalizado{nr ? ` · ${nr} ${nr === 1 ? "regra" : "regras"}` : ""}
+              </button>
+              <button type="button" onClick={() => setArvore(null)} aria-label="Remover filtro personalizado" className="cursor-pointer text-violet-500/70 hover:text-violet-600"><X className="size-3" /></button>
+            </span>
+          ); })()}
           <input
             value={busca}
             onChange={(e) => { setBusca(e.target.value); setSugOpen(true); }}
@@ -481,7 +506,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
           width="w-[42rem] max-w-[calc(100vw-2rem)]"
           trigger={({ toggle, open }) => (
             <button type="button" onClick={toggle} aria-expanded={open} className={cn("inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border px-3 text-sm transition-colors", filtrosAtivos || niveis.length ? "border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300" : "border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground")}>
-              <SlidersHorizontal className="size-4" /> Filtros e agrupar <ChevronDown className="size-3.5" />
+              <SlidersHorizontal className="size-4" /> Filtrar e agrupar <ChevronDown className="size-3.5" />
             </button>
           )}
         >
@@ -490,26 +515,27 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
               {/* Filtros */}
               <div>
                 <p className="mb-1.5 flex items-center gap-1.5 px-1 text-sm font-semibold uppercase tracking-wide text-violet-600 dark:text-violet-400"><SlidersHorizontal className="size-3.5" /> Filtros</p>
-                <div className="space-y-0.5">
+                <div className="max-h-[20rem] space-y-0.5 overflow-y-auto pr-0.5">
+                  {presets.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">Sem filtros rápidos.</p>}
                   {presets.map((q) => {
                     const chipId = `preset-${q.id}`;
                     const ativo = chips.some((c) => c.id === chipId);
-                    const chip: Chip = { id: chipId, campo: q.campo, kind: "col", valor: q.valor, label: q.label };
+                    const chip: Chip = { id: chipId, campo: q.campo, kind: q.kind ?? "col", valor: q.valor, label: q.label, ...(q.op ? { op: q.op } : {}), ...(q.valor2 != null ? { valor2: q.valor2 } : {}) };
                     return (
                       <button key={q.id} type="button" onClick={() => (ativo ? removeChip(chipId) : addChip(chip))} className={cn("flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] transition-colors", ativo ? "bg-violet-500/10 text-violet-700 dark:text-violet-300" : "text-muted-foreground hover:bg-accent hover:text-foreground")}>
                         <Check className={cn("size-4 shrink-0", ativo ? "text-violet-500" : "text-transparent")} /> {q.label}
                       </button>
                     );
                   })}
-                  <button type="button" onClick={() => { setAvancadoOpen(true); close(); }} className={cn("mt-1 flex w-full cursor-pointer items-center gap-2 px-2 py-1.5 text-left text-[0.8125rem] font-medium text-violet-600 hover:bg-accent dark:text-violet-400", presets.length > 0 && "border-t border-border")}>
-                    <SlidersHorizontal className="size-4" /> Filtro personalizado...
-                  </button>
                 </div>
+                <button type="button" onClick={() => { setAvancadoOpen(true); close(); }} className="mt-2 flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-violet-500/40 bg-violet-500/10 px-2 py-2 text-[0.8125rem] font-semibold text-violet-700 transition-colors hover:bg-violet-500/20 dark:text-violet-300">
+                  <Filter className="size-4" /> Criar filtro personalizado
+                </button>
               </div>
               {/* Agrupar */}
               <div>
                 <p className="mb-1.5 flex items-center gap-1.5 px-1 text-sm font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400"><Layers className="size-3.5" /> Agrupar por</p>
-                <div className="space-y-0.5">
+                <div className="max-h-[22rem] space-y-0.5 overflow-y-auto pr-0.5">
                   {agrupamentos.map((n) => {
                     const idx = niveis.findIndex((x) => x.campo === n.campo);
                     const ativo = idx >= 0;
@@ -526,7 +552,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
               {/* Favoritos */}
               <div>
                 <p className="mb-1.5 flex items-center gap-1.5 px-1 text-sm font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400"><Star className="size-3.5" /> Favoritos</p>
-                <div className="space-y-0.5">
+                <div className="max-h-[22rem] space-y-0.5 overflow-y-auto pr-0.5">
                   <button type="button" onClick={() => { setSalvarOpen(true); close(); }} className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] font-medium text-amber-600 hover:bg-accent dark:text-amber-400">
                     <Star className="size-4" /> Salvar esta visão
                   </button>
@@ -709,7 +735,11 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
       )}
 
       {/* Modais */}
-      <FiltroAvancado open={avancadoOpen} onClose={() => setAvancadoOpen(false)} base={base} inicial={arvore} onAplicar={(a) => setArvore(a)} campos={camposUI} campoBy={campoByUI} campoPadrao={campoPadrao} />
+      {/* Montado só quando aberto: garante que "editar" carregue a árvore atual (o useState
+          interno do FiltroAvancado só lê `inicial` na montagem). */}
+      {avancadoOpen && (
+        <FiltroAvancado open onClose={() => setAvancadoOpen(false)} base={base} inicial={arvore} onAplicar={(a) => setArvore(a)} campos={camposUI} campoBy={campoByUI} campoPadrao={campoPadrao} />
+      )}
 
       <Modal open={salvarOpen} onClose={() => setSalvarOpen(false)} title="Salvar esta visão" subtitle="Guarda filtros, agrupamentos, colunas e ordenação atuais como um favorito." footer={<><Btn variant="ghost" onClick={() => setSalvarOpen(false)}>Cancelar</Btn><Btn variant="primary" onClick={salvarFavorito}><Star className="size-4" /> Salvar</Btn></>}>
         <label className="block">
