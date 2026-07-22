@@ -23,10 +23,33 @@ adversarial da spec + 1 do plano (decisão do dono para esta frente), depois imp
   13200/tabela 3 = 1 ponto (o preço ainda não variou no cache; 12.008 chaves com 1 ponto cada).
   Estado `ok` (não `preparando`) confirmado. tsc/eslint verdes; suíte mcp 933 testes verdes.
 
-**Próximo (Onda B):** `fato_pedido_valor_historico` (append-por-mudança) + builder
-`captura-pedido-valor.ts` (TDD) + migration com índice único parcial `WHERE vigente`. Extrair
-antes os extratores puros (`extrairRentabilidade`/`extrairDesconto`) para módulo folha (fronteira
-do worker). Onda C: tools temporais do pedido/carteira no Nex.
+**Onda B entregue (historizar valores do pedido, LOCAL):**
+- **B0** extratores puros (`extrairRentabilidade`/`extrairDesconto`/`numJson`/`strOuNull`) movidos
+  para `src/lib/diretoria/pedido-extratores.ts` (módulo folha, fronteira do worker). De quebra,
+  corrigido gap PRÉ-EXISTENTE do B-09: `entregas-parciais.test.ts` não provia `rawSpedDocumentoItem`
+  no mock (12 testes vermelhos no baseline) , agora 215 verdes.
+- **B1** tabela `fato_pedido_valor_historico` + índice ÚNICO PARCIAL `WHERE vigente` (SQL cru).
+  Migration aplicada no dev via psql + `migrate resolve` (drift pré-existente impedia `migrate dev`
+  sem reset destrutivo). `agente schema-changed` sinalizado.
+- **B2-B5** builder `src/worker/fatos/captura-pedido-valor.ts` (append-por-mudança, núcleo =
+  etapa/saldo a atender venda/margem/desconto/CBS/IBS; resto snapshotado). jobOk gate (adia se
+  false), teto próprio 200, nunca recalcula. Agendado no ciclo incremental (gate cron +
+  fato_pedido.ok). **E2E dev:** base gravou 2.723 pedidos (1 vigente cada, 0 com >1); 2ª rodada 0
+  gravadas (formatação estável). Worker não roda em dev (rebuild `docker compose build app` adiado
+  até merge; E2E já provou o builder direto).
+
+**Onda C parcial (tools temporais no Nex):**
+- **C1** `comercial_evolucao_pedido` , série de valores de um pedido (query
+  `src/lib/reports/queries/pedido-valor-historico.ts`). Registrada (132 tools). E2E: pedido 2016 =
+  1 ponto com valores do Odoo; pedido inexistente = mensagem honesta.
+- **C2/C3 ADIADAS de propósito** (`evolucao_carteira`, `rampa_cbs_ibs`): agregação mês a mês exige
+  reconstrução point-in-time da série e só faz sentido com meses acumulados; com 1 ponto por pedido
+  hoje, mostrariam um mês só e poderiam enganar. Entram quando houver histórico real.
+- **C4** aging de etapa , SEM tool nova (já existem `comercial_pedido_historico_etapas` e
+  `_travados_por_etapa`). **C5** `docs/kpis-diretoria.md` atualizado com a fonte do histórico do pedido.
+
+Commits desta frente: c62fdfe2 (docs) · d94cff98 (Onda A) · 2f7992db (B0) · 282a1b33 (B1) ·
+1ae3e051 (B2-B5) · +C1. Tudo LOCAL, **sem merge** (aguarda o dono). tsc/eslint/jest verdes.
 
 ## Onde estamos (2026-07-22, madrugada) , FECHAMENTO DA SESSÃO B-09
 

@@ -496,3 +496,39 @@ não foi verificada.
 desaparecimentos falsos e permanentes. Se a queda é real e persistente (3 recusas seguidas com
 contagem estável), a série destrava numa nova base, para uma baixa legítima de estoque não
 travar tudo para sempre.
+
+## Histórico temporal dos VALORES do pedido (2026-07-22)
+
+Mesma ideia da série de preço/saldo, agora para o **pedido**: guardamos, com data e hora, como
+os valores de cada pedido mudam ao longo do tempo. Tabela `fato_pedido_valor_historico`
+(append-por-mudança, uma linha por `pedido_id` quando algo do núcleo muda), builder
+`src/worker/fatos/captura-pedido-valor.ts`, agendado no ciclo incremental do worker.
+
+**O que é o núcleo.** Uma linha nova nasce quando muda **etapa**, **saldo a atender (venda)**,
+**margem** (`al_margem`), **desconto** (`vr_desconto`), **CBS** (`vr_cbs`) ou **IBS**
+(`vr_ibs`). CBS e IBS entram individualmente (não só a soma dos impostos) para a rampa da
+reforma tributária ser observável mês a mês. Quando o núcleo muda, o resto dos valores
+(subtotal, custo, comissão, líquido, ICMS/DIFAL/FCP/PIS/COFINS/IRPJ/CSLL, saldo a atender custo,
+data prevista) é **snapshotado junto** na mesma linha.
+
+**Os valores são os do Odoo, nunca recalculados.** `al_margem` e os impostos vêm prontos de
+`raw_pedido_documento.data` (mesma fonte da tabela B-09), lidos pelos extratores puros de
+`src/lib/diretoria/pedido-extratores.ts`. O único valor derivado é o **saldo a atender por
+pedido**, que é a soma de `aAtenderDoItem` dos itens (a mesma métrica da tela).
+
+**Guarda de timing (`jobOk`).** A captura só roda quando o job de atendimento está fresco; sem
+isso o saldo a atender cai na quantidade cheia e injetaria mudanças falsas. Nesse caso a rodada
+é **adiada** (não grava nada). O teto de baixa é próprio da série do pedido (200, maior que o de
+estoque: pedidos concluídos/faturados saem em lotes).
+
+**Tool no Nex.** `comercial_evolucao_pedido` (query `queryEvolucaoPedido` em
+`src/lib/reports/queries/pedido-valor-historico.ts`) devolve a série de um pedido. O aging de
+etapa continua nas tools que já existiam (`comercial_pedido_historico_etapas`,
+`comercial_pedido_travados_por_etapa`) , não criamos tool nova para isso.
+
+**A série começa em 2026-07.** Antes da historização ligar, não há pontos: a tool diz isso com
+todas as letras em vez de fingir um histórico. Agregações mês a mês da carteira e da rampa
+CBS/IBS (`comercial_evolucao_carteira`, `comercial_rampa_cbs_ibs`) ficaram **adiadas** de
+propósito: fazê-las direito exige reconstrução point-in-time da série (o valor vigente ao fim de
+cada mês) e só ganham sentido depois de alguns meses acumulados; entregá-las agora, com um único
+ponto por pedido, mostraria um mês só e poderia enganar. Entram quando houver histórico real.

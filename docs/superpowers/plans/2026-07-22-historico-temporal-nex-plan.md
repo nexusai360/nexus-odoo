@@ -165,6 +165,11 @@
 
 ## ONDA C , Tools temporais do pedido/carteira no Nex (depende de B)
 
+> STATUS 2026-07-22: **C1 entregue** (`comercial_evolucao_pedido`). **C2/C3 ADIADAS de propósito**
+> (agregação mês a mês exige reconstrução point-in-time da série append-por-mudança e só faz
+> sentido com meses acumulados; com 1 ponto por pedido hoje, enganariam). C4 sem tool nova (M6).
+> C5 feito (`docs/kpis-diretoria.md`).
+
 ### C1. `comercial_evolucao_pedido`
 - Query core em `src/lib/reports/queries/` (série de 1 pedido de `fato_pedido_valor_historico`,
   corte + carry-forward, padrão `serie-historico.ts`) + `ToolEntry` comercial + 5 pontos de registro
