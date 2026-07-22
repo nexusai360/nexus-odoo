@@ -141,8 +141,10 @@ export interface LinhaEntregaParcial {
 }
 
 export interface IndicadoresEntregasParciais {
-  /** Pedidos em aberta distintos no escopo. */
+  /** Pedidos COM saldo a entregar (os que aparecem na tabela). É o número da faixa. */
   qtdPedidos: number;
+  /** Pedidos em aberto SEM saldo a entregar (todos os itens já entregues, mas seguem abertos). */
+  qtdPedidosSemSaldo: number;
   /** Σ do valor cheio dos pedidos (header, a venda). Inclui o já entregue. */
   totalPedido: number;
   /** Σ do que falta entregar, a preço de venda. */
@@ -488,9 +490,15 @@ export async function queryEntregasParciais(
 
   linhas.sort((a, b) => b.valorCustoAAtender - a.valorCustoAAtender);
 
+  // "Pedidos" da faixa = os que têm saldo a entregar (distintos nas linhas da tabela). Os
+  // demais do escopo estão abertos mas com tudo já entregue (quantidade a atender = 0).
+  const pedidosComSaldo = new Set(linhas.map((l) => l.pedidoId)).size;
+  const qtdPedidosSemSaldo = Math.max(0, pedidosEscopo.length - pedidosComSaldo);
+
   return {
     indicadores: {
-      qtdPedidos: pedidosEscopo.length,
+      qtdPedidos: pedidosComSaldo,
+      qtdPedidosSemSaldo,
       totalPedido,
       aAtenderVenda,
       aAtenderCusto,

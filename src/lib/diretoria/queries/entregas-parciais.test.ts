@@ -196,8 +196,9 @@ describe("queryEntregasParciais", () => {
 
     const r = await queryEntregasParciais(prisma, HOJE);
     expect(r.linhas).toHaveLength(0); // nada a entregar
-    expect(r.indicadores.qtdPedidos).toBe(1); // mas o pedido conta
-    expect(r.indicadores.totalPedido).toBe(1000);
+    expect(r.indicadores.qtdPedidos).toBe(0); // sem saldo: não conta como "com saldo a entregar"
+    expect(r.indicadores.qtdPedidosSemSaldo).toBe(1); // mas segue aberto, entra no balde "sem saldo"
+    expect(r.indicadores.totalPedido).toBe(1000); // valor do pedido continua contando
     expect(r.indicadores.aAtenderCusto).toBe(0);
   });
 
