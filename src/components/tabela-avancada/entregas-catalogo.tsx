@@ -11,7 +11,7 @@
  */
 
 import { useContext } from "react";
-import { CircleCheck, CircleX, ExternalLink, Package, MapPin, FileText, ClipboardList, TrendingUp, Coins, Tag } from "lucide-react";
+import { CircleCheck, CircleX, ExternalLink, Package, MapPin, FileText, ClipboardList, Coins, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { corEtapaValida, derivarCorTag } from "@/lib/diretoria/etapa-cor";
 import { formatarNomeEtapa } from "@/lib/diretoria/etapa-formato";
@@ -571,20 +571,33 @@ export function dropdownProdutos(l: LinhaEntrega): React.ReactNode {
 
 function Secao({ titulo, icone: Icone, children }: { titulo: string; icone: typeof Package; children: React.ReactNode }) {
   return (
-    <section className="border-t border-border/60 pt-5 first:border-0 first:pt-0">
-      <h3 className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        <Icone className="size-3.5" aria-hidden /> {titulo}
+    <section className="border-t border-border/60 pt-6 first:border-0 first:pt-0">
+      <h3 className="mb-4 flex items-center gap-2.5">
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-300">
+          <Icone className="size-4" aria-hidden />
+        </span>
+        <span className="text-sm font-semibold tracking-tight text-foreground">{titulo}</span>
       </h3>
       {children}
     </section>
   );
 }
 
-function Campo({ label, valor, span }: { label: string; valor: string; span?: 2 | 4 }) {
+/** Subtítulo de um agrupamento interno de uma seção (ex.: blocos do Financeiro). */
+function SubGrupo({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="mb-3 text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/80">{titulo}</p>
+      {children}
+    </div>
+  );
+}
+
+function Campo({ label, valor, span, mono }: { label: string; valor: string; span?: 2 | 4; mono?: boolean }) {
   return (
     <div className={cn("min-w-0", span === 4 ? "col-span-2 md:col-span-4" : span === 2 ? "col-span-2" : "")}>
       <dt className="text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground">{label}</dt>
-      <dd className="mt-0.5 break-words text-sm text-foreground">{valor && valor !== "-" ? valor : "-"}</dd>
+      <dd className={cn("mt-0.5 break-words text-sm text-foreground", mono && "tabular-nums")}>{valor && valor !== "-" ? valor : "-"}</dd>
     </div>
   );
 }
@@ -623,18 +636,23 @@ export function DetalheEntrega({ l }: { l: LinhaEntrega }) {
       </div>
 
       <dl className="space-y-5">
-        <Secao titulo="Identificação" icone={ClipboardList}>
+        <Secao titulo="Dados do pedido" icone={ClipboardList}>
           <div className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-4">
             <Campo label="Nº Mercos" valor={l.mercos} />
             <Campo label="Orçamento" valor={formatarDataBR(l.orcamento)} />
-            <Campo label="Prevista" valor={formatarDataBR(l.prevista)} />
+            <Campo label="Entrega" valor={formatarDataBR(l.prevista)} />
             <Campo label="Validade" valor={formatarDataBR(l.contrato)} />
-            <Campo label="Emitente" valor={l.emitente} span={2} />
-            <Campo label="Vendedor" valor={l.vendedor} />
-            <Campo label="Forma de pagamento" valor={l.forma} />
-            <Campo label="Condição de pagamento" valor={l.condicao} />
             <Campo label="Operação" valor={l.operacao} span={2} />
             <Campo label="Modalidade" valor={l.modalidade} />
+            <Campo label="Emitente" valor={l.emitente} />
+          </div>
+        </Secao>
+
+        <Secao titulo="Venda" icone={Tag}>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-4">
+            <Campo label="Vendedor" valor={l.vendedor} />
+            <Campo label="Forma de pagamento" valor={l.forma} />
+            <Campo label="Condição de pagamento" valor={l.condicao} span={2} />
           </div>
         </Secao>
 
@@ -649,30 +667,47 @@ export function DetalheEntrega({ l }: { l: LinhaEntrega }) {
         </Secao>
 
         {(l.subtotal !== 0 || l.liquido !== 0 || l.custoComercial !== 0 || l.descontoValor !== 0) && (
-          <Secao titulo="Rentabilidade do pedido" icone={TrendingUp}>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-4">
-              <Campo label="Valor Produto" valor={formatBRL(l.valorTotalCusto)} />
-              <Campo label="Subtotal Pedido" valor={formatBRL(l.valorProduto)} />
-              <Campo label="Valor Pedido" valor={formatBRL(l.subtotal)} />
-              <Campo label={`Desconto (${formatPct(l.descontoPct)})`} valor={formatBRL(l.descontoValor)} />
-              <Campo label="Custo Comercial" valor={formatBRL(l.custoComercial)} />
-              <Campo label={`Comissão (${formatPct(l.comissaoPct)})`} valor={formatBRL(l.comissaoValor)} />
-              <Campo label="ICMS" valor={formatBRL(l.icms)} />
-              <Campo label="DIFAL" valor={formatBRL(l.difal)} />
-              <Campo label="FCP" valor={formatBRL(l.fcp)} />
-              <Campo label="PIS" valor={formatBRL(l.pis)} />
-              <Campo label="COFINS" valor={formatBRL(l.cofins)} />
-              <Campo label="IRPJ" valor={formatBRL(l.irpj)} />
-              <Campo label="CSLL" valor={formatBRL(l.csll)} />
-              <Campo label="CBS" valor={formatBRL(l.cbs)} />
-              <Campo label="IBS" valor={formatBRL(l.ibs)} />
-              <Campo label="Lucro Líquido" valor={formatBRL(l.liquido)} />
-              <div className="min-w-0">
-                <dt className="text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground">Margem</dt>
-                <dd className={cn("mt-0.5 text-sm font-semibold tabular-nums", l.margemPct < 0 ? "text-rose-400" : l.margemPct > 0 ? "text-emerald-400" : "text-muted-foreground")}>{formatPct(l.margemPct)}</dd>
-              </div>
+          <Secao titulo="Financeiro do pedido" icone={Coins}>
+            <div className="space-y-6">
+              <SubGrupo titulo="Valores da venda">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-4 md:grid-cols-3">
+                  <Campo mono label="Valor Produto" valor={formatBRL(l.valorTotalCusto)} />
+                  <Campo mono label="Subtotal Pedido" valor={formatBRL(l.valorProduto)} />
+                  <Campo mono label="Valor Pedido" valor={formatBRL(l.subtotal)} />
+                  <Campo mono label={`Desconto (${formatPct(l.descontoPct)})`} valor={formatBRL(l.descontoValor)} />
+                  <Campo mono label="Custo Comercial" valor={formatBRL(l.custoComercial)} />
+                  <Campo mono label={`Comissão (${formatPct(l.comissaoPct)})`} valor={formatBRL(l.comissaoValor)} />
+                </div>
+              </SubGrupo>
+
+              <SubGrupo titulo="Tributos">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-4 rounded-xl border border-border/60 bg-background/40 p-4 md:grid-cols-3 lg:grid-cols-5">
+                  <Campo mono label="ICMS" valor={formatBRL(l.icms)} />
+                  <Campo mono label="DIFAL" valor={formatBRL(l.difal)} />
+                  <Campo mono label="FCP" valor={formatBRL(l.fcp)} />
+                  <Campo mono label="PIS" valor={formatBRL(l.pis)} />
+                  <Campo mono label="COFINS" valor={formatBRL(l.cofins)} />
+                  <Campo mono label="IRPJ" valor={formatBRL(l.irpj)} />
+                  <Campo mono label="CSLL" valor={formatBRL(l.csll)} />
+                  <Campo mono label="CBS" valor={formatBRL(l.cbs)} />
+                  <Campo mono label="IBS" valor={formatBRL(l.ibs)} />
+                </div>
+              </SubGrupo>
+
+              <SubGrupo titulo="Resultado">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="min-w-0 rounded-xl border border-border/60 bg-background/40 p-4">
+                    <p className="text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground">Lucro Líquido</p>
+                    <p className="mt-1 truncate text-lg font-bold tabular-nums text-foreground">{formatBRL(l.liquido)}</p>
+                  </div>
+                  <div className="min-w-0 rounded-xl border border-border/60 bg-background/40 p-4">
+                    <p className="text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground">Margem</p>
+                    <p className={cn("mt-1 truncate text-lg font-bold tabular-nums", l.margemPct < 0 ? "text-rose-400" : l.margemPct > 0 ? "text-emerald-400" : "text-muted-foreground")}>{formatPct(l.margemPct)}</p>
+                  </div>
+                </div>
+              </SubGrupo>
             </div>
-            <p className="mt-3 text-[0.7rem] text-muted-foreground">Valores prontos do Odoo (aba Rentabilidade). Margem = Líquido ÷ Subtotal; o líquido já abate os créditos tributários (Lucro Real).</p>
+            <p className="mt-4 text-[0.7rem] text-muted-foreground">Valores prontos do Odoo (aba Rentabilidade). Margem = Líquido ÷ Subtotal; o líquido já abate os créditos tributários (Lucro Real).</p>
           </Secao>
         )}
 

@@ -15,7 +15,7 @@ import { Fragment, createContext, useMemo, useRef, useState, useEffect, useLayou
 import {
   Download, SlidersHorizontal, Layers, Star, Search, X, ChevronDown,
   ChevronRight, ChevronLeft, ArrowLeft, List, Columns3, CalendarDays,
-  Trash2, Check, ArrowUp, ArrowDown, ArrowUpDown, Rows3, Tag,
+  Trash2, Check, ArrowUp, ArrowDown, ArrowUpDown, Rows3, Tag, RectangleHorizontal,
 } from "lucide-react";
 
 /** Opções da tabela que as células precisam ler (ex.: mostrar preço de venda
@@ -411,12 +411,23 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
           </div>
         )}
 
-        {/* View switcher */}
+        {/* View switcher. "Pedido" (ficha) não é uma view: abre o overlay de
+            detalhe no primeiro pedido da lista atual. Vem primeiro por ser a
+            leitura foco-no-pedido; depois Lista e as demais lentes. */}
         <div className="ml-auto inline-flex items-center rounded-lg border border-border bg-card p-0.5">
+          {renderDetalhe && (
+            <Tooltip label="Pedido">
+              <button type="button" onClick={() => { if (listaOrdenada.length) setDetalhe({ row: listaOrdenada[0], idx: 0 }); }}
+                disabled={listaOrdenada.length === 0} aria-label="Pedido" aria-pressed={!!detalhe}
+                className={cn("flex size-8 items-center justify-center rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-40", detalhe ? "bg-violet-500/15 text-violet-600 dark:text-violet-300" : "cursor-pointer text-muted-foreground hover:text-foreground")}>
+                <RectangleHorizontal className="size-4" />
+              </button>
+            </Tooltip>
+          )}
           {VIEWS.filter((v) => v.key === "lista" || (v.key === "kanban" && kanbanCampo) || (v.key === "calendario" && calendarioCampo)).map((v) => (
             <Tooltip key={v.key} label={v.label}>
-              <button type="button" onClick={() => setView(v.key)} aria-label={v.label} aria-pressed={view === v.key}
-                className={cn("flex size-8 cursor-pointer items-center justify-center rounded-md transition-colors", view === v.key ? "bg-violet-500/15 text-violet-600 dark:text-violet-300" : "text-muted-foreground hover:text-foreground")}>
+              <button type="button" onClick={() => { setView(v.key); setDetalhe(null); }} aria-label={v.label} aria-pressed={view === v.key && !detalhe}
+                className={cn("flex size-8 cursor-pointer items-center justify-center rounded-md transition-colors", view === v.key && !detalhe ? "bg-violet-500/15 text-violet-600 dark:text-violet-300" : "text-muted-foreground hover:text-foreground")}>
                 <v.icon className="size-4" />
               </button>
             </Tooltip>
@@ -722,6 +733,11 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
 const brlFmt = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 function brlSoma(v: number): string { return brlFmt.format(v || 0); }
 
+/** Normaliza texto para busca: minúsculas, sem acentos e sem espaços nas bordas. */
+function normalizarBusca(s: string): string {
+  return s.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
 /** Tela de detalhes de UMA linha: destaque no número, campos organizados por
  * largura, observações em bloco largo, filtro por número + voltar/navegar. */
 function DetalhePedido<T extends Record<string, unknown>>({
@@ -742,11 +758,16 @@ function DetalhePedido<T extends Record<string, unknown>>({
 }) {
   const [q, setQ] = useState("");
   const [aberto, setAberto] = useState(false);
+  // Busca por número do pedido OU nome do cliente, ignorando acentos e caixa,
+  // para achar qualquer um dos pedidos da lista pelo que o usuário digitar.
   const sugestoes = useMemo(() => {
-    const t = q.trim().toLowerCase();
+    const t = normalizarBusca(q);
     if (!t) return [] as T[];
-    return todos.filter((r) => (tituloItem?.(r) ?? "").toLowerCase().includes(t)).slice(0, 8);
-  }, [q, todos, tituloItem]);
+    return todos
+      .filter((r) => normalizarBusca(`${tituloItem?.(r) ?? ""} ${subtituloItem?.(r) ?? ""}`).includes(t))
+      .slice(0, 10);
+  }, [q, todos, tituloItem, subtituloItem]);
+  const semResultado = aberto && q.trim().length > 0 && sugestoes.length === 0;
   const spanClass = (s?: number) => (s === 4 ? "sm:col-span-2 lg:col-span-4" : s === 2 ? "sm:col-span-2" : "");
 
   return (
@@ -775,6 +796,11 @@ function DetalhePedido<T extends Record<string, unknown>>({
                   {subtituloItem && <span className="w-full truncate text-xs text-muted-foreground">{subtituloItem(r)}</span>}
                 </button>
               ))}
+            </div>
+          )}
+          {semResultado && (
+            <div className="absolute left-0 top-full z-40 mt-1 w-full rounded-xl border border-border bg-popover px-3 py-2.5 text-xs text-muted-foreground shadow-xl">
+              Nenhum pedido encontrado para “{q.trim()}”.
             </div>
           )}
         </div>
