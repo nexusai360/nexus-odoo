@@ -21,6 +21,16 @@ describe("extrairNumerosMercos (lista)", () => {
     expect(extrairNumerosMercos("MERCOS: 40001/40002")).toEqual(["40001", "40002"]);
   });
 
+  it("aceita separadores especiais variados entre os números (#, parênteses, ;, &, .)", () => {
+    expect(extrairNumerosMercos("PEDIDO MERCOS: 33611 33885")).toEqual(["33611", "33885"]);
+    expect(extrairNumerosMercos("MERCOS: 40001 # 40002")).toEqual(["40001", "40002"]);
+    expect(extrairNumerosMercos("MERCOS: 40001 (40002)")).toEqual(["40001", "40002"]);
+    expect(extrairNumerosMercos("MERCOS: 40001; 40002")).toEqual(["40001", "40002"]);
+    expect(extrairNumerosMercos("MERCOS: 40001 & 40002")).toEqual(["40001", "40002"]);
+    expect(extrairNumerosMercos("MERCOS: 40001 . 40002")).toEqual(["40001", "40002"]);
+    expect(extrairNumerosMercos("MERCOS: 33611 | 33885 / 33886")).toEqual(["33611", "33885", "33886"]);
+  });
+
   it("uma palavra quebra a cadeia: pega só o Mercos, ignora referência a outro pedido", () => {
     expect(
       extrairNumerosMercos("PEDIDO MERCOS: 47434 PEDIDO DE TROCA EM REFERENCIA AO PEDIDO 45829"),

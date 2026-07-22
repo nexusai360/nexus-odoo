@@ -67,8 +67,10 @@ function ehRotuloMercos(palavra: string): boolean {
 // um número no formato Mercos (4-6 dígitos puros, isolado de outros dígitos).
 const RE_ANCORA = /([A-Za-zÀ-ÿ]{3,})[^0-9A-Za-zÀ-ÿ\n]{0,6}(?<![0-9])(\d{4,6})(?![0-9])/g;
 
-// Próximo número da cadeia: no máximo um separador entre os números.
-const RE_PROXIMO = /^[ \t]*[|,/;\-]?[ \t]*(?<![0-9])(\d{4,6})(?![0-9])/;
+// Próximo número da cadeia: entre dois números Mercos pode haver qualquer punhado (até 4) de
+// caracteres NÃO alfanuméricos (espaco, | - , / ; # ( ) . & etc.). Uma LETRA (ou um numero de
+// outra forma) quebra a cadeia , e o que protege "...AO PEDIDO NNN" e "N PALETE CONTEM NN".
+const RE_PROXIMO = /^[^0-9A-Za-zÀ-ÿ\n]{0,4}(\d{4,6})(?![0-9])/;
 
 // Fallback: "Pedido Nº NNNNN" (aceita Nº/N°/No/Numero, com ou sem pontuação).
 const RE_PEDIDO_NUM = /\bpedido\s*(?:n[º°ªo]?\.?|numero|n\.?º?)?\s*[:#-]?\s*(?<![0-9])(\d{4,6})(?![0-9])/i;
