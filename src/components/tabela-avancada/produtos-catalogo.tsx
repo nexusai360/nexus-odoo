@@ -51,6 +51,17 @@ function ValorCV({ custo, venda }: { custo: number; venda: number }) {
   );
 }
 
+/** Tag do código do produto, no mesmo visual translúcido da tag de pedido.
+ * Sem link: o Odoo não expõe uma URL própria da tela do produto a partir do
+ * que o cache traz (o ItemEntrega não carrega o id do produto). Fica só a tag. */
+function TagCodigo({ codigo }: { codigo: string }) {
+  return (
+    <span className="inline-flex items-center whitespace-nowrap rounded-md bg-foreground/10 px-2 py-0.5 text-xs font-semibold tabular-nums text-foreground ring-1 ring-inset ring-foreground/15">
+      {codigo}
+    </span>
+  );
+}
+
 // ===== Colunas =====
 export const COLUNAS: ColunaDef<ItemEntrega>[] = [
   { key: "codigo", label: "Código", tipo: "texto", sortable: true, numeric: false, padrao: true, obrigatoria: true, valor: (i) => i.codigo, sortKey: (i) => Number(String(i.codigo).replace(/\D/g, "")) || i.codigo },
@@ -77,8 +88,8 @@ export const COLUNA_BY_KEY: Record<string, ColunaDef<ItemEntrega>> = Object.from
 export function celula(it: ItemEntrega, key: string): React.ReactNode {
   const col = COLUNA_BY_KEY[key];
   if (!col) return null;
-  // Código NUNCA trunca (whitespace-nowrap), a pedido do dono: sempre visível.
-  if (key === "codigo") return <span className="whitespace-nowrap tabular-nums text-muted-foreground">{it.codigo}</span>;
+  // Código como tag (padrão da tabela de pedidos) e nunca truncado: sempre visível.
+  if (key === "codigo") return <TagCodigo codigo={it.codigo} />;
   if (key === "valorProduto") return <ValorCV custo={it.valorCustoTotal} venda={it.valorCheio} />;
   if (key === "valorAtender") return <ValorCV custo={it.vlrCusto} venda={it.vlrVenda} />;
   if (key === "desconto") return <span className="whitespace-nowrap tabular-nums text-muted-foreground" title={`Desconto ${formatPct(it.descontoPct)}`}>{formatBRL(it.descontoValor)}</span>;

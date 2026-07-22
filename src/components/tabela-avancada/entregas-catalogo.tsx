@@ -888,7 +888,7 @@ export function DetalheEntrega({ l }: { l: LinhaEntrega }) {
           {/* Mesma TabelaAvancada dos Pedidos, agora sobre os itens: cabeçalho e
               total fixos, scroll próprio (altura contida), colunas/sort/resize,
               busca, filtros, agrupar, compacto e mostrar venda. */}
-          <div className="flex h-[34rem] min-h-0 flex-col">
+          <div className="flex h-[min(68rem,85vh)] min-h-0 flex-col">
             <TabelaAvancada<ItemEntrega>
               base={l.itens}
               colunas={COLUNAS_PRODUTO}
@@ -904,6 +904,7 @@ export function DetalheEntrega({ l }: { l: LinhaEntrega }) {
               exportFilename="produtos-pedido"
               labelRegistro="produtos"
               permiteVenda
+              compactoInicial
             />
           </div>
         </Secao>
