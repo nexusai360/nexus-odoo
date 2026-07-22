@@ -432,22 +432,26 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
             detalhe no primeiro pedido da lista atual. Vem primeiro por ser a
             leitura foco-no-pedido; depois Lista e as demais lentes. */}
         <div className="ml-auto inline-flex items-center rounded-lg border border-border bg-card p-0.5">
-          {renderDetalhe && (
-            <Tooltip label="Pedido">
-              <button type="button" onClick={() => { if (listaOrdenada.length) setDetalhe({ row: listaOrdenada[0], idx: 0 }); }}
-                disabled={listaOrdenada.length === 0} aria-label="Pedido" aria-pressed={!!detalhe}
-                className={cn("flex size-8 items-center justify-center rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-40", detalhe ? "bg-violet-500/15 text-violet-600 dark:text-violet-300" : "cursor-pointer text-muted-foreground hover:text-foreground")}>
-                <ReceiptText className="size-4" />
-              </button>
-            </Tooltip>
-          )}
+          {/* Ordem: Lista, Pedido (ficha), Kanban, Calendário. O botão "Pedido" entra logo
+              depois da Lista (abre o overlay de detalhe no 1º pedido da lista atual). */}
           {VIEWS.filter((v) => v.key === "lista" || (v.key === "kanban" && kanbanCampo) || (v.key === "calendario" && calendarioCampo)).map((v) => (
-            <Tooltip key={v.key} label={v.label}>
-              <button type="button" onClick={() => { setView(v.key); setDetalhe(null); }} aria-label={v.label} aria-pressed={view === v.key && !detalhe}
-                className={cn("flex size-8 cursor-pointer items-center justify-center rounded-md transition-colors", view === v.key && !detalhe ? "bg-violet-500/15 text-violet-600 dark:text-violet-300" : "text-muted-foreground hover:text-foreground")}>
-                <v.icon className="size-4" />
-              </button>
-            </Tooltip>
+            <Fragment key={v.key}>
+              <Tooltip label={v.label}>
+                <button type="button" onClick={() => { setView(v.key); setDetalhe(null); }} aria-label={v.label} aria-pressed={view === v.key && !detalhe}
+                  className={cn("flex size-8 cursor-pointer items-center justify-center rounded-md transition-colors", view === v.key && !detalhe ? "bg-violet-500/15 text-violet-600 dark:text-violet-300" : "text-muted-foreground hover:text-foreground")}>
+                  <v.icon className="size-4" />
+                </button>
+              </Tooltip>
+              {v.key === "lista" && renderDetalhe && (
+                <Tooltip label="Pedido">
+                  <button type="button" onClick={() => { if (listaOrdenada.length) setDetalhe({ row: listaOrdenada[0], idx: 0 }); }}
+                    disabled={listaOrdenada.length === 0} aria-label="Pedido" aria-pressed={!!detalhe}
+                    className={cn("flex size-8 items-center justify-center rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-40", detalhe ? "bg-violet-500/15 text-violet-600 dark:text-violet-300" : "cursor-pointer text-muted-foreground hover:text-foreground")}>
+                    <ReceiptText className="size-4" />
+                  </button>
+                </Tooltip>
+              )}
+            </Fragment>
           ))}
         </div>
       </div>
@@ -593,7 +597,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
             <table className={cn("w-full min-w-[60rem]", compacto ? "text-xs" : "text-sm", colFixo ? "table-fixed" : "table-auto")}>
               {colFixo && (
                 <colgroup>
-                  {colsVisiveis.map((c) => <col key={c.key} style={{ width: larguras[c.key] }} />)}
+                  {colsVisiveis.map((c) => <col key={c.key} data-colkey={c.key} style={{ width: larguras[c.key] }} />)}
                 </colgroup>
               )}
               <thead className="sticky top-0 z-20 bg-muted">
@@ -605,10 +609,11 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                     const alinhar = c.align ?? (c.numeric ? "right" : "left");
                     return (
                       <th key={c.key} ref={setRef(c.key)} className={cn("group/th relative overflow-hidden text-left font-medium", primeira ? (expandirRow ? "pl-8 pr-4" : "pl-4 pr-4") : "px-4", compacto ? "py-2" : "py-3", alinhar === "right" && "text-right", alinhar === "center" && "text-center")}>
-                        {/* Acento roxo decorativo da ESQUERDA no hover, espelhando o ResizeHandle da direita. */}
-                        <span aria-hidden className="pointer-events-none absolute left-0 top-0 z-10 flex h-full w-3 translate-x-0.5 items-center justify-center">
-                          <span className="h-1/2 w-0.5 rounded-full bg-transparent transition-all group-hover/th:h-2/3 group-hover/th:bg-violet-400/50" />
-                        </span>
+                        {/* Alça de redimensionamento da ESQUERDA: FUNCIONAL, redimensiona a coluna
+                            ANTERIOR (a borda esquerda desta coluna é a borda direita da de trás). */}
+                        {ci > 0 && (
+                          <ResizeHandle lado="left" onPointerDown={(e) => iniciarResize(e, colsVisiveis[ci - 1].key)} onReset={() => resetColuna(colsVisiveis[ci - 1].key)} ativo={resizingKey === colsVisiveis[ci - 1].key} />
+                        )}
                         <button type="button" onClick={() => ordenarPor(c.key)} className={cn("flex min-w-0 max-w-full items-center gap-1.5", alinhar === "right" && "ml-auto justify-end", alinhar === "center" && "mx-auto justify-center", c.sortable ? "cursor-pointer hover:text-foreground" : "cursor-default")}>
                           {c.tooltipHeader ? (
                             <TooltipUI>

@@ -11,7 +11,7 @@
  */
 
 import { useContext, useState } from "react";
-import { CircleCheck, CircleX, Package, MapPin, FileText, ClipboardList, Coins, Tag, Copy, Check } from "lucide-react";
+import { CircleCheck, CircleX, Package, MapPin, FileText, ClipboardList, Coins, Tag, Copy, Check, IdCard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { corEtapaValida, derivarCorTag } from "@/lib/diretoria/etapa-cor";
 import { formatarNomeEtapa } from "@/lib/diretoria/etapa-formato";
@@ -431,7 +431,7 @@ export function TagPedido({ numero, pedidoId, grande }: { numero: string; pedido
     grande ? "gap-1.5 px-3 py-1 text-lg" : "px-2 py-0.5 text-xs",
   );
   const podeAbrir = Number.isFinite(pedidoId) && pedidoId > 0 && !!numero && numero !== "-";
-  const Doc = <FileText className={cn("shrink-0 text-muted-foreground", grande ? "size-4" : "size-3.5")} aria-hidden />;
+  const Doc = <IdCard className={cn("shrink-0 text-muted-foreground", grande ? "size-5" : "size-4")} aria-hidden />;
   if (!podeAbrir) return <span className={base}>{Doc}<span className="tabular-nums">{numero}</span></span>;
   return (
     <a

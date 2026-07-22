@@ -233,7 +233,11 @@ export function FiltroAvancado({
         </>
       }
     >
-      <GrupoBloco grupo={arvore} campos={campos} campoBy={campoBy} campoPadrao={campoPadrao} raiz onChange={setArvore} />
+      {/* min-height: o modal já abre num tamanho confortável para montar o 1º filtro e cresce
+          conforme as regras vão sendo adicionadas. */}
+      <div className="min-h-[20rem]">
+        <GrupoBloco grupo={arvore} campos={campos} campoBy={campoBy} campoPadrao={campoPadrao} raiz onChange={setArvore} />
+      </div>
     </Modal>
   );
 }
