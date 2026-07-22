@@ -171,7 +171,7 @@ function KpisEntregasParciais({ d }: { d: PedidosData }) {
         </p>
         <ToggleCorteEntregas />
       </div>
-      <div className="grid flex-1 grid-cols-2 gap-2.5 lg:grid-cols-4">
+      <div className="grid flex-1 content-center grid-cols-2 gap-2.5 lg:grid-cols-4">
         <KpiButton rotulo="Pedidos" valor={num.format(i.qtdPedidos)} icone={ClipboardList} tone="info" hint="Em aberto no período" />
         <KpiButton rotulo="Total dos pedidos" valor={brlCompacto(i.totalPedido)} valorCompleto={brl.format(i.totalPedido)} icone={Receipt} hint="Valor cheio, a venda (inclui o já entregue)" />
         <KpiButton rotulo="Falta entregar (venda)" valor={brlCompacto(i.aAtenderVenda)} valorCompleto={brl.format(i.aAtenderVenda)} icone={Wallet} hint="Saldo a atender, a preço de venda" />

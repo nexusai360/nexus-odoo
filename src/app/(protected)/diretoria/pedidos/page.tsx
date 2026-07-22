@@ -100,8 +100,8 @@ export default async function DiretoriaPedidosPage({
       { componenteId: "B-07", ordem: 1, largura: 8, altura: 6, x: 0, y: 6 },
     ],
     entregas: [
-      { componenteId: "B-08", ordem: 0, largura: 8, altura: 3, x: 0, y: 0 },
-      { componenteId: "B-09", ordem: 1, largura: 8, altura: 8, x: 0, y: 3 },
+      { componenteId: "B-08", ordem: 0, largura: 8, altura: 2, x: 0, y: 0 },
+      { componenteId: "B-09", ordem: 1, largura: 8, altura: 8, x: 0, y: 2 },
     ],
   };
   const abasIds = Object.keys(PADROES_ABA);
