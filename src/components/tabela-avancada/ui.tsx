@@ -88,6 +88,11 @@ export function Select({
   const wrapRef = useRef<HTMLDivElement>(null);
   const norm: OpcaoSelect[] = options.map((o) => (typeof o === "string" ? { value: o, label: o } : o));
   const atual = norm.find((o) => o.value === value);
+  // Dropdown vai num PORTAL (fixed) para não ser cortado quando o Select está dentro de um
+  // contêiner com scroll (ex.: modal do filtro avançado).
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
 
   const lista = useMemo(() => {
     const q = busca.trim().toLowerCase();
@@ -97,7 +102,9 @@ export function Select({
   useEffect(() => {
     if (disabled) { setOpen(false); return; }
     if (!open) return;
-    const onDoc = (e: MouseEvent) => { if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false); };
+    const el = btnRef.current;
+    if (el) { const r = el.getBoundingClientRect(); const w = Math.max(r.width, 208); setPos({ top: r.bottom + 4, left: align === "right" ? r.right - w : r.left, width: w }); }
+    const onDoc = (e: MouseEvent) => { const t = e.target as Node; if (btnRef.current?.contains(t) || popRef.current?.contains(t)) return; setOpen(false); };
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     // Anexa no próximo tick para NUNCA capturar o mesmo clique que abriu o menu
     // (era isso que fazia o dropdown "abrir e sumir" na hora).
@@ -110,11 +117,12 @@ export function Select({
       document.removeEventListener("mousedown", onDoc);
       document.removeEventListener("keydown", onKey);
     };
-  }, [open, disabled]);
+  }, [open, disabled, align]);
 
   return (
     <div ref={wrapRef} className="relative min-w-0">
       <button
+        ref={btnRef}
         type="button"
         onClick={(e) => { if (disabled) return; e.stopPropagation(); setOpen((v) => !v); setBusca(""); }}
         disabled={disabled}
@@ -130,8 +138,8 @@ export function Select({
         <span className={cn("truncate", !atual && "text-muted-foreground")}>{atual?.label ?? placeholder}</span>
         <ChevronDown className={cn("size-3.5 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
       </button>
-      {open && (
-        <div className={cn("absolute top-10 z-50 w-full min-w-[13rem] rounded-xl border border-border bg-popover p-1 shadow-xl motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95", align === "right" ? "right-0" : "left-0")}>
+      {open && pos && typeof document !== "undefined" && createPortal(
+        <div ref={popRef} style={{ position: "fixed", top: pos.top, left: pos.left, width: pos.width }} className="z-[130] min-w-[13rem] rounded-xl border border-border bg-popover p-1 shadow-xl motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95">
           {searchable && norm.length > 6 && (
             <div className="relative mb-1">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -156,7 +164,8 @@ export function Select({
             ))}
             {lista.length === 0 && <p className="px-2.5 py-3 text-center text-sm text-muted-foreground">Nada encontrado</p>}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
