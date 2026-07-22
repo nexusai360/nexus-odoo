@@ -53,6 +53,8 @@ function makePrisma(opts: {
   formasPagamento?: { pedidoId: number | null; formaPagamentoNome: string | null }[];
   etapasRaw?: { odooId: number; data: unknown }[];
   obsRaw?: { odooId: number; data: unknown }[];
+  // Rentabilidade por item (raw_sped_documento_item), adicionada no B-09. Default [].
+  itemRaw?: { odooId: number; data: unknown }[];
 }) {
   const rawPedidoEtapaFindMany = jest.fn().mockResolvedValue(opts.etapasRaw ?? []);
   const rawPedidoDocumentoFindMany = jest.fn().mockResolvedValue(opts.obsRaw ?? []);
@@ -64,6 +66,7 @@ function makePrisma(opts: {
     fatoPedido: { findMany: jest.fn().mockResolvedValue(opts.pedidos) },
     fatoPedidoItem: { findMany: jest.fn().mockResolvedValue(opts.itens) },
     fatoProduto: { findMany: jest.fn().mockResolvedValue(opts.produtos) },
+    rawSpedDocumentoItem: { findMany: jest.fn().mockResolvedValue(opts.itemRaw ?? []) },
     fatoBuildState: {
       // O marcador de atendimento é aferido contra Date.now() com validade de 48h
       // (atendimento-status.ts). Para o teste ser determinístico (não depender de o relógio

@@ -12,6 +12,14 @@ import type { PrismaClient } from "@/generated/prisma/client";
 
 import { corteAtualDate, janelaDemandaAberta } from "@/lib/corte-dados";
 import { aAtenderDoItem } from "@/lib/diretoria/atendimento-item";
+import {
+  numJson,
+  strOuNull,
+  extrairDesconto,
+  extrairRentabilidade,
+  extrairRentabilidadeItem,
+  extrairCondicaoPagamento,
+} from "@/lib/diretoria/pedido-extratores";
 import { corEtapaValida } from "@/lib/diretoria/etapa-cor";
 import { formatarNomeEtapa } from "@/lib/diretoria/etapa-formato";
 import { rotuloModalidadeFrete } from "@/lib/fiscal/regras/modalidade-frete";
@@ -169,14 +177,6 @@ export function mapaCorEtapa(
 
 // --- Fase 3: helpers puros (colunas completas do relatório oficial) ---
 
-/** Normaliza um valor do Odoo em string útil: não-string (ex.: `false`), vazio ou só
- * espaços viram null. */
-function strOuNull(v: unknown): string | null {
-  if (typeof v !== "string") return null;
-  const t = v.trim();
-  return t.length ? t : null;
-}
-
 /** Data ISO `YYYY-MM-DD` a partir de um Date, ou null. Reusa o padrão provado no repo
  * (`estoque.ts`): as datas do Odoo são `timestamp` 00:00:00 em UTC, então `toISOString`
  * não desloca o dia (ver review D-F3-8/B2). */
@@ -209,73 +209,10 @@ export function extrairFormaPagamento(data: unknown): string | null {
   return Array.isArray(v) && typeof v[1] === "string" ? strOuNull(v[1]) : null;
 }
 
-/** Condição de pagamento do CABEÇALHO (`pedido.documento.condicao_pagamento_id`,
- * many2one `[id, nome]`, ex.: "Livre", "Boleto; 6 x", "[Sem Pagamento] ..."). Fonte
- * fiel do Odoo (mesmo campo da tela do pedido). `false`/vazio => null. */
-export function extrairCondicaoPagamento(data: unknown): string | null {
-  const v = (data as { condicao_pagamento_id?: unknown } | null)?.condicao_pagamento_id;
-  return Array.isArray(v) && typeof v[1] === "string" ? strOuNull(v[1]) : null;
-}
-
-/** Desconto do PEDIDO (cabeçalho): `vr_desconto` (R$) e `al_desconto` (%), prontos do
- * Odoo. 0 quando não há desconto (a maioria dos pedidos). */
-export function extrairDesconto(data: unknown): { descontoValor: number; descontoPct: number } {
-  const d = data as Record<string, unknown> | null;
-  return { descontoValor: numJson(d?.vr_desconto), descontoPct: numJson(d?.al_desconto) };
-}
-
-/** Número do jsonb do Odoo: o Odoo devolve `false` (não nulo) em campo não
- * aplicável; string/número viram número, o resto vira 0. */
-function numJson(v: unknown): number {
-  const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN;
-  return Number.isFinite(n) ? n : 0;
-}
-
-/** Rentabilidade do PEDIDO, campos JÁ CALCULADOS pelo Odoo em
- * `raw_pedido_documento.data` (mesma aba Rentabilidade do ERP). Margem e líquido
- * vêm prontos (NÃO recalcular: é Lucro Real, o líquido já abate créditos). */
-export function extrairRentabilidade(data: unknown): {
-  subtotal: number; valorProduto: number; custoComercial: number; icms: number; difal: number; fcp: number;
-  pis: number; cofins: number; irpj: number; csll: number; cbs: number; ibs: number; comissaoPct: number; comissaoValor: number; liquido: number; margemPct: number;
-} {
-  const d = data as Record<string, unknown> | null;
-  return {
-    subtotal: numJson(d?.vr_operacao_tributacao),
-    valorProduto: numJson(d?.vr_produtos),
-    custoComercial: numJson(d?.vr_custo_comercial),
-    icms: numJson(d?.vr_icms_proprio),
-    difal: numJson(d?.vr_difal),
-    fcp: numJson(d?.vr_fcp),
-    pis: numJson(d?.vr_pis_proprio),
-    cofins: numJson(d?.vr_cofins_proprio),
-    irpj: numJson(d?.vr_irpj),
-    csll: numJson(d?.vr_csll),
-    cbs: numJson(d?.vr_cbs),
-    ibs: numJson(d?.vr_ibs),
-    comissaoPct: numJson(d?.al_comissao),
-    comissaoValor: numJson(d?.vr_comissao),
-    liquido: numJson(d?.vr_liquido),
-    margemPct: numJson(d?.al_margem),
-  };
-}
-
-/** Rentabilidade DO ITEM, campos JÁ CALCULADOS pelo Odoo em
- * `raw_sped_documento_item.data` (mesma semântica do pedido, por produto). Margem e
- * líquido vêm PRONTOS (NÃO recalcular: é Lucro Real, o líquido já abate créditos). */
-export function extrairRentabilidadeItem(data: unknown): {
-  itemComissaoPct: number; itemComissaoValor: number; itemLiquido: number; itemMargemPct: number;
-  itemDescontoValor: number; itemDescontoPct: number;
-} {
-  const d = data as Record<string, unknown> | null;
-  return {
-    itemComissaoPct: numJson(d?.al_comissao),
-    itemComissaoValor: numJson(d?.vr_comissao),
-    itemLiquido: numJson(d?.vr_liquido),
-    itemMargemPct: numJson(d?.al_margem),
-    itemDescontoValor: numJson(d?.vr_desconto),
-    itemDescontoPct: numJson(d?.al_desconto),
-  };
-}
+// Extratores puros do jsonb (extrairCondicaoPagamento, extrairDesconto, extrairRentabilidade,
+// extrairRentabilidadeItem) + helpers numJson/strOuNull movidos para o modulo folha
+// `@/lib/diretoria/pedido-extratores` (importados no topo), para o worker reusar sem arrastar o
+// grafo server-only desta tela (fronteira, review B-1 2026-07-22).
 
 // REGRA_BLOQUEIO (D-b, versão SIMPLES, pendente de veredito do dono , 2026-07-18):
 // REGRA_BLOQUEIO (decisão do dono, 2026-07-19): segue a fonte da verdade, o ERP Odoo. No Odoo,
