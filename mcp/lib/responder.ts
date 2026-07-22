@@ -262,6 +262,26 @@ const fmtEstoqueComparativo: FormatadorCanonico = (env) => {
   return `Estoque atual: ${formatBRL(vf)} (exato). ${desde}`;
 };
 
+const fmtEvolucaoPreco: FormatadorCanonico = (env) => {
+  const prod = Number(env._DESTAQUE?.produtoId ?? 0);
+  const tab = Number(env._DESTAQUE?.tabelaId ?? 0);
+  const faixas = Number(env._DESTAQUE?.faixas ?? 0);
+  const mud = Number(env._DESTAQUE?.mudancas ?? 0);
+  if (faixas === 0) return `Sem historico de preco para o produto ${prod} na tabela ${tab}.`;
+  if (mud === 0) return `Produto ${prod} (tabela ${tab}): sem mudanca de preco na janela; preco estavel.`;
+  return `Produto ${prod} (tabela ${tab}): ${mud} mudanca(s) de preco na janela, em ${faixas} faixa(s).`;
+};
+
+const fmtEvolucaoSaldo: FormatadorCanonico = (env) => {
+  const prod = Number(env._DESTAQUE?.produtoId ?? 0);
+  const mud = Number(env._DESTAQUE?.mudancas ?? 0);
+  const qf = String(env._DESTAQUE?.quantidadeFinal ?? "");
+  const vf = String(env._DESTAQUE?.valorFinal ?? "");
+  if (mud === 0 && !qf) return `Sem historico de saldo para o produto ${prod}.`;
+  const tail = vf ? `, valor atual ${formatBRL(Number(vf) || 0)}` : "";
+  return `Produto ${prod}: ${mud} mudanca(s) de saldo na janela. Quantidade atual ${qf || "?"}${tail}.`;
+};
+
 const fmtNotasSemCfop: FormatadorCanonico = (env) => {
   const n = Number(env._DESTAQUE?.totalNotas ?? 0);
   const itens = Number(env._DESTAQUE?.totalItens ?? 0);
@@ -2264,6 +2284,8 @@ const FORMATADORES: Record<string, FormatadorCanonico> = {
   estoque_locais_por_produto: fmtLocaisPorProduto,
   estoque_minimo_maximo: fmtMinimoMaximo,
   estoque_comparativo: fmtEstoqueComparativo,
+  estoque_evolucao_preco: fmtEvolucaoPreco,
+  estoque_evolucao_saldo: fmtEvolucaoSaldo,
   // comercial
   comercial_pedidos_periodo: fmtPedidosPeriodo,
   comercial_pedidos_por_etapa: fmtPedidosPorEtapa,

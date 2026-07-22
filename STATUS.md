@@ -3,6 +3,31 @@
 Branch ativa: **`feat/entregas-parciais-base-calculo`** (LOCAL, nada em produção).
 Dev local no ar em `localhost:3000` (containers `db`+`redis` up; Docker reiniciado/destravado em 2026-07-21).
 
+## Onde estamos (2026-07-22, manhã) , HISTÓRICO TEMPORAL NO NEX: ONDA A ENTREGUE
+
+Frente nova (mesma branch, LOCAL, sem merge). Spec+plano em
+`docs/superpowers/specs/2026-07-22-historico-temporal-nex-spec.md` (v2) e
+`docs/superpowers/plans/2026-07-22-historico-temporal-nex-plan.md` (v2). Ciclo: 1 review
+adversarial da spec + 1 do plano (decisão do dono para esta frente), depois implementação.
+
+**Onda A entregue (expor histórico que já existe, zero ingestão):**
+- **`estoque_evolucao_preco`** e **`estoque_evolucao_saldo`** , tools MCP novas (domínio estoque)
+  que embrulham a camada órfã `serieDePreco`/`serieDeSaldo` (`src/lib/estoque/serie-historico.ts`),
+  com carry-forward e lacunas. Janela default 90 dias; `ate` é datetime completo (não date-only).
+- **Fix crítico (C1):** freshness usa o fato-BASE (`fato_preco`/`fato_estoque_saldo`, que gravam
+  `FatoBuildState`), não o `*_historico` , senão a tool ficaria em "preparando" eterno.
+- Registro nos 6 pontos: `mcp/tools/estoque/index.ts`, `tool-triggers.data.ts`, `responder.ts`
+  (fmt + mapa `FORMATADORES`), `integration.test.ts` (9 contagens: 120→122, 129→131, 33→35,
+  18→20), e `src/lib/mcp-catalog-snapshot.json` (regenerado, 131 tools).
+- **E2E contra dado real:** saldo produto 162/local 11 = 6 pontos, bate 1:1 com SQL; preço
+  13200/tabela 3 = 1 ponto (o preço ainda não variou no cache; 12.008 chaves com 1 ponto cada).
+  Estado `ok` (não `preparando`) confirmado. tsc/eslint verdes; suíte mcp 933 testes verdes.
+
+**Próximo (Onda B):** `fato_pedido_valor_historico` (append-por-mudança) + builder
+`captura-pedido-valor.ts` (TDD) + migration com índice único parcial `WHERE vigente`. Extrair
+antes os extratores puros (`extrairRentabilidade`/`extrairDesconto`) para módulo folha (fronteira
+do worker). Onda C: tools temporais do pedido/carteira no Nex.
+
 ## Onde estamos (2026-07-22, madrugada) , FECHAMENTO DA SESSÃO B-09
 
 Branch `feat/entregas-parciais-base-calculo`, LOCAL, **sem merge** (aguarda o dono).

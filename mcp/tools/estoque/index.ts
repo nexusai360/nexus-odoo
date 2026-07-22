@@ -14,6 +14,8 @@ import { estoqueLocaisPorProduto } from "./locais-por-produto.js";
 import { estoqueMinimoMaximo } from "./minimo-maximo.js";
 import { estoqueComparativo } from "./comparativo.js";
 import { estoqueComposicaoKit } from "./composicao-kit.js";
+import { estoqueEvolucaoPreco } from "./evolucao-preco.js";
+import { estoqueEvolucaoSaldo } from "./evolucao-saldo.js";
 
 export const estoqueTools: ToolEntry[] = [
   estoqueSaldoProduto as ToolEntry,
@@ -31,4 +33,7 @@ export const estoqueTools: ToolEntry[] = [
   estoqueComparativo as ToolEntry,
   // 2026-07-19 , composição de valor dos kits (estrutura vs painel)
   estoqueComposicaoKit as ToolEntry,
+  // 2026-07-22 , séries temporais (histórico já gravado): evolução de preço e de saldo
+  estoqueEvolucaoPreco as ToolEntry,
+  estoqueEvolucaoSaldo as ToolEntry,
 ];

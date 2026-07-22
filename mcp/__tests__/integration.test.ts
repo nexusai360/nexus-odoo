@@ -109,6 +109,8 @@ const ESTOQUE_IDS = [
   "estoque_minimo_maximo",
   "estoque_comparativo",
   "estoque_composicao_kit",
+  "estoque_evolucao_preco",
+  "estoque_evolucao_saldo",
 ];
 
 const FINANCEIRO_IDS = [
@@ -270,7 +272,7 @@ describe("Catálogo completo , rede de proteção N6", () => {
   it("super_admin recebe EXATAMENTE 114 tools", () => {
     const user = { userId: "u", role: "super_admin" as const, domains: ["estoque", "financeiro"] } as unknown as Parameters<typeof visibleTools>[1];
     const tools = visibleTools(catalogo, user);
-    expect(tools).toHaveLength(120);
+    expect(tools).toHaveLength(122);
   });
 
   it("super_admin recebe o conjunto exato de IDs", () => {
@@ -293,7 +295,7 @@ describe("Catálogo completo , rede de proteção N6", () => {
     //   9) cadastros.res_partner.update
     // Write tools nao aparecem em visibleTools (modo interno); sao liberadas
     // so no modo externo por capability da chave de API.
-    expect(catalogo).toHaveLength(129);
+    expect(catalogo).toHaveLength(131);
   });
 });
 
@@ -307,7 +309,7 @@ describe("Catálogo filtrado por perfil", () => {
 
   it("super_admin vê todas as 114 tools", () => {
     const ids = tools("super_admin", ["estoque", "financeiro"]);
-    expect(ids).toHaveLength(120);
+    expect(ids).toHaveLength(122);
     for (const id of TODOS_IDS) {
       expect(ids).toContain(id);
     }
@@ -315,7 +317,7 @@ describe("Catálogo filtrado por perfil", () => {
 
   it("admin vê todas as 114 tools", () => {
     const ids = tools("admin", ["estoque", "financeiro"]);
-    expect(ids).toHaveLength(120);
+    expect(ids).toHaveLength(122);
   });
 
   it("manager com estoque+financeiro vê estoque+financeiro+sempreVisivel (sem bi_consulta_avancada)", () => {
@@ -326,7 +328,8 @@ describe("Catálogo filtrado por perfil", () => {
     for (const id of FINANCEIRO_IDS) expect(ids).toContain(id);
     for (const id of DOMINIOS_VAZIOS_IDS) expect(ids).toContain(id);
     // manager sem capability fiscal: as 2 tools B2 (MDF-e/REINF) não aparecem aqui.
-    expect(ids).toHaveLength(33);
+    // +2 estoque (evolucao_preco/saldo) desde 2026-07-22.
+    expect(ids).toHaveLength(35);
   });
 
   it("viewer com apenas estoque vê só tools de estoque + sempreVisivel", () => {
@@ -336,8 +339,8 @@ describe("Catálogo filtrado por perfil", () => {
     for (const id of ESTOQUE_IDS) expect(ids).toContain(id);
     for (const id of FINANCEIRO_IDS) expect(ids).not.toContain(id);
     for (const id of DOMINIOS_VAZIOS_IDS) expect(ids).toContain(id);
-    // 6 estoque + registrar_lacuna + 3 domínios-vazios = 10
-    expect(ids).toHaveLength(18);
+    // 6 estoque + registrar_lacuna + 3 domínios-vazios = 10 (+2 estoque desde 2026-07-22)
+    expect(ids).toHaveLength(20);
   });
 
   it("viewer com apenas financeiro vê só tools de financeiro + sempreVisivel", () => {
@@ -638,7 +641,7 @@ describe("Servidor HTTP real , protocolo Streamable HTTP end-to-end", () => {
     const result = extractRpcResult(body);
     const tools = result?.tools as Array<{ name: string }> | undefined;
     expect(tools).toBeDefined();
-    expect(tools!).toHaveLength(120);
+    expect(tools!).toHaveLength(122);
 
     const names = tools!.map((t) => t.name).sort();
     expect(names).toEqual([...TODOS_IDS].sort());
@@ -662,8 +665,8 @@ describe("Servidor HTTP real , protocolo Streamable HTTP end-to-end", () => {
     expect(names).not.toContain("bi_consulta_avancada");
     expect(names).toContain("registrar_lacuna");
     for (const id of DOMINIOS_VAZIOS_IDS) expect(names).toContain(id);
-    // 8 estoque + 7 financeiro + registrar_lacuna + 3 domínios-vazios = 19
-    expect(names).toHaveLength(33);
+    // 8 estoque + 7 financeiro + registrar_lacuna + 3 domínios-vazios = 19 (+2 estoque desde 2026-07-22)
+    expect(names).toHaveLength(35);
   });
 
   it("viewer (estoque): tools/list via HTTP retorna só estoque + registrar_lacuna", async () => {
@@ -681,8 +684,8 @@ describe("Servidor HTTP real , protocolo Streamable HTTP end-to-end", () => {
     const tools = result?.tools as Array<{ name: string }> | undefined;
     expect(tools).toBeDefined();
     const names = tools!.map((t) => t.name);
-    // 6 estoque + registrar_lacuna + 3 domínios-vazios = 10; sem bi_consulta_avancada, sem financeiro
-    expect(names).toHaveLength(18);
+    // 6 estoque + registrar_lacuna + 3 domínios-vazios = 10; sem bi_consulta_avancada, sem financeiro (+2 estoque desde 2026-07-22)
+    expect(names).toHaveLength(20);
     expect(names).toContain("registrar_lacuna");
     expect(names).not.toContain("bi_consulta_avancada");
     for (const id of FINANCEIRO_IDS) expect(names).not.toContain(id);

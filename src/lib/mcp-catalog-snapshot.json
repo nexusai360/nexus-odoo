@@ -436,6 +436,88 @@
       "examples": []
     },
     {
+      "id": "estoque_evolucao_preco",
+      "operation": "read",
+      "module": "estoque",
+      "descricao": "Evolucao do preco de um produto numa tabela ao longo do tempo (serie historica de precos). Use para 'como o preco do produto X evoluiu', 'historico de preco do item Y na tabela Z', 'o preco subiu ou caiu'. Requer `produtoId` e `tabelaId`; `quantidadeMinima` opcional (sem ela, devolve uma serie por faixa). Janela default: ultimos 90 dias.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "produtoId",
+        "tabelaId",
+        "quantidadeMinima",
+        "de",
+        "ate"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "produtoId",
+          "type": "integer",
+          "optional": false
+        },
+        {
+          "name": "tabelaId",
+          "type": "integer",
+          "optional": false
+        },
+        {
+          "name": "quantidadeMinima",
+          "type": "number",
+          "optional": true
+        },
+        {
+          "name": "de",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "ate",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "estoque_evolucao_saldo",
+      "operation": "read",
+      "module": "estoque",
+      "descricao": "Evolucao do saldo de estoque de um produto ao longo do tempo (quantidade e valor). Use para 'como o saldo do produto X evoluiu', 'historico de estoque do item Y', 'o saldo subiu ou caiu'. Requer `produtoId`; `localId` opcional. Janela default: ultimos 90 dias.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "produtoId",
+        "localId",
+        "de",
+        "ate"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "produtoId",
+          "type": "integer",
+          "optional": false
+        },
+        {
+          "name": "localId",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "de",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "ate",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
       "id": "financeiro_saldo_contas",
       "operation": "read",
       "module": "financeiro",
@@ -1592,7 +1674,9 @@
         "empresaId",
         "etapa",
         "limite",
-        "ordenacao"
+        "ordenacao",
+        "periodoDe",
+        "periodoAte"
       ],
       "inputSchemaFields": [
         {
@@ -1619,6 +1703,16 @@
             "valor",
             "data_criacao"
           ]
+        },
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
         }
       ],
       "examples": []
@@ -4612,6 +4706,6 @@
       "examples": []
     }
   ],
-  "count": 129,
-  "generatedAt": "2026-07-19T09:30:59.207Z"
+  "count": 131,
+  "generatedAt": "2026-07-22T07:56:53.150Z"
 }
