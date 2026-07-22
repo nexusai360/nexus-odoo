@@ -92,6 +92,9 @@ export interface TabelaAvancadaProps<T extends Record<string, unknown>> {
   /** habilita o toggle "Mostrar venda": as colunas de valor passam a exibir
    * custo (em cima) e venda (embaixo), com ícones. */
   permiteVenda?: boolean;
+  /** inicia a tabela no modo compacto (linhas mais finas) na primeira vez, antes
+   * de haver estado salvo. Default: false. */
+  compactoInicial?: boolean;
 }
 
 const VIEWS: { key: View; label: string; icon: typeof List }[] = [
@@ -125,6 +128,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   renderDetalhe,
   textoBusca,
   permiteVenda,
+  compactoInicial,
 }: TabelaAvancadaProps<T>) {
   const [busca, setBusca] = useState("");
   const [chips, setChips] = useState<Chip[]>([]);
@@ -136,7 +140,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   const [vis, setVis] = useState<string[]>(colunas.filter((c) => c.padrao).map((c) => c.key));
   const [pagina, setPagina] = useState(1);
   const [porPagina, setPorPagina] = useState(50);
-  const [compacto, setCompacto] = useState(false);
+  const [compacto, setCompacto] = useState(compactoInicial ?? false);
   const [mostrarVenda, setMostrarVenda] = useState(false);
   const [kanbanDim, setKanbanDim] = useState<string>(kanbanCampo ?? "");
   const [detalhe, setDetalhe] = useState<{ row: T; idx: number } | null>(null);
@@ -430,7 +434,10 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
 
         {/* View switcher. "Pedido" (ficha) não é uma view: abre o overlay de
             detalhe no primeiro pedido da lista atual. Vem primeiro por ser a
-            leitura foco-no-pedido; depois Lista e as demais lentes. */}
+            leitura foco-no-pedido; depois Lista e as demais lentes. Escondido
+            quando só existiria a Lista (sem Kanban, Calendário nem ficha), como
+            na tabela de produtos, onde um switcher de 1 botão não faz sentido. */}
+        {(kanbanCampo || calendarioCampo || renderDetalhe) && (
         <div className="ml-auto inline-flex items-center rounded-lg border border-border bg-card p-0.5">
           {/* Ordem: Lista, Pedido (ficha), Kanban, Calendário. O botão "Pedido" entra logo
               depois da Lista (abre o overlay de detalhe no 1º pedido da lista atual). */}
@@ -454,6 +461,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
             </Fragment>
           ))}
         </div>
+        )}
       </div>
 
       {/* Searchbar com chips + caret */}
