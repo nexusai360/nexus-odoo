@@ -403,7 +403,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
 
   return (
     <OpcoesTabelaContext.Provider value={{ mostrarVenda }}>
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="relative flex h-full min-h-0 flex-col">
       {/* Toolbar */}
       <div className="mb-3 flex shrink-0 flex-wrap items-center gap-2">
         <Btn variant="outline" onClick={exportar}><Download className="size-4" /> Exportar</Btn>
@@ -584,7 +584,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
       </div>
 
       {/* ===== VISÃO LISTA ===== */}
-      {!detalhe && view === "lista" && (
+      {view === "lista" && (
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card">
           <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto">
             <table className={cn("w-full min-w-[60rem]", compacto ? "text-xs" : "text-sm", colFixo ? "table-fixed" : "table-auto")}>
@@ -700,38 +700,44 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
       )}
 
       {/* ===== KANBAN ===== */}
-      {!detalhe && view === "kanban" && kanbanCampo && (
+      {view === "kanban" && kanbanCampo && (
         <div className="min-h-0 flex-1 overflow-auto">
           <KanbanView lista={lista} campo={kanbanDim || kanbanCampo} campoByKey={campoByLike} tituloItem={tituloItem} subtituloItem={subtituloItem} valorItem={valorItem} onAbrir={(r) => setDetalhe({ row: r, idx: listaOrdenada.indexOf(r) })} />
         </div>
       )}
 
       {/* ===== CALENDÁRIO ===== */}
-      {!detalhe && view === "calendario" && calendarioCampo && (
+      {view === "calendario" && calendarioCampo && (
         <div className="min-h-0 flex-1 overflow-auto">
           <CalendarioView lista={lista} campoData={calendarioCampo} colunaByKey={colunaByKey as unknown as Record<string, { valor: (r: T) => string | number }>} tituloItem={tituloItem} valorItem={valorItem} onAbrir={(r) => setDetalhe({ row: r, idx: listaOrdenada.indexOf(r) })} />
         </div>
       )}
 
-      {/* ===== DETALHE DO PEDIDO (todas as views) ===== */}
+      {/* ===== DETALHE DO PEDIDO (todas as views) =====
+          Sobreposto como overlay ABSOLUTO em vez de substituir a view: assim a
+          lista/kanban/calendário continuam montados por baixo e o "Voltar"
+          devolve o usuário exatamente onde estava (mesma view, página e posição
+          de scroll), sem precisar salvar/restaurar nada manualmente. */}
       {detalhe && (
-        <DetalhePedido
-          row={detalhe.row}
-          idx={detalhe.idx}
-          total={listaOrdenada.length}
-          todos={listaOrdenada}
-          colunas={colunas}
-          celula={celula}
-          tituloItem={tituloItem}
-          subtituloItem={subtituloItem}
-          renderDetalhe={renderDetalhe}
-          onVoltar={() => setDetalhe(null)}
-          onNavegar={(delta) => {
-            const ni = Math.min(Math.max(0, detalhe.idx + delta), listaOrdenada.length - 1);
-            setDetalhe({ row: listaOrdenada[ni], idx: ni });
-          }}
-          onIr={(row) => setDetalhe({ row, idx: listaOrdenada.indexOf(row) })}
-        />
+        <div className="absolute inset-0 z-30 flex min-h-0 flex-col bg-background">
+          <DetalhePedido
+            row={detalhe.row}
+            idx={detalhe.idx}
+            total={listaOrdenada.length}
+            todos={listaOrdenada}
+            colunas={colunas}
+            celula={celula}
+            tituloItem={tituloItem}
+            subtituloItem={subtituloItem}
+            renderDetalhe={renderDetalhe}
+            onVoltar={() => setDetalhe(null)}
+            onNavegar={(delta) => {
+              const ni = Math.min(Math.max(0, detalhe.idx + delta), listaOrdenada.length - 1);
+              setDetalhe({ row: listaOrdenada[ni], idx: ni });
+            }}
+            onIr={(row) => setDetalhe({ row, idx: listaOrdenada.indexOf(row) })}
+          />
+        </div>
       )}
 
       {/* Modais */}

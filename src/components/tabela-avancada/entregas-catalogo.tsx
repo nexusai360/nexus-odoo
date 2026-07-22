@@ -686,11 +686,15 @@ function BotaoCopiar({ texto, ariaLabel }: { texto: string; ariaLabel: string })
   );
 }
 
-function Stat({ label, valor, destaque }: { label: string; valor: string; destaque?: boolean }) {
+/** Coluna do resumo do pedido: legenda em cima e o número (custo) centralizado
+ * embaixo; opcionalmente o valor de venda equivalente em menor, logo abaixo. As
+ * colunas ficam lado a lado separadas por um divisor fino (o "pipe"). */
+function ColResumo({ titulo, valor, venda, destaque }: { titulo: string; valor: string; venda?: string; destaque?: boolean }) {
   return (
-    <div className="min-w-0">
-      <p className="text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className={cn("mt-0.5 truncate tabular-nums", destaque ? "text-lg font-bold text-foreground" : "text-base font-semibold text-foreground")}>{valor}</p>
+    <div className="min-w-0 px-3 text-center first:pl-0 last:pr-0">
+      <p className="truncate text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground">{titulo}</p>
+      <p className={cn("mt-1 truncate tabular-nums", destaque ? "text-lg font-bold text-foreground" : "text-base font-semibold text-foreground")}>{valor}</p>
+      {venda !== undefined && <p className="mt-0.5 truncate text-xs tabular-nums text-muted-foreground">{venda}</p>}
     </div>
   );
 }
@@ -698,6 +702,9 @@ function Stat({ label, valor, destaque }: { label: string; valor: string; destaq
 /** Corpo da tela de detalhe de um pedido (passado como `renderDetalhe`). */
 export function DetalheEntrega({ l }: { l: LinhaEntrega }) {
   const temObs = (l.observacoes && l.observacoes !== "-") || (l.obsEntrega && l.obsEntrega !== "-");
+  // Toggle local (não persiste; some ao recarregar): revela o valor de venda
+  // equivalente, pequeno, embaixo de cada valor de custo do resumo.
+  const [mostrarVenda, setMostrarVenda] = useState(false);
   return (
     <div className="space-y-6 p-4 sm:p-6">
       {/* Cabeçalho: número em evidência + etapa + financeiro, cliente abaixo */}
@@ -716,12 +723,26 @@ export function DetalheEntrega({ l }: { l: LinhaEntrega }) {
         )}
       </header>
 
-      {/* Resumo de valores */}
-      <div className="grid grid-cols-2 gap-4 rounded-xl border border-border/60 bg-background/40 p-4 sm:grid-cols-4">
-        <Stat label="A atender (custo)" valor={formatBRL(l.vlrCusto)} destaque />
-        <Stat label="A atender (venda)" valor={formatBRL(l.vlrVenda)} />
-        <Stat label="Valor total (custo)" valor={formatBRL(l.valorTotalCusto)} />
-        <Stat label="Qtd total / atend. / a atender" valor={`${l.qtdTotal} / ${l.qtdAtendida} / ${l.qtd}`} />
+      {/* Resumo: quantidades e, abaixo, os valores em CUSTO (com venda opcional).
+          O botão "Mostrar venda" espelha o da lista, mas em estado local. */}
+      <div className="rounded-xl border border-border/60 bg-background/40 p-4">
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <p className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted-foreground/80">Resumo do pedido</p>
+          <button type="button" onClick={() => setMostrarVenda((v) => !v)} aria-pressed={mostrarVenda}
+            className={cn("cursor-pointer rounded-md border px-2 py-1 text-[0.7rem] font-medium transition-colors", mostrarVenda ? "border-violet-500/40 bg-violet-500/10 text-violet-600 dark:text-violet-300" : "border-border bg-card text-muted-foreground hover:text-foreground")}>
+            {mostrarVenda ? "Ocultar venda" : "Mostrar venda"}
+          </button>
+        </div>
+        <div className="grid grid-cols-3 divide-x divide-border/50">
+          <ColResumo titulo="QTD. Pedido" valor={String(l.qtdTotal)} />
+          <ColResumo titulo="QTD. Atendida" valor={String(l.qtdAtendida)} />
+          <ColResumo titulo="QTD. A Atender" valor={String(l.qtd)} destaque />
+        </div>
+        <div className="mt-4 grid grid-cols-3 divide-x divide-border/50 border-t border-border/50 pt-4">
+          <ColResumo titulo="Valor Produto" valor={formatBRL(l.valorTotalCusto)} venda={mostrarVenda ? formatBRL(l.valorCheio) : undefined} />
+          <ColResumo titulo="Valor Atendido" valor={formatBRL(l.valorAtendidoCusto)} venda={mostrarVenda ? formatBRL(l.valorAtendidoVenda) : undefined} />
+          <ColResumo titulo="Valor A Atender" valor={formatBRL(l.vlrCusto)} venda={mostrarVenda ? formatBRL(l.vlrVenda) : undefined} destaque />
+        </div>
       </div>
 
       <dl className="space-y-5">
