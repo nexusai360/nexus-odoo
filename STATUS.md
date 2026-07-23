@@ -32,11 +32,14 @@ Isso **quebrou** a truncagem (media a largura natural e inflava a coluna), o cin
 rola; SEM coluna preenchedora, SEM `table-auto` forçado). `colFixo` (l.~587) e a largura da tabela
 (l.~1119) são as ÚNICAS 2 linhas minhas nessa área , nada de outro agente foi tocado.
 
-**PENDENTE / ordem certa (não fiz):** a base é o **item 15** (truncar CÉLULAS de texto a **32
-caracteres com reticências**, incl. **tag de Etapa** e **Observações**, com tooltip do texto cheio,
-em JS , nunca inflar a coluna). Isso é de OUTRA sessão e vive em `entregas-catalogo.tsx` (não
-commitado por ela). **Só depois** do item 15 é que dá pra reativar/afinar resize no compacto sem
-quebrar. Detalhe em `docs/handoff-2026-07-23-ficha-produtos-compacto.md`.
+**ITEM 15 , CANCELADO (decisão do dono, 2026-07-23):** não haverá truncagem por contagem de
+caracteres em JS. Em seu lugar, o **MODO COMPACTO** passa a dimensionar cada coluna por **CSS**:
+`table-auto` + cap de **32ch** por célula (cabeçalho, corpo e total) + autosize ao conteúdo,
+IGNORANDO as larguras salvas do usuário e reaplicando sozinho ao entrar/recarregar. Uma **coluna
+preenchedora** (`col[data-filler]` com `width:100%`) leva o cinza do cabeçalho/total até o fim e
+libera o encolhimento das colunas sem "trava" (some no overflow). Implementado nesta sessão em
+`tabela-avancada.tsx`. Diferente da tentativa revertida acima: ali media a largura natural e
+inflava a coluna; aqui o cap é por CSS (`max-w-[32ch]`), não por medição.
 
 **Único suite vermelho:** `mcp/../model-catalog.test.ts` (pré-existente, alheio, não tocado).
 

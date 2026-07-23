@@ -23,8 +23,15 @@
 - **Favoritos**: salvar inline (sem modal), nome único + limite 20, renomear só o nome (lápis), estrela oca, foco âmbar, X vermelho no hover, seção "Meus favoritos".
 - Fix: ids duplicados (`vc0`) de modelo/favorito após reload (dedup + avança contador na hidratação).
 
-## ITEM 15 , PENDENTE (retomar AQUI na próxima sessão)
-**O que é:** quando a tabela tiver **6+ colunas visíveis** (a coluna Pedido é obrigatória/fixa + 5), abreviar o **texto das células de TEXTO** a **32 caracteres**.
+## ITEM 15 , CANCELADO (decisão do dono, 2026-07-23)
+> **Não será mais implementado.** Não haverá truncagem por contagem de caracteres em JS.
+> Em seu lugar, o modo COMPACTO passou a dimensionar as colunas por CSS (`table-auto` +
+> cap de `32ch` por célula + autosize ao conteúdo, considerando cabeçalho e total),
+> ignorando as larguras do usuário e reaplicando sozinho, com uma coluna preenchedora
+> levando o cinza do cabeçalho/total até o fim. Implementado em `tabela-avancada.tsx`.
+> A descrição original abaixo fica só como registro histórico.
+
+**O que ERA (histórico):** quando a tabela tiver **6+ colunas visíveis** (a coluna Pedido é obrigatória/fixa + 5), abreviar o **texto das células de TEXTO** a **32 caracteres**.
 
 **Regra de corte:**
 1. Texto com até 32 caracteres → mostra inteiro.
