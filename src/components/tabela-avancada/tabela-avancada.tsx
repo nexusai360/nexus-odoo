@@ -581,7 +581,12 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   // Com um MODELO compacto ativo, a tabela roda em table-auto e as colunas de texto são capadas
   // (via max-w + truncate) para o modo compacto ficar de fato compacto; sem modelo, respeita as
   // larguras salvas (table-fixed).
-  const colFixo = !modeloCompacto && colsVisiveis.length > 0 && colsVisiveis.every((c) => larguras[c.key] != null);
+  // No modo compacto (modelo ativo) a ÚLTIMA coluna vira o "flex" que absorve a conta: ela fica
+  // com largura automática (sem alça de resize), então dá para redimensionar as colunas do meio
+  // que o total NÃO muda , a tabela não cresce, não quebra na horizontal e não há "estilingue"
+  // de redistribuição. Fora do compacto, comportamento normal (todas fixas/redimensionáveis).
+  const idxAbsorvedora = modeloCompacto && colsVisiveis.length > 1 ? colsVisiveis.length - 1 : -1;
+  const colFixo = colsVisiveis.length > 0 && colsVisiveis.every((c, i) => i === idxAbsorvedora || larguras[c.key] != null);
   useLayoutEffect(() => { medirFaltantes(colsVisiveis.map((c) => c.key)); }, [colsVisiveis, medirFaltantes]);
 
   // ===== Favoritos =====
@@ -748,7 +753,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                   direita (metade fora) desliga na hora, sem abrir o menu. */}
               {compacto && (
                 <button type="button" onClick={(e) => { e.stopPropagation(); desligarCompacto(); }} aria-label="Desativar modo compacto" title="Desativar modo compacto"
-                  className="absolute -right-2 -top-2 z-20 hidden size-4 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:border-rose-500 hover:bg-rose-500 hover:text-white group-hover:flex">
+                  className="absolute -right-1 -top-1 z-20 hidden size-4 items-center justify-center rounded-full border border-violet-500/30 bg-card text-violet-500/80 shadow-sm transition-colors hover:border-violet-500/60 hover:bg-violet-500/15 hover:text-violet-700 group-hover:flex dark:text-violet-300/80 dark:hover:text-violet-200">
                   <X className="size-2.5" />
                 </button>
               )}
@@ -1115,7 +1120,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
             <table className={cn("w-full min-w-[60rem]", compacto ? "text-xs" : "text-sm", colFixo ? "table-fixed" : "table-auto")}>
               {colFixo && (
                 <colgroup>
-                  {colsVisiveis.map((c) => <col key={c.key} data-colkey={c.key} style={{ width: larguras[c.key] }} />)}
+                  {colsVisiveis.map((c, i) => <col key={c.key} data-colkey={c.key} style={i === idxAbsorvedora ? undefined : { width: larguras[c.key] }} />)}
                 </colgroup>
               )}
               <thead className="sticky top-0 z-20 bg-muted">
@@ -1149,57 +1154,14 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                             mouse está NESTA coluna ou na SEGUINTE (a borda direita desta é a borda
                             esquerda da próxima), então ao passar numa coluna as duas divisórias
                             vizinhas ficam visíveis, e ambas arrastam de verdade. */}
-                        <ResizeHandle onPointerDown={(e) => iniciarResize(e, c.key)} onReset={() => resetColuna(c.key)} realce={hoverCol === ci || hoverCol === ci + 1} />
+                        {ci !== idxAbsorvedora && <ResizeHandle onPointerDown={(e) => iniciarResize(e, c.key)} onReset={() => resetColuna(c.key)} realce={hoverCol === ci || hoverCol === ci + 1} />}
                       </th>
                     );
                   })}
                 </tr>
               </thead>
               <tbody>
-                {flat.map((it, idx) =>
-                  it.kind === "grupo" ? (
-                    <tr key={it.id} className="cursor-pointer bg-muted/30 hover:bg-muted/50" onClick={() => setExpandidos((prev) => { const n = new Set(prev); if (n.has(it.id)) n.delete(it.id); else n.add(it.id); return n; })}>
-                      <td colSpan={colCount} className="px-3 py-2">
-                        <span className="flex items-center gap-1.5 text-[0.8125rem] font-semibold text-foreground" style={{ paddingLeft: `${it.level * 1.25}rem` }}>
-                          {it.colapsado ? <ChevronRight className="size-3.5 text-muted-foreground" /> : <ChevronDown className="size-3.5 text-muted-foreground" />}
-                          {it.label}
-                          <span className="font-normal text-muted-foreground">· {it.count}{valorSoma ? ` · ${brlSoma(it.soma)}` : ""}</span>
-                        </span>
-                      </td>
-                    </tr>
-                  ) : (() => {
-                    const rk = rowKey(it.row, idx);
-                    const aberto = expandRows.has(rk);
-                    return (
-                      <Fragment key={rk}>
-                        <tr onClick={() => setDetalhe({ row: it.row, idx: listaOrdenada.indexOf(it.row) })} className={cn("cursor-pointer border-b border-border/60 transition-colors last:border-0 hover:bg-accent/40", aberto && "bg-accent/30")}>
-                          {colsVisiveis.map((c, ci) => {
-                            const alinhar = c.align ?? (c.numeric ? "right" : "left");
-                            return (
-                            <td key={c.key} className={cn("overflow-hidden", ci === 0 ? "pl-4 pr-4" : "px-4", compacto ? "py-1" : "py-1.5", modeloCompacto && !c.numeric && "max-w-[15rem]", alinhar === "right" && "text-right", alinhar === "center" && "text-center")} style={niveis.length && c.key === colsVisiveis[0].key ? { paddingLeft: `${1 + it.level * 1.25}rem` } : undefined}>
-                              {ci === 0 && expandirRow ? (
-                                <div className="flex items-center gap-1">
-                                  <button type="button" aria-label={aberto ? "Recolher produtos" : "Ver produtos"} aria-expanded={aberto} onClick={(e) => { e.stopPropagation(); toggleExpandRow(rk); }} className="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
-                                    {aberto ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
-                                  </button>
-                                  {celula(it.row, c.key)}
-                                </div>
-                              ) : (
-                                <div className={cn("truncate", alinhar === "right" && "text-right", alinhar === "center" && "text-center")}>{celula(it.row, c.key)}</div>
-                              )}
-                            </td>
-                            );
-                          })}
-                        </tr>
-                        {aberto && expandirRow && (
-                          <tr className="border-b border-border/60 bg-muted/15">
-                            <td colSpan={colCount} className="p-0">{expandirRow(it.row)}</td>
-                          </tr>
-                        )}
-                      </Fragment>
-                    );
-                  })(),
-                )}
+                {linhasTabela}
                 {flat.length === 0 && (
                   <tr><td colSpan={colCount} className="px-4 py-12 text-center text-sm text-muted-foreground">Nenhum registro corresponde aos filtros. <button type="button" onClick={limparTudo} className="cursor-pointer font-medium text-violet-600 hover:underline dark:text-violet-400">Limpar filtros</button>.</td></tr>
                 )}
