@@ -753,7 +753,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                   direita (metade fora) desliga na hora, sem abrir o menu. */}
               {compacto && (
                 <button type="button" onClick={(e) => { e.stopPropagation(); desligarCompacto(); }} aria-label="Desativar modo compacto" title="Desativar modo compacto"
-                  className="absolute -right-1 -top-1 z-20 hidden size-4 items-center justify-center rounded-full border border-violet-500/30 bg-card text-violet-500/80 shadow-sm transition-colors hover:border-violet-500/60 hover:bg-violet-500/15 hover:text-violet-700 group-hover:flex dark:text-violet-300/80 dark:hover:text-violet-200">
+                  className="absolute -right-1.5 -top-1.5 z-20 hidden size-4 cursor-pointer items-center justify-center rounded-full border border-violet-500/40 bg-violet-500/15 text-violet-700 shadow-sm transition-colors hover:border-violet-500/70 hover:bg-violet-500/35 hover:text-violet-800 group-hover:flex dark:text-violet-300 dark:hover:text-violet-100">
                   <X className="size-2.5" />
                 </button>
               )}
