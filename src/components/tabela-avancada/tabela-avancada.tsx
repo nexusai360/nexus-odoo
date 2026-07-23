@@ -11,10 +11,10 @@
  * Client-side sobre a base já carregada. Persistência por tela (localStorage).
  */
 
-import { Fragment, createContext, useMemo, useRef, useState, useEffect, useLayoutEffect } from "react";
+import { Fragment, createContext, useMemo, useRef, useState, useEffect, useLayoutEffect, useDeferredValue } from "react";
 import {
   Download, SlidersHorizontal, Layers, Star, Search, X, ChevronDown,
-  ChevronRight, ChevronLeft, ArrowLeft, List, Columns3, CalendarDays,
+  ChevronRight, ChevronLeft, ArrowLeft, List, Columns3, Columns2, CalendarDays,
   Trash2, Check, ArrowUp, ArrowDown, ArrowUpDown, Rows3, Tag, Filter, Plus, IdCard, Pencil, Lock,
 } from "lucide-react";
 
@@ -407,8 +407,13 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   // ativo, sugere só nas colunas do modelo; sem ele, só nas colunas ativas do menu
   // de Colunas. Nunca sugere/varre uma coluna que não está na tela. Gera até 40
   // sugestões (4 por coluna) e o dropdown rola mostrando ~10 por vez.
+  // Valor de busca DEFERIDO: o input atualiza `busca` na hora (digitação lisa) e a
+  // filtragem pesada (sugestões + lista) roda sobre este valor, de forma interrompível,
+  // sem travar o teclado. Elimina o "engasgo" dos primeiros/últimos caracteres.
+  const buscaDeferida = useDeferredValue(busca);
+
   const sugestoes = useMemo(() => {
-    const q = busca.trim();
+    const q = buscaDeferida.trim();
     if (!q) return [] as Chip[];
     const ql = q.toLowerCase();
     // Com escopo ativo: sugere SÓ na coluna escolhida (qualquer tipo), com o "Contém"
@@ -431,7 +436,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
           .forEach((v) => out.push({ id: `s-${col.key}-${v}`, campo: col.key, kind: "col", valor: v, label: `${col.label}: ${v}` }));
       });
     return out.slice(0, 40);
-  }, [busca, base, colsVisiveis, colEscopo]);
+  }, [buscaDeferida, base, colsVisiveis, colEscopo]);
 
   function matchFacet(c: Chip, row: T): boolean {
     if (c.kind === "regra") {
@@ -471,7 +476,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
     return [...g.values()];
   }, [chips]);
 
-  const buscaAtiva = busca.trim().toLowerCase();
+  const buscaAtiva = buscaDeferida.trim().toLowerCase();
 
   const lista = useMemo(() => {
     // Com escopo ativo, a busca livre varre só a coluna escolhida; senão, todas as exibidas.
@@ -668,6 +673,59 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   const campoPadrao = campos[0]?.key ?? "";
   const colCount = colsVisiveis.length;
 
+  // Corpo da tabela memoizado: as linhas só são recriadas quando os DADOS mudam
+  // (flat/colunas/expansão/etc.), NUNCA a cada tecla da busca. Como a lista deriva do
+  // valor DEFERIDO (buscaDeferida), digitar não altera estas deps, então o React
+  // reaproveita as mesmas <tr> (referência idêntica) e pula a reconciliação do corpo
+  // inteiro. É a combinação (useDeferredValue + linhas memoizadas) que deixa a
+  // digitação lisa mesmo com dezenas de linhas × colunas na tela.
+  const linhasTabela = useMemo(() => flat.map((it, idx) =>
+    it.kind === "grupo" ? (
+      <tr key={it.id} className="cursor-pointer bg-muted/30 hover:bg-muted/50" onClick={() => setExpandidos((prev) => { const n = new Set(prev); if (n.has(it.id)) n.delete(it.id); else n.add(it.id); return n; })}>
+        <td colSpan={colCount} className="px-3 py-2">
+          <span className="flex items-center gap-1.5 text-[0.8125rem] font-semibold text-foreground" style={{ paddingLeft: `${it.level * 1.25}rem` }}>
+            {it.colapsado ? <ChevronRight className="size-3.5 text-muted-foreground" /> : <ChevronDown className="size-3.5 text-muted-foreground" />}
+            {it.label}
+            <span className="font-normal text-muted-foreground">· {it.count}{valorSoma ? ` · ${brlSoma(it.soma)}` : ""}</span>
+          </span>
+        </td>
+      </tr>
+    ) : (() => {
+      const rk = rowKey(it.row, idx);
+      const aberto = expandRows.has(rk);
+      return (
+        <Fragment key={rk}>
+          <tr onClick={() => setDetalhe({ row: it.row, idx: listaOrdenada.indexOf(it.row) })} className={cn("cursor-pointer border-b border-border/60 transition-colors last:border-0 hover:bg-accent/40", aberto && "bg-accent/30")}>
+            {colsVisiveis.map((c, ci) => {
+              const alinhar = c.align ?? (c.numeric ? "right" : "left");
+              return (
+              <td key={c.key} className={cn("overflow-hidden", ci === 0 ? "pl-4 pr-4" : "px-4", compacto ? "py-1" : "py-1.5", modeloCompacto && !c.numeric && "max-w-[15rem]", alinhar === "right" && "text-right", alinhar === "center" && "text-center")} style={niveis.length && c.key === colsVisiveis[0].key ? { paddingLeft: `${1 + it.level * 1.25}rem` } : undefined}>
+                {ci === 0 && expandirRow ? (
+                  <div className="flex items-center gap-1">
+                    <button type="button" aria-label={aberto ? "Recolher produtos" : "Ver produtos"} aria-expanded={aberto} onClick={(e) => { e.stopPropagation(); toggleExpandRow(rk); }} className="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+                      {aberto ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
+                    </button>
+                    {celula(it.row, c.key)}
+                  </div>
+                ) : (
+                  <div className={cn("truncate", alinhar === "right" && "text-right", alinhar === "center" && "text-center")}>{celula(it.row, c.key)}</div>
+                )}
+              </td>
+              );
+            })}
+          </tr>
+          {aberto && expandirRow && (
+            <tr className="border-b border-border/60 bg-muted/15">
+              <td colSpan={colCount} className="p-0">{expandirRow(it.row)}</td>
+            </tr>
+          )}
+        </Fragment>
+      );
+    })(),
+  ),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [flat, colsVisiveis, expandRows, compacto, modeloCompacto, niveis, listaOrdenada, expandirRow, valorSoma, colCount]);
+
   return (
     <OpcoesTabelaContext.Provider value={{ mostrarVenda }}>
     <div className="relative flex h-full min-h-0 flex-col">
@@ -680,11 +738,21 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
           align="left"
           width="w-80 max-w-[calc(100vw-2rem)]"
           trigger={({ toggle, open }) => (
-            <button type="button" onClick={toggle} aria-expanded={open}
-              className={cn("inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition-colors",
-                compacto ? "border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300" : "border-border bg-card text-foreground hover:bg-accent")}>
-              <Rows3 className="size-4" /> Compacto
-            </button>
+            <div className="group relative inline-flex">
+              <button type="button" onClick={toggle} aria-expanded={open}
+                className={cn("inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition-colors",
+                  compacto ? "border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300" : "border-border bg-card text-foreground hover:bg-accent")}>
+                <Rows3 className="size-4" /> Compacto
+              </button>
+              {/* Atalho: com o compacto ligado, um "x" colado na diagonal superior
+                  direita (metade fora) desliga na hora, sem abrir o menu. */}
+              {compacto && (
+                <button type="button" onClick={(e) => { e.stopPropagation(); desligarCompacto(); }} aria-label="Desativar modo compacto" title="Desativar modo compacto"
+                  className="absolute -right-2 -top-2 z-20 hidden size-4 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:border-rose-500 hover:bg-rose-500 hover:text-white group-hover:flex">
+                  <X className="size-2.5" />
+                </button>
+              )}
+            </div>
           )}
         >
           {() => {
@@ -802,11 +870,11 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
               aria-expanded={colPicker}
               title={colEscopo ? `Buscando só em ${colEscopo.label}` : "Buscar em uma coluna específica"}
               className={cn(
-                "flex size-7 cursor-pointer items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40",
+                "flex size-7 cursor-pointer items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 colPicker || colEscopo
-                  ? "bg-violet-500/15 text-violet-600 dark:text-violet-300"
+                  ? "bg-violet-500/20 text-violet-600 ring-1 ring-inset ring-violet-500/40 dark:text-violet-300"
                   : busca.trim()
-                    ? "text-violet-600 hover:bg-violet-500/10 dark:text-violet-300" // dica: clicável ao digitar
+                    ? "bg-violet-500/10 text-violet-600 ring-1 ring-inset ring-violet-500/30 hover:bg-violet-500/20 dark:text-violet-300" // acende ao digitar
                     : "text-muted-foreground hover:bg-violet-500/10 hover:text-violet-600 dark:hover:text-violet-300",
               )}
             >
@@ -826,7 +894,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                     }}
                     placeholder="Buscar coluna..."
                     aria-label="Buscar coluna"
-                    className="w-full rounded-lg border border-border bg-card py-1.5 pl-8 pr-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40"
+                    className="h-8 w-full rounded-lg border border-border bg-card pl-8 pr-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   />
                 </div>
                 <div className="max-h-64 space-y-0.5 overflow-y-auto pr-0.5">
@@ -842,7 +910,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                     const ativo = c.key === escopoCol;
                     return (
                       <button key={c.key} type="button" onClick={() => { setEscopoCol(c.key); setColPicker(false); buscaInputRef.current?.focus(); }} className={cn("flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] transition-colors", ativo ? "bg-violet-500/10 text-violet-700 dark:text-violet-300" : "text-foreground hover:bg-accent")}>
-                        <Columns3 className={cn("size-3.5 shrink-0", ativo ? "text-violet-500" : "text-muted-foreground")} aria-hidden />
+                        <Columns2 className={cn("size-3.5 shrink-0", ativo ? "text-violet-500" : "text-muted-foreground")} aria-hidden />
                         <span className="min-w-0 flex-1 truncate">{c.label}</span>
                         {ativo && <Check className="size-3.5 shrink-0 text-violet-500" aria-hidden />}
                       </button>
@@ -855,7 +923,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
           {/* Indicador do escopo ativo: qual coluna está sendo buscada (X remove). */}
           {colEscopo && (
             <span className="inline-flex items-center gap-1 rounded-md bg-violet-500/12 px-2 py-0.5 text-xs font-medium text-violet-700 ring-1 ring-violet-500/30 dark:text-violet-300">
-              <Columns3 className="size-3 shrink-0" aria-hidden /> {colEscopo.label}
+              <Columns2 className="size-3 shrink-0" aria-hidden /> {colEscopo.label}
               <button type="button" onClick={() => { setEscopoCol(null); buscaInputRef.current?.focus(); }} aria-label={`Remover busca na coluna ${colEscopo.label}`} className="cursor-pointer text-violet-500/70 hover:text-violet-600"><X className="size-3" /></button>
             </span>
           )}
