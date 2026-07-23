@@ -581,12 +581,10 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   // Com um MODELO compacto ativo, a tabela roda em table-auto e as colunas de texto são capadas
   // (via max-w + truncate) para o modo compacto ficar de fato compacto; sem modelo, respeita as
   // larguras salvas (table-fixed).
-  // No modo compacto (modelo ativo) a ÚLTIMA coluna vira o "flex" que absorve a conta: ela fica
-  // com largura automática (sem alça de resize), então dá para redimensionar as colunas do meio
-  // que o total NÃO muda , a tabela não cresce, não quebra na horizontal e não há "estilingue"
-  // de redistribuição. Fora do compacto, comportamento normal (todas fixas/redimensionáveis).
-  const idxAbsorvedora = modeloCompacto && colsVisiveis.length > 1 ? colsVisiveis.length - 1 : -1;
-  const colFixo = colsVisiveis.length > 0 && colsVisiveis.every((c, i) => i === idxAbsorvedora || larguras[c.key] != null);
+  // Larguras redimensionáveis: vale IGUAL no modo compacto e no normal , cada coluna com largura
+  // própria; se as colunas crescerem além da tela, a tabela rola na horizontal (é a experiência do
+  // usuário, não travamos). table-fixed assim que todas as colunas têm largura medida.
+  const colFixo = colsVisiveis.length > 0 && colsVisiveis.every((c) => larguras[c.key] != null);
   useLayoutEffect(() => { medirFaltantes(colsVisiveis.map((c) => c.key)); }, [colsVisiveis, medirFaltantes]);
 
   // ===== Favoritos =====
@@ -1117,10 +1115,13 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
       {view === "lista" && (
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card">
           <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto">
-            <table className={cn("w-full min-w-[60rem]", compacto ? "text-xs" : "text-sm", colFixo ? "table-fixed" : "table-auto")}>
+            {/* Com larguras fixas (colFixo), a tabela tem largura de CONTEÚDO (w-max): redimensionar
+                uma coluna faz a tabela CRESCER e rolar na horizontal, sem redistribuir/encolher as
+                outras (fim do "estilingue" e do produtos cortado). Sem larguras ainda, w-full. */}
+            <table className={cn(colFixo ? "w-max" : "w-full min-w-[60rem]", compacto ? "text-xs" : "text-sm", colFixo ? "table-fixed" : "table-auto")}>
               {colFixo && (
                 <colgroup>
-                  {colsVisiveis.map((c, i) => <col key={c.key} data-colkey={c.key} style={i === idxAbsorvedora ? undefined : { width: larguras[c.key] }} />)}
+                  {colsVisiveis.map((c) => <col key={c.key} data-colkey={c.key} style={{ width: larguras[c.key] }} />)}
                 </colgroup>
               )}
               <thead className="sticky top-0 z-20 bg-muted">
@@ -1154,7 +1155,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                             mouse está NESTA coluna ou na SEGUINTE (a borda direita desta é a borda
                             esquerda da próxima), então ao passar numa coluna as duas divisórias
                             vizinhas ficam visíveis, e ambas arrastam de verdade. */}
-                        {ci !== idxAbsorvedora && <ResizeHandle onPointerDown={(e) => iniciarResize(e, c.key)} onReset={() => resetColuna(c.key)} realce={hoverCol === ci || hoverCol === ci + 1} />}
+                        <ResizeHandle onPointerDown={(e) => iniciarResize(e, c.key)} onReset={() => resetColuna(c.key)} realce={hoverCol === ci || hoverCol === ci + 1} />
                       </th>
                     );
                   })}
