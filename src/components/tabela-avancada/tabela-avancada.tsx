@@ -581,10 +581,10 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   // Com um MODELO compacto ativo, a tabela roda em table-auto e as colunas de texto são capadas
   // (via max-w + truncate) para o modo compacto ficar de fato compacto; sem modelo, respeita as
   // larguras salvas (table-fixed).
-  // No modo compacto a tabela fica em table-auto (a truncagem de 32 caracteres/max-w depende
-  // disso; medir largura natural em table-fixed inflaria a coluna e mataria a truncagem). Resize
-  // no compacto só volta DEPOIS que a truncagem por caractere (item 15) estiver aplicada.
-  const colFixo = !modeloCompacto && colsVisiveis.length > 0 && colsVisiveis.every((c) => larguras[c.key] != null);
+  // Larguras redimensionáveis: vale IGUAL no modo compacto e no normal , cada coluna com largura
+  // própria; se as colunas crescerem além da tela, a tabela rola na horizontal (é a experiência do
+  // usuário, não travamos). table-fixed assim que todas as colunas têm largura medida.
+  const colFixo = colsVisiveis.length > 0 && colsVisiveis.every((c) => larguras[c.key] != null);
   useLayoutEffect(() => { medirFaltantes(colsVisiveis.map((c) => c.key)); }, [colsVisiveis, medirFaltantes]);
 
   // ===== Favoritos =====
@@ -1116,7 +1116,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
       {view === "lista" && (
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card">
           <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto">
-            <table className={cn("w-full min-w-[60rem]", compacto ? "text-xs" : "text-sm", colFixo ? "table-fixed" : "table-auto")}>
+            <table className={cn(colFixo ? "w-max" : "w-full min-w-[60rem]", compacto ? "text-xs" : "text-sm", colFixo ? "table-fixed" : "table-auto")}>
               {colFixo && (
                 <colgroup>
                   {colsVisiveis.map((c) => <col key={c.key} data-colkey={c.key} style={{ width: larguras[c.key] }} />)}
