@@ -581,10 +581,10 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   // Com um MODELO compacto ativo, a tabela roda em table-auto e as colunas de texto são capadas
   // (via max-w + truncate) para o modo compacto ficar de fato compacto; sem modelo, respeita as
   // larguras salvas (table-fixed).
-  // Larguras redimensionáveis: vale IGUAL no modo compacto e no normal , cada coluna com largura
-  // própria; se as colunas crescerem além da tela, a tabela rola na horizontal (é a experiência do
-  // usuário, não travamos). table-fixed assim que todas as colunas têm largura medida.
-  const colFixo = colsVisiveis.length > 0 && colsVisiveis.every((c) => larguras[c.key] != null);
+  // No modo compacto a tabela fica em table-auto (a truncagem de 32 caracteres/max-w depende
+  // disso; medir largura natural em table-fixed inflaria a coluna e mataria a truncagem). Resize
+  // no compacto só volta DEPOIS que a truncagem por caractere (item 15) estiver aplicada.
+  const colFixo = !modeloCompacto && colsVisiveis.length > 0 && colsVisiveis.every((c) => larguras[c.key] != null);
   useLayoutEffect(() => { medirFaltantes(colsVisiveis.map((c) => c.key)); }, [colsVisiveis, medirFaltantes]);
 
   // ===== Favoritos =====
@@ -874,11 +874,14 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
               title={colEscopo ? `Buscando só em ${colEscopo.label}` : "Buscar em uma coluna específica"}
               className={cn(
                 "flex size-7 cursor-pointer items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                colPicker || colEscopo
-                  ? "bg-violet-500/20 text-violet-600 ring-1 ring-inset ring-violet-500/40 dark:text-violet-300"
-                  : busca.trim()
-                    ? "bg-violet-500/10 text-violet-600 ring-1 ring-inset ring-violet-500/30 hover:bg-violet-500/20 dark:text-violet-300" // acende ao digitar
-                    : "text-muted-foreground hover:bg-violet-500/10 hover:text-violet-600 dark:hover:text-violet-300",
+                colPicker || (!colEscopo && busca.trim())
+                  // Aceso: seletor aberto, ou "dica de clicável" enquanto digita SEM escopo
+                  // definido ainda. Depois que há escopo, a pill ao lado já indica: a lupa
+                  // NÃO fica acesa fixa, volta ao normal (só muda no hover).
+                  ? "bg-violet-500/10 text-violet-600 ring-1 ring-inset ring-violet-500/30 hover:bg-violet-500/20 dark:text-violet-300"
+                  // Neutro (inclusive com escopo ativo): apagado, e o hover acende EXATAMENTE
+                  // igual ao estado aceso base (mesmo bg/ring/cor).
+                  : "text-muted-foreground hover:bg-violet-500/10 hover:text-violet-600 hover:ring-1 hover:ring-inset hover:ring-violet-500/30 dark:hover:text-violet-300",
               )}
             >
               <Search className="size-4" />
@@ -1123,9 +1126,6 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
               {colFixo && (
                 <colgroup>
                   {colsVisiveis.map((c) => <col key={c.key} data-colkey={c.key} style={{ width: larguras[c.key] }} />)}
-                  {/* Coluna preenchedora: absorve o vazio à direita (cabeçalho/total cinzas vão até
-                      o fim, sem esticar as colunas reais). Sem alça, sem conteúdo. */}
-                  <col aria-hidden />
                 </colgroup>
               )}
               <thead className="sticky top-0 z-20 bg-muted">
