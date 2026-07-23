@@ -297,8 +297,23 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
         if (typeof s.compacto === "boolean") setCompacto(s.compacto);
         if (typeof s.mostrarVenda === "boolean") setMostrarVenda(s.mostrarVenda);
         if (s.arvore) setArvore(s.arvore);
-        if (Array.isArray(s.favoritos)) setFavoritos(s.favoritos);
-        if (Array.isArray(s.visoesCompactas)) setVisoesCompactas(s.visoesCompactas);
+        // Dedup por id + avança o contador além do maior id salvo: `favSeq`/`vcSeq`
+        // são module-level e zeram no reload, então sem isto um "novo" reusaria um
+        // id ja presente no localStorage (ex.: vc0), gerando key duplicada.
+        if (Array.isArray(s.favoritos)) {
+          const seen = new Set<string>();
+          const arr = (s.favoritos as Favorito[]).filter((f) => (seen.has(f.id) ? false : (seen.add(f.id), true)));
+          setFavoritos(arr);
+          const maxN = Math.max(-1, ...arr.map((f) => { const m = /^f(\d+)$/.exec(f.id); return m ? Number(m[1]) : -1; }));
+          if (maxN >= favSeq) favSeq = maxN + 1;
+        }
+        if (Array.isArray(s.visoesCompactas)) {
+          const seen = new Set<string>();
+          const arr = (s.visoesCompactas as VisaoCompacta[]).filter((v) => (seen.has(v.id) ? false : (seen.add(v.id), true)));
+          setVisoesCompactas(arr);
+          const maxN = Math.max(-1, ...arr.map((v) => { const m = /^vc(\d+)$/.exec(v.id); return m ? Number(m[1]) : -1; }));
+          if (maxN >= vcSeq) vcSeq = maxN + 1;
+        }
         if (typeof s.compactoAtivo === "string") setCompactoAtivo(s.compactoAtivo);
       }
     } catch { /* ignore */ }
