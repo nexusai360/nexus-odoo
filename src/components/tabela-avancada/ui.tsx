@@ -695,6 +695,8 @@ export function useResizeColunas(storageKey: string, containerRef?: React.RefObj
   // tabela inteira (~50 linhas pesadas = ~90ms em dev), que era o "engasga / responde depois".
   // `arrastandoRef.current` fica com a key sendo arrastada (para o cabeçalho pausar o hover).
   const arrastandoRef = useRef<string | null>(null);
+  // rAF em andamento por coluna (animação do duplo-clique); serve para cancelar se reiniciar.
+  const animRef = useRef<Record<string, number>>({});
 
   useEffect(() => {
     try { const r = window.localStorage.getItem(storageKey); if (r) setLarguras(JSON.parse(r)); } catch { /* ignore */ }
@@ -754,6 +756,7 @@ export function useResizeColunas(storageKey: string, containerRef?: React.RefObj
     let raf = 0;
     const comecar = () => {
       arrastou = true;
+      if (animRef.current[key]) { cancelAnimationFrame(animRef.current[key]); animRef.current[key] = 0; } // corta a animação do reset
       arrastandoRef.current = key;
       alca?.setAttribute("data-rz-ativo", "");
       document.body.style.cursor = "col-resize";
@@ -795,9 +798,9 @@ export function useResizeColunas(storageKey: string, containerRef?: React.RefObj
   }, [larguras, containerRef]);
 
   // Duplo-clique na alça: ajusta a coluna ao MENOR tamanho que mostra TODO o conteúdo sem abreviar.
-  // Mede a largura NATURAL em `table-auto` numa passada síncrona, aplica no <col> na hora (visual
-  // instantâneo) e SÓ DEPOIS comita ao estado , o re-render acontece após o paint, então o
-  // duplo-clique parece imediato mesmo com a tabela pesada.
+  // Mede a largura NATURAL em `table-auto` numa passada síncrona (sem paint) e ANIMA a largura do
+  // valor atual até o natural em ~180ms com ease-out , suave, não instantâneo (nem lento). O
+  // estado só é comitado no fim da animação (re-render invisível, o <col> já está no alvo).
   const resetColuna = useCallback((key: string) => {
     const th = thRefs.current[key];
     const table = th?.closest("table") as HTMLTableElement | null;
@@ -805,6 +808,8 @@ export function useResizeColunas(storageKey: string, containerRef?: React.RefObj
       setLarguras((prev) => { const next = { ...prev }; delete next[key]; return next; });
       return;
     }
+    const colEl = colDe(key);
+    const startW = Math.round(th.getBoundingClientRect().width); // largura atual (ponto de partida)
     const cols = Array.from(table.querySelectorAll("colgroup col")) as HTMLElement[];
     const larguraPrev = cols.map((c) => c.style.width);
     const layoutPrev = table.style.tableLayout;
@@ -814,10 +819,29 @@ export function useResizeColunas(storageKey: string, containerRef?: React.RefObj
     table.style.tableLayout = layoutPrev;
     cols.forEach((c, i) => { c.style.width = larguraPrev[i]; });
     const { MIN, MAX } = limites();
-    const largura = Math.min(Math.max(Math.ceil(natural) + 2, MIN), MAX);
-    const colEl = colDe(key);
-    if (colEl) colEl.style.width = `${largura}px`; // visual imediato, antes do commit
-    setLarguras((prev) => ({ ...prev, [key]: largura }));
+    const alvo = Math.min(Math.max(Math.ceil(natural) + 2, MIN), MAX);
+
+    const reduz = typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    if (!colEl || startW === alvo || reduz || typeof requestAnimationFrame === "undefined" || typeof performance === "undefined") {
+      if (colEl) colEl.style.width = `${alvo}px`;
+      setLarguras((prev) => ({ ...prev, [key]: alvo }));
+      return;
+    }
+    if (animRef.current[key]) cancelAnimationFrame(animRef.current[key]);
+    const DUR = 180;
+    const t0 = performance.now();
+    const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+    const tick = (now: number) => {
+      const p = Math.min(1, (now - t0) / DUR);
+      colEl.style.width = `${Math.round(startW + (alvo - startW) * easeOut(p))}px`;
+      if (p < 1) {
+        animRef.current[key] = requestAnimationFrame(tick);
+      } else {
+        animRef.current[key] = 0;
+        setLarguras((prev) => ({ ...prev, [key]: alvo }));
+      }
+    };
+    animRef.current[key] = requestAnimationFrame(tick);
   }, [containerRef]);
 
   return { larguras, setRef, medirFaltantes, iniciarResize, resetColuna, arrastandoRef };
