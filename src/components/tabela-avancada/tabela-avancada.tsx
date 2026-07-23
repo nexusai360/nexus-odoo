@@ -874,13 +874,11 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
               title={colEscopo ? `Buscando só em ${colEscopo.label}` : "Buscar em uma coluna específica"}
               className={cn(
                 "flex size-7 cursor-pointer items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                colPicker || (!colEscopo && busca.trim())
-                  // Aceso: seletor aberto, ou "dica de clicável" enquanto digita SEM escopo
-                  // definido ainda. Depois que há escopo, a pill ao lado já indica: a lupa
-                  // NÃO fica acesa fixa, volta ao normal (só muda no hover).
-                  ? "bg-violet-500/10 text-violet-600 ring-1 ring-inset ring-violet-500/30 hover:bg-violet-500/20 dark:text-violet-300"
-                  // Neutro (inclusive com escopo ativo): apagado, e o hover acende EXATAMENTE
-                  // igual ao estado aceso base (mesmo bg/ring/cor).
+                colPicker || colEscopo || busca.trim()
+                  // Aceso base (imagem 1): coluna selecionada (sempre, com ou sem texto),
+                  // digitando, ou seletor aberto. No hover fica MAIS aceso (imagem 2).
+                  ? "bg-violet-500/10 text-violet-600 ring-1 ring-inset ring-violet-500/30 hover:bg-violet-500/20 hover:ring-violet-500/40 dark:text-violet-300"
+                  // Neutro (sem texto e sem escopo): apagado; o hover acende igual à imagem 1.
                   : "text-muted-foreground hover:bg-violet-500/10 hover:text-violet-600 hover:ring-1 hover:ring-inset hover:ring-violet-500/30 dark:hover:text-violet-300",
               )}
             >
@@ -1118,10 +1116,6 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
       {view === "lista" && (
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card">
           <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto">
-            {/* A tabela PREENCHE o container (w-full): o cabeçalho e o total (cinza) vão até o fim.
-                Uma coluna "preenchedora" auto no colgroup (abaixo) absorve o vazio à direita, então
-                redimensionar uma coluna real NÃO estica/encolhe as outras (sem "estilingue"): a
-                tabela cresce e rola só quando as colunas passam da largura da tela. */}
             <table className={cn("w-full min-w-[60rem]", compacto ? "text-xs" : "text-sm", colFixo ? "table-fixed" : "table-auto")}>
               {colFixo && (
                 <colgroup>
