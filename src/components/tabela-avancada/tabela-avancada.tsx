@@ -29,7 +29,7 @@ function contarRegras(g: GrupoRegras | null): number {
 export const OpcoesTabelaContext = createContext<{ mostrarVenda: boolean }>({ mostrarVenda: false });
 import { cn } from "@/lib/utils";
 import {
-  Popover, Tooltip, Modal, Btn, Select, SeletorColunas, Paginacao, CheckboxView,
+  Popover, Tooltip, Btn, Select, SeletorColunas, Paginacao, CheckboxView,
   useResizeColunas, ResizeHandle,
 } from "./ui";
 import { Tooltip as TooltipUI, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -543,22 +543,17 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                 <div>
                   <p className="mb-1.5 flex items-center gap-1.5 px-1 text-sm font-semibold uppercase tracking-wide text-violet-600 dark:text-violet-400"><Rows3 className="size-3.5" /> Modo compacto</p>
                   <div className="space-y-0.5">
-                    <button type="button" onClick={() => aplicarCompacto(null)} className={cn("flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] transition-colors", compacto && !compactoAtivo ? "bg-violet-500/10 text-violet-700 dark:text-violet-300" : "text-muted-foreground hover:bg-accent hover:text-foreground")}>
+                    <button type="button" onClick={() => (compacto && !compactoAtivo ? desligarCompacto() : aplicarCompacto(null))} className={cn("flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] transition-colors", compacto && !compactoAtivo ? "bg-violet-500/10 text-violet-700 dark:text-violet-300" : "text-muted-foreground hover:bg-accent hover:text-foreground")}>
                       <Check className={cn("size-4 shrink-0", compacto && !compactoAtivo ? "text-violet-500" : "text-transparent")} />
                       <span className="flex-1">Compacto (todas as colunas)</span>
                     </button>
-                    {compacto && (
-                      <button type="button" onClick={desligarCompacto} className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
-                        <X className="size-4 shrink-0" /> <span className="flex-1">Desligar compacto</span>
-                      </button>
-                    )}
                   </div>
                   <p className="mb-1 mt-3 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Meus modelos</p>
                   <div className="max-h-[15rem] space-y-0.5 overflow-y-auto pr-0.5">
-                    {visoesCompactas.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">Nenhum modelo salvo. Crie um para escolher só as colunas que importam.</p>}
+                    {visoesCompactas.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">Nenhum modelo salvo.</p>}
                     {visoesCompactas.map((v) => (
                       <div key={v.id} className={cn("group flex items-center gap-1 rounded-lg px-1.5 py-0.5", compactoAtivo === v.id ? "bg-violet-500/10" : "hover:bg-accent")}>
-                        <button type="button" onClick={() => aplicarCompacto(v.id)} className="flex flex-1 cursor-pointer items-center gap-2 py-1 text-left text-[0.8125rem]">
+                        <button type="button" onClick={() => (compactoAtivo === v.id ? desligarCompacto() : aplicarCompacto(v.id))} className="flex flex-1 cursor-pointer items-center gap-2 py-1 text-left text-[0.8125rem]">
                           <Check className={cn("size-4 shrink-0", compactoAtivo === v.id ? "text-violet-500" : "text-transparent")} />
                           <Rows3 className="size-3.5 shrink-0 text-violet-500" />
                           <span className={cn("truncate", compactoAtivo === v.id ? "text-violet-700 dark:text-violet-300" : "text-foreground")}>{v.nome}</span>
@@ -569,8 +564,8 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                       </div>
                     ))}
                   </div>
-                  <button type="button" onClick={novoCompacto} className="mt-2 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-violet-600 px-2 py-2 text-[0.8125rem] font-semibold text-white transition-colors hover:bg-violet-700">
-                    <Plus className="size-4" /> Criar modelo compacto
+                  <button type="button" onClick={novoCompacto} className="mt-2 inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-[0.8125rem] font-medium text-violet-600 transition-colors hover:bg-violet-500/10 dark:text-violet-400">
+                    <Plus className="size-4" /> Novo modelo
                   </button>
                 </div>
                 {/* Direita: editor do modelo (nome + escolha das colunas) */}
@@ -589,11 +584,11 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                           </button>
                         ))}
                       </div>
-                      <div className="mt-2 flex gap-2">
-                        <button type="button" onClick={salvarCompacto} disabled={compCols.length === 0} className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-violet-600 px-2 py-2 text-[0.8125rem] font-semibold text-white transition-colors hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50">
+                      <div className="mt-2 flex items-center gap-3">
+                        <button type="button" onClick={salvarCompacto} disabled={compCols.length === 0} className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-[0.8125rem] font-medium text-violet-600 transition-colors hover:bg-violet-500/10 disabled:cursor-not-allowed disabled:opacity-50 dark:text-violet-400">
                           <Check className="size-4" /> Salvar e aplicar
                         </button>
-                        <button type="button" onClick={() => setCompEditId(null)} className="cursor-pointer rounded-lg border border-border bg-card px-3 py-2 text-[0.8125rem] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">Cancelar</button>
+                        <button type="button" onClick={() => setCompEditId(null)} className="cursor-pointer text-[0.8125rem] font-medium text-muted-foreground transition-colors hover:text-foreground">Cancelar</button>
                       </div>
                     </>
                   ) : (
@@ -737,8 +732,8 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                     );
                   })}
                 </div>
-                <button type="button" onClick={() => { setAvancadoOpen(true); close(); }} className="mt-2 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-violet-600 px-2 py-2 text-[0.8125rem] font-semibold text-white transition-colors hover:bg-violet-700">
-                  <Plus className="size-4" /> Criar filtro avançado
+                <button type="button" onClick={() => { setAvancadoOpen(true); close(); }} className="mt-2 inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-[0.8125rem] font-medium text-violet-600 transition-colors hover:bg-violet-500/10 dark:text-violet-400">
+                  <Plus className="size-4" /> Filtro avançado
                 </button>
               </div>
               {/* Agrupar */}
@@ -761,10 +756,21 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
               {/* Favoritos */}
               <div>
                 <p className="mb-1.5 flex items-center gap-1.5 px-1 text-sm font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400"><Star className="size-3.5" /> Favoritos</p>
-                <div className="max-h-[22rem] space-y-0.5 overflow-y-auto pr-0.5">
-                  <button type="button" onClick={() => { setSalvarOpen(true); close(); }} className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] font-medium text-amber-600 hover:bg-accent dark:text-amber-400">
-                    <Star className="size-4" /> Salvar esta visão
+                {salvarOpen ? (
+                  <div className="mb-1.5 flex items-center gap-1.5 px-1">
+                    <input autoFocus value={nomeFav} onChange={(e) => setNomeFav(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") salvarFavorito(); if (e.key === "Escape") { setSalvarOpen(false); setNomeFav(""); } }}
+                      placeholder="Nome da visão" aria-label="Nome da visão"
+                      className="h-8 min-w-0 flex-1 rounded-lg border border-border bg-card px-2.5 text-[0.8125rem] text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+                    <button type="button" onClick={salvarFavorito} aria-label="Salvar visão" className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-amber-600 transition-colors hover:bg-amber-500/10 dark:text-amber-400"><Check className="size-4" /></button>
+                    <button type="button" onClick={() => { setSalvarOpen(false); setNomeFav(""); }} aria-label="Cancelar" className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"><X className="size-4" /></button>
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => setSalvarOpen(true)} className="mx-auto mb-1.5 flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-[0.8125rem] font-medium text-amber-600 transition-colors hover:bg-amber-500/10 dark:text-amber-400">
+                    <Plus className="size-4" /> Salvar visão
                   </button>
+                )}
+                <div className="max-h-[22rem] space-y-0.5 overflow-y-auto pr-0.5">
                   {favoritos.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">Nenhuma visão salva ainda.</p>}
                   {favoritos.map((f) => (
                     <div key={f.id} className="group flex items-center gap-1 rounded-lg px-2 py-1 hover:bg-accent">
@@ -955,13 +961,6 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
       {avancadoOpen && (
         <FiltroAvancado open onClose={() => setAvancadoOpen(false)} base={base} inicial={arvore} onAplicar={(a) => setArvore(a)} campos={camposUI} campoBy={campoByUI} campoPadrao={campoPadrao} />
       )}
-
-      <Modal open={salvarOpen} onClose={() => setSalvarOpen(false)} title="Salvar esta visão" subtitle="Guarda filtros, agrupamentos, colunas e ordenação atuais como um favorito." footer={<><Btn variant="ghost" onClick={() => setSalvarOpen(false)}>Cancelar</Btn><Btn variant="primary" onClick={salvarFavorito}><Star className="size-4" /> Salvar</Btn></>}>
-        <label className="block">
-          <span className="mb-1 block text-sm font-medium text-foreground">Nome da visão</span>
-          <input autoFocus value={nomeFav} onChange={(e) => setNomeFav(e.target.value)} placeholder="Ex.: Financeiro bloqueado por UF" className="h-9 w-full rounded-lg border border-border bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
-        </label>
-      </Modal>
 
       {toast && (
         <div role="status" aria-live="polite" className="pointer-events-none fixed inset-x-0 bottom-6 z-50 flex justify-center px-4">
