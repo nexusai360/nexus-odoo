@@ -15,7 +15,7 @@ import { Fragment, createContext, useMemo, useRef, useState, useEffect, useLayou
 import {
   Download, SlidersHorizontal, Layers, Star, Search, X, ChevronDown,
   ChevronRight, ChevronLeft, ArrowLeft, List, Columns3, CalendarDays,
-  Trash2, Check, ArrowUp, ArrowDown, ArrowUpDown, Rows3, Tag, Filter, Plus, IdCard, Pencil,
+  Trash2, Check, ArrowUp, ArrowDown, ArrowUpDown, Rows3, Tag, Filter, Plus, IdCard, Pencil, Lock,
 } from "lucide-react";
 
 /** Conta as regras (folhas) de uma árvore de filtro personalizado, para o rótulo do chip. */
@@ -42,7 +42,7 @@ type View = "lista" | "kanban" | "calendario";
 
 /** Facet serializável (predicado derivado de kind/campo/valor). `kind: "regra"` avalia um
  * operador (maior/menor/vazio/...) via o motor de filtro; "col" é igualdade; "texto" é busca. */
-export interface Chip { id: string; campo: string; kind: string; valor: string; label: string; op?: string; valor2?: string }
+export interface Chip { id: string; campo: string; kind: string; valor: string; label: string; op?: string; valor2?: string; escopo?: string }
 interface Nivel { campo: string; label: string }
 interface Sort { campo: string; dir: "asc" | "desc" }
 /** Modelo do modo compacto: um subconjunto NOMEADO das colunas ativas, aplicável na hora.
@@ -151,29 +151,32 @@ function EditorModeloCompacto({ colunas, obrigatorias, inicialNome, inicialCols,
   return (
     <div className="p-1">
       <p className="mb-2 px-1 text-sm font-semibold text-foreground">{editando ? "Editar modelo" : "Novo modelo"}</p>
-      <input autoFocus value={nome} onChange={(e) => setNome(e.target.value)} maxLength={20} placeholder="Nome do modelo (obrigatório)" aria-label="Nome do modelo compacto" className="mb-1.5 h-8 w-full rounded-lg border border-border bg-card px-2.5 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
-      {dupNome && <p className="mb-1.5 px-1 text-xs text-rose-500">Já existe um modelo com esse nome.</p>}
-      <div className="relative mb-1.5">
-        <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
-        <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar coluna" aria-label="Buscar coluna" className="h-8 w-full rounded-lg border border-border bg-card pl-8 pr-2 text-[0.8125rem] text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
-      </div>
-      <p className="mb-1 px-1 text-xs text-muted-foreground">{cols.length + obrigatorias.length} de {colunas.length + obrigatorias.length} colunas</p>
-      <div className="max-h-[13rem] space-y-0.5 overflow-y-auto pr-0.5">
-        {obrigFiltradas.map((c) => (
-          <div key={c.key} className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] text-muted-foreground" title="Coluna fixa, sempre visível">
-            <CheckboxView checked={true} />
-            <span className="min-w-0 flex-1 truncate">{c.label}</span>
-            <span className="shrink-0 text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground/70">fixa</span>
-          </div>
-        ))}
-        {colunas.length === 0 && obrigFiltradas.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">Ative colunas no botão Colunas primeiro.</p>}
-        {colunas.length > 0 && filtradas.length === 0 && obrigFiltradas.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">Nenhuma coluna encontrada.</p>}
-        {filtradas.map((c) => (
-          <button key={c.key} type="button" onClick={() => toggle(c.key)} className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] text-foreground transition-colors hover:bg-accent">
-            <CheckboxView checked={cols.includes(c.key)} />
-            <span className="truncate">{c.label}</span>
-          </button>
-        ))}
+      <input autoFocus value={nome} onChange={(e) => setNome(e.target.value)} maxLength={20} placeholder="Nome do modelo (obrigatório)" aria-label="Nome do modelo compacto" className="h-8 w-full rounded-lg border border-border bg-card px-2.5 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+      {dupNome && <p className="mt-1 px-1 text-xs text-rose-500">Já existe um modelo com esse nome.</p>}
+      <div className="mt-3 border-t border-border pt-3">
+        <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Selecione as colunas</p>
+        <div className="relative mb-2">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
+          <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar coluna" aria-label="Buscar coluna" className="h-8 w-full rounded-lg border border-border bg-card pl-8 pr-2 text-[0.8125rem] text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+        </div>
+        <p className="mb-1 px-1 text-xs text-muted-foreground">{cols.length + obrigatorias.length} de {colunas.length + obrigatorias.length} colunas</p>
+        <div className="max-h-[13rem] space-y-0.5 overflow-y-auto pr-0.5">
+          {obrigFiltradas.map((c) => (
+            <div key={c.key} className="flex w-full cursor-not-allowed items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] text-muted-foreground" title="Coluna fixa, sempre visível">
+              <CheckboxView checked={true} />
+              <span className="min-w-0 flex-1 truncate">{c.label}</span>
+              <Lock className="size-3 shrink-0 text-muted-foreground/60" />
+            </div>
+          ))}
+          {colunas.length === 0 && obrigFiltradas.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">Ative colunas no botão Colunas primeiro.</p>}
+          {colunas.length > 0 && filtradas.length === 0 && obrigFiltradas.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">Nenhuma coluna encontrada.</p>}
+          {filtradas.map((c) => (
+            <button key={c.key} type="button" onClick={() => toggle(c.key)} className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] text-foreground transition-colors hover:bg-accent">
+              <CheckboxView checked={cols.includes(c.key)} />
+              <span className="truncate">{c.label}</span>
+            </button>
+          ))}
+        </div>
       </div>
       <div className="mt-2 flex items-center gap-3 px-1">
         <button type="button" onClick={() => onSalvar(nome, cols)} disabled={!podeSalvar} className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-[0.8125rem] font-medium text-violet-600 transition-colors hover:bg-violet-500/10 disabled:cursor-not-allowed disabled:opacity-50 dark:text-violet-400">
@@ -225,6 +228,14 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   // Modo compacto por MODELOS: subconjuntos nomeados das colunas ativas (persistidos).
   const [visoesCompactas, setVisoesCompactas] = useState<VisaoCompacta[]>([]);
   const [compactoAtivo, setCompactoAtivo] = useState<string | null>(null); // id do modelo aplicado
+  // Escopo de busca por coluna: null = busca em todas as colunas exibidas; senão a
+  // busca livre (e as sugestões) filtram só nessa coluna. Efêmero (não persiste).
+  const [escopoCol, setEscopoCol] = useState<string | null>(null);
+  const [colPicker, setColPicker] = useState(false); // seletor de coluna (escopo) aberto
+  const [colPickerQ, setColPickerQ] = useState(""); // mini-busca dentro do seletor
+  const buscaInputRef = useRef<HTMLInputElement>(null);
+  const colPickerRef = useRef<HTMLDivElement>(null);
+  const colPickerInputRef = useRef<HTMLInputElement>(null);
   const [compEditId, setCompEditId] = useState<string | null>(null); // null=fechado; ""=novo; id=editando
   const [compNome, setCompNome] = useState("");
   const [compCols, setCompCols] = useState<string[]>([]);
@@ -361,6 +372,36 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
     return todas.filter((c) => c.obrigatoria || vis.includes(c.key));
   }, [ordem, colunaByKey, vis, colunasCompacto]);
 
+  // ===== Escopo de busca por coluna =====
+  // Coluna-alvo da busca. Só vale se ainda está EXIBIDA; se um modelo compacto a
+  // esconder, o escopo é limpo (não dá pra buscar numa coluna fora da tela).
+  const colEscopo = useMemo(
+    () => (escopoCol ? colsVisiveis.find((c) => c.key === escopoCol) ?? null : null),
+    [escopoCol, colsVisiveis],
+  );
+  useEffect(() => {
+    if (escopoCol && !colsVisiveis.some((c) => c.key === escopoCol)) setEscopoCol(null);
+  }, [escopoCol, colsVisiveis]);
+
+  // Colunas oferecidas no seletor de escopo, filtradas pela mini-busca (sem acento).
+  const colunasBuscaveis = useMemo(() => {
+    const q = normalizarBusca(colPickerQ.trim());
+    if (!q) return colsVisiveis;
+    return colsVisiveis.filter((c) => normalizarBusca(c.label).includes(q));
+  }, [colsVisiveis, colPickerQ]);
+
+  // Ao abrir o seletor: zera a mini-busca e foca o campo. Fecha por clique fora / Esc.
+  useEffect(() => {
+    if (!colPicker) return;
+    setColPickerQ("");
+    const t = setTimeout(() => colPickerInputRef.current?.focus(), 0);
+    const onDown = (e: MouseEvent) => {
+      if (colPickerRef.current && !colPickerRef.current.contains(e.target as Node)) setColPicker(false);
+    };
+    window.addEventListener("mousedown", onDown);
+    return () => { clearTimeout(t); window.removeEventListener("mousedown", onDown); };
+  }, [colPicker]);
+
   // ===== Busca inteligente (facets das colunas de texto EXIBIDAS) =====
   // Respeita o conjunto EFETIVO de colunas (colsVisiveis): com um modelo compacto
   // ativo, sugere só nas colunas do modelo; sem ele, só nas colunas ativas do menu
@@ -370,6 +411,16 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
     const q = busca.trim();
     if (!q) return [] as Chip[];
     const ql = q.toLowerCase();
+    // Com escopo ativo: sugere SÓ na coluna escolhida (qualquer tipo), com o "Contém"
+    // restrito a ela (chip com `escopo`) e os valores exatos como facets sem tag.
+    if (colEscopo) {
+      const out: Chip[] = [{ id: `s-txt-${colEscopo.key}-${q}`, campo: "texto", kind: "texto", valor: q, escopo: colEscopo.key, label: `Contém "${q}"` }];
+      [...new Set(base.map((r) => String(colEscopo.valor(r))).filter((v) => v && v !== "-"))]
+        .filter((v) => v.toLowerCase().includes(ql))
+        .slice(0, 40)
+        .forEach((v) => out.push({ id: `s-${colEscopo.key}-${v}`, campo: colEscopo.key, kind: "col", valor: v, label: v }));
+      return out.slice(0, 40);
+    }
     const out: Chip[] = [{ id: `s-txt-${q}`, campo: "texto", kind: "texto", valor: q, label: `Contém "${q}"` }];
     colsVisiveis
       .filter((c) => (c.tipo === "texto" || c.tipo === "tagCor"))
@@ -380,7 +431,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
           .forEach((v) => out.push({ id: `s-${col.key}-${v}`, campo: col.key, kind: "col", valor: v, label: `${col.label}: ${v}` }));
       });
     return out.slice(0, 40);
-  }, [busca, base, colsVisiveis]);
+  }, [busca, base, colsVisiveis, colEscopo]);
 
   function matchFacet(c: Chip, row: T): boolean {
     if (c.kind === "regra") {
@@ -392,7 +443,12 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
       const col = colunaByKey[c.campo];
       return col ? String(col.valor(row)) === c.valor : true;
     }
-    // texto: varre só as colunas EXIBIDAS (respeita o modo compacto) + texto extra (ex.: produtos do pedido)
+    // texto: com escopo (chip.escopo), varre só aquela coluna; senão as colunas EXIBIDAS
+    // (respeita o modo compacto) + texto extra (ex.: produtos do pedido).
+    if (c.escopo) {
+      const col = colunaByKey[c.escopo];
+      return col ? String(col.valor(row)).toLowerCase().includes((c.valor ?? "").toLowerCase()) : true;
+    }
     const hay = (colsVisiveis.map((x) => String(x.valor(row))).join(" ") + " " + (textoBusca?.(row) ?? "")).toLowerCase();
     return hay.includes((c.valor ?? "").toLowerCase());
   }
@@ -406,7 +462,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   function toggleNivel(n: Nivel) {
     setNiveis((prev) => (prev.some((x) => x.campo === n.campo) ? prev.filter((x) => x.campo !== n.campo) : [...prev, n]));
   }
-  function limparTudo() { setChips([]); setNiveis([]); setArvore(null); setBusca(""); }
+  function limparTudo() { setChips([]); setNiveis([]); setArvore(null); setBusca(""); setEscopoCol(null); }
 
   // ===== Pipeline: filtro → ordenação =====
   const grupoChips = useMemo(() => {
@@ -418,14 +474,17 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   const buscaAtiva = busca.trim().toLowerCase();
 
   const lista = useMemo(() => {
-    const hay = (row: T) => (colsVisiveis.map((c) => String(c.valor(row))).join(" ") + " " + (textoBusca?.(row) ?? "")).toLowerCase();
+    // Com escopo ativo, a busca livre varre só a coluna escolhida; senão, todas as exibidas.
+    const hay = (row: T) => colEscopo
+      ? String(colEscopo.valor(row)).toLowerCase()
+      : (colsVisiveis.map((c) => String(c.valor(row))).join(" ") + " " + (textoBusca?.(row) ?? "")).toLowerCase();
     return base.filter((row) =>
       (!buscaAtiva || hay(row).includes(buscaAtiva)) &&
       grupoChips.every((cs) => cs.some((c) => matchFacet(c, row))) &&
       (!arvore || testaNo(row, arvore, campoByLike)),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [base, buscaAtiva, grupoChips, arvore, colsVisiveis]);
+  }, [base, buscaAtiva, grupoChips, arvore, colsVisiveis, colEscopo]);
 
   const listaOrdenada = useMemo(() => {
     if (sorts.length === 0) return lista;
@@ -631,6 +690,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
           {() => {
             const colunasAtivas = ordem.map((k) => colunaByKey[k]).filter(Boolean).filter((c) => !c.obrigatoria && vis.includes(c.key));
             const obrigatorias = colunas.filter((c) => c.obrigatoria);
+            const totalVisiveis = colunas.filter((c) => c.obrigatoria || vis.includes(c.key)).length;
             if (compEditId !== null) {
               return (
                 <EditorModeloCompacto
@@ -655,9 +715,10 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                 <div className="mt-3 border-t border-border pt-2.5">
                   <p className="mb-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Meus modelos</p>
                   <div className="max-h-[18rem] space-y-0.5 overflow-y-auto pr-0.5">
-                    <button type="button" onClick={() => (compacto && !compactoAtivo ? desligarCompacto() : aplicarCompacto(null))} className={cn("flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] transition-colors", compacto && !compactoAtivo ? "bg-violet-500/10 text-violet-700 dark:text-violet-300" : "text-foreground hover:bg-accent")}>
+                    <button type="button" onClick={() => (compacto && !compactoAtivo ? desligarCompacto() : aplicarCompacto(null))} className={cn("flex w-full cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] transition-colors", compacto && !compactoAtivo ? "bg-violet-500/10 text-violet-700 dark:text-violet-300" : "text-foreground hover:bg-accent")}>
                       <Rows3 className={cn("size-3.5 shrink-0", compacto && !compactoAtivo ? "text-violet-500" : "text-muted-foreground")} />
-                      <span className="flex-1">Todas as colunas</span>
+                      <span className="min-w-0 flex-1 truncate">Todas as colunas</span>
+                      <span className={cn("shrink-0 rounded-full px-1.5 text-[0.7rem] font-medium tabular-nums", compacto && !compactoAtivo ? "bg-violet-500/15 text-violet-600 dark:text-violet-300" : "bg-muted text-muted-foreground")} title={`${totalVisiveis} colunas`}>{totalVisiveis}</span>
                     </button>
                     {visoesCompactas.map((v) => (
                       <div key={v.id} className={cn("group flex items-center gap-1.5 rounded-lg pr-1", compactoAtivo === v.id ? "bg-violet-500/10" : "hover:bg-accent")}>
@@ -731,7 +792,73 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
       {/* Searchbar com chips + caret */}
       <div className="mb-3 flex shrink-0 items-start gap-2">
         <div className="relative flex min-h-9 flex-1 flex-wrap items-center gap-1.5 rounded-lg border border-border bg-card px-2 py-1">
-          <Search className="ml-1 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          {/* Lupa = botão que abre o seletor de COLUNA (escopo da busca). Fica roxo
+              translúcido no hover e quando há um escopo ativo. */}
+          <div ref={colPickerRef} className="relative shrink-0">
+            <button
+              type="button"
+              onClick={() => setColPicker((v) => !v)}
+              aria-label={colEscopo ? `Buscando na coluna ${colEscopo.label}. Trocar coluna` : "Buscar em uma coluna específica"}
+              aria-expanded={colPicker}
+              title={colEscopo ? `Buscando só em ${colEscopo.label}` : "Buscar em uma coluna específica"}
+              className={cn(
+                "flex size-7 cursor-pointer items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40",
+                colPicker || colEscopo
+                  ? "bg-violet-500/15 text-violet-600 dark:text-violet-300"
+                  : busca.trim()
+                    ? "text-violet-600 hover:bg-violet-500/10 dark:text-violet-300" // dica: clicável ao digitar
+                    : "text-muted-foreground hover:bg-violet-500/10 hover:text-violet-600 dark:hover:text-violet-300",
+              )}
+            >
+              <Search className="size-4" />
+            </button>
+            {colPicker && (
+              <div className="absolute left-0 top-full z-50 mt-1.5 w-64 rounded-xl border border-border bg-popover p-1.5 shadow-xl">
+                <div className="relative mb-1.5">
+                  <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
+                  <input
+                    ref={colPickerInputRef}
+                    value={colPickerQ}
+                    onChange={(e) => setColPickerQ(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") { setColPicker(false); return; }
+                      if (e.key === "Enter" && colunasBuscaveis[0]) { setEscopoCol(colunasBuscaveis[0].key); setColPicker(false); buscaInputRef.current?.focus(); }
+                    }}
+                    placeholder="Buscar coluna..."
+                    aria-label="Buscar coluna"
+                    className="w-full rounded-lg border border-border bg-card py-1.5 pl-8 pr-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40"
+                  />
+                </div>
+                <div className="max-h-64 space-y-0.5 overflow-y-auto pr-0.5">
+                  {colEscopo && (
+                    <button type="button" onClick={() => { setEscopoCol(null); setColPicker(false); buscaInputRef.current?.focus(); }} className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+                      <X className="size-3.5 shrink-0" aria-hidden /> Buscar em todas as colunas
+                    </button>
+                  )}
+                  {colunasBuscaveis.length === 0 && (
+                    <p className="px-2 py-3 text-center text-xs text-muted-foreground">Nenhuma coluna encontrada.</p>
+                  )}
+                  {colunasBuscaveis.map((c) => {
+                    const ativo = c.key === escopoCol;
+                    return (
+                      <button key={c.key} type="button" onClick={() => { setEscopoCol(c.key); setColPicker(false); buscaInputRef.current?.focus(); }} className={cn("flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] transition-colors", ativo ? "bg-violet-500/10 text-violet-700 dark:text-violet-300" : "text-foreground hover:bg-accent")}>
+                        <Columns3 className={cn("size-3.5 shrink-0", ativo ? "text-violet-500" : "text-muted-foreground")} aria-hidden />
+                        <span className="min-w-0 flex-1 truncate">{c.label}</span>
+                        {ativo && <Check className="size-3.5 shrink-0 text-violet-500" aria-hidden />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+          {/* Indicador do escopo ativo: qual coluna está sendo buscada (X remove). */}
+          {colEscopo && (
+            <span className="inline-flex items-center gap-1 rounded-md bg-violet-500/12 px-2 py-0.5 text-xs font-medium text-violet-700 ring-1 ring-violet-500/30 dark:text-violet-300">
+              <Columns3 className="size-3 shrink-0" aria-hidden /> {colEscopo.label}
+              <button type="button" onClick={() => { setEscopoCol(null); buscaInputRef.current?.focus(); }} aria-label={`Remover busca na coluna ${colEscopo.label}`} className="cursor-pointer text-violet-500/70 hover:text-violet-600"><X className="size-3" /></button>
+            </span>
+          )}
           {chips.map((c) => (
             <span key={c.id} className="inline-flex items-center gap-1 rounded-md bg-violet-500/12 px-2 py-0.5 text-xs font-medium text-violet-700 ring-1 ring-violet-500/30 dark:text-violet-300">
               <Filter className="size-3 shrink-0" aria-hidden /> {c.label}
@@ -755,19 +882,20 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
             </span>
           ); })()}
           <input
+            ref={buscaInputRef}
             value={busca}
             onChange={(e) => { setBusca(e.target.value); setSugOpen(true); }}
             onFocus={() => setSugOpen(true)}
             onBlur={() => setTimeout(() => setSugOpen(false), 150)}
             onKeyDown={(e) => { if (e.key === "Enter" && sugestoes[0]) addChip(sugestoes[0]); }}
-            placeholder={chips.length || niveis.length ? "" : "Buscar ou filtrar..."}
-            aria-label="Buscar"
+            placeholder={colEscopo ? `Buscar em ${colEscopo.label}...` : (chips.length || niveis.length ? "" : "Buscar ou filtrar...")}
+            aria-label={colEscopo ? `Buscar na coluna ${colEscopo.label}` : "Buscar"}
             className="min-w-[8rem] flex-1 bg-transparent px-1 py-0.5 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none"
           />
-          {(chips.length > 0 || niveis.length > 0 || arvore || busca.trim().length > 0) && (
+          {(chips.length > 0 || niveis.length > 0 || arvore || busca.trim().length > 0 || !!colEscopo) && (
             <button type="button" onClick={limparTudo} className="mr-1 shrink-0 cursor-pointer rounded px-1.5 py-0.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground">Limpar tudo</button>
           )}
-          {sugOpen && sugestoes.length > 0 && (
+          {sugOpen && !colPicker && sugestoes.length > 0 && (
             <div className="absolute left-0 right-0 top-full z-40 mt-1 max-h-[22rem] overflow-y-auto rounded-xl border border-border bg-popover p-1 shadow-xl">
               {sugestoes.map((s) => {
                 // Quando a sugestão é de uma coluna, o nome da coluna vira uma TAG
