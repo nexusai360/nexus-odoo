@@ -68,3 +68,6 @@ docs/agent-quality-review/results/
 
 # Backups da stack de producao (compose + specs do Swarm). Contem segredos em texto claro.
 .prod-backups/
+
+# Propostas comerciais / orcamentos gerados (PDFs pesados, ficam so local, nao vao pra nuvem)
+docs/nova-implementacao-dashboards/*.pdf

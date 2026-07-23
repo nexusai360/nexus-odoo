@@ -1,44 +1,48 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Proposta comercial , Desenvolvimento de Dashboard Analytics (Matrix Fitness Group).
-PDF multipagina A4 com narrativa progressiva.
+Proposta comercial , Desenvolvimento de Dashboard Analytics (Matrix Group).
+Documento construido em HTML e exportado para PDF (Chrome headless) + numeracao de paginas.
 Norte visual: skill nexus-orcamento (cores, logo, fontes) + diretrizes ui-ux-pro-max.
-Render: Google Chrome headless (--print-to-pdf).
 """
-import base64, pathlib, subprocess
+import base64, io, os, pathlib, subprocess
 from datetime import date, timedelta
 
 SKILL_DIR = pathlib.Path.home() / ".claude/skills/nexus-orcamento"
 LOGO = "data:image/png;base64," + base64.b64encode((SKILL_DIR / "assets/icon.png").read_bytes()).decode()
 OUT_DIR = pathlib.Path(__file__).parent
 HTML_PATH = OUT_DIR / "_proposta.html"
-PDF_PATH = OUT_DIR / "Proposta-Dashboard-Analytics-Matrix.pdf"
+PDF_PATH = OUT_DIR / os.environ.get("OUT", "Proposta-Dashboard-Analytics-Matrix.pdf")
 
 ROXO, ROXO2, ROXO3, TINTA = "#7C3AED", "#5438B8", "#3D2685", "#2A1F5C"
 CORPO, SUAVE, CLARO, BORDA = "#4A4565", "#6B6585", "#FAF9FE", "#E8E4F5"
 
-VALOR_HORA = 70
-MERCADO_MIN, MERCADO_MAX = 140, 300
+VALOR_HORA = int(os.environ.get("VH", 60))
+MERCADO_MIN, MERCADO_MAX = int(os.environ.get("MM", 120)), 350
 EMISSAO = date(2026, 7, 21)
 VALIDADE = EMISSAO + timedelta(days=15)
-INICIO = date(2026, 8, 3)     # segunda-feira
-ENTREGA = date(2026, 10, 13)  # terca-feira
+INICIO = date(2026, 8, 3)
+ENTREGA = date(2026, 10, 13)
+VIS_FIM = date(2026, 10, 31)  # eixo do cronograma mostra ate o fim de outubro
+EMPRESA_RAZAO = "(JHT SP Comércio de Produtos e Equipamentos<br>Esportivos Ltda)"
 
-# ─────────────── Inventario. Itens: (nome, desc, horas[, requer_odoo]) ───────────────
+# ── Inventario ──
+# Arquitetura: (nome, desc, horas, tag)  tag em {None, "config", "acao", "custom"}
 ARQUITETURA = [
-    ("Classificação de produtos por linha e tipo", "Organizar o catálogo por linha (Magnum, Ultra, Versa, Aura) e por tipo, base das composições dos painéis.", 20, True),
-    ("Estrutura de ciclos de estoque", "A lógica que organiza o estoque por períodos (ciclos), com previsão, consumo e cobertura por produto.", 16, False),
-    ("Régua de status dos produtos", "Regra única que classifica cada produto em ruptura, risco, saudável ou acumulado, usada por todos os relatórios.", 10, False),
-    ("Consolidação de compras a receber", "Trazer a quantidade comprada que ainda não chegou, para compor o estoque projetado.", 12, True),
-    ("Histórico diário de estoque e demanda", "Registro diário que permite comparar períodos e montar a evolução mês a mês.", 14, False),
-    ("Arquivamento de ciclos encerrados", "Congelar o ciclo fechado num relatório fixo, consultável a qualquer momento.", 18, False),
-    ("Cadastro de metas de faturamento", "Leitura das metas mensais por empresa e por vendedor.", 8, True),
-    ("Agrupamento de clientes e construtoras", "Reunir os vários CNPJs de um mesmo cliente ou construtora num só grupo.", 10, True),
-    ("Classificação de clientes por segmento", "Organizar os clientes por segmento (academia, condomínio, hotel, estúdio).", 8, True),
-    ("Estruturação do plano de contas gerencial", "Organizar as contas em categorias de despesa para a análise financeira.", 10, True),
-    ("Registro de estado (UF) nas despesas", "Associar o estado a cada despesa, para a visão por região.", 8, True),
+    ("Classificação de produtos por linha e tipo", "Organizar o catálogo por linha (Magnum, Ultra, Versa, Aura) e por tipo, base das composições dos painéis.", 20, "config"),
+    ("Estrutura de ciclos de estoque", "A lógica que organiza o estoque por períodos (ciclos), com previsão, consumo e cobertura por produto.", 16, None),
+    ("Régua de status dos produtos", "Regra única que classifica cada produto em ruptura, risco, saudável ou acumulado, usada por todos os relatórios.", 10, None),
+    ("Consolidação de compras a receber", "Trazer a quantidade comprada que ainda não chegou, para compor o estoque projetado.", 12, None),
+    ("Histórico diário de estoque e demanda", "Registro diário que permite comparar períodos e montar a evolução mês a mês.", 14, None),
+    ("Arquivamento de ciclos encerrados", "Congelar o ciclo fechado num relatório fixo, consultável a qualquer momento.", 18, None),
+    ("Cadastro de metas de faturamento", "Leitura das metas mensais por empresa e por vendedor.", 8, None),
+    ("Agrupamento de clientes e construtoras", "Reunir os vários CNPJs de um mesmo cliente ou construtora num só grupo.", 10, "acao"),
+    ("Classificação de clientes por segmento", "Organizar os clientes por segmento (academia, condomínio, hotel, estúdio).", 8, "acao"),
+    ("Estruturação do plano de contas gerencial", "Organizar as contas em categorias de despesa para a análise financeira.", 10, "config"),
+    ("Registro de estado (UF) nas despesas", "Associar o estado a cada despesa, para a visão por região.", 8, "custom"),
 ]
+TAGS = {"config": "requer configuração no Odoo", "acao": "requer ação da equipe Matrix Group", "custom": "requer customização e configuração no Odoo"}
+
 ESTOQUE_REL = [
     ("Indicadores gerais de estoque", "12 indicadores (valor total, médio por local, ticket, em demanda, disponível, a chegar e quantidades) com variação de 30 dias.", 6),
     ("Distribuição por local", "Um card por local (Jarinu, Valinhos, Ceilândia): valor, participação e quantidade.", 5),
@@ -115,7 +119,6 @@ QUALIDADE = [
 ]
 
 def hh(itens): return sum(i[2] for i in itens)
-
 h_arq = hh(ARQUITETURA)
 h_est = hh(ESTOQUE_REL) + hh(ESTOQUE_GESTAO)
 h_ven = hh(VENDAS_REL) + hh(VENDAS_GESTAO)
@@ -124,59 +127,51 @@ h_dem = hh(DEM_REL) + hh(DEM_GESTAO)
 h_qua = hh(QUALIDADE)
 h_modulos = h_est + h_ven + h_fin + h_dem
 h_total = h_arq + h_modulos + h_qua
-h_cobradas = h_modulos
-h_cortesia = h_arq + h_qua
-
 n_rel = len(ESTOQUE_REL) + len(VENDAS_REL) + len(FIN_REL) + len(DEM_REL)
 n_gestao = len(ESTOQUE_GESTAO) + len(VENDAS_GESTAO) + len(FIN_GESTAO) + len(DEM_GESTAO)
 n_itens = len(ARQUITETURA) + n_rel + n_gestao
-
-valor_cobrado = h_cobradas * VALOR_HORA
+valor_cobrado = h_modulos * VALOR_HORA
+h_cortesia = h_arq + h_qua
 valor_mercado = h_total * MERCADO_MIN
 desconto = round((valor_mercado - valor_cobrado) * 100 / valor_mercado)
 parcela = valor_cobrado // 2
-
 def brl(v): return "R$ " + f"{v:,.0f}".replace(",", ".")
 
-# ─────────────── Cronograma (03/08 a 13/10, ~2 meses e 10 dias) ───────────────
+# ── Cronograma ──
 FASES = [("Fase 1", "Arquitetura e integração de dados", h_arq),
          ("Fase 2", "Módulo Estoque", h_est),
          ("Fase 3", "Módulo Vendas", h_ven),
          ("Fase 4", "Módulo Financeiro", h_fin),
          ("Fase 5", "Módulo Demandas", h_dem)]
-span = (ENTREGA - INICIO).days
+span_trab = (ENTREGA - INICIO).days
+span_vis = (VIS_FIM - INICIO).days
 peso = sum(h for *_, h in FASES)
 def fases_datas():
     out, acc = [], 0
     for k, (nome, ent, h) in enumerate(FASES):
-        d0 = round(acc / peso * span)
-        acc += h
-        d1 = round(acc / peso * span)
-        if k == len(FASES) - 1:
-            d1 = span
-        ini = INICIO + timedelta(days=d0)
-        fim = INICIO + timedelta(days=d1 - 1)
-        out.append((nome, ent, h, ini, fim, d0 / span * 100, (d1 - d0) / span * 100))
+        d0 = round(acc / peso * span_trab); acc += h
+        d1 = span_trab if k == len(FASES) - 1 else round(acc / peso * span_trab)
+        ini = INICIO + timedelta(days=d0); fim = INICIO + timedelta(days=d1 - 1)
+        out.append((nome, ent, h, ini, fim, d0 / span_vis * 100, (d1 - d0) / span_vis * 100))
     return out
 FASES_D = fases_datas()
 MESES = {8: "Agosto", 9: "Setembro", 10: "Outubro"}
-def eixo():
-    t = ""
-    for m in (8, 9, 10):
-        d = INICIO if m == 8 else date(2026, m, 1)
-        t += f'<span class="g-tick" style="left:{max(0,(d-INICIO).days/span*100):.1f}%">{MESES[m]}</span>'
-    return t
+def mes_pos(m): return (date(2026, m, 1) - INICIO).days / span_vis * 100 if m != 8 else 0.0
+SEPS = [mes_pos(9), mes_pos(10)]
+
+def selo_sep():
+    return "".join(f'<span class="g-sep" style="left:{p:.1f}%"></span>' for p in SEPS)
 
 # ─────────────────────────── HTML ───────────────────────────
-def selo(): return f'<span class="odoo-tag">requer cadastro no Odoo</span>'
-
-def tabela(titulo, subtitulo, itens, idx=True):
+def tabela(titulo, subtitulo, itens, idx=True, arq=False):
     rows = ""
     for i, it in enumerate(itens, 1):
         nome, desc, h = it[0], it[1], it[2]
-        odoo = selo() if (len(it) > 3 and it[3]) else ""
+        tag = ""
+        if arq and len(it) > 3 and it[3]:
+            tag = f'<span class="odoo-tag">{TAGS[it[3]]}</span>'
         num = f'<span class="idx">{i:02d}</span>' if idx else ""
-        rows += f'<tr><td class="c-item">{num}<span class="i-nome">{nome}</span></td><td class="c-desc">{desc}{odoo}</td><td class="c-h">{h}h</td></tr>'
+        rows += f'<tr><td class="c-item">{num}<span class="i-nome">{nome}</span></td><td class="c-desc">{desc}{tag}</td><td class="c-h">{h}h</td></tr>'
     return f"""<div class="bloco">
       <div class="bloco-hd">{titulo}<span class="bloco-sub">{subtitulo}</span></div>
       <table class="tbl"><thead><tr><th style="width:30%">Item</th><th>O que entrega</th><th class="right" style="width:8%">Horas</th></tr></thead>
@@ -187,48 +182,45 @@ def modulo(kick, nome, sub, rel, gestao):
     return f"""<section class="page">
       <div class="mod-hd"><span class="kick">{kick}</span><h2>{nome}</h2><div class="mod-sub">{sub}</div></div>
       {tabela("Relatórios", "as telas de análise", rel)}
-      <div class="keep">{tabela("Telas de gerenciamento", f"módulo {nome} &middot; onde se cadastra e se define a regra", gestao)}</div>
+      <div class="keep"><div class="mod-tag">Módulo {nome}</div>{tabela("Telas de gerenciamento", "onde se cadastra e se define a regra", gestao)}</div>
     </section>"""
 
 def gantt():
     linhas = ""
     for nome, ent, h, ini, fim, left, width in FASES_D:
-        linhas += f'<div class="g-row"><div class="g-lbl"><strong>{nome}</strong> {ent}</div><div class="g-track"><div class="g-bar" style="left:{left:.1f}%;width:{max(width,3):.1f}%"></div></div></div>'
-    linhas += '<div class="g-row"><div class="g-lbl"><strong>Contínuo</strong> Conferência e homologação</div><div class="g-track"><div class="g-bar cont" style="left:0;width:100%"></div></div></div>'
+        linhas += f'<div class="g-row"><div class="g-lbl"><strong>{nome}</strong> {ent}</div><div class="g-track">{selo_sep()}<div class="g-bar" style="left:{left:.1f}%;width:{max(width,2):.1f}%"></div></div></div>'
+    cw = span_trab / span_vis * 100
+    linhas += f'<div class="g-row"><div class="g-lbl"><strong>Contínuo</strong> Conferência e homologação</div><div class="g-track">{selo_sep()}<div class="g-bar cont" style="left:0;width:{cw:.1f}%"></div></div></div>'
     return linhas
+
+def eixo():
+    t = ""
+    for m in (8, 9, 10):
+        t += f'<span class="g-tick" style="left:{mes_pos(m):.1f}%">{MESES[m]}</span>'
+    return t
 
 fases_rows = "".join(f'<tr><td class="c-item"><span class="i-nome">{n}</span></td><td class="c-desc">{e}</td><td class="c-h" style="white-space:nowrap">{i.strftime("%d/%m")} a {f.strftime("%d/%m")}</td><td class="c-h">{int(h)}h</td></tr>' for n, e, h, i, f, *_ in FASES_D)
 
-SUMARIO = [
-    "Visão geral do que será entregue",
-    "Arquitetura e integração de dados",
-    "Módulo Estoque (atual e ciclos)",
-    "Módulo Vendas (painel e comparativos)",
-    "Módulo Financeiro (resultado por empresa)",
-    "Módulo Demandas (carteira e entregas)",
-    "Conferência e homologação",
-    "Escopo geral do desenvolvimento",
-    "Cronograma de implementação",
-    "Proposta comercial",
-]
-sumario_html = "".join(f'<div class="sm-row"><span class="sm-n">{i:02d}</span><span class="sm-t">{t}</span></div>' for i, t in enumerate(SUMARIO, 1))
+SUMARIO = [("Visão geral do que será entregue", 2), ("Arquitetura e integração de dados", 3),
+           ("Módulo Estoque (atual e ciclos)", 4), ("Módulo Vendas (painel e comparativos)", 6),
+           ("Módulo Financeiro (resultado por empresa)", 8), ("Módulo Demandas (carteira e entregas)", 9),
+           ("Conferência e homologação", 10), ("Escopo do desenvolvimento", 10),
+           ("Cronograma de implementação", 11), ("Proposta comercial", 12)]
+sumario_html = "".join(f'<div class="sm-row"><span class="sm-dot"></span><span class="sm-t">{t}</span><span class="sm-lead"></span><span class="sm-p">página {p}</span></div>' for t, p in SUMARIO)
 
 HERO_SVG = f"""<svg viewBox="0 0 520 150" width="100%" style="display:block">
-  <rect x="0" y="0" width="150" height="150" rx="14" fill="{CLARO}" stroke="{BORDA}"/>
-  <rect x="24" y="96" width="16" height="34" rx="3" fill="{ROXO}" opacity="0.35"/><rect x="50" y="78" width="16" height="52" rx="3" fill="{ROXO}" opacity="0.5"/><rect x="76" y="54" width="16" height="76" rx="3" fill="{ROXO}" opacity="0.7"/><rect x="102" y="34" width="16" height="96" rx="3" fill="{ROXO}"/><rect x="24" y="24" width="60" height="8" rx="4" fill="{BORDA}"/>
+  <rect x="0" y="0" width="150" height="150" rx="14" fill="{CLARO}" stroke="{BORDA}"/><rect x="24" y="96" width="16" height="34" rx="3" fill="{ROXO}" opacity="0.35"/><rect x="50" y="78" width="16" height="52" rx="3" fill="{ROXO}" opacity="0.5"/><rect x="76" y="54" width="16" height="76" rx="3" fill="{ROXO}" opacity="0.7"/><rect x="102" y="34" width="16" height="96" rx="3" fill="{ROXO}"/><rect x="24" y="24" width="60" height="8" rx="4" fill="{BORDA}"/>
   <g transform="translate(185,0)"><rect x="0" y="0" width="150" height="150" rx="14" fill="{CLARO}" stroke="{BORDA}"/><polyline points="18,110 46,84 74,96 102,52 130,30" fill="none" stroke="{ROXO}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="130" cy="30" r="5" fill="{ROXO}"/><rect x="18" y="24" width="60" height="8" rx="4" fill="{BORDA}"/></g>
   <g transform="translate(370,0)"><rect x="0" y="0" width="150" height="150" rx="14" fill="{CLARO}" stroke="{BORDA}"/><circle cx="75" cy="82" r="34" fill="none" stroke="{BORDA}" stroke-width="14"/><circle cx="75" cy="82" r="34" fill="none" stroke="{ROXO}" stroke-width="14" stroke-dasharray="150 214" stroke-linecap="round" transform="rotate(-90 75 82)"/><rect x="18" y="24" width="60" height="8" rx="4" fill="{BORDA}"/></g>
 </svg>"""
 
 def mini_modulos():
-    cards = [("Estoque", len(ESTOQUE_REL), "Estoque atual e ciclos"),
-             ("Vendas", len(VENDAS_REL), "Painel e comparativos"),
-             ("Financeiro", len(FIN_REL), "Resultado por empresa"),
-             ("Demandas", len(DEM_REL), "Carteira e entregas")]
+    cards = [("Estoque", len(ESTOQUE_REL), "Estoque atual e ciclos"), ("Vendas", len(VENDAS_REL), "Painel e comparativos"),
+             ("Financeiro", len(FIN_REL), "Resultado por empresa"), ("Demandas", len(DEM_REL), "Carteira e entregas")]
     return "".join(f'<div class="mc"><div class="mc-n">0{i}</div><div class="mc-t">{n}</div><div class="mc-r">{r} relatórios</div><div class="mc-d">{d}</div></div>' for i, (n, r, d) in enumerate(cards, 1))
 
 HTML = f"""<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><style>
-  @page {{ size:A4; margin:15mm 15mm 15mm 15mm; }}
+  @page {{ size:A4; margin:15mm 15mm 16mm 15mm; }}
   * {{ box-sizing:border-box; margin:0; padding:0; -webkit-print-color-adjust:exact; print-color-adjust:exact; }}
   html,body {{ font-family:-apple-system,"Helvetica Neue",Arial,sans-serif; color:{TINTA}; }}
   .page {{ page-break-before:always; }} .page:first-child {{ page-break-before:auto; }}
@@ -238,23 +230,25 @@ HTML = f"""<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><style>
   h2 {{ font-size:19pt; font-weight:800; letter-spacing:-0.4px; }}
   .lead {{ font-size:10.5pt; color:{CORPO}; line-height:1.6; }}
 
-  .capa {{ min-height:262mm; display:flex; flex-direction:column; }}
   .capa-top {{ display:flex; justify-content:space-between; align-items:center; }}
-  .ico {{ height:50px; }} .wm {{ font-size:15pt; font-weight:800; margin-left:10px; vertical-align:middle; }}
-  .capa h1 {{ margin:34mm 0 14px; }}
+  .lockup {{ display:flex; align-items:center; gap:11px; }}
+  .lockup img {{ height:44px; display:block; }}
+  .lockup .wm {{ font-size:15.5pt; font-weight:800; color:{TINTA}; letter-spacing:-0.2px; }}
+  .eyebrow {{ font-size:8.5pt; font-weight:700; letter-spacing:1.6px; color:{ROXO2}; text-transform:uppercase; }}
+  .kdot {{ display:inline-block; width:6px; height:6px; border-radius:50%; background:{ROXO2}; margin-right:8px; vertical-align:middle; }}
+  .capa h1 {{ margin:32mm 0 14px; }}
   .capa .sub {{ font-size:12.5pt; color:{CORPO}; line-height:1.55; max-width:158mm; }}
-  .metabox {{ display:flex; gap:12px; margin-top:14mm; }}
+  .metabox {{ display:flex; gap:12px; margin-top:13mm; }}
   .metabox .cell {{ flex:1; background:{CLARO}; border-radius:12px; padding:16px 20px; }}
   .meta-lbl {{ font-size:8.5pt; font-weight:700; letter-spacing:1.3px; color:{ROXO2}; text-transform:uppercase; display:block; margin-bottom:8px; }}
-  .meta-row {{ font-size:10pt; color:{CORPO}; line-height:1.7; }} .meta-row strong {{ color:{TINTA}; }}
-  .hero-viz {{ margin-top:auto; padding-top:12mm; }}
-  .hero-inner {{ width:86%; }}
+  .meta-row {{ font-size:10pt; color:{CORPO}; line-height:1.65; }} .meta-row strong {{ color:{TINTA}; }}
+  .meta-sub {{ font-size:9pt; color:{SUAVE}; line-height:1.4; margin:2px 0 4px; }}
+  .hero-viz {{ margin-top:36mm; text-align:center; }}
+  .hero-inner {{ width:58%; margin:0 auto; }}
 
   .sec-hd {{ margin-bottom:7mm; }} .sec-hd h2 {{ margin-top:3px; }}
   .sec-hd.line {{ border-bottom:2px solid {BORDA}; padding-bottom:10px; }}
   .intro {{ font-size:11pt; color:{CORPO}; line-height:1.7; }} .intro strong {{ color:{TINTA}; }}
-  .odoo-note {{ margin:0 0 7mm; padding:12px 16px; background:#F3EEFC; border-left:3px solid {ROXO}; border-radius:6px; font-size:9.7pt; color:{CORPO}; line-height:1.55; }}
-  .odoo-note strong {{ color:{TINTA}; }}
 
   .mcs {{ display:flex; gap:12px; margin-top:9mm; }}
   .mc {{ flex:1; background:{CLARO}; border:1.5px solid {BORDA}; border-radius:14px; padding:16px; }}
@@ -263,19 +257,21 @@ HTML = f"""<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><style>
   .mc-r {{ font-size:9pt; font-weight:700; color:{ROXO2}; margin-top:3px; }}
   .mc-d {{ font-size:9pt; color:{SUAVE}; margin-top:6px; line-height:1.4; }}
   .flow {{ margin-top:9mm; }}
-  .flow-step {{ display:flex; gap:14px; margin-bottom:12px; align-items:flex-start; }}
-  .flow-num {{ flex:0 0 28px; height:28px; border-radius:50%; background:{ROXO}; color:#fff; font-weight:800; font-size:10.5pt; display:flex; align-items:center; justify-content:center; }}
-  .flow-txt {{ font-size:10.3pt; color:{CORPO}; line-height:1.5; padding-top:3px; }} .flow-txt strong {{ color:{TINTA}; }}
+  .flow-step {{ display:flex; gap:14px; margin-bottom:11px; align-items:flex-start; }}
+  .flow-num {{ flex:0 0 27px; height:27px; border-radius:50%; background:{ROXO}; color:#fff; font-weight:800; font-size:10pt; display:flex; align-items:center; justify-content:center; }}
+  .flow-txt {{ font-size:10.2pt; color:{CORPO}; line-height:1.5; padding-top:3px; }} .flow-txt strong {{ color:{TINTA}; }}
 
   .sumario {{ margin-top:9mm; border-top:1.5px solid {BORDA}; padding-top:7mm; }}
   .sm-hd {{ font-size:8.5pt; font-weight:700; letter-spacing:1.4px; color:{ROXO2}; text-transform:uppercase; margin-bottom:5mm; }}
-  .sm-grid {{ column-count:2; column-gap:26px; }}
-  .sm-row {{ display:flex; gap:11px; align-items:baseline; break-inside:avoid; margin-bottom:9px; }}
-  .sm-n {{ font-size:9pt; font-weight:800; color:{ROXO}; font-variant-numeric:tabular-nums; min-width:20px; }}
-  .sm-t {{ font-size:10pt; color:{CORPO}; }}
+  .sm-row {{ display:flex; align-items:center; margin-bottom:11px; }}
+  .sm-dot {{ width:7px; height:7px; border-radius:50%; background:{ROXO}; margin-right:12px; flex:0 0 auto; }}
+  .sm-t {{ font-size:10.5pt; color:{TINTA}; font-weight:600; }}
+  .sm-lead {{ flex:1; border-bottom:1px dotted {BORDA}; margin:0 10px; height:1px; align-self:flex-end; margin-bottom:4px; }}
+  .sm-p {{ font-size:9.5pt; color:{SUAVE}; font-weight:600; white-space:nowrap; }}
 
   .mod-hd {{ border-bottom:2px solid {BORDA}; padding-bottom:11px; margin-bottom:7mm; }}
   .mod-sub {{ font-size:10.5pt; color:{SUAVE}; margin-top:5px; }}
+  .mod-tag {{ display:inline-block; font-size:8pt; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:#fff; background:{ROXO}; padding:4px 12px; border-radius:999px; margin:10mm 0 6mm; }}
 
   .bloco {{ margin-bottom:8mm; }}
   .bloco-hd {{ font-size:12pt; font-weight:800; color:{TINTA}; margin-bottom:9px; padding-left:11px; border-left:3px solid {ROXO}; page-break-after:avoid; }}
@@ -291,50 +287,57 @@ HTML = f"""<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><style>
   .tbl tbody td.c-h {{ border-top-right-radius:9px; border-bottom-right-radius:9px; text-align:right; font-weight:800; color:{TINTA}; white-space:nowrap; font-variant-numeric:tabular-nums; }}
   .idx {{ display:inline-block; min-width:22px; font-weight:800; color:{ROXO}; font-size:8.5pt; font-variant-numeric:tabular-nums; }}
   .i-nome {{ font-weight:700; color:{TINTA}; }}
-  .odoo-tag {{ display:inline-block; margin-top:5px; font-size:6.8pt; font-weight:700; letter-spacing:0.3px; text-transform:uppercase; color:{ROXO2}; background:#EDE7F5; padding:2px 7px; border-radius:999px; white-space:nowrap; }}
-  .tf {{ font-size:8.5pt; font-weight:700; color:{ROXO2}; text-transform:uppercase; letter-spacing:0.6px; padding:5px 12px 0; }}
+  .odoo-tag {{ display:inline-block; margin-top:5px; font-size:6.8pt; font-weight:700; letter-spacing:0.3px; text-transform:uppercase; color:{ROXO2}; background:#EDE7F5; padding:2px 8px; border-radius:999px; white-space:nowrap; }}
+  .tf {{ font-size:10pt; font-weight:800; color:{ROXO2}; text-transform:uppercase; letter-spacing:0.5px; padding:7px 12px 0; }}
   .tf.right {{ text-align:right; font-variant-numeric:tabular-nums; }}
 
   .g-axis {{ position:relative; height:15px; margin:0 0 3mm 42%; }}
   .g-tick {{ position:absolute; font-size:8.5pt; font-weight:700; color:{SUAVE}; }}
   .g-row {{ display:flex; align-items:center; margin-bottom:9px; }}
   .g-lbl {{ width:42%; font-size:9.5pt; color:{CORPO}; padding-right:12px; line-height:1.3; }} .g-lbl strong {{ color:{ROXO}; }}
-  .g-track {{ flex:1; position:relative; height:20px; background:{CLARO}; border-radius:6px; border:1px solid {BORDA}; }}
+  .g-track {{ flex:1; position:relative; height:20px; background:{CLARO}; border-radius:6px; border:1px solid {BORDA}; overflow:hidden; }}
+  .g-sep {{ position:absolute; top:0; bottom:0; width:1px; background:{BORDA}; }}
   .g-bar {{ position:absolute; top:2px; height:14px; background:linear-gradient(90deg,{ROXO},{ROXO2}); border-radius:5px; }}
   .g-bar.cont {{ background:repeating-linear-gradient(45deg,{ROXO}33,{ROXO}33 5px,{ROXO}22 5px,{ROXO}22 10px); border:1px solid {ROXO}55; }}
 
   .cards {{ display:flex; gap:14px; margin-top:6mm; }}
-  .card {{ flex:1; border-radius:14px; padding:20px 24px; }}
+  .card {{ flex:1; border-radius:14px; padding:18px 22px; }}
   .card.out {{ background:#fff; border:1.5px solid {BORDA}; }}
   .card.fill {{ background:{ROXO3}; color:#fff; position:relative; }}
-  .card .lbl {{ font-size:9pt; font-weight:700; letter-spacing:1.4px; text-transform:uppercase; display:block; margin-bottom:9px; }}
+  .card .lbl {{ font-size:9pt; font-weight:700; letter-spacing:1.4px; text-transform:uppercase; display:block; margin-bottom:8px; }}
   .card.out .lbl {{ color:{ROXO2}; }} .card.fill .lbl {{ color:#C9BEED; }}
-  .card .val {{ font-size:28pt; font-weight:800; letter-spacing:-1px; line-height:1; display:block; font-variant-numeric:tabular-nums; }}
+  .card .val {{ font-size:27pt; font-weight:800; letter-spacing:-1px; line-height:1; display:block; font-variant-numeric:tabular-nums; }}
   .card.out .val {{ color:{SUAVE}; text-decoration:line-through; opacity:.6; }} .card.fill .val {{ color:#fff; }}
-  .card .cap {{ font-size:9pt; line-height:1.5; display:block; margin-top:10px; }} .card.out .cap {{ color:{SUAVE}; }} .card.fill .cap {{ color:#E5DCFC; }}
-  .badge {{ position:absolute; top:18px; right:20px; background:#FFD84D; color:{TINTA}; font-size:9pt; font-weight:800; padding:5px 12px; border-radius:999px; }}
-  .invtab {{ width:100%; border-collapse:separate; border-spacing:0 6px; margin-top:6mm; }}
-  .invtab td {{ background:{CLARO}; padding:12px 18px; font-size:10.3pt; color:{CORPO}; }}
+  .val .mult {{ font-size:14pt; font-weight:800; letter-spacing:0; margin-right:8px; }}
+  .card .cap {{ font-size:8.8pt; line-height:1.45; display:block; margin-top:9px; }} .card.out .cap {{ color:{SUAVE}; }} .card.fill .cap {{ color:#E5DCFC; }}
+  .badge {{ position:absolute; top:16px; right:18px; background:#FFD84D; color:{TINTA}; font-size:9pt; font-weight:800; padding:5px 12px; border-radius:999px; }}
+  .invtab {{ width:100%; border-collapse:separate; border-spacing:0 5px; margin-top:5mm; }}
+  .invtab td {{ background:{CLARO}; padding:11px 18px; font-size:10pt; color:{CORPO}; }}
   .invtab td:first-child {{ border-radius:9px 0 0 9px; font-weight:700; color:{TINTA}; }}
   .invtab td:last-child {{ border-radius:0 9px 9px 0; text-align:right; font-weight:800; color:{TINTA}; white-space:nowrap; font-variant-numeric:tabular-nums; }}
   .invtab td.free {{ color:{ROXO2}; font-weight:800; }}
-  .invtab tr.tot td {{ background:{ROXO3}; color:#fff; font-size:12pt; }} .invtab tr.tot td:last-child {{ color:#fff; }}
-  .note {{ margin-top:7mm; padding:14px 18px; background:{CLARO}; border-left:3px solid {ROXO2}; border-radius:6px; font-size:9.5pt; color:{CORPO}; line-height:1.6; }}
-  .note strong {{ color:{TINTA}; }} .note + .note {{ margin-top:4mm; }}
+  .risco {{ text-decoration:line-through; color:{SUAVE}; font-weight:700; margin-right:9px; }}
+  .semcusto {{ color:{ROXO2}; font-weight:800; }}
+  .invtab tr.tot td {{ background:{ROXO3}; color:#fff; font-size:11pt; }} .invtab tr.tot td:last-child {{ color:#fff; }}
+  .tmult {{ font-size:8pt; margin-right:6px; opacity:.85; }}
+  .notes {{ display:flex; flex-direction:column; gap:8px; margin-top:6mm; }}
+  .note {{ padding:11px 15px; background:{CLARO}; border-left:3px solid {ROXO2}; border-radius:6px; font-size:9pt; color:{CORPO}; line-height:1.5; }}
+  .note strong {{ color:{TINTA}; }}
   .foot {{ margin-top:9mm; padding-top:10px; border-top:1px solid {BORDA}; font-size:8.5pt; color:{SUAVE}; display:flex; justify-content:space-between; }}
 </style></head><body>
 
 <!-- 1. CAPA -->
 <section class="page capa">
   <div class="capa-top">
-    <span class="kick" style="margin:0"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:{ROXO2};margin-right:7px"></span>NEXUS AI &middot; PROPOSTA COMERCIAL</span>
-    <div><img class="ico" src="{LOGO}"><span class="wm">Nexus AI</span></div>
+    <span class="eyebrow"><span class="kdot"></span>Proposta Comercial</span>
+    <div class="lockup"><img src="{LOGO}"><span class="wm">Nexus AI</span></div>
   </div>
   <h1>Desenvolvimento de<br>Dashboard Analytics</h1>
-  <div class="sub">Desenvolvimento de dashboard analytics completo para a empresa Matrix Fitness Group, com painéis customizados e otimizados para a gestão de estoque, vendas, financeiro e demandas.</div>
+  <div class="sub">Desenvolvimento de dashboard analytics completo para a empresa Matrix Group, com painéis customizados e otimizados para a gestão de estoque, vendas, financeiro e demandas.</div>
   <div class="metabox">
     <div class="cell"><span class="meta-lbl">Cliente</span>
-      <div class="meta-row"><strong>Empresa:</strong> Matrix Fitness Group</div>
+      <div class="meta-row"><strong>Empresa:</strong> Matrix Group</div>
+      <div class="meta-sub">{EMPRESA_RAZAO}</div>
       <div class="meta-row"><strong>CNPJ:</strong> 34.161.829/0001-98</div>
       <div class="meta-row"><strong>Responsável:</strong> Ícaro Lucena</div>
     </div>
@@ -353,18 +356,17 @@ HTML = f"""<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><style>
   <div class="intro">Quatro módulos de dashboard que reúnem, num só lugar e prontos para decisão, os números que hoje estão espalhados: <strong>estoque</strong> (incluindo o acompanhamento por ciclos), <strong>vendas</strong>, <strong>financeiro por empresa</strong> e <strong>demandas</strong>. A entrega é <strong>por módulos</strong>: assim que um módulo fica pronto, ele já entra em uso, sem esperar o projeto inteiro terminar.</div>
   <div class="mcs">{mini_modulos()}</div>
   <div class="flow">
-    <div class="flow-step"><div class="flow-num">1</div><div class="flow-txt"><strong>Arquitetura e integração de dados.</strong> A preparação que organiza a informação e sustenta todos os painéis. É a base do projeto, e está inclusa sem custo (detalhe na proposta comercial).</div></div>
+    <div class="flow-step"><div class="flow-num">1</div><div class="flow-txt"><strong>Arquitetura e integração de dados.</strong> A preparação que organiza a informação e sustenta todos os painéis, base de todo o projeto.</div></div>
     <div class="flow-step"><div class="flow-num">2</div><div class="flow-txt"><strong>Os quatro módulos, um a um.</strong> Cada módulo traz seus relatórios (as telas de análise) e as telas de gerenciamento (onde se cadastra e se define a regra que o relatório usa).</div></div>
     <div class="flow-step"><div class="flow-num">3</div><div class="flow-txt"><strong>Cronograma e proposta comercial.</strong> O plano de implementação em cerca de dois meses e o investimento, ao final do documento.</div></div>
   </div>
-  <div class="sumario"><div class="sm-hd">Neste documento</div><div class="sm-grid">{sumario_html}</div></div>
+  <div class="sumario"><div class="sm-hd">Neste documento</div>{sumario_html}</div>
 </section>
 
 <!-- 3. ARQUITETURA -->
 <section class="page">
   <div class="sec-hd line"><span class="kick">Base do projeto</span><h2>Arquitetura e integração de dados</h2></div>
-  <div class="odoo-note"><strong>A preparação de dados que os painéis precisam e que hoje ainda não existe.</strong> Os itens marcados dependem de o cliente cadastrar e alimentar corretamente as informações no ERP Odoo; nós construímos a parametrização que lê e organiza o que estiver cadastrado lá. <strong>Esta etapa está inclusa sem custo</strong> na proposta.</div>
-  {tabela("Itens de arquitetura", "sustentam todos os módulos", ARQUITETURA)}
+  {tabela("Itens de arquitetura", "sustentam todos os módulos", ARQUITETURA, arq=True)}
 </section>
 
 <!-- 4-7. MODULOS -->
@@ -373,13 +375,13 @@ HTML = f"""<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><style>
 {modulo("Módulo 3 &middot; Prioridade 3", "Financeiro", "Faturamento, gastos e resultado de cada empresa do grupo.", FIN_REL, FIN_GESTAO)}
 {modulo("Módulo 4 &middot; Prioridade 4", "Demandas", "A carteira de pedidos ativos, para organizar a entrega.", DEM_REL, DEM_GESTAO)}
 
-<!-- 8. QUALIDADE + RESUMO -->
+<!-- 8. QUALIDADE + ESCOPO -->
 <section class="page">
   <div class="sec-hd line"><span class="kick">Validação por módulo</span><h2>Conferência e homologação</h2></div>
-  <div class="intro" style="margin-bottom:7mm">Etapa decisiva do projeto: garante que cada número está batendo e que o módulo está pronto para uso real. É feita <strong>a cada módulo</strong>, não só no fim: ao concluir um módulo, os painéis são conferidos contra o dado real, testados e homologados com o cliente antes da entrega, e então o próximo módulo começa. As horas abaixo são o <strong>somatório</strong> desses momentos de conferência e teste ao longo de todos os módulos. <strong>Está inclusa sem custo.</strong></div>
+  <div class="intro" style="margin-bottom:7mm">Garante que cada número está batendo e que o módulo está pronto para uso real. É uma validação completa de cada módulo: conferir se os dados estão corretos e se os painéis entregam as informações de forma coerente. As horas abaixo são o somatório desses momentos de conferência e testes ao longo de todos os módulos.</div>
   {tabela("Atividades", "ao final de cada módulo, antes da entrega", QUALIDADE, idx=False)}
 
-  <div class="sec-hd line" style="margin-top:9mm"><span class="kick">Escopo geral do desenvolvimento</span><h2>Tudo o que será construído</h2></div>
+  <div class="sec-hd line" style="margin-top:9mm"><span class="kick">Escopo do desenvolvimento</span><h2>Tudo o que será desenvolvido</h2></div>
   <table class="invtab">
     <tr><td>Arquitetura e integração de dados &middot; {len(ARQUITETURA)} itens</td><td>{h_arq}h</td></tr>
     <tr><td>Módulo Estoque &middot; {len(ESTOQUE_REL)+len(ESTOQUE_GESTAO)} itens ({len(ESTOQUE_REL)} relatórios)</td><td>{h_est}h</td></tr>
@@ -394,7 +396,7 @@ HTML = f"""<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><style>
 <!-- 9. CRONOGRAMA -->
 <section class="page">
   <div class="sec-hd line"><span class="kick">Cronograma</span><h2>Plano de implementação</h2></div>
-  <div class="intro" style="margin-bottom:8mm">Entrega por módulos, com equipe dedicada. Início em <strong>{INICIO.strftime('%d/%m/%Y')}</strong> (segunda-feira) e conclusão em <strong>{ENTREGA.strftime('%d/%m/%Y')}</strong> (terça-feira), cerca de <strong>dois meses e dez dias</strong>. Cada módulo é entregue e validado assim que fica pronto; a conferência e a homologação acontecem de forma contínua, ao final de cada módulo.</div>
+  <div class="intro" style="margin-bottom:8mm">Entrega por módulos, com equipe dedicada. Início em <strong>{INICIO.strftime('%d/%m/%Y')}</strong> e conclusão em <strong>{ENTREGA.strftime('%d/%m/%Y')}</strong>, cerca de <strong>dois meses</strong>. Cada módulo é entregue e validado assim que fica pronto; a conferência e a homologação acontecem de forma contínua, ao final de cada módulo.</div>
   <div class="g-axis">{eixo()}</div>
   <div style="margin-bottom:8mm">{gantt()}</div>
   <table class="tbl"><thead><tr><th style="width:14%">Fase</th><th>Entrega</th><th class="right" style="width:22%">Janela</th><th class="right" style="width:9%">Horas</th></tr></thead><tbody>{fases_rows}</tbody></table>
@@ -403,12 +405,12 @@ HTML = f"""<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><style>
 
 <!-- 10. PROPOSTA COMERCIAL -->
 <section class="page">
-  <div class="sec-hd line"><span class="kick">Investimento</span><h2>Proposta comercial</h2></div>
-  <div class="intro">A hora de desenvolvimento custa entre <strong>{brl(MERCADO_MIN)} e {brl(MERCADO_MAX)}</strong>, conforme a complexidade. Como a Matrix já é nossa cliente em outros projetos, praticamos um valor bem abaixo disso: <strong>{brl(VALOR_HORA)} a hora</strong>. Além disso, a <strong>arquitetura de dados e integração</strong>, junto com a <strong>conferência e homologação</strong> ({h_cortesia}h no total), não têm custo, por já estarem contempladas no nosso contrato. O que é cobrado são as horas de desenvolvimento de cada módulo ({h_cobradas}h).</div>
+  <div class="sec-hd line"><span class="kick"><span class="kdot"></span>Investimento</span><h2>Proposta comercial</h2></div>
+  <div class="intro">A hora de desenvolvimento custa entre <strong>{brl(MERCADO_MIN)} e {brl(MERCADO_MAX)}</strong>, conforme a complexidade. Como a Matrix já é nossa cliente em outros projetos, praticaremos um valor bem abaixo disso: <strong>{brl(VALOR_HORA)} a hora</strong>. Além disso, a arquitetura de dados e integração, junto com a conferência e homologação ({h_cortesia}h no total), não terão custo, por já estarem contempladas no nosso contrato. O que será cobrado serão as horas de desenvolvimento dos módulos do projeto ({h_modulos}h).</div>
 
   <div class="cards">
     <div class="card out"><span class="lbl">A preço de mercado</span><span class="val">{brl(valor_mercado)}</span><span class="cap">As {h_total}h do projeto a {brl(MERCADO_MIN)}/h, o piso praticado no mercado.</span></div>
-    <div class="card fill"><div class="badge">{desconto}% abaixo</div><span class="lbl">Condição de parceria</span><span class="val">{brl(valor_cobrado)}</span><span class="cap">{h_cobradas}h de módulos a {brl(VALOR_HORA)}/h. As demais {h_cortesia}h (arquitetura, integração, conferência e homologação) já contempladas no contrato.</span></div>
+    <div class="card fill"><div class="badge">{desconto}% abaixo</div><span class="lbl">Condição de cliente</span><span class="val"><span class="mult">2x</span>{brl(parcela)}</span><span class="cap">Duas parcelas mensais iguais. Arquitetura, integração, conferência e homologação já contempladas no contrato.</span></div>
   </div>
 
   <table class="invtab">
@@ -416,16 +418,16 @@ HTML = f"""<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><style>
     <tr><td>Módulo Vendas &middot; {h_ven}h</td><td>{brl(h_ven*VALOR_HORA)}</td></tr>
     <tr><td>Módulo Financeiro &middot; {h_fin}h</td><td>{brl(h_fin*VALOR_HORA)}</td></tr>
     <tr><td>Módulo Demandas &middot; {h_dem}h</td><td>{brl(h_dem*VALOR_HORA)}</td></tr>
-    <tr><td>Arquitetura, integração, conferência e homologação &middot; {h_cortesia}h</td><td class="free">já contemplado no contrato</td></tr>
-    <tr><td>Aplicação de controle de estoque (leitor de código de barras)</td><td class="free">orçada à parte</td></tr>
+    <tr><td>Arquitetura, integração, conferência e homologação &middot; {h_cortesia}h</td><td><span class="risco">{brl(h_cortesia*VALOR_HORA)}</span><span class="semcusto">sem custo</span></td></tr>
+    <tr><td>Projeto para controle de estoque interno</td><td class="free">não incluso (orçar à parte)</td></tr>
     <tr class="tot"><td>INVESTIMENTO TOTAL</td><td>{brl(valor_cobrado)}</td></tr>
   </table>
 
-  <div class="note"><strong>Condição de pagamento:</strong> como o projeto dura cerca de dois meses, o investimento é dividido em <strong>duas parcelas mensais iguais de {brl(parcela)}</strong>. A primeira no ato da assinatura do contrato (antes do início, no fim de julho) e a segunda no mês seguinte. <strong>Validade da proposta:</strong> {VALIDADE.strftime('%d/%m/%Y')}.</div>
-
-  <div class="note"><strong>Depende do cliente.</strong> O prazo depende de o cliente cadastrar e alimentar corretamente no ERP Odoo, ao longo do projeto, os dados de origem necessários: linha e tipo de produto, metas de faturamento, previsão de ciclo, plano de contas, estado (UF) nas despesas, segmento de cliente e vendedor nos pedidos. Como definido na reunião, esses dados passam a ser preenchidos a partir de agora; sem eles no sistema, os respectivos módulos não podem ser construídos e entregues no prazo.</div>
-
-  <div class="note"><strong>Fora deste orçamento.</strong> A aplicação de controle de estoque com leitor de código de barras (conferência e inventário) é uma solução operacional exclusiva e de maior complexidade, não incluída nesta proposta. Caso haja interesse, é orçada separadamente.</div>
+  <div class="notes">
+    <div class="note"><strong>Condição de pagamento.</strong> O projeto dura cerca de dois meses: a primeira parcela é paga no ato da assinatura e a segunda no mês seguinte. Serão duas parcelas iguais de {brl(parcela)}, totalizando {brl(valor_cobrado)}.</div>
+    <div class="note"><strong>Depende do cliente.</strong> O prazo depende de o cliente cadastrar e alimentar corretamente os dados no ERP Odoo e de estar disponível para as reuniões de implantação e alinhamento de dados, dentro da competência da Matrix Group.</div>
+    <div class="note"><strong>Fora deste orçamento.</strong> A aplicação de controle de estoque interno, com leitor de código de barras para conferência e inventário, é uma solução de maior complexidade e não está incluída nesta proposta. Caso haja interesse, deve ser orçada separadamente.</div>
+  </div>
 
   <div class="foot"><div><strong>NEXUS AI</strong> &middot; CNPJ 64.420.135/0001-99</div><div>João Zanini &middot; WhatsApp (61) 98440-9067</div></div>
 </section>
@@ -436,8 +438,22 @@ HTML_PATH.write_text(HTML, encoding="utf-8")
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 subprocess.run([CHROME, "--headless=new", "--disable-gpu", "--no-pdf-header-footer",
                 f"--print-to-pdf={PDF_PATH}", f"file://{HTML_PATH}"], check=True, capture_output=True)
-print("PDF:", PDF_PATH.name)
-print(f"itens={n_itens} relatorios={n_rel} (est{len(ESTOQUE_REL)} ven{len(VENDAS_REL)} fin{len(FIN_REL)} dem{len(DEM_REL)}) gestao={n_gestao} arq={len(ARQUITETURA)}")
-print(f"horas total={h_total} modulos={h_modulos} (est{h_est} ven{h_ven} fin{h_fin} dem{h_dem}) arq={h_arq} qua={h_qua} | cobradas={h_cobradas} cortesia={h_cortesia}")
-print(f"valor cobrado={valor_cobrado} parcela={parcela} mercado={valor_mercado} desconto={desconto}%")
-print(f"cronograma {INICIO} a {ENTREGA} ({span} dias)")
+
+# ── numeracao de paginas (canto inferior direito, a partir da pagina 2) ──
+from pypdf import PdfReader, PdfWriter
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import mm
+reader = PdfReader(str(PDF_PATH)); writer = PdfWriter()
+for i, pg in enumerate(reader.pages, 1):
+    if i > 1:
+        buf = io.BytesIO(); c = canvas.Canvas(buf, pagesize=A4)
+        c.setFont("Helvetica", 8); c.setFillColorRGB(0.42, 0.40, 0.52)
+        c.drawRightString(A4[0] - 15 * mm, 9 * mm, str(i)); c.save(); buf.seek(0)
+        pg.merge_page(PdfReader(buf).pages[0])
+    writer.add_page(pg)
+with open(PDF_PATH, "wb") as f: writer.write(f)
+
+print("PDF:", PDF_PATH.name, "| paginas:", len(reader.pages))
+print(f"itens={n_itens} rel={n_rel} (fin{len(FIN_REL)}) | horas total={h_total} modulos={h_modulos} cortesia={h_cortesia}")
+print(f"cobrado={valor_cobrado} parcela={parcela} mercado={valor_mercado} desc={desconto}%")
