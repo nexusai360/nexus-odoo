@@ -691,7 +691,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
         {/* Caret → painel tri-coluna */}
         <Popover
           align="right"
-          width="w-[42rem] max-w-[calc(100vw-2rem)]"
+          width="w-[46rem] max-w-[calc(100vw-2rem)]"
           trigger={({ toggle, open }) => (
             <button type="button" onClick={toggle} aria-expanded={open} className={cn("inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border px-3 text-sm transition-colors", filtrosAtivos || niveis.length ? "border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300" : "border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground")}>
               <SlidersHorizontal className="size-4" /> Filtrar e agrupar <ChevronDown className="size-3.5" />
@@ -710,8 +710,8 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                     const ativo = chips.some((c) => c.id === chipId);
                     const chip: Chip = { id: chipId, campo: q.campo, kind: q.kind ?? "col", valor: q.valor, label: q.label, ...(q.op ? { op: q.op } : {}), ...(q.valor2 != null ? { valor2: q.valor2 } : {}) };
                     return (
-                      <button key={q.id} type="button" onClick={() => (ativo ? removeChip(chipId) : addChip(chip))} className={cn("flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] transition-colors", ativo ? "bg-violet-500/10 text-violet-700 dark:text-violet-300" : "text-muted-foreground hover:bg-accent hover:text-foreground")}>
-                        <Check className={cn("size-4 shrink-0", ativo ? "text-violet-500" : "text-transparent")} />
+                      <button key={q.id} type="button" onClick={() => (ativo ? removeChip(chipId) : addChip(chip))} className={cn("flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] transition-colors", ativo ? "bg-violet-500/10 text-violet-700 dark:text-violet-300" : "text-foreground hover:bg-accent")}>
+                        <CheckboxView checked={ativo} />
                         <span className="flex-1">{q.label}</span>
                       </button>
                     );
@@ -729,8 +729,8 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                     const idx = niveis.findIndex((x) => x.campo === n.campo);
                     const ativo = idx >= 0;
                     return (
-                      <button key={n.campo} type="button" onClick={() => toggleNivel(n)} className={cn("flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] transition-colors", ativo ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "text-muted-foreground hover:bg-accent hover:text-foreground")}>
-                        <Check className={cn("size-4 shrink-0", ativo ? "text-emerald-500" : "text-transparent")} />
+                      <button key={n.campo} type="button" onClick={() => toggleNivel(n)} className={cn("flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] transition-colors", ativo ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "text-foreground hover:bg-accent")}>
+                        <span aria-hidden className={cn("flex size-4 shrink-0 items-center justify-center rounded border transition-colors", ativo ? "border-emerald-600 bg-emerald-600 text-white" : "border-border bg-card")}>{ativo && <Check className="size-3" />}</span>
                         <span className="flex-1">{n.label}</span>
                         {ativo && <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">{idx + 1}º</span>}
                       </button>
@@ -742,7 +742,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
               <div>
                 <p className="mb-1.5 flex items-center gap-1.5 px-1 text-sm font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400"><Star className="size-3.5" /> Favoritos</p>
                 {salvarOpen ? (
-                  <div className="mb-1.5 flex items-center gap-1.5 px-1">
+                  <div className="flex items-center gap-1.5 px-1">
                     <input autoFocus value={nomeFav} onChange={(e) => setNomeFav(e.target.value)}
                       onKeyDown={(e) => { if (e.key === "Enter") salvarFavorito(); if (e.key === "Escape") { setSalvarOpen(false); setNomeFav(""); } }}
                       placeholder="Nome da visão" aria-label="Nome da visão"
@@ -751,21 +751,24 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                     <button type="button" onClick={() => { setSalvarOpen(false); setNomeFav(""); }} aria-label="Cancelar" className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"><X className="size-4" /></button>
                   </div>
                 ) : (
-                  <button type="button" onClick={() => setSalvarOpen(true)} className="mx-auto mb-1.5 flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-[0.8125rem] font-medium text-amber-600 transition-colors hover:bg-amber-500/10 dark:text-amber-400">
-                    <Plus className="size-4" /> Salvar visão
+                  <button type="button" onClick={() => setSalvarOpen(true)} className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed border-amber-500/40 px-2 py-2 text-[0.8125rem] font-medium text-amber-600 transition-colors hover:bg-amber-500/10 dark:text-amber-400">
+                    <Plus className="size-4" /> Salvar visão atual
                   </button>
                 )}
-                <div className="max-h-[22rem] space-y-0.5 overflow-y-auto pr-0.5">
-                  {favoritos.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">Nenhuma visão salva ainda.</p>}
-                  {favoritos.map((f) => (
-                    <div key={f.id} className="group flex items-center gap-1 rounded-lg px-2 py-1 hover:bg-accent">
-                      <button type="button" onClick={() => { aplicarFavorito(f); close(); }} className="flex flex-1 cursor-pointer items-center gap-2 text-left text-[0.8125rem] text-foreground">
-                        <Star className="size-3.5 text-amber-500" fill="currentColor" />
-                        <span className="truncate">{f.nome}</span>
-                      </button>
-                      <button type="button" onClick={() => setFavoritos((prev) => prev.filter((x) => x.id !== f.id))} aria-label="Excluir favorito" className="cursor-pointer text-muted-foreground/0 transition-colors group-hover:text-muted-foreground hover:text-rose-500"><Trash2 className="size-3.5" /></button>
-                    </div>
-                  ))}
+                <div className="mt-3 border-t border-border pt-2.5">
+                  <p className="mb-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Meus favoritos</p>
+                  <div className="max-h-[18rem] space-y-0.5 overflow-y-auto pr-0.5">
+                    {favoritos.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">Nenhuma visão salva ainda.</p>}
+                    {favoritos.map((f) => (
+                      <div key={f.id} className="group flex items-center gap-1 rounded-lg px-2 py-1 hover:bg-accent">
+                        <button type="button" onClick={() => { aplicarFavorito(f); close(); }} className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left text-[0.8125rem] text-foreground">
+                          <Star className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" fill="currentColor" />
+                          <span className="truncate">{f.nome}</span>
+                        </button>
+                        <button type="button" onClick={() => setFavoritos((prev) => prev.filter((x) => x.id !== f.id))} aria-label="Excluir favorito" className="shrink-0 cursor-pointer text-muted-foreground/0 transition-colors group-hover:text-muted-foreground hover:text-rose-500"><Trash2 className="size-3.5" /></button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
