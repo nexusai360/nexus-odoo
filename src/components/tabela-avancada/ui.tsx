@@ -691,9 +691,10 @@ export function useResizeColunas(storageKey: string, containerRef?: React.RefObj
   const [larguras, setLarguras] = useState<Record<string, number>>({});
   const [hidratado, setHidratado] = useState(false);
   const thRefs = useRef<Record<string, HTMLTableCellElement | null>>({});
-  const [drag, setDrag] = useState<{ key: string; startX: number; startW: number } | null>(null);
-  // Última largura calculada durante o arraste (aplicada ao <col> por DOM; comitada 1x no soltar).
-  const dragWRef = useRef<number | null>(null);
+  // Arraste 100% imperativo (SEM estado React): assim início/fim do arraste NÃO re-renderizam a
+  // tabela inteira (~50 linhas pesadas = ~90ms em dev), que era o "engasga / responde depois".
+  // `arrastandoRef.current` fica com a key sendo arrastada (para o cabeçalho pausar o hover).
+  const arrastandoRef = useRef<string | null>(null);
 
   useEffect(() => {
     try { const r = window.localStorage.getItem(storageKey); if (r) setLarguras(JSON.parse(r)); } catch { /* ignore */ }
@@ -721,20 +722,67 @@ export function useResizeColunas(storageKey: string, containerRef?: React.RefObj
     });
   }, []);
 
+  const colDe = (key: string): HTMLElement | undefined => {
+    const table = thRefs.current[key]?.closest("table") as HTMLTableElement | null;
+    return table
+      ? (Array.from(table.querySelectorAll("colgroup col")).find((c) => (c as HTMLElement).dataset.colkey === key) as HTMLElement | undefined)
+      : undefined;
+  };
+  const limites = () => {
+    const MIN = 56; // ~3 caracteres + padding
+    const visivel = containerRef?.current?.clientWidth ?? (typeof window !== "undefined" ? window.innerWidth : 1200);
+    return { MIN, MAX: Math.max(MIN + 40, Math.round(visivel * 0.85)) };
+  };
+
   const iniciarResize = useCallback((e: React.PointerEvent, key: string) => {
     e.preventDefault();
     e.stopPropagation();
-    const el = thRefs.current[key];
-    const startW = el ? el.getBoundingClientRect().width : (larguras[key] ?? 150);
-    setDrag({ key, startX: e.clientX, startW });
-  }, [larguras]);
+    if (typeof window === "undefined") return;
+    const th = thRefs.current[key];
+    const startW = th ? th.getBoundingClientRect().width : (larguras[key] ?? 150);
+    const startX = e.clientX;
+    const { MIN, MAX } = limites();
+    const colEl = colDe(key);
+    const alca = e.currentTarget as HTMLElement;
+    arrastandoRef.current = key;
+    alca?.setAttribute("data-rz-ativo", "");
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
 
-  // Duplo-clique na alça: ajusta a coluna ao MENOR tamanho que mostra TODO o conteúdo
-  // sem abreviar. Mede a largura NATURAL da coluna deixando a tabela em `table-auto`
-  // por um instante: o navegador dimensiona a coluna ao MAIOR conteúdo entre o
-  // CABEÇALHO (título + setas de ordenar) e TODAS as células visíveis (incluindo a
-  // tag do pedido com ícone e o chevron do dropdown). Medimos e restauramos na mesma
-  // passada síncrona, sem repaint. Funciona encolhendo e aumentando.
+    let lastW = Math.round(startW);
+    let curX = startX;
+    let raf = 0;
+    // rAF-throttle: por mais rápido que o pointermove dispare, escrevemos a largura no <col> no
+    // MÁXIMO uma vez por frame , 1 reflow por frame, sem fila de eventos atrasando o arraste.
+    const aplicar = () => {
+      raf = 0;
+      const w = Math.min(Math.max(Math.round(startW + (curX - startX)), MIN), MAX);
+      lastW = w;
+      if (colEl) colEl.style.width = `${w}px`;
+    };
+    const mover = (ev: PointerEvent) => { curX = ev.clientX; if (!raf) raf = requestAnimationFrame(aplicar); };
+    const soltar = () => {
+      window.removeEventListener("pointermove", mover);
+      window.removeEventListener("pointerup", soltar);
+      window.removeEventListener("pointercancel", soltar);
+      if (raf) cancelAnimationFrame(raf);
+      arrastandoRef.current = null;
+      alca?.removeAttribute("data-rz-ativo");
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      // Comita ao estado UMA única vez (persiste + sincroniza o React); o <col> já está na
+      // largura final, então esse re-render não muda nada visível (não pisca).
+      setLarguras((prev) => ({ ...prev, [key]: lastW }));
+    };
+    window.addEventListener("pointermove", mover);
+    window.addEventListener("pointerup", soltar);
+    window.addEventListener("pointercancel", soltar);
+  }, [larguras, containerRef]);
+
+  // Duplo-clique na alça: ajusta a coluna ao MENOR tamanho que mostra TODO o conteúdo sem abreviar.
+  // Mede a largura NATURAL em `table-auto` numa passada síncrona, aplica no <col> na hora (visual
+  // instantâneo) e SÓ DEPOIS comita ao estado , o re-render acontece após o paint, então o
+  // duplo-clique parece imediato mesmo com a tabela pesada.
   const resetColuna = useCallback((key: string) => {
     const th = thRefs.current[key];
     const table = th?.closest("table") as HTMLTableElement | null;
@@ -750,54 +798,19 @@ export function useResizeColunas(storageKey: string, containerRef?: React.RefObj
     const natural = th.getBoundingClientRect().width; // força layout, já com padding
     table.style.tableLayout = layoutPrev;
     cols.forEach((c, i) => { c.style.width = larguraPrev[i]; });
-    const MIN = 56;
-    const visivel = containerRef?.current?.clientWidth ?? (typeof window !== "undefined" ? window.innerWidth : 1200);
-    const MAX = Math.max(MIN + 40, Math.round(visivel * 0.85));
+    const { MIN, MAX } = limites();
     const largura = Math.min(Math.max(Math.ceil(natural) + 2, MIN), MAX);
+    const colEl = colDe(key);
+    if (colEl) colEl.style.width = `${largura}px`; // visual imediato, antes do commit
     setLarguras((prev) => ({ ...prev, [key]: largura }));
   }, [containerRef]);
 
-  useEffect(() => {
-    if (!drag) return;
-    const MIN = 56; // ~3 caracteres + padding
-    // Máximo = 85% da largura VISÍVEL da tabela (não deixa a coluna estourar a tela).
-    const visivel = containerRef?.current?.clientWidth ?? (typeof window !== "undefined" ? window.innerWidth : 1200);
-    const MAX = Math.max(MIN + 40, Math.round(visivel * 0.85));
-    // Instantâneo E barato: durante o arraste, escrevemos a largura DIRETO no <col> via DOM
-    // (a tabela é table-fixed, então o navegador reflui só aquela coluna, sem React no meio).
-    // Nada de setState nem localStorage por frame , isso é o que deixava o arraste "atrasado".
-    // Comitamos ao estado UMA vez no soltar (aí sim persiste e sincroniza o React).
-    const th = thRefs.current[drag.key];
-    const table = th?.closest("table") as HTMLTableElement | null;
-    const colEl = table
-      ? (Array.from(table.querySelectorAll("colgroup col")).find(
-          (c) => (c as HTMLElement).dataset.colkey === drag.key,
-        ) as HTMLElement | undefined)
-      : undefined;
-    dragWRef.current = null;
-    const mover = (e: PointerEvent) => {
-      const w = Math.min(Math.max(Math.round(drag.startW + (e.clientX - drag.startX)), MIN), MAX);
-      dragWRef.current = w;
-      if (colEl) colEl.style.width = `${w}px`;
-      else setLarguras((prev) => ({ ...prev, [drag.key]: w })); // fallback: sem colgroup ainda
-    };
-    const soltar = () => {
-      const w = dragWRef.current;
-      if (w != null) setLarguras((prev) => ({ ...prev, [drag.key]: w }));
-      setDrag(null);
-    };
-    window.addEventListener("pointermove", mover);
-    window.addEventListener("pointerup", soltar);
-    window.addEventListener("pointercancel", soltar);
-    return () => { window.removeEventListener("pointermove", mover); window.removeEventListener("pointerup", soltar); window.removeEventListener("pointercancel", soltar); };
-  }, [drag, containerRef]);
-
-  return { larguras, setRef, medirFaltantes, iniciarResize, resetColuna, resizingKey: drag?.key ?? null };
+  return { larguras, setRef, medirFaltantes, iniciarResize, resetColuna, arrastandoRef };
 }
 
 /** Alça de redimensionamento na divisória direita do cabeçalho (cursor col-resize).
  * Duplo-clique restaura a largura original da coluna. */
-export function ResizeHandle({ onPointerDown, onReset, ativo, realce }: { onPointerDown: (e: React.PointerEvent) => void; onReset?: () => void; ativo?: boolean; realce?: boolean }) {
+export function ResizeHandle({ onPointerDown, onReset, realce }: { onPointerDown: (e: React.PointerEvent) => void; onReset?: () => void; realce?: boolean }) {
   return (
     <span
       onPointerDown={onPointerDown}
@@ -809,9 +822,9 @@ export function ResizeHandle({ onPointerDown, onReset, ativo, realce }: { onPoin
       title="Arraste para redimensionar · duplo-clique para restaurar"
       className="group/rz absolute right-0 top-0 z-20 flex h-full w-3 -translate-x-0.5 cursor-col-resize touch-none select-none items-center justify-center"
     >
-      {/* `realce` é controlado por JS: acende quando o mouse está em QUALQUER uma das duas
-          colunas vizinhas desta divisória (não dá para saber isso só com CSS/group-hover). */}
-      <span className={cn("w-0.5 rounded-full transition-all", ativo ? "h-2/3 bg-violet-500" : realce ? "h-2/3 bg-violet-400/70" : "h-1/2 bg-transparent group-hover/rz:h-2/3 group-hover/rz:bg-violet-400/90")} />
+      {/* Estado ATIVO (arrastando) via atributo `data-rz-ativo` setado no DOM pelo hook , sem
+          re-render. `realce` (JS) acende quando o mouse está numa das duas colunas vizinhas. */}
+      <span className={cn("w-0.5 rounded-full transition-all group-data-[rz-ativo]/rz:h-2/3 group-data-[rz-ativo]/rz:bg-violet-500", realce ? "h-2/3 bg-violet-400/70" : "h-1/2 bg-transparent group-hover/rz:h-2/3 group-hover/rz:bg-violet-400/90")} />
     </span>
   );
 }

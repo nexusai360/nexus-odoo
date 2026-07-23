@@ -432,7 +432,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   );
 
   // Larguras redimensionáveis
-  const { larguras, setRef, medirFaltantes, iniciarResize, resetColuna, resizingKey } = useResizeColunas(`${storageKey}:larg`, scrollRef);
+  const { larguras, setRef, medirFaltantes, iniciarResize, resetColuna, arrastandoRef } = useResizeColunas(`${storageKey}:larg`, scrollRef);
   // Com um MODELO compacto ativo, a tabela roda em table-auto e as colunas de texto são capadas
   // (via max-w + truncate) para o modo compacto ficar de fato compacto; sem modelo, respeita as
   // larguras salvas (table-fixed).
@@ -810,7 +810,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                     // Alinhamento: default numérica -> direita, senão esquerda; `align` sobrepõe.
                     const alinhar = c.align ?? (c.numeric ? "right" : "left");
                     return (
-                      <th key={c.key} ref={setRef(c.key)} onMouseEnter={() => setHoverCol(ci)} onMouseLeave={() => setHoverCol((h) => (h === ci ? null : h))} className={cn("group/th relative overflow-hidden text-left font-medium", primeira ? (expandirRow ? "pl-8 pr-4" : "pl-4 pr-4") : "px-4", compacto ? "py-1.5" : "py-2", alinhar === "right" && "text-right", alinhar === "center" && "text-center")}>
+                      <th key={c.key} ref={setRef(c.key)} onMouseEnter={() => { if (!arrastandoRef.current) setHoverCol(ci); }} onMouseLeave={() => { if (!arrastandoRef.current) setHoverCol((h) => (h === ci ? null : h)); }} className={cn("group/th relative overflow-hidden text-left font-medium", primeira ? (expandirRow ? "pl-8 pr-4" : "pl-4 pr-4") : "px-4", compacto ? "py-1.5" : "py-2", alinhar === "right" && "text-right", alinhar === "center" && "text-center")}>
                         <button type="button" onClick={() => ordenarPor(c.key)} className={cn("flex min-w-0 max-w-full items-center gap-1.5", alinhar === "right" && "ml-auto justify-end", alinhar === "center" && "mx-auto justify-center", c.sortable ? "cursor-pointer hover:text-foreground" : "cursor-default")}>
                           {c.tooltipHeader ? (
                             <TooltipUI>
@@ -833,7 +833,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                             mouse está NESTA coluna ou na SEGUINTE (a borda direita desta é a borda
                             esquerda da próxima), então ao passar numa coluna as duas divisórias
                             vizinhas ficam visíveis, e ambas arrastam de verdade. */}
-                        <ResizeHandle onPointerDown={(e) => iniciarResize(e, c.key)} onReset={() => resetColuna(c.key)} ativo={resizingKey === c.key} realce={hoverCol === ci || hoverCol === ci + 1} />
+                        <ResizeHandle onPointerDown={(e) => iniciarResize(e, c.key)} onReset={() => resetColuna(c.key)} realce={hoverCol === ci || hoverCol === ci + 1} />
                       </th>
                     );
                   })}
