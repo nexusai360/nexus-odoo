@@ -15,7 +15,7 @@ import { Fragment, createContext, useMemo, useRef, useState, useEffect, useLayou
 import {
   Download, SlidersHorizontal, Layers, Star, Search, X, ChevronDown,
   ChevronRight, ChevronLeft, ArrowLeft, List, Columns3, CalendarDays,
-  Trash2, Check, ArrowUp, ArrowDown, ArrowUpDown, Rows3, Tag, Filter, Plus, IdCard, Pencil, Group,
+  Trash2, Check, ArrowUp, ArrowDown, ArrowUpDown, Rows3, Tag, Filter, Plus, IdCard, Pencil,
 } from "lucide-react";
 
 /** Conta as regras (folhas) de uma árvore de filtro personalizado, para o rótulo do chip. */
@@ -124,11 +124,12 @@ function acharScrollerVertical(start: HTMLElement): HTMLElement | null {
 /** Editor de um modelo compacto (nome + colunas). Guarda nome/colunas/busca em
  * estado LOCAL: assim a digitação não re-renderiza a tabela inteira (o que
  * deixava o campo lento). Inclui busca para filtrar a lista de colunas. */
-function EditorModeloCompacto({ colunas, inicialNome, inicialCols, editando, onSalvar, onCancelar }: {
+function EditorModeloCompacto({ colunas, inicialNome, inicialCols, editando, nomesUsados, onSalvar, onCancelar }: {
   colunas: { key: string; label: string }[];
   inicialNome: string;
   inicialCols: string[];
   editando: boolean;
+  nomesUsados: string[];
   onSalvar: (nome: string, cols: string[]) => void;
   onCancelar: () => void;
 }) {
@@ -139,12 +140,14 @@ function EditorModeloCompacto({ colunas, inicialNome, inicialCols, editando, onS
     const t = busca.trim().toLowerCase();
     return t ? colunas.filter((c) => c.label.toLowerCase().includes(t)) : colunas;
   }, [busca, colunas]);
-  const podeSalvar = nome.trim().length > 0 && cols.length > 0;
+  const dupNome = nome.trim().length > 0 && nomesUsados.includes(normalizarBusca(nome));
+  const podeSalvar = nome.trim().length > 0 && cols.length > 0 && !dupNome;
   function toggle(k: string) { setCols((p) => (p.includes(k) ? p.filter((x) => x !== k) : [...p, k])); }
   return (
     <div className="p-1">
       <p className="mb-2 px-1 text-sm font-semibold text-foreground">{editando ? "Editar modelo" : "Novo modelo"}</p>
-      <input autoFocus value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome do modelo (obrigatório)" aria-label="Nome do modelo compacto" className="mb-2 h-9 w-full rounded-lg border border-border bg-card px-2.5 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+      <input autoFocus value={nome} onChange={(e) => setNome(e.target.value)} maxLength={20} placeholder="Nome do modelo (obrigatório)" aria-label="Nome do modelo compacto" className="mb-1.5 h-8 w-full rounded-lg border border-border bg-card px-2.5 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+      {dupNome && <p className="mb-1.5 px-1 text-xs text-rose-500">Já existe um modelo com esse nome.</p>}
       <div className="relative mb-1.5">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
         <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar coluna" aria-label="Buscar coluna" className="h-8 w-full rounded-lg border border-border bg-card pl-8 pr-2 text-[0.8125rem] text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
@@ -223,6 +226,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   const [favoritos, setFavoritos] = useState<Favorito[]>([]);
   const [avancadoOpen, setAvancadoOpen] = useState(false);
   const [salvarOpen, setSalvarOpen] = useState(false);
+  const [favEditId, setFavEditId] = useState<string | null>(null); // favorito sendo renomeado
   const [nomeFav, setNomeFav] = useState("");
   const [toast, setToast] = useState<string | null>(null);
   const [sugOpen, setSugOpen] = useState(false);
@@ -507,10 +511,19 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   function salvarFavorito() {
     const nome = nomeFav.trim();
     if (!nome) return; // nome obrigatório: sem nome não salva
+    if (favoritos.some((f) => normalizarBusca(f.nome) === normalizarBusca(nome))) { setToast("Já existe um favorito com esse nome."); return; }
     const fav: Favorito = { id: `f${favSeq++}`, nome, snap: { chips, niveis, busca, vis, ordem, sorts, arvore, compacto, mostrarVenda } };
     setFavoritos((prev) => [...prev, fav]);
     setNomeFav(""); setSalvarOpen(false);
     setToast(`Visão "${fav.nome}" salva.`);
+  }
+  // Edita SOMENTE o nome de um favorito (não altera os filtros/config guardados).
+  function salvarEdicaoFav() {
+    const nome = nomeFav.trim();
+    if (!nome || !favEditId) return;
+    if (favoritos.some((f) => f.id !== favEditId && normalizarBusca(f.nome) === normalizarBusca(nome))) { setToast("Já existe um favorito com esse nome."); return; }
+    setFavoritos((prev) => prev.map((f) => (f.id === favEditId ? { ...f, nome } : f)));
+    setFavEditId(null); setNomeFav("");
   }
   function aplicarFavorito(f: Favorito) {
     setChips(f.snap.chips); setNiveis(f.snap.niveis); setBusca(f.snap.busca);
@@ -538,6 +551,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   function salvarCompacto(nomeRaw: string, cols: string[]) {
     const nome = nomeRaw.trim();
     if (!nome || cols.length === 0) return; // nome obrigatório + ao menos 1 coluna
+    if (visoesCompactas.some((v) => v.id !== compEditId && normalizarBusca(v.nome) === normalizarBusca(nome))) { setToast("Já existe um modelo com esse nome."); return; }
     if (compEditId) {
       const id = compEditId;
       setVisoesCompactas((prev) => prev.map((v) => (v.id === id ? { ...v, nome, colunas: cols } : v)));
@@ -592,12 +606,12 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
             clicável para aplicar/tirar) ou o EDITOR (ao criar/editar), nunca os dois juntos. */}
         <Popover
           align="left"
-          width="w-72 max-w-[calc(100vw-2rem)]"
+          width="w-80 max-w-[calc(100vw-2rem)]"
           trigger={({ toggle, open }) => (
             <button type="button" onClick={toggle} aria-expanded={open}
               className={cn("inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition-colors",
                 compacto ? "border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300" : "border-border bg-card text-foreground hover:bg-accent")}>
-              <Rows3 className="size-4" /> {modeloCompacto ? modeloCompacto.nome : "Compacto"}
+              <Rows3 className="size-4" /> Compacto
             </button>
           )}
         >
@@ -611,6 +625,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                   inicialNome={compNome}
                   inicialCols={compCols}
                   editando={!!compEditId}
+                  nomesUsados={visoesCompactas.filter((v) => v.id !== compEditId).map((v) => normalizarBusca(v.nome))}
                   onSalvar={salvarCompacto}
                   onCancelar={() => setCompEditId(null)}
                 />
@@ -631,10 +646,10 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                     </button>
                     {visoesCompactas.map((v) => (
                       <div key={v.id} className={cn("group flex items-center gap-1.5 rounded-lg pr-1", compactoAtivo === v.id ? "bg-violet-500/10" : "hover:bg-accent")}>
-                        <button type="button" onClick={() => (compactoAtivo === v.id ? desligarCompacto() : aplicarCompacto(v.id))} className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem]">
+                        <button type="button" onClick={() => (compactoAtivo === v.id ? desligarCompacto() : aplicarCompacto(v.id))} className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-[0.8125rem]">
                           <Rows3 className={cn("size-3.5 shrink-0", compactoAtivo === v.id ? "text-violet-500" : "text-muted-foreground")} />
-                          <span className={cn("min-w-0 flex-1 truncate", compactoAtivo === v.id ? "text-violet-700 dark:text-violet-300" : "text-foreground")}>{v.nome}</span>
-                          <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[0.7rem] font-medium tabular-nums text-muted-foreground" title={`${v.colunas.length} colunas`}>{v.colunas.length}</span>
+                          <span className={cn("min-w-0 truncate", compactoAtivo === v.id ? "text-violet-700 dark:text-violet-300" : "text-foreground")}>{v.nome}</span>
+                          <span className={cn("shrink-0 rounded-full px-1.5 text-[0.7rem] font-medium tabular-nums", compactoAtivo === v.id ? "bg-violet-500/15 text-violet-600 dark:text-violet-300" : "bg-muted text-muted-foreground")} title={`${v.colunas.length} colunas`}>{v.colunas.length}</span>
                         </button>
                         <button type="button" onClick={() => editarCompacto(v)} aria-label={`Editar ${v.nome}`} className="shrink-0 cursor-pointer rounded p-1 text-muted-foreground/0 transition-colors group-hover:text-muted-foreground hover:text-violet-600"><Pencil className="size-3.5" /></button>
                         <button type="button" onClick={() => excluirCompacto(v.id)} aria-label={`Excluir ${v.nome}`} className="shrink-0 cursor-pointer rounded p-1 text-muted-foreground/0 transition-colors group-hover:text-muted-foreground hover:text-rose-500"><Trash2 className="size-3.5" /></button>
@@ -762,7 +777,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
             <div className="grid grid-cols-1 gap-3 p-1 sm:grid-cols-3">
               {/* Filtros */}
               <div>
-                <p className="mb-1.5 flex items-center gap-1.5 px-1 text-sm font-semibold uppercase tracking-wide text-violet-600 dark:text-violet-400"><SlidersHorizontal className="size-3.5" /> Filtros</p>
+                <p className="mb-1.5 flex items-center gap-1.5 px-1 text-sm font-semibold uppercase tracking-wide text-violet-600 dark:text-violet-400"><Filter className="size-3.5" /> Filtros</p>
                 <div className="max-h-[20rem] space-y-0.5 overflow-y-auto pr-0.5">
                   {presets.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">Sem filtros rápidos.</p>}
                   {presets.map((q) => {
@@ -771,7 +786,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                     const chip: Chip = { id: chipId, campo: q.campo, kind: q.kind ?? "col", valor: q.valor, label: q.label, ...(q.op ? { op: q.op } : {}), ...(q.valor2 != null ? { valor2: q.valor2 } : {}) };
                     return (
                       <button key={q.id} type="button" onClick={() => (ativo ? removeChip(chipId) : addChip(chip))} className={cn("flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] transition-colors", ativo ? "bg-violet-500/10 text-violet-700 dark:text-violet-300" : "text-foreground hover:bg-accent")}>
-                        <Filter className={cn("size-3.5 shrink-0", ativo ? "text-violet-500" : "text-muted-foreground")} />
+                        <Filter className={cn("size-3 shrink-0", ativo ? "text-violet-500" : "text-muted-foreground")} />
                         <span className="flex-1">{q.label}</span>
                       </button>
                     );
@@ -790,7 +805,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                     const ativo = idx >= 0;
                     return (
                       <button key={n.campo} type="button" onClick={() => toggleNivel(n)} className={cn("flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] transition-colors", ativo ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "text-foreground hover:bg-accent")}>
-                        <Group className={cn("size-3.5 shrink-0", ativo ? "text-emerald-500" : "text-muted-foreground")} />
+                        <Layers className={cn("size-3 shrink-0", ativo ? "text-emerald-500" : "text-muted-foreground")} />
                         <span className="flex-1">{n.label}</span>
                         {ativo && <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">{idx + 1}º</span>}
                       </button>
@@ -801,17 +816,23 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
               {/* Favoritos */}
               <div>
                 <p className="mb-1.5 flex items-center gap-1.5 px-1 text-sm font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400"><Star className="size-3.5" /> Favoritos</p>
-                {salvarOpen ? (
-                  <div className="flex items-center gap-1.5 px-1">
-                    <input autoFocus value={nomeFav} onChange={(e) => setNomeFav(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter") salvarFavorito(); if (e.key === "Escape") { setSalvarOpen(false); setNomeFav(""); } }}
-                      placeholder="Nome da visão" aria-label="Nome da visão"
-                      className="h-8 min-w-0 flex-1 rounded-lg border border-border bg-card px-2.5 text-[0.8125rem] text-foreground placeholder:text-muted-foreground focus-visible:border-amber-500/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50" />
-                    <button type="button" onClick={salvarFavorito} disabled={!nomeFav.trim()} aria-label="Salvar visão" className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-amber-600 transition-colors hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-40 dark:text-amber-400"><Check className="size-3.5" /></button>
-                    <button type="button" onClick={() => { setSalvarOpen(false); setNomeFav(""); }} aria-label="Cancelar" className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-rose-500/10 hover:text-rose-500"><X className="size-3.5" /></button>
-                  </div>
-                ) : (
-                  <button type="button" onClick={() => setSalvarOpen(true)} className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed border-amber-500/40 px-2 py-2 text-[0.8125rem] font-medium text-amber-600 transition-colors hover:bg-amber-500/10 dark:text-amber-400">
+                {salvarOpen ? (() => {
+                  const dup = nomeFav.trim().length > 0 && favoritos.some((f) => normalizarBusca(f.nome) === normalizarBusca(nomeFav));
+                  return (
+                    <div>
+                      <div className="flex items-center gap-1.5 px-1">
+                        <input autoFocus value={nomeFav} onChange={(e) => setNomeFav(e.target.value)} maxLength={20}
+                          onKeyDown={(e) => { if (e.key === "Enter") salvarFavorito(); if (e.key === "Escape") { setSalvarOpen(false); setNomeFav(""); } }}
+                          placeholder="Nome da visão" aria-label="Nome da visão"
+                          className="h-8 min-w-0 flex-1 rounded-lg border border-border bg-card px-2.5 text-[0.8125rem] text-foreground placeholder:text-muted-foreground focus-visible:border-amber-500/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50" />
+                        <button type="button" onClick={salvarFavorito} disabled={!nomeFav.trim() || dup} aria-label="Salvar visão" className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-amber-600 transition-colors hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-40 dark:text-amber-400"><Check className="size-3.5" /></button>
+                        <button type="button" onClick={() => { setSalvarOpen(false); setNomeFav(""); }} aria-label="Cancelar" className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-rose-500/10 hover:text-rose-500"><X className="size-3.5" /></button>
+                      </div>
+                      {dup && <p className="mt-1 px-1 text-xs text-rose-500">Já existe um favorito com esse nome.</p>}
+                    </div>
+                  );
+                })() : (
+                  <button type="button" onClick={() => { setFavEditId(null); setNomeFav(""); setSalvarOpen(true); }} className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed border-amber-500/40 px-2 py-2 text-[0.8125rem] font-medium text-amber-600 transition-colors hover:bg-amber-500/10 dark:text-amber-400">
                     <Plus className="size-4" /> Salvar visão atual
                   </button>
                 )}
@@ -819,15 +840,31 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                   <p className="mb-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Meus favoritos</p>
                   <div className="max-h-[18rem] space-y-0.5 overflow-y-auto pr-0.5">
                     {favoritos.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">Nenhuma visão salva ainda.</p>}
-                    {favoritos.map((f) => (
+                    {favoritos.map((f) => (favEditId === f.id ? (() => {
+                      const dup = nomeFav.trim().length > 0 && favoritos.some((x) => x.id !== f.id && normalizarBusca(x.nome) === normalizarBusca(nomeFav));
+                      return (
+                        <div key={f.id} className="px-1 py-1">
+                          <div className="flex items-center gap-1.5">
+                            <input autoFocus value={nomeFav} onChange={(e) => setNomeFav(e.target.value)} maxLength={20}
+                              onKeyDown={(e) => { if (e.key === "Enter") salvarEdicaoFav(); if (e.key === "Escape") { setFavEditId(null); setNomeFav(""); } }}
+                              placeholder="Nome da visão" aria-label="Novo nome do favorito"
+                              className="h-8 min-w-0 flex-1 rounded-lg border border-border bg-card px-2.5 text-[0.8125rem] text-foreground placeholder:text-muted-foreground focus-visible:border-amber-500/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50" />
+                            <button type="button" onClick={salvarEdicaoFav} disabled={!nomeFav.trim() || dup} aria-label="Salvar nome" className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-amber-600 transition-colors hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-40 dark:text-amber-400"><Check className="size-3.5" /></button>
+                            <button type="button" onClick={() => { setFavEditId(null); setNomeFav(""); }} aria-label="Cancelar" className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-rose-500/10 hover:text-rose-500"><X className="size-3.5" /></button>
+                          </div>
+                          <p className="mt-1 px-1 text-xs">{dup ? <span className="text-rose-500">Já existe um favorito com esse nome.</span> : <span className="text-muted-foreground">Altera apenas o nome (mantém os filtros salvos).</span>}</p>
+                        </div>
+                      );
+                    })() : (
                       <div key={f.id} className="group flex items-center gap-1 rounded-lg px-2 py-1 hover:bg-accent">
                         <button type="button" onClick={() => { aplicarFavorito(f); close(); }} className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left text-[0.8125rem] text-foreground">
-                          <Star className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" fill="currentColor" />
+                          <Star className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
                           <span className="truncate">{f.nome}</span>
                         </button>
-                        <button type="button" onClick={() => setFavoritos((prev) => prev.filter((x) => x.id !== f.id))} aria-label="Excluir favorito" className="shrink-0 cursor-pointer text-muted-foreground/0 transition-colors group-hover:text-muted-foreground hover:text-rose-500"><Trash2 className="size-3.5" /></button>
+                        <button type="button" onClick={() => { setSalvarOpen(false); setFavEditId(f.id); setNomeFav(f.nome); }} aria-label={`Renomear ${f.nome}`} className="shrink-0 cursor-pointer rounded p-1 text-muted-foreground/0 transition-colors group-hover:text-muted-foreground hover:text-amber-600"><Pencil className="size-3.5" /></button>
+                        <button type="button" onClick={() => setFavoritos((prev) => prev.filter((x) => x.id !== f.id))} aria-label="Excluir favorito" className="shrink-0 cursor-pointer rounded p-1 text-muted-foreground/0 transition-colors group-hover:text-muted-foreground hover:text-rose-500"><Trash2 className="size-3.5" /></button>
                       </div>
-                    ))}
+                    )))}
                   </div>
                 </div>
               </div>
