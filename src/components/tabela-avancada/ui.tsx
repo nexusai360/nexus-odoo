@@ -109,15 +109,24 @@ export function Select({
   // Navegação por teclado (setas/Enter/Esc/Home/End) com item destacado `hi`.
   const [hi, setHi] = useState(0);
   const hiRef = useRef<HTMLButtonElement>(null);
+  // Só rola a lista quando o destaque muda por TECLADO (ou ao abrir). No hover a
+  // rolagem seguia o mouse e brigava com o scroll manual (a lista "pulava sozinha"
+  // ao rolar com o cursor sobre ela). Ref, não estado: não dispara render.
+  const navTeclado = useRef(false);
   useEffect(() => {
     if (!open) return;
     const idx = lista.findIndex((o) => o.value === value);
+    navTeclado.current = true;
     setHi(idx >= 0 ? idx : 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
   useEffect(() => { setHi((h) => Math.min(h, Math.max(0, lista.length - 1))); }, [lista.length]);
-  useEffect(() => { if (open) hiRef.current?.scrollIntoView({ block: "nearest" }); }, [hi, open]);
+  useEffect(() => {
+    if (open && navTeclado.current) hiRef.current?.scrollIntoView({ block: "nearest" });
+    navTeclado.current = false;
+  }, [hi, open]);
   function onKeyNav(e: React.KeyboardEvent) {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Home" || e.key === "End") navTeclado.current = true;
     if (e.key === "ArrowDown") { e.preventDefault(); setHi((h) => Math.min(h + 1, lista.length - 1)); }
     else if (e.key === "ArrowUp") { e.preventDefault(); setHi((h) => Math.max(h - 1, 0)); }
     else if (e.key === "Enter") { e.preventDefault(); const o = lista[hi]; if (o) { onChange(o.value); setOpen(false); } }
@@ -187,7 +196,7 @@ export function Select({
                 key={o.value}
                 ref={i === hi ? hiRef : undefined}
                 type="button"
-                onMouseEnter={() => setHi(i)}
+                onMouseEnter={() => { navTeclado.current = false; setHi(i); }}
                 onClick={() => { onChange(o.value); setOpen(false); }}
                 className={cn(
                   "flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors",

@@ -9,7 +9,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Plus, Trash2, CornerDownRight, Layers, Search, Folder } from "lucide-react";
+import { Plus, Trash2, CornerDownRight, Layers, Search, Folder, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Modal, Btn, Select } from "./ui";
 import {
@@ -56,6 +56,7 @@ function SeletorCampo({ value, campos, onChange }: { value: string; campos: Camp
   const btnRef = useRef<HTMLButtonElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
   const hiRef = useRef<HTMLButtonElement>(null);
+  const navTeclado = useRef(false);
   const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
   // A lista já chega curada (colunas ATIVAS na ORDEM do usuário / do modelo compacto),
   // então aqui só filtra pela busca. Sem toggle de "comuns".
@@ -73,6 +74,7 @@ function SeletorCampo({ value, campos, onChange }: { value: string; campos: Camp
     const el = btnRef.current;
     if (el) { const r = el.getBoundingClientRect(); setPos({ top: r.bottom + 4, left: r.left, width: Math.max(r.width, 320) }); }
     const idx = lista.findIndex((c) => c.key === value);
+    navTeclado.current = true;
     setHi(idx >= 0 ? idx : 0);
     const onDoc = (e: MouseEvent) => {
       const t = e.target as Node;
@@ -84,8 +86,12 @@ function SeletorCampo({ value, campos, onChange }: { value: string; campos: Camp
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
   useEffect(() => { setHi((h) => Math.min(h, Math.max(0, lista.length - 1))); }, [lista.length]);
-  useEffect(() => { if (open) hiRef.current?.scrollIntoView({ block: "nearest" }); }, [hi, open]);
+  useEffect(() => {
+    if (open && navTeclado.current) hiRef.current?.scrollIntoView({ block: "nearest" });
+    navTeclado.current = false;
+  }, [hi, open]);
   function onKeyNav(e: React.KeyboardEvent) {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Home" || e.key === "End") navTeclado.current = true;
     if (e.key === "ArrowDown") { e.preventDefault(); setHi((h) => Math.min(h + 1, lista.length - 1)); }
     else if (e.key === "ArrowUp") { e.preventDefault(); setHi((h) => Math.max(h - 1, 0)); }
     else if (e.key === "Enter") { e.preventDefault(); const c = lista[hi]; if (c) { onChange(c.key); setOpen(false); setBusca(""); } }
@@ -105,7 +111,7 @@ function SeletorCampo({ value, campos, onChange }: { value: string; campos: Camp
           <input autoFocus value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar campo..." className="mb-1 h-8 w-full rounded-lg border border-border bg-card px-2.5 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
           <div className="max-h-80 overflow-y-auto">
             {lista.map((c, i) => (
-              <button key={c.key} ref={i === hi ? hiRef : undefined} type="button" onMouseEnter={() => setHi(i)} onClick={() => { onChange(c.key); setOpen(false); setBusca(""); }} className={cn("flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors", i === hi ? "bg-accent text-foreground" : c.key === value ? "text-foreground hover:bg-accent/60" : "text-muted-foreground hover:bg-accent hover:text-foreground")}>
+              <button key={c.key} ref={i === hi ? hiRef : undefined} type="button" onMouseEnter={() => { navTeclado.current = false; setHi(i); }} onClick={() => { onChange(c.key); setOpen(false); setBusca(""); }} className={cn("flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors", i === hi ? "bg-accent text-foreground" : c.key === value ? "text-foreground hover:bg-accent/60" : "text-muted-foreground hover:bg-accent hover:text-foreground")}>
                 <span className="truncate">{c.label}</span>
                 <span className="text-[0.65rem] uppercase text-muted-foreground/60">{c.grupo}</span>
               </button>
@@ -119,27 +125,45 @@ function SeletorCampo({ value, campos, onChange }: { value: string; campos: Camp
   );
 }
 
+const vazio = (v?: string) => !String(v ?? "").trim();
+
+/** Regra "completa": operadores sem argumento (preenchido/vazio) valem sempre; os
+ * demais exigem o(s) valor(es). Base para travar o "Aplicar filtro" e destacar o que
+ * falta , se o campo é para ficar vazio, o operador certo é "está vazio". */
+function regraCompleta(r: Regra, campoBy: Record<string, CampoUI>): boolean {
+  const ops = OPERADORES[campoBy[r.campo]?.tipo ?? "texto"];
+  const opDef = ops.find((o) => o.op === r.op) ?? ops[0];
+  if (opDef.args === 0) return true;
+  if (vazio(r.valor)) return false;
+  if (opDef.args === 2 && vazio(r.valor2)) return false;
+  return true;
+}
+function arvoreCompleta(no: NoRegra, campoBy: Record<string, CampoUI>): boolean {
+  return no.tipo === "regra" ? regraCompleta(no, campoBy) : no.filhos.every((f) => arvoreCompleta(f, campoBy));
+}
+
 function ValorInput({ campo, regra, onSet }: { campo: CampoUI; regra: Regra; onSet: (patch: Partial<Regra>) => void }) {
   const ops = OPERADORES[campo.tipo];
   const opDef = ops.find((o) => o.op === regra.op) ?? ops[0];
   if (opDef.args === 0) return null;
+  const erro = "!border-rose-400 ring-1 ring-rose-400/30"; // realce do valor faltando
 
   if (campo.tipo === "opcao") {
     const opts = campo.opcoes && campo.opcoes.length ? campo.opcoes : [];
     // Valor vindo de LISTA: cresce para mostrar o rótulo por inteiro (sem reticências)
     // e o popup casa a largura da lista do campo (grow + minWidthPx).
     return (
-      <Select grow minWidthPx={340} value={regra.valor} options={opts.map((o) => ({ value: o.valor, label: o.label }))} placeholder="Selecione..." onChange={(v) => onSet({ valor: v })} ariaLabel="Valor" />
+      <Select grow minWidthPx={340} value={regra.valor} options={opts.map((o) => ({ value: o.valor, label: o.label }))} placeholder="Selecione..." onChange={(v) => onSet({ valor: v })} ariaLabel="Valor" triggerClassName={vazio(regra.valor) ? erro : undefined} />
     );
   }
   const inputType = campo.tipo === "numero" ? "number" : campo.tipo === "data" ? "date" : "text";
   return (
     <div className="flex items-center gap-1.5">
-      <input type={inputType} value={regra.valor} onChange={(e) => onSet({ valor: e.target.value })} placeholder="valor" className={cn(SEL, "min-w-[8.5rem]")} />
+      <input type={inputType} value={regra.valor} onChange={(e) => onSet({ valor: e.target.value })} placeholder="valor" className={cn(SEL, "min-w-[8.5rem]", vazio(regra.valor) && erro)} />
       {opDef.args === 2 && (
         <>
           <span className="text-xs text-muted-foreground">e</span>
-          <input type={inputType} value={regra.valor2 ?? ""} onChange={(e) => onSet({ valor2: e.target.value })} placeholder="valor" className={cn(SEL, "min-w-[8.5rem]")} />
+          <input type={inputType} value={regra.valor2 ?? ""} onChange={(e) => onSet({ valor2: e.target.value })} placeholder="valor" className={cn(SEL, "min-w-[8.5rem]", vazio(regra.valor2) && erro)} />
         </>
       )}
     </div>
@@ -291,6 +315,8 @@ export function FiltroAvancado({
 
   const campoByLike = campoBy as unknown as Record<string, CampoLike>;
   const contagem = useMemo(() => base.filter((row) => testaNo(row, arvore, campoByLike)).length, [base, arvore, campoByLike]);
+  // Trava o "Aplicar filtro" enquanto houver regra com valor obrigatório em branco.
+  const valida = useMemo(() => arvoreCompleta(arvore, campoBy), [arvore, campoBy]);
 
   return (
     <Modal
@@ -301,12 +327,18 @@ export function FiltroAvancado({
       size="2xl"
       footer={
         <>
-          <span className="mr-auto inline-flex items-center gap-1.5 text-sm text-muted-foreground">
-            <Layers className="size-4 text-violet-500" />
-            <span className="font-medium text-foreground">{contagem}</span> resultado{contagem === 1 ? "" : "s"} correspondente{contagem === 1 ? "" : "s"}
-          </span>
+          {valida ? (
+            <span className="mr-auto inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+              <Layers className="size-4 text-violet-500" />
+              <span className="font-medium text-foreground">{contagem}</span> resultado{contagem === 1 ? "" : "s"} correspondente{contagem === 1 ? "" : "s"}
+            </span>
+          ) : (
+            <span className="mr-auto inline-flex items-center gap-1.5 text-sm font-medium text-amber-600 dark:text-amber-400">
+              <AlertCircle className="size-4" /> Preencha os valores em destaque (ou use &quot;está vazio&quot;)
+            </span>
+          )}
           <Btn variant="ghost" onClick={onClose}>Descartar</Btn>
-          <Btn variant="primary" onClick={() => { onAplicar(arvore); onClose(); }}><Search className="size-4" /> Aplicar filtro</Btn>
+          <Btn variant="primary" disabled={!valida} onClick={() => { if (!valida) return; onAplicar(arvore); onClose(); }}><Search className="size-4" /> Aplicar filtro</Btn>
         </>
       }
     >
