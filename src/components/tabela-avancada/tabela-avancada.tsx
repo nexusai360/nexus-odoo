@@ -1115,13 +1115,17 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
       {view === "lista" && (
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card">
           <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto">
-            {/* Com larguras fixas (colFixo), a tabela tem largura de CONTEÚDO (w-max): redimensionar
-                uma coluna faz a tabela CRESCER e rolar na horizontal, sem redistribuir/encolher as
-                outras (fim do "estilingue" e do produtos cortado). Sem larguras ainda, w-full. */}
-            <table className={cn(colFixo ? "w-max" : "w-full min-w-[60rem]", compacto ? "text-xs" : "text-sm", colFixo ? "table-fixed" : "table-auto")}>
+            {/* A tabela PREENCHE o container (w-full): o cabeçalho e o total (cinza) vão até o fim.
+                Uma coluna "preenchedora" auto no colgroup (abaixo) absorve o vazio à direita, então
+                redimensionar uma coluna real NÃO estica/encolhe as outras (sem "estilingue"): a
+                tabela cresce e rola só quando as colunas passam da largura da tela. */}
+            <table className={cn("w-full min-w-[60rem]", compacto ? "text-xs" : "text-sm", colFixo ? "table-fixed" : "table-auto")}>
               {colFixo && (
                 <colgroup>
                   {colsVisiveis.map((c) => <col key={c.key} data-colkey={c.key} style={{ width: larguras[c.key] }} />)}
+                  {/* Coluna preenchedora: absorve o vazio à direita (cabeçalho/total cinzas vão até
+                      o fim, sem esticar as colunas reais). Sem alça, sem conteúdo. */}
+                  <col aria-hidden />
                 </colgroup>
               )}
               <thead className="sticky top-0 z-20 bg-muted">
