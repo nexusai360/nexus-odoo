@@ -3,6 +3,43 @@
 Branch ativa: **`feat/entregas-parciais-base-calculo`** (LOCAL, nada em produção).
 Dev local no ar em `localhost:3000` (containers `db`+`redis` up; Docker reiniciado/destravado em 2026-07-21).
 
+## Onde estamos (2026-07-23, madrugada) , PERFORMANCE DO RESIZE DA TABELA B-09
+
+> **Multi-agente ativo na MESMA branch.** Outras sessões mexeram/mexem em `tabela-avancada.tsx`
+> (memoização de linhas, coluna fixa/cadeado, editor de modelo compacto, favoritos, botão "x") e
+> em `entregas-catalogo.tsx` (**tem alteração NÃO commitada de outra sessão , NÃO tocar**). Só
+> commitar as PRÓPRIAS linhas, isoladas (`git add <arquivo>` do que é seu; sem `-p` interativo aqui).
+
+Frente desta sessão: **performance/UX do redimensionamento de colunas** da tabela genérica
+`src/components/tabela-avancada/{ui.tsx,tabela-avancada.tsx}` (usada no B-09 Entregas Parciais).
+
+**Entregue e commitado (validado no browser com Playwright, dev):**
+- **Resize 100% imperativo + rAF** (`useResizeColunas` em `ui.tsx`): o arraste escreve a largura
+  direto no `<col>` (sem setState/localStorage por frame), com **limiar de arraste** (só arrasta
+  após mover >3px; clique puro não vira arraste nem re-renderiza) e alça ativa via `data-rz-ativo`
+  (CSS, sem re-render). Mediu: passo do arraste de 15-58ms irregular → **8-20ms consistente**.
+- **Duplo-clique (reset) responsivo + animado**: aplica no DOM antes do commit; anima a largura do
+  atual até o natural em **~180ms ease-out** (rAF; respeita `prefers-reduced-motion`; arraste corta
+  a animação). Sem long tasks no reset.
+- **Rodapé (Σ ~753 linhas) memoizado** + `colsVisiveis` memoizado (corta reflow por render).
+- **Botões Compacto/Custo+venda** com estado ativo **translúcido** (variante `Btn "soft"`, não roxo
+  sólido) + `aria-pressed`.
+
+**Saga do resize no MODO COMPACTO (revertida a pedido do dono):** tentei tornar o compacto
+redimensionável e preencher o cinza do cabeçalho/total (absorber/"coluna preenchedora"/`w-max`).
+Isso **quebrou** a truncagem (media a largura natural e inflava a coluna), o cinza e o duplo-clique.
+**Revertido ao estado `dc221b85`** (compacto redimensionável, `table-fixed` + `w-max`: cresce e
+rola; SEM coluna preenchedora, SEM `table-auto` forçado). `colFixo` (l.~587) e a largura da tabela
+(l.~1119) são as ÚNICAS 2 linhas minhas nessa área , nada de outro agente foi tocado.
+
+**PENDENTE / ordem certa (não fiz):** a base é o **item 15** (truncar CÉLULAS de texto a **32
+caracteres com reticências**, incl. **tag de Etapa** e **Observações**, com tooltip do texto cheio,
+em JS , nunca inflar a coluna). Isso é de OUTRA sessão e vive em `entregas-catalogo.tsx` (não
+commitado por ela). **Só depois** do item 15 é que dá pra reativar/afinar resize no compacto sem
+quebrar. Detalhe em `docs/handoff-2026-07-23-ficha-produtos-compacto.md`.
+
+**Único suite vermelho:** `mcp/../model-catalog.test.ts` (pré-existente, alheio, não tocado).
+
 ## Onde estamos (2026-07-22, manhã) , HISTÓRICO TEMPORAL NO NEX: ONDA A ENTREGUE
 
 Frente nova (mesma branch, LOCAL, sem merge). Spec+plano em
