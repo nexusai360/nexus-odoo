@@ -735,7 +735,10 @@ export function useResizeColunas(storageKey: string, containerRef?: React.RefObj
   };
 
   const iniciarResize = useCallback((e: React.PointerEvent, key: string) => {
-    e.preventDefault();
+    // NÃO usamos preventDefault aqui: isso suprimia o `dblclick` e fazia o duplo-clique falhar
+    // ("parece que não cliquei"). O arraste só começa DEPOIS de mover além do limiar (drag
+    // threshold); um clique puro (ou os dois cliques de um duplo-clique) não vira arraste, não
+    // comita estado e não re-renderiza , deixando o dblclick agir limpo.
     e.stopPropagation();
     if (typeof window === "undefined") return;
     const th = thRefs.current[key];
@@ -744,14 +747,18 @@ export function useResizeColunas(storageKey: string, containerRef?: React.RefObj
     const { MIN, MAX } = limites();
     const colEl = colDe(key);
     const alca = e.currentTarget as HTMLElement;
-    arrastandoRef.current = key;
-    alca?.setAttribute("data-rz-ativo", "");
-    document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
 
+    let arrastou = false;
     let lastW = Math.round(startW);
     let curX = startX;
     let raf = 0;
+    const comecar = () => {
+      arrastou = true;
+      arrastandoRef.current = key;
+      alca?.setAttribute("data-rz-ativo", "");
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+    };
     // rAF-throttle: por mais rápido que o pointermove dispare, escrevemos a largura no <col> no
     // MÁXIMO uma vez por frame , 1 reflow por frame, sem fila de eventos atrasando o arraste.
     const aplicar = () => {
@@ -760,12 +767,20 @@ export function useResizeColunas(storageKey: string, containerRef?: React.RefObj
       lastW = w;
       if (colEl) colEl.style.width = `${w}px`;
     };
-    const mover = (ev: PointerEvent) => { curX = ev.clientX; if (!raf) raf = requestAnimationFrame(aplicar); };
+    const mover = (ev: PointerEvent) => {
+      curX = ev.clientX;
+      if (!arrastou) {
+        if (Math.abs(curX - startX) < 3) return; // ainda é clique, não arraste
+        comecar();
+      }
+      if (!raf) raf = requestAnimationFrame(aplicar);
+    };
     const soltar = () => {
       window.removeEventListener("pointermove", mover);
       window.removeEventListener("pointerup", soltar);
       window.removeEventListener("pointercancel", soltar);
       if (raf) cancelAnimationFrame(raf);
+      if (!arrastou) return; // foi só um clique: nada de commit/re-render (o dblclick cuida do reset)
       arrastandoRef.current = null;
       alca?.removeAttribute("data-rz-ativo");
       document.body.style.cursor = "";
