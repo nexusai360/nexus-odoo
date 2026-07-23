@@ -521,82 +521,67 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
       {/* Toolbar */}
       <div className="mb-3 flex shrink-0 flex-wrap items-center gap-2">
         <Btn variant="outline" onClick={exportar}><Download className="size-4" /> Exportar</Btn>
-        {/* Compacto: popover com MODELOS nomeados (subconjuntos de colunas), aplicáveis na hora,
-            no padrão do "Filtrar e agrupar" (lista à esquerda, editor à direita). */}
+        {/* Compacto: um menu simples. Vejo a LISTA (todas as colunas + modelos, cada um
+            clicável para aplicar/tirar) ou o EDITOR (ao criar/editar), nunca os dois juntos. */}
         <Popover
           align="left"
-          width="w-[40rem] max-w-[calc(100vw-2rem)]"
+          width="w-72 max-w-[calc(100vw-2rem)]"
           trigger={({ toggle, open }) => (
             <button type="button" onClick={toggle} aria-expanded={open}
               className={cn("inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition-colors",
                 compacto ? "border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300" : "border-border bg-card text-foreground hover:bg-accent")}>
-              <Rows3 className="size-4" /> {modeloCompacto ? `Compacto: ${modeloCompacto.nome}` : "Compacto"} <ChevronDown className="size-3.5" />
+              <Rows3 className="size-4" /> {modeloCompacto ? modeloCompacto.nome : "Compacto"}
             </button>
           )}
         >
           {() => {
             const colunasAtivas = ordem.map((k) => colunaByKey[k]).filter(Boolean).filter((c) => !c.obrigatoria && vis.includes(c.key));
-            const editando = compEditId !== null;
-            return (
-              <div className="grid grid-cols-1 gap-3 p-1 sm:grid-cols-2">
-                {/* Esquerda: ligar/desligar + modelos salvos */}
-                <div>
-                  <p className="mb-1.5 flex items-center gap-1.5 px-1 text-sm font-semibold uppercase tracking-wide text-violet-600 dark:text-violet-400"><Rows3 className="size-3.5" /> Modo compacto</p>
-                  <div className="space-y-0.5">
-                    <button type="button" onClick={() => (compacto && !compactoAtivo ? desligarCompacto() : aplicarCompacto(null))} className={cn("flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] transition-colors", compacto && !compactoAtivo ? "bg-violet-500/10 text-violet-700 dark:text-violet-300" : "text-muted-foreground hover:bg-accent hover:text-foreground")}>
-                      <Check className={cn("size-4 shrink-0", compacto && !compactoAtivo ? "text-violet-500" : "text-transparent")} />
-                      <span className="flex-1">Compacto (todas as colunas)</span>
-                    </button>
-                  </div>
-                  <p className="mb-1 mt-3 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Meus modelos</p>
+            if (compEditId !== null) {
+              return (
+                <div className="p-1">
+                  <p className="mb-2 px-1 text-sm font-semibold text-foreground">{compEditId ? "Editar modelo" : "Novo modelo"}</p>
+                  <input value={compNome} onChange={(e) => setCompNome(e.target.value)} placeholder="Nome (ex.: Financeiro)" aria-label="Nome do modelo compacto" className="mb-2 h-9 w-full rounded-lg border border-border bg-card px-2.5 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+                  <p className="mb-1 px-1 text-xs text-muted-foreground">Colunas ({compCols.length} de {colunasAtivas.length})</p>
                   <div className="max-h-[15rem] space-y-0.5 overflow-y-auto pr-0.5">
-                    {visoesCompactas.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">Nenhum modelo salvo.</p>}
-                    {visoesCompactas.map((v) => (
-                      <div key={v.id} className={cn("group flex items-center gap-1 rounded-lg px-1.5 py-0.5", compactoAtivo === v.id ? "bg-violet-500/10" : "hover:bg-accent")}>
-                        <button type="button" onClick={() => (compactoAtivo === v.id ? desligarCompacto() : aplicarCompacto(v.id))} className="flex flex-1 cursor-pointer items-center gap-2 py-1 text-left text-[0.8125rem]">
-                          <Check className={cn("size-4 shrink-0", compactoAtivo === v.id ? "text-violet-500" : "text-transparent")} />
-                          <Rows3 className="size-3.5 shrink-0 text-violet-500" />
-                          <span className={cn("truncate", compactoAtivo === v.id ? "text-violet-700 dark:text-violet-300" : "text-foreground")}>{v.nome}</span>
-                          <span className="ml-auto shrink-0 text-[0.7rem] tabular-nums text-muted-foreground">{v.colunas.length} col</span>
-                        </button>
-                        <button type="button" onClick={() => editarCompacto(v)} aria-label={`Editar ${v.nome}`} className="shrink-0 cursor-pointer rounded p-1 text-muted-foreground/0 transition-colors group-hover:text-muted-foreground hover:text-violet-600"><Pencil className="size-3.5" /></button>
-                        <button type="button" onClick={() => excluirCompacto(v.id)} aria-label={`Excluir ${v.nome}`} className="shrink-0 cursor-pointer rounded p-1 text-muted-foreground/0 transition-colors group-hover:text-muted-foreground hover:text-rose-500"><Trash2 className="size-3.5" /></button>
-                      </div>
+                    {colunasAtivas.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">Ative colunas no botão Colunas primeiro.</p>}
+                    {colunasAtivas.map((c) => (
+                      <button key={c.key} type="button" onClick={() => toggleCompCol(c.key)} className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] text-foreground transition-colors hover:bg-accent">
+                        <CheckboxView checked={compCols.includes(c.key)} />
+                        <span className="truncate">{c.label}</span>
+                      </button>
                     ))}
                   </div>
-                  <button type="button" onClick={novoCompacto} className="mt-2 inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-[0.8125rem] font-medium text-violet-600 transition-colors hover:bg-violet-500/10 dark:text-violet-400">
-                    <Plus className="size-4" /> Novo modelo
+                  <div className="mt-2 flex items-center gap-3 px-1">
+                    <button type="button" onClick={salvarCompacto} disabled={compCols.length === 0} className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-[0.8125rem] font-medium text-violet-600 transition-colors hover:bg-violet-500/10 disabled:cursor-not-allowed disabled:opacity-50 dark:text-violet-400">
+                      <Check className="size-4" /> Salvar
+                    </button>
+                    <button type="button" onClick={() => setCompEditId(null)} className="cursor-pointer text-[0.8125rem] font-medium text-muted-foreground transition-colors hover:text-foreground">Cancelar</button>
+                  </div>
+                </div>
+              );
+            }
+            return (
+              <div className="p-1">
+                <div className="space-y-0.5">
+                  <button type="button" onClick={() => (compacto && !compactoAtivo ? desligarCompacto() : aplicarCompacto(null))} className={cn("flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] transition-colors", compacto && !compactoAtivo ? "bg-violet-500/10 text-violet-700 dark:text-violet-300" : "text-foreground hover:bg-accent")}>
+                    <Check className={cn("size-4 shrink-0", compacto && !compactoAtivo ? "text-violet-500" : "text-transparent")} />
+                    <span className="flex-1">Todas as colunas</span>
                   </button>
-                </div>
-                {/* Direita: editor do modelo (nome + escolha das colunas) */}
-                <div className="sm:border-l sm:border-border sm:pl-3">
-                  {editando ? (
-                    <>
-                      <p className="mb-1.5 px-1 text-sm font-semibold uppercase tracking-wide text-violet-600 dark:text-violet-400">{compEditId ? "Editar modelo" : "Novo modelo"}</p>
-                      <input value={compNome} onChange={(e) => setCompNome(e.target.value)} placeholder="Nome (ex.: Compacto financeiro)" aria-label="Nome do modelo compacto" className="mb-2 h-9 w-full rounded-lg border border-border bg-card px-2.5 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
-                      <p className="mb-1 px-1 text-xs text-muted-foreground">Colunas visíveis neste modo ({compCols.length} de {colunasAtivas.length}):</p>
-                      <div className="max-h-[13rem] space-y-0.5 overflow-y-auto pr-0.5">
-                        {colunasAtivas.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">Ative colunas no botão Colunas primeiro.</p>}
-                        {colunasAtivas.map((c) => (
-                          <button key={c.key} type="button" onClick={() => toggleCompCol(c.key)} className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] text-foreground transition-colors hover:bg-accent">
-                            <CheckboxView checked={compCols.includes(c.key)} />
-                            <span className="truncate">{c.label}</span>
-                          </button>
-                        ))}
-                      </div>
-                      <div className="mt-2 flex items-center gap-3">
-                        <button type="button" onClick={salvarCompacto} disabled={compCols.length === 0} className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-[0.8125rem] font-medium text-violet-600 transition-colors hover:bg-violet-500/10 disabled:cursor-not-allowed disabled:opacity-50 dark:text-violet-400">
-                          <Check className="size-4" /> Salvar e aplicar
-                        </button>
-                        <button type="button" onClick={() => setCompEditId(null)} className="cursor-pointer text-[0.8125rem] font-medium text-muted-foreground transition-colors hover:text-foreground">Cancelar</button>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex h-full min-h-[10rem] items-center justify-center px-4 text-center text-xs text-muted-foreground">
-                      Clique num modelo à esquerda para aplicar na hora, ou crie um novo para escolher quais colunas ver no modo compacto.
+                  {visoesCompactas.map((v) => (
+                    <div key={v.id} className={cn("group flex items-center gap-1 rounded-lg pr-1", compactoAtivo === v.id ? "bg-violet-500/10" : "hover:bg-accent")}>
+                      <button type="button" onClick={() => (compactoAtivo === v.id ? desligarCompacto() : aplicarCompacto(v.id))} className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem]">
+                        <Check className={cn("size-4 shrink-0", compactoAtivo === v.id ? "text-violet-500" : "text-transparent")} />
+                        <span className={cn("flex-1 truncate", compactoAtivo === v.id ? "text-violet-700 dark:text-violet-300" : "text-foreground")}>{v.nome}</span>
+                        <span className="shrink-0 text-[0.7rem] tabular-nums text-muted-foreground">{v.colunas.length}</span>
+                      </button>
+                      <button type="button" onClick={() => editarCompacto(v)} aria-label={`Editar ${v.nome}`} className="shrink-0 cursor-pointer rounded p-1 text-muted-foreground/0 transition-colors group-hover:text-muted-foreground hover:text-violet-600"><Pencil className="size-3.5" /></button>
+                      <button type="button" onClick={() => excluirCompacto(v.id)} aria-label={`Excluir ${v.nome}`} className="shrink-0 cursor-pointer rounded p-1 text-muted-foreground/0 transition-colors group-hover:text-muted-foreground hover:text-rose-500"><Trash2 className="size-3.5" /></button>
                     </div>
-                  )}
+                  ))}
                 </div>
+                <button type="button" onClick={novoCompacto} className="mt-1.5 inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-[0.8125rem] font-medium text-violet-600 transition-colors hover:bg-violet-500/10 dark:text-violet-400">
+                  <Plus className="size-4" /> Novo modelo
+                </button>
               </div>
             );
           }}
