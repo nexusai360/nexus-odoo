@@ -671,9 +671,15 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
     } catch { setToast("Não foi possível exportar."); }
   }
 
-  const camposUI = campos as unknown as CampoUI[];
   const campoByUI = campoByKey as unknown as Record<string, CampoUI>;
-  const campoPadrao = campos[0]?.key ?? "";
+  // O seletor de campo do filtro avançado reflete as COLUNAS ATIVAS na ORDEM do
+  // usuário (e, no compacto, só as do modelo aplicado): deriva de colsVisiveis,
+  // mapeando cada coluna ao seu campo filtrável. Coluna sem campo correspondente sai.
+  const camposUI = useMemo(
+    () => colsVisiveis.map((c) => campoByUI[c.key]).filter(Boolean) as CampoUI[],
+    [colsVisiveis, campoByUI],
+  );
+  const campoPadrao = camposUI[0]?.key ?? campos[0]?.key ?? "";
   const colCount = colsVisiveis.length;
 
   // Corpo da tabela memoizado: as linhas só são recriadas quando os DADOS mudam

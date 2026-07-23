@@ -51,16 +51,18 @@ function opcoesDoCampoUI(campo: CampoUI, base: unknown[]): { valor: string; labe
 
 function SeletorCampo({ value, campos, onChange }: { value: string; campos: CampoUI[]; onChange: (k: string) => void }) {
   const [busca, setBusca] = useState("");
-  // Nasce mostrando TODOS os campos (a maioria das colunas é filtrável); o toggle reduz aos comuns.
-  const [todos, setTodos] = useState(true);
   const [open, setOpen] = useState(false);
+  const [hi, setHi] = useState(0);
   const btnRef = useRef<HTMLButtonElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
+  const hiRef = useRef<HTMLButtonElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  // A lista já chega curada (colunas ATIVAS na ORDEM do usuário / do modelo compacto),
+  // então aqui só filtra pela busca. Sem toggle de "comuns".
   const lista = useMemo(() => {
     const b = busca.trim().toLowerCase();
-    return campos.filter((c) => (todos || c.comum) && (!b || c.label.toLowerCase().includes(b)));
-  }, [busca, todos, campos]);
+    return campos.filter((c) => !b || c.label.toLowerCase().includes(b));
+  }, [busca, campos]);
   const atual = campos.find((c) => c.key === value);
 
   // O dropdown vai num PORTAL (position: fixed) para NÃO ser cortado pelo scroll do modal
@@ -70,6 +72,8 @@ function SeletorCampo({ value, campos, onChange }: { value: string; campos: Camp
     if (!open) return;
     const el = btnRef.current;
     if (el) { const r = el.getBoundingClientRect(); setPos({ top: r.bottom + 4, left: r.left, width: Math.max(r.width, 320) }); }
+    const idx = lista.findIndex((c) => c.key === value);
+    setHi(idx >= 0 ? idx : 0);
     const onDoc = (e: MouseEvent) => {
       const t = e.target as Node;
       if (btnRef.current?.contains(t) || popRef.current?.contains(t)) return;
@@ -77,29 +81,37 @@ function SeletorCampo({ value, campos, onChange }: { value: string; campos: Camp
     };
     const id = window.setTimeout(() => document.addEventListener("mousedown", onDoc), 0);
     return () => { window.clearTimeout(id); document.removeEventListener("mousedown", onDoc); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+  useEffect(() => { setHi((h) => Math.min(h, Math.max(0, lista.length - 1))); }, [lista.length]);
+  useEffect(() => { if (open) hiRef.current?.scrollIntoView({ block: "nearest" }); }, [hi, open]);
+  function onKeyNav(e: React.KeyboardEvent) {
+    if (e.key === "ArrowDown") { e.preventDefault(); setHi((h) => Math.min(h + 1, lista.length - 1)); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setHi((h) => Math.max(h - 1, 0)); }
+    else if (e.key === "Enter") { e.preventDefault(); const c = lista[hi]; if (c) { onChange(c.key); setOpen(false); setBusca(""); } }
+    else if (e.key === "Escape") { e.preventDefault(); setOpen(false); }
+    else if (e.key === "Home") { e.preventDefault(); setHi(0); }
+    else if (e.key === "End") { e.preventDefault(); setHi(lista.length - 1); }
+  }
 
   return (
     <div className="relative">
-      <button ref={btnRef} type="button" onClick={() => setOpen((v) => !v)} className={cn(SEL, "flex min-w-[10rem] cursor-pointer items-center justify-between gap-2")}>
+      <button ref={btnRef} type="button" onClick={() => setOpen((v) => !v)} className={cn(SEL, "flex min-w-[11.5rem] cursor-pointer items-center justify-between gap-2")}>
         <span className="truncate">{atual?.label ?? "Campo"}</span>
         <span className="text-muted-foreground">▾</span>
       </button>
       {open && pos && typeof document !== "undefined" && createPortal(
-        <div ref={popRef} style={{ position: "fixed", top: pos.top, left: pos.left, width: pos.width }} className="z-[130] rounded-xl border border-border bg-popover p-1.5 shadow-xl">
+        <div ref={popRef} onKeyDown={onKeyNav} style={{ position: "fixed", top: pos.top, left: pos.left, width: pos.width }} className="z-[130] rounded-xl border border-border bg-popover p-1.5 shadow-xl outline-none">
           <input autoFocus value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar campo..." className="mb-1 h-8 w-full rounded-lg border border-border bg-card px-2.5 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
           <div className="max-h-80 overflow-y-auto">
-            {lista.map((c) => (
-              <button key={c.key} type="button" onClick={() => { onChange(c.key); setOpen(false); setBusca(""); }} className={cn("flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-accent", c.key === value ? "text-foreground" : "text-muted-foreground")}>
+            {lista.map((c, i) => (
+              <button key={c.key} ref={i === hi ? hiRef : undefined} type="button" onMouseEnter={() => setHi(i)} onClick={() => { onChange(c.key); setOpen(false); setBusca(""); }} className={cn("flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors", i === hi ? "bg-accent text-foreground" : c.key === value ? "text-foreground hover:bg-accent/60" : "text-muted-foreground hover:bg-accent hover:text-foreground")}>
                 <span className="truncate">{c.label}</span>
                 <span className="text-[0.65rem] uppercase text-muted-foreground/60">{c.grupo}</span>
               </button>
             ))}
             {lista.length === 0 && <p className="px-2.5 py-3 text-center text-sm text-muted-foreground">Nenhum campo</p>}
           </div>
-          <button type="button" onClick={() => setTodos((v) => !v)} className="mt-1 w-full cursor-pointer rounded-lg border-t border-border px-2.5 py-1.5 text-left text-xs font-medium text-violet-600 hover:bg-accent dark:text-violet-400">
-            {todos ? "Mostrar só campos comuns" : "Mostrar todos os campos"}
-          </button>
         </div>,
         document.body,
       )}
@@ -114,20 +126,20 @@ function ValorInput({ campo, regra, onSet }: { campo: CampoUI; regra: Regra; onS
 
   if (campo.tipo === "opcao") {
     const opts = campo.opcoes && campo.opcoes.length ? campo.opcoes : [];
+    // Valor vindo de LISTA: cresce para mostrar o rótulo por inteiro (sem reticências)
+    // e o popup casa a largura da lista do campo (grow + minWidthPx).
     return (
-      <div className="w-48">
-        <Select value={regra.valor} options={opts.map((o) => ({ value: o.valor, label: o.label }))} placeholder="Selecione..." onChange={(v) => onSet({ valor: v })} ariaLabel="Valor" />
-      </div>
+      <Select grow minWidthPx={340} value={regra.valor} options={opts.map((o) => ({ value: o.valor, label: o.label }))} placeholder="Selecione..." onChange={(v) => onSet({ valor: v })} ariaLabel="Valor" />
     );
   }
   const inputType = campo.tipo === "numero" ? "number" : campo.tipo === "data" ? "date" : "text";
   return (
     <div className="flex items-center gap-1.5">
-      <input type={inputType} value={regra.valor} onChange={(e) => onSet({ valor: e.target.value })} placeholder="valor" className={cn(SEL, "min-w-[7rem]")} />
+      <input type={inputType} value={regra.valor} onChange={(e) => onSet({ valor: e.target.value })} placeholder="valor" className={cn(SEL, "min-w-[8.5rem]")} />
       {opDef.args === 2 && (
         <>
           <span className="text-xs text-muted-foreground">e</span>
-          <input type={inputType} value={regra.valor2 ?? ""} onChange={(e) => onSet({ valor2: e.target.value })} placeholder="valor" className={cn(SEL, "min-w-[7rem]")} />
+          <input type={inputType} value={regra.valor2 ?? ""} onChange={(e) => onSet({ valor2: e.target.value })} placeholder="valor" className={cn(SEL, "min-w-[8.5rem]")} />
         </>
       )}
     </div>
@@ -144,7 +156,7 @@ function RegraLinha({ regra, campos, campoBy, onSet, onRemove }: { regra: Regra;
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       <SeletorCampo value={regra.campo} campos={campos} onChange={trocaCampo} />
-      <div className="w-40">
+      <div className="w-48">
         <Select value={regra.op} options={ops.map((o) => ({ value: o.op, label: o.label }))} searchable={false} onChange={(v) => onSet({ op: v })} ariaLabel="Operador" />
       </div>
       <ValorInput campo={campo} regra={regra} onSet={onSet} />
@@ -154,9 +166,9 @@ function RegraLinha({ regra, campos, campoBy, onSet, onRemove }: { regra: Regra;
 }
 
 /** Tag E/OU clicável posicionada ENTRE dois irmãos: um clique alterna o conector
- * daquele par (só aquela fronteira). OU (lógica mais frouxa) fica realçado em violeta;
- * E fica neutro. À direita, uma linha fina que "amarra" os dois irmãos, no espírito da
- * referência , sem copiá-la. */
+ * daquele par (só aquela fronteira). Cada operador tem cor própria para não sugerir
+ * hierarquia entre eles: E em azul, OU em laranja. À direita, uma linha fina que
+ * "amarra" os dois irmãos. */
 function ConectorTag({ conector, onToggle }: { conector: "todas" | "qualquer"; onToggle: () => void }) {
   const label = LABEL_CONECTOR[conector];
   const destino = conector === "todas" ? "OU" : "E";
@@ -171,8 +183,8 @@ function ConectorTag({ conector, onToggle }: { conector: "todas" | "qualquer"; o
         className={cn(
           "inline-flex h-6 min-w-[2.5rem] shrink-0 cursor-pointer items-center justify-center rounded-full border px-2.5 text-xs font-semibold uppercase tracking-wide transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           ou
-            ? "border-violet-500/40 bg-violet-500/10 text-violet-700 hover:bg-violet-500/20 dark:text-violet-300"
-            : "border-border bg-card text-foreground hover:border-violet-500/40 hover:bg-violet-500/10 hover:text-violet-600 dark:hover:text-violet-300",
+            ? "border-orange-500/50 bg-orange-500/10 text-orange-600 hover:bg-orange-500/20 dark:text-orange-300"
+            : "border-blue-500/50 bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 dark:text-blue-300",
         )}
       >
         {label}
@@ -205,7 +217,7 @@ function GrupoBloco({ grupo, campos, campoBy, campoPadrao, raiz, onChange, onRem
     setNo(id, (n) => ({ ...n, conectorAntes: (n.conectorAntes ?? grupo.conector) === "todas" ? "qualquer" : "todas" }));
   }
   return (
-    <div className={cn("rounded-xl border p-3", raiz ? "border-border bg-muted/20" : "border-violet-500/30 bg-violet-500/[0.04]")}>
+    <div className={cn("rounded-xl border p-3", raiz ? "border-border bg-muted/20" : "border-violet-500/40")}>
       {!raiz && (
         <div className="mb-2 flex items-center gap-2">
           <span className="inline-flex items-center gap-1.5 text-[0.7rem] font-semibold uppercase tracking-wide text-violet-600 dark:text-violet-400">

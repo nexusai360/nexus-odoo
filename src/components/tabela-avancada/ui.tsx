@@ -72,6 +72,8 @@ export function Select({
   triggerClassName,
   ariaLabel,
   disabled = false,
+  minWidthPx,
+  grow = false,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -82,6 +84,11 @@ export function Select({
   triggerClassName?: string;
   ariaLabel?: string;
   disabled?: boolean;
+  /** Largura mínima do popup em px (default 208). Use para casar com outro seletor. */
+  minWidthPx?: number;
+  /** Gatilho cresce para caber o rótulo selecionado (sem reticências) até um teto, e o
+   * popup mostra os rótulos por inteiro (quebra linha). Para valores vindos de LISTA. */
+  grow?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [busca, setBusca] = useState("");
@@ -99,11 +106,31 @@ export function Select({
     return q ? norm.filter((o) => o.label.toLowerCase().includes(q)) : norm;
   }, [busca, norm]);
 
+  // Navegação por teclado (setas/Enter/Esc/Home/End) com item destacado `hi`.
+  const [hi, setHi] = useState(0);
+  const hiRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const idx = lista.findIndex((o) => o.value === value);
+    setHi(idx >= 0 ? idx : 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+  useEffect(() => { setHi((h) => Math.min(h, Math.max(0, lista.length - 1))); }, [lista.length]);
+  useEffect(() => { if (open) hiRef.current?.scrollIntoView({ block: "nearest" }); }, [hi, open]);
+  function onKeyNav(e: React.KeyboardEvent) {
+    if (e.key === "ArrowDown") { e.preventDefault(); setHi((h) => Math.min(h + 1, lista.length - 1)); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setHi((h) => Math.max(h - 1, 0)); }
+    else if (e.key === "Enter") { e.preventDefault(); const o = lista[hi]; if (o) { onChange(o.value); setOpen(false); } }
+    else if (e.key === "Escape") { e.preventDefault(); setOpen(false); }
+    else if (e.key === "Home") { e.preventDefault(); setHi(0); }
+    else if (e.key === "End") { e.preventDefault(); setHi(lista.length - 1); }
+  }
+
   useEffect(() => {
     if (disabled) { setOpen(false); return; }
     if (!open) return;
     const el = btnRef.current;
-    if (el) { const r = el.getBoundingClientRect(); const w = Math.max(r.width, 208); setPos({ top: r.bottom + 4, left: align === "right" ? r.right - w : r.left, width: w }); }
+    if (el) { const r = el.getBoundingClientRect(); const w = Math.max(r.width, minWidthPx ?? 208); setPos({ top: r.bottom + 4, left: align === "right" ? r.right - w : r.left, width: w }); }
     const onDoc = (e: MouseEvent) => { const t = e.target as Node; if (btnRef.current?.contains(t) || popRef.current?.contains(t)) return; setOpen(false); };
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     // Anexa no próximo tick para NUNCA capturar o mesmo clique que abriu o menu
@@ -117,10 +144,17 @@ export function Select({
       document.removeEventListener("mousedown", onDoc);
       document.removeEventListener("keydown", onKey);
     };
-  }, [open, disabled, align]);
+  }, [open, disabled, align, minWidthPx]);
+
+  // Sem barra de busca (ex.: operador), o teclado precisa de foco no popup para as
+  // setas/Enter funcionarem. Com busca, o input já recebe o foco (autoFocus).
+  const temBusca = searchable && norm.length > 6;
+  useEffect(() => {
+    if (open && pos && !temBusca) popRef.current?.focus();
+  }, [open, pos, temBusca]);
 
   return (
-    <div ref={wrapRef} className="relative min-w-0">
+    <div ref={wrapRef} className={cn("relative min-w-0", grow && "inline-block max-w-[24rem] align-middle")}>
       <button
         ref={btnRef}
         type="button"
@@ -130,7 +164,8 @@ export function Select({
         aria-expanded={open}
         aria-label={ariaLabel}
         className={cn(
-          "flex h-9 w-full min-w-0 items-center justify-between gap-2 rounded-lg border border-border bg-card px-2.5 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "flex h-9 min-w-0 items-center justify-between gap-2 rounded-lg border border-border bg-card px-2.5 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          grow ? "w-auto min-w-[11rem] max-w-[24rem]" : "w-full",
           disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-accent",
           triggerClassName,
         )}
@@ -139,26 +174,29 @@ export function Select({
         <ChevronDown className={cn("size-3.5 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
       </button>
       {open && pos && typeof document !== "undefined" && createPortal(
-        <div ref={popRef} style={{ position: "fixed", top: pos.top, left: pos.left, width: pos.width }} className="z-[130] min-w-[13rem] rounded-xl border border-border bg-popover p-1 shadow-xl motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95">
-          {searchable && norm.length > 6 && (
+        <div ref={popRef} tabIndex={-1} onKeyDown={onKeyNav} style={{ position: "fixed", top: pos.top, left: pos.left, width: pos.width }} className="z-[130] min-w-[13rem] rounded-xl border border-border bg-popover p-1 shadow-xl outline-none motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95">
+          {temBusca && (
             <div className="relative mb-1">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
               <input autoFocus value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar..." className="h-8 w-full rounded-lg border border-border bg-card pl-8 pr-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
             </div>
           )}
           <div className="max-h-60 overflow-y-auto">
-            {lista.map((o) => (
+            {lista.map((o, i) => (
               <button
                 key={o.value}
+                ref={i === hi ? hiRef : undefined}
                 type="button"
+                onMouseEnter={() => setHi(i)}
                 onClick={() => { onChange(o.value); setOpen(false); }}
                 className={cn(
                   "flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm transition-colors",
-                  o.value === value ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+                  o.value === value ? "text-foreground" : "text-muted-foreground",
+                  i === hi ? "bg-accent text-foreground" : "hover:bg-accent/60 hover:text-foreground",
                 )}
               >
                 <Check className={cn("size-4 shrink-0", o.value === value ? "text-violet-500" : "text-transparent")} />
-                <span className="min-w-0 flex-1 truncate">{o.label}</span>
+                <span className={cn("min-w-0 flex-1", grow ? "whitespace-normal break-words" : "truncate")}>{o.label}</span>
                 {o.hint && <span className="shrink-0 text-[0.65rem] uppercase text-muted-foreground/60">{o.hint}</span>}
               </button>
             ))}

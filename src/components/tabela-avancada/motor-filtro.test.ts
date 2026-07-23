@@ -103,6 +103,31 @@ describe("motor-filtro , testaNo", () => {
     expect(LABEL_CONECTOR.todas).toBe("E");
     expect(LABEL_CONECTOR.qualquer).toBe("OU");
   });
+  it("texto: novos operadores termina / não termina / diferente / não começa", () => {
+    expect(testaNo(row, g("todas", r("cliente", "termina", "sp")), campoBy)).toBe(true);
+    expect(testaNo(row, g("todas", r("cliente", "naotermina", "sp")), campoBy)).toBe(false);
+    expect(testaNo(row, g("todas", r("cliente", "diferente", "outra coisa")), campoBy)).toBe(true);
+    expect(testaNo(row, g("todas", r("cliente", "naocomeca", "bike")), campoBy)).toBe(true);
+  });
+  it("numero: novos operadores diferente / >= / <=", () => {
+    expect(testaNo(row, g("todas", r("valor", "diferente", "5000")), campoBy)).toBe(false);
+    expect(testaNo(row, g("todas", r("valor", "diferente", "10")), campoBy)).toBe(true);
+    expect(testaNo(row, g("todas", r("valor", "maiorigual", "5000")), campoBy)).toBe(true);
+    expect(testaNo(row, g("todas", r("valor", "menorigual", "5000")), campoBy)).toBe(true);
+    expect(testaNo(row, g("todas", r("valor", "menorigual", "4999")), campoBy)).toBe(false);
+  });
+  it("data: novos operadores em-ou-antes / em-ou-depois / diferente", () => {
+    expect(testaNo(row, g("todas", r("data", "antesigual", "2026-07-15")), campoBy)).toBe(true);
+    expect(testaNo(row, g("todas", r("data", "depoisigual", "2026-07-15")), campoBy)).toBe(true);
+    expect(testaNo(row, g("todas", r("data", "diferente", "2026-07-15")), campoBy)).toBe(false);
+  });
+  it("preenchido / vazio em texto, opcao e tags", () => {
+    expect(testaNo(row, g("todas", r("cliente", "definido", "")), campoBy)).toBe(true);
+    expect(testaNo(row, g("todas", r("cliente", "vazio", "")), campoBy)).toBe(false);
+    expect(testaNo(row, g("todas", r("uf", "definido", "")), campoBy)).toBe(true);
+    expect(testaNo(row, g("todas", r("tags", "definido", "")), campoBy)).toBe(true);
+    expect(testaNo(row, g("todas", r("tags", "vazio", "")), campoBy)).toBe(false);
+  });
   it("OPERADORES cobre os 5 tipos", () => {
     expect(Object.keys(OPERADORES)).toEqual(["texto", "opcao", "numero", "data", "tags"]);
   });

@@ -24,29 +24,47 @@ export const OPERADORES: Record<CampoTipo, OperadorDef[]> = {
     { op: "contem", label: "contém", args: 1 },
     { op: "naocontem", label: "não contém", args: 1 },
     { op: "igual", label: "é igual a", args: 1 },
+    { op: "diferente", label: "não é igual a", args: 1 },
     { op: "comeca", label: "começa com", args: 1 },
+    { op: "naocomeca", label: "não começa com", args: 1 },
+    { op: "termina", label: "termina com", args: 1 },
+    { op: "naotermina", label: "não termina com", args: 1 },
     { op: "definido", label: "está preenchido", args: 0 },
     { op: "vazio", label: "está vazio", args: 0 },
   ],
   opcao: [
     { op: "igual", label: "é", args: 1 },
     { op: "diferente", label: "não é", args: 1 },
+    { op: "definido", label: "está preenchido", args: 0 },
+    { op: "vazio", label: "está vazio", args: 0 },
   ],
   numero: [
     { op: "igual", label: "é igual a", args: 1 },
+    { op: "diferente", label: "é diferente de", args: 1 },
     { op: "maior", label: "maior que", args: 1 },
+    { op: "maiorigual", label: "maior ou igual a", args: 1 },
     { op: "menor", label: "menor que", args: 1 },
+    { op: "menorigual", label: "menor ou igual a", args: 1 },
     { op: "entre", label: "está entre", args: 2 },
+    { op: "definido", label: "está preenchido", args: 0 },
+    { op: "vazio", label: "está vazio", args: 0 },
   ],
   data: [
     { op: "em", label: "é em", args: 1 },
+    { op: "diferente", label: "não é em", args: 1 },
     { op: "antes", label: "antes de", args: 1 },
+    { op: "antesigual", label: "em ou antes de", args: 1 },
     { op: "depois", label: "depois de", args: 1 },
+    { op: "depoisigual", label: "em ou depois de", args: 1 },
     { op: "entre", label: "está entre", args: 2 },
+    { op: "definido", label: "está preenchido", args: 0 },
+    { op: "vazio", label: "está vazio", args: 0 },
   ],
   tags: [
     { op: "contemtag", label: "contém", args: 1 },
     { op: "naocontemtag", label: "não contém", args: 1 },
+    { op: "definido", label: "tem alguma", args: 0 },
+    { op: "vazio", label: "está vazio", args: 0 },
   ],
 };
 
@@ -101,34 +119,53 @@ export function testaRegra(
   const bruto = (campo.get as (row: unknown) => string | number | string[])(p);
   const alvo = r.valor?.toLowerCase?.() ?? "";
   if (campo.tipo === "tags") {
-    const arr = (bruto as string[]).map((t) => t.toLowerCase());
+    const arr = ((bruto as string[]) ?? []).map((t) => t.toLowerCase());
+    if (r.op === "definido") return arr.length > 0;
+    if (r.op === "vazio") return arr.length === 0;
     if (r.op === "contemtag") return arr.some((t) => t.includes(alvo));
-    return !arr.some((t) => t.includes(alvo));
+    if (r.op === "naocontemtag") return !arr.some((t) => t.includes(alvo));
+    return true;
   }
   if (campo.tipo === "numero") {
+    if (r.op === "definido") return String(bruto).trim().length > 0;
+    if (r.op === "vazio") return String(bruto).trim().length === 0;
     const n = Number(bruto);
     const a = Number(r.valor);
     const b = Number(r.valor2);
     switch (r.op) {
       case "igual":
         return n === a;
+      case "diferente":
+        return n !== a;
       case "maior":
         return n > a;
+      case "maiorigual":
+        return n >= a;
       case "menor":
         return n < a;
+      case "menorigual":
+        return n <= a;
       case "entre":
         return n >= Math.min(a, b) && n <= Math.max(a, b);
     }
   }
   if (campo.tipo === "data") {
     const v = String(bruto);
+    if (r.op === "definido") return v.trim().length > 0;
+    if (r.op === "vazio") return v.trim().length === 0;
     switch (r.op) {
       case "em":
         return v === r.valor;
+      case "diferente":
+        return v !== r.valor;
       case "antes":
         return v < r.valor;
+      case "antesigual":
+        return v <= r.valor;
       case "depois":
         return v > r.valor;
+      case "depoisigual":
+        return v >= r.valor;
       case "entre":
         return v >= (r.valor || "") && v <= (r.valor2 || "9999");
     }
@@ -146,6 +183,12 @@ export function testaRegra(
       return v !== alvo;
     case "comeca":
       return v.startsWith(alvo);
+    case "naocomeca":
+      return !v.startsWith(alvo);
+    case "termina":
+      return v.endsWith(alvo);
+    case "naotermina":
+      return !v.endsWith(alvo);
     case "definido":
       return v.length > 0;
     case "vazio":
