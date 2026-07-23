@@ -734,7 +734,7 @@ export function SeletorColunas({
  * e guarda; a partir daí a tabela vira `table-fixed` com as larguras salvas (persistidas).
  * Min ~3 caracteres, max ~largura da tela. As células truncam com reticências.
  */
-export function useResizeColunas(storageKey: string, containerRef?: React.RefObject<HTMLElement | null>) {
+export function useResizeColunas(storageKey: string, containerRef?: React.RefObject<HTMLElement | null>, persistir = true) {
   const [larguras, setLarguras] = useState<Record<string, number>>({});
   const [hidratado, setHidratado] = useState(false);
   const thRefs = useRef<Record<string, HTMLTableCellElement | null>>({});
@@ -746,13 +746,15 @@ export function useResizeColunas(storageKey: string, containerRef?: React.RefObj
   const animRef = useRef<Record<string, number>>({});
 
   useEffect(() => {
-    try { const r = window.localStorage.getItem(storageKey); if (r) setLarguras(JSON.parse(r)); } catch { /* ignore */ }
+    // Quando `persistir` é false (modo compacto), NÃO hidrata do localStorage , o compacto sempre
+    // recalcula a regra do zero a cada ativação/reload, nunca herda largura salva.
+    if (persistir) { try { const r = window.localStorage.getItem(storageKey); if (r) setLarguras(JSON.parse(r)); } catch { /* ignore */ } }
     setHidratado(true);
-  }, [storageKey]);
+  }, [storageKey, persistir]);
   useEffect(() => {
-    if (!hidratado) return;
+    if (!hidratado || !persistir) return;
     try { window.localStorage.setItem(storageKey, JSON.stringify(larguras)); } catch { /* ignore */ }
-  }, [hidratado, storageKey, larguras]);
+  }, [hidratado, storageKey, larguras, persistir]);
 
   const setRef = useCallback((key: string) => (el: HTMLTableCellElement | null) => { thRefs.current[key] = el; }, []);
 
@@ -783,7 +785,7 @@ export function useResizeColunas(storageKey: string, containerRef?: React.RefObj
     return { MIN, MAX: Math.max(MIN + 40, Math.round(visivel * 0.85)) };
   };
 
-  const iniciarResize = useCallback((e: React.PointerEvent, key: string) => {
+  const iniciarResize = useCallback((e: React.PointerEvent, key: string, aoTerminar?: () => void) => {
     // NÃO usamos preventDefault aqui: isso suprimia o `dblclick` e fazia o duplo-clique falhar
     // ("parece que não cliquei"). O arraste só começa DEPOIS de mover além do limiar (drag
     // threshold); um clique puro (ou os dois cliques de um duplo-clique) não vira arraste, não
@@ -795,6 +797,8 @@ export function useResizeColunas(storageKey: string, containerRef?: React.RefObj
     const startX = e.clientX;
     const { MIN, MAX } = limites();
     const colEl = colDe(key);
+    const tableEl = (colEl?.closest("table") ?? th?.closest("table")) as HTMLElement | null;
+    const tableStartW = tableEl ? tableEl.getBoundingClientRect().width : 0;
     const alca = e.currentTarget as HTMLElement;
 
     let arrastou = false;
@@ -816,6 +820,9 @@ export function useResizeColunas(storageKey: string, containerRef?: React.RefObj
       const w = Math.min(Math.max(Math.round(startW + (curX - startX)), MIN), MAX);
       lastW = w;
       if (colEl) colEl.style.width = `${w}px`;
+      // A tabela é table-fixed com largura EXPLÍCITA (= soma das colunas). Sem atualizar a largura
+      // da tabela junto, o <col> muda o inline mas o layout NÃO acompanha (o resize "não pega").
+      if (tableEl) tableEl.style.width = `${Math.round(tableStartW + (w - startW))}px`;
     };
     const mover = (ev: PointerEvent) => {
       curX = ev.clientX;
@@ -838,6 +845,10 @@ export function useResizeColunas(storageKey: string, containerRef?: React.RefObj
       // Comita ao estado UMA única vez (persiste + sincroniza o React); o <col> já está na
       // largura final, então esse re-render não muda nada visível (não pisca).
       setLarguras((prev) => ({ ...prev, [key]: lastW }));
+      // Avisa no FIM do arraste (não no meio, pra não re-renderizar durante o drag): no compacto
+      // isso marca a coluna como "mexida", trocando a exibição para conteúdo completo cortado por
+      // largura (CSS) , os caracteres extras aparecem na largura final.
+      aoTerminar?.();
     };
     window.addEventListener("pointermove", mover);
     window.addEventListener("pointerup", soltar);
@@ -848,7 +859,10 @@ export function useResizeColunas(storageKey: string, containerRef?: React.RefObj
   // Mede a largura NATURAL em `table-auto` numa passada síncrona (sem paint) e ANIMA a largura do
   // valor atual até o natural em ~180ms com ease-out , suave, não instantâneo (nem lento). O
   // estado só é comitado no fim da animação (re-render invisível, o <col> já está no alvo).
-  const resetColuna = useCallback((key: string) => {
+  // `alvoForcado`: quando informado (modo compacto), a coluna anima direto para essa largura , a
+  // largura-REGRA já calculada , SEM a medição síncrona em table-auto (é ela que "engasga" numa
+  // tabela larga). No modo tradicional (sem alvo), mede o natural como antes.
+  const resetColuna = useCallback((key: string, alvoForcado?: number) => {
     const th = thRefs.current[key];
     const table = th?.closest("table") as HTMLTableElement | null;
     if (!th || !table || typeof document === "undefined") {
@@ -857,20 +871,30 @@ export function useResizeColunas(storageKey: string, containerRef?: React.RefObj
     }
     const colEl = colDe(key);
     const startW = Math.round(th.getBoundingClientRect().width); // largura atual (ponto de partida)
-    const cols = Array.from(table.querySelectorAll("colgroup col")) as HTMLElement[];
-    const larguraPrev = cols.map((c) => c.style.width);
-    const layoutPrev = table.style.tableLayout;
-    table.style.tableLayout = "auto";
-    cols.forEach((c) => { c.style.width = "auto"; });
-    const natural = th.getBoundingClientRect().width; // força layout, já com padding
-    table.style.tableLayout = layoutPrev;
-    cols.forEach((c, i) => { c.style.width = larguraPrev[i]; });
+    const tableStartW = Math.round(table.getBoundingClientRect().width);
     const { MIN, MAX } = limites();
-    const alvo = Math.min(Math.max(Math.ceil(natural) + 2, MIN), MAX);
+    let alvo: number;
+    if (alvoForcado != null) {
+      alvo = Math.min(Math.max(Math.round(alvoForcado), MIN), MAX);
+    } else {
+      const cols = Array.from(table.querySelectorAll("colgroup col")) as HTMLElement[];
+      const larguraPrev = cols.map((c) => c.style.width);
+      const layoutPrev = table.style.tableLayout;
+      const tableWPrev = table.style.width;
+      table.style.tableLayout = "auto";
+      table.style.width = ""; // solta a largura explícita para medir o natural sem constrangimento
+      cols.forEach((c) => { c.style.width = "auto"; });
+      const natural = th.getBoundingClientRect().width; // força layout, já com padding
+      table.style.tableLayout = layoutPrev;
+      table.style.width = tableWPrev;
+      cols.forEach((c, i) => { c.style.width = larguraPrev[i]; });
+      alvo = Math.min(Math.max(Math.ceil(natural) + 2, MIN), MAX);
+    }
 
     const reduz = typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
     if (!colEl || startW === alvo || reduz || typeof requestAnimationFrame === "undefined" || typeof performance === "undefined") {
       if (colEl) colEl.style.width = `${alvo}px`;
+      table.style.width = `${tableStartW + (alvo - startW)}px`;
       setLarguras((prev) => ({ ...prev, [key]: alvo }));
       return;
     }
@@ -880,7 +904,9 @@ export function useResizeColunas(storageKey: string, containerRef?: React.RefObj
     const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
     const tick = (now: number) => {
       const p = Math.min(1, (now - t0) / DUR);
-      colEl.style.width = `${Math.round(startW + (alvo - startW) * easeOut(p))}px`;
+      const cw = Math.round(startW + (alvo - startW) * easeOut(p));
+      colEl.style.width = `${cw}px`;
+      table.style.width = `${tableStartW + (cw - startW)}px`;
       if (p < 1) {
         animRef.current[key] = requestAnimationFrame(tick);
       } else {
@@ -891,7 +917,35 @@ export function useResizeColunas(storageKey: string, containerRef?: React.RefObj
     animRef.current[key] = requestAnimationFrame(tick);
   }, [containerRef]);
 
-  return { larguras, setRef, medirFaltantes, iniciarResize, resetColuna, arrastandoRef };
+  // Mede a largura NATURAL de VÁRIAS colunas numa única passada em table-auto (1 reflow) e
+  // devolve o mapa. Usado pelo modo compacto: como as células já vêm truncadas a 32 chars, a
+  // medida natural já respeita o cap , a coluna fica do tamanho do maior valor exibido (≤32).
+  const medirTodas = useCallback((keys: string[]): Record<string, number> => {
+    const anyTh = keys.map((k) => thRefs.current[k]).find(Boolean);
+    const table = anyTh?.closest("table") as HTMLTableElement | null;
+    if (!table || typeof document === "undefined") return {};
+    const cols = Array.from(table.querySelectorAll("colgroup col")) as HTMLElement[];
+    const larguraPrev = cols.map((c) => c.style.width);
+    const layoutPrev = table.style.tableLayout;
+    const tableWPrev = table.style.width;
+    table.style.tableLayout = "auto";
+    table.style.width = "";
+    cols.forEach((c) => { c.style.width = "auto"; });
+    const MIN = 56;
+    const visivel = containerRef?.current?.clientWidth ?? (typeof window !== "undefined" ? window.innerWidth : 1200);
+    const MAX = Math.max(MIN + 40, Math.round(visivel * 0.85));
+    const out: Record<string, number> = {};
+    keys.forEach((k) => { const th = thRefs.current[k]; if (th) out[k] = Math.min(Math.max(Math.ceil(th.getBoundingClientRect().width) + 2, MIN), MAX); });
+    table.style.tableLayout = layoutPrev;
+    table.style.width = tableWPrev;
+    cols.forEach((c, i) => { c.style.width = larguraPrev[i]; });
+    return out;
+  }, [containerRef]);
+
+  // Substitui o mapa de larguras inteiro (usado ao (re)aplicar a regra do compacto).
+  const aplicar = useCallback((widths: Record<string, number>) => { setLarguras({ ...widths }); }, []);
+
+  return { larguras, setRef, medirFaltantes, iniciarResize, resetColuna, arrastandoRef, medirTodas, aplicar };
 }
 
 /** Alça de redimensionamento na divisória direita do cabeçalho (cursor col-resize).

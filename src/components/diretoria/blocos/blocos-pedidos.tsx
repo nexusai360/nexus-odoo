@@ -5,10 +5,9 @@
 // tabela rica com tags de prazo).
 
 import type { ReactNode } from "react";
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
   PackageCheck, Wallet, AlertTriangle, HandCoins,
-  ClipboardList, Receipt, Coins, Info, History,
+  ClipboardList, Receipt, Coins, Info,
 } from "lucide-react";
 
 import { KpiButton } from "@/components/diretoria/kit/kpi-button";
@@ -31,7 +30,6 @@ import {
   type LinhaEntrega,
   type ItemEntrega,
 } from "@/components/tabela-avancada/entregas-catalogo";
-import { cn } from "@/lib/utils";
 import { brl, brlCompacto, num, DASH, rotuloUf, ufValida, nomeLimpo } from "@/components/diretoria/kit/format";
 import type { PedidosData } from "@/components/diretoria/pedidos/pedidos-screen";
 
@@ -128,39 +126,7 @@ function MaisParadas({ d }: { d: PedidosData }) {
   return <DataTable columns={colunas} rows={linhas} searchable compactoInicial alturaFluida exportFilename="demandas-mais-paradas" estado={linhas.length === 0 ? "vazio" : "ok"} />;
 }
 
-// B-08 , Entregas parciais: os 3 valores + o corte, no topo do relatório.
-// Alterna a inclusão dos pedidos anteriores à data de análise via URL (server refetch).
-function ToggleCorteEntregas() {
-  const router = useRouter();
-  const sp = useSearchParams();
-  const pathname = usePathname();
-  const incluiAntigos = sp.get("entregas_todos") === "1";
-  const alternar = () => {
-    const p = new URLSearchParams(sp.toString());
-    if (incluiAntigos) p.delete("entregas_todos");
-    else p.set("entregas_todos", "1");
-    const qs = p.toString();
-    router.push(qs ? `${pathname}?${qs}` : pathname);
-  };
-  return (
-    <button
-      type="button"
-      onClick={alternar}
-      aria-pressed={incluiAntigos}
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        incluiAntigos
-          ? "border-violet-500/60 bg-violet-600/15 text-violet-700 dark:text-violet-200"
-          : "border-border bg-muted/30 text-muted-foreground hover:border-foreground/25 hover:text-foreground",
-      )}
-    >
-      <History className="h-3.5 w-3.5" aria-hidden />
-      {incluiAntigos ? "Incluindo pedidos anteriores à data de análise" : "Incluir pedidos anteriores à data de análise"}
-    </button>
-  );
-}
-
+// B-08 , Entregas parciais: os 3 valores no topo do relatório.
 function KpisEntregasParciais({ d }: { d: PedidosData }) {
   const i = d.entregasParciais.indicadores;
   return (
@@ -169,7 +135,6 @@ function KpisEntregasParciais({ d }: { d: PedidosData }) {
         <p className="text-xs text-muted-foreground">
           Pedidos com saldo a entregar. Os três valores respondem a estranheza dos totais.
         </p>
-        <ToggleCorteEntregas />
       </div>
       <div className="grid flex-1 content-center grid-cols-2 gap-2.5 lg:grid-cols-4">
         <KpiButton rotulo="Pedidos" valor={num.format(i.qtdPedidos)} icone={ClipboardList} tone="info" hint={i.qtdPedidosSemSaldo > 0 ? `Com saldo a entregar. +${num.format(i.qtdPedidosSemSaldo)} abertos sem saldo (já entregues)` : "Com saldo a entregar no período"} />

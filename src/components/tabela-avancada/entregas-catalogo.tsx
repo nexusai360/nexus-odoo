@@ -208,6 +208,35 @@ function rodapeProdutos(rows: LinhaEntrega[]): React.ReactNode {
   );
 }
 
+/** Total da coluna Entrega: contagem de pedidos por prazo, no mesmo layout do
+ * Financeiro (números coloridos separados por "|"). No prazo (cinza legível) |
+ * vencendo em até 7 dias (âmbar) | atrasada (vermelho), seguindo a MESMA régua
+ * da bolinha da célula (`statusEntrega`/`categoriaEntrega`). O "no prazo" usa
+ * `text-muted-foreground` em vez do cinza fraco da bolinha (`bg-foreground/30`),
+ * que não teria contraste como texto. Linhas sem data prevista não têm bolinha e
+ * ficam fora da contagem colorida; se houver, aparecem só no tooltip. */
+function rodapeEntrega(rows: LinhaEntrega[]): React.ReactNode {
+  let noPrazo = 0, vencendo = 0, atrasada = 0, semData = 0;
+  for (const l of rows) {
+    const c = categoriaEntrega(l.prevista);
+    if (c === "Atrasada") atrasada++;
+    else if (c === "Vence em até 7 dias") vencendo++;
+    else if (c === "No prazo") noPrazo++;
+    else semData++;
+  }
+  const title = `${num0(noPrazo)} no prazo, ${num0(vencendo)} vencendo, ${num0(atrasada)} atrasada(s)`
+    + (semData ? `, ${num0(semData)} sem data` : "");
+  return (
+    <span className="inline-flex items-center gap-1.5 tabular-nums" title={title}>
+      <span className="text-muted-foreground">{num0(noPrazo)}</span>
+      <span className="text-muted-foreground/40">|</span>
+      <span className="text-amber-500">{num0(vencendo)}</span>
+      <span className="text-muted-foreground/40">|</span>
+      <span className="text-rose-500">{num0(atrasada)}</span>
+    </span>
+  );
+}
+
 /** Total de valor com custo/venda: segue o toggle "Mostrar venda" (mesma leitura da célula). */
 function TotalValorCV({ custo, venda }: { custo: number; venda: number }) {
   const { mostrarVenda } = useContext(OpcoesTabelaContext);
@@ -260,7 +289,7 @@ export const COLUNAS: ColunaDef<LinhaEntrega>[] = [
   { key: "condicao", label: "Condição de Pagamento", tipo: "texto", sortable: true, numeric: false, padrao: true, valor: (l) => l.condicao },
   // --- Datas ---
   { key: "orcamento", label: "Orçamento", tipo: "data", sortable: true, numeric: false, padrao: false, valor: (l) => l.orcamento },
-  { key: "prevista", label: "Entrega", tipo: "data", sortable: true, numeric: false, padrao: true, valor: (l) => l.prevista },
+  { key: "prevista", label: "Entrega", tipo: "data", sortable: true, numeric: false, padrao: true, valor: (l) => l.prevista, rodape: rodapeEntrega },
   { key: "contrato", label: "Validade", tipo: "data", sortable: true, numeric: false, padrao: false, valor: (l) => l.contrato },
   // --- Quantidades (unidades): total, atendida, a atender ---
   { key: "qtdTotal", label: "Qtd. Produto", tipo: "numero", sortable: true, numeric: true, padrao: true, valor: (l) => l.qtdTotal, rodape: totNum((l) => l.qtdTotal) },
@@ -448,18 +477,30 @@ export function TagPedido({ numero, pedidoId, grande }: { numero: string; pedido
 }
 
 /** Etapa como pill colorida (reusa a cor da Fase 2). */
-function PillEtapa({ l }: { l: LinhaEntrega }) {
+/** Cap do modo compacto por CONTAGEM de caracteres (não por pixel): mostra os primeiros 32 e
+ * concatena "…" quando passa disso. Exato em 32 , o corte por largura CSS dava contagem
+ * imprecisa (aparecia ~30). Vale para texto e tag. */
+const LIM_COMPACTO = 32;
+export function abrevCompacto(s: string): string {
+  return s.length > LIM_COMPACTO ? s.slice(0, LIM_COMPACTO) + "…" : s;
+}
+
+function PillEtapa({ l, truncar }: { l: LinhaEntrega; truncar?: boolean }) {
   const estilo = derivarCorTag(corEtapaValida(l.etapaCor));
   const nome = formatarNomeEtapa(l.etapa);
+  const mostrar = truncar ? abrevCompacto(nome) : nome;
   return (
+    // O rótulo vai num filho com `min-w-0 truncate` (reticências NÃO funcionam direto num flex).
+    // No compacto o texto já vem truncado a 32 chars; `title` mostra o nome completo no hover.
     <span
       className={cn(
-        "inline-flex max-w-full items-center truncate whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium",
+        "inline-flex min-w-0 max-w-full items-center whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium",
         !estilo && "bg-muted text-muted-foreground",
       )}
       style={estilo ?? undefined}
+      title={nome}
     >
-      {nome}
+      <span className="min-w-0 truncate">{mostrar}</span>
     </span>
   );
 }
@@ -514,7 +555,7 @@ function statusEntrega(iso: string): { cor: string; label: string; texto: string
   return { cor: "bg-foreground/30", texto: null, label: "No prazo" };
 }
 
-export function celula(l: LinhaEntrega, key: string): React.ReactNode {
+export function celula(l: LinhaEntrega, key: string, truncar = false): React.ReactNode {
   const col = COLUNA_BY_KEY[key];
   if (!col) return null;
   // Pedido: tag translúcida clicável (abre no Odoo).
@@ -568,9 +609,13 @@ export function celula(l: LinhaEntrega, key: string): React.ReactNode {
     case "status":
       return <StatusFinanceiro status={l.status} />;
     case "tagCor":
-      return <PillEtapa l={l} />;
-    default:
-      return <span className="truncate text-foreground">{String(l[key] ?? "")}</span>;
+      return <PillEtapa l={l} truncar={truncar} />;
+    default: {
+      // Texto: no compacto, corta em 32 chars + "…" (exato, por contagem); title = texto cheio.
+      const txt = String(l[key] ?? "");
+      const mostrar = truncar ? abrevCompacto(txt) : txt;
+      return <span className="truncate text-foreground" title={truncar && mostrar !== txt ? txt : undefined}>{mostrar}</span>;
+    }
   }
 }
 

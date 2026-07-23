@@ -27,9 +27,10 @@ function contarRegras(g: GrupoRegras | null): number {
 /** Opções da tabela que as células precisam ler (ex.: mostrar preço de venda
  * junto do custo nas colunas de valor). Provido pela TabelaAvancada. */
 export const OpcoesTabelaContext = createContext<{ mostrarVenda: boolean }>({ mostrarVenda: false });
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
-  Popover, Tooltip, Btn, Select, SeletorColunas, Paginacao, CheckboxView,
+  Popover, Tooltip, Btn, SeletorColunas, Paginacao, CheckboxView,
   useResizeColunas, ResizeHandle,
 } from "./ui";
 import { Tooltip as TooltipUI, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -51,7 +52,10 @@ interface VisaoCompacta { id: string; nome: string; colunas: string[] }
 interface Favorito {
   id: string;
   nome: string;
-  snap: { chips: Chip[]; niveis: Nivel[]; busca: string; vis: string[]; ordem: string[]; sorts: Sort[]; arvore: GrupoRegras | null; compacto?: boolean; mostrarVenda?: boolean };
+  // Escopo da visão salva. Favorito da LISTA e do KANBAN são separados: cada
+  // view só enxerga os seus. Legado (sem escopo) conta como "lista".
+  escopo?: View;
+  snap: { chips: Chip[]; niveis: Nivel[]; busca: string; vis: string[]; ordem: string[]; sorts: Sort[]; arvore: GrupoRegras | null; compacto?: boolean; mostrarVenda?: boolean; kanbanDim?: string };
 }
 /** Filtro rápido pré-setado. Por padrão é igualdade (`kind: "col"`); com `kind: "regra"` +
  * `op` vira um predicado com operador (ex.: desconto "maior" que "0"), avaliado pelo motor. */
@@ -63,8 +67,9 @@ export interface TabelaAvancadaProps<T extends Record<string, unknown>> {
   colunaByKey: Record<string, ColunaDef<T>>;
   campos: CampoDef<T>[];
   campoByKey: Record<string, CampoDef<T>>;
+  /** dimensões de agrupamento (lista: níveis aninhados; kanban: dimensão única). */
   agrupamentos: { campo: string; label: string }[];
-  celula: (row: T, key: string) => React.ReactNode;
+  celula: (row: T, key: string, truncar?: boolean) => React.ReactNode;
   /** id estável de linha (default: índice na base). */
   rowKey?: (row: T, i: number) => string;
   /** valor somado nos subtotais/rodapé (ex.: valor a atender). */
@@ -251,19 +256,30 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   const [salvarOpen, setSalvarOpen] = useState(false);
   const [favEditId, setFavEditId] = useState<string | null>(null); // favorito sendo renomeado
   const [nomeFav, setNomeFav] = useState("");
-  const [toast, setToast] = useState<string | null>(null);
   const [sugOpen, setSugOpen] = useState(false);
   // Coluna sob o mouse no cabeçalho: acende as DUAS divisórias vizinhas (esquerda e direita).
   const [hoverCol, setHoverCol] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const campoByLike = campoByKey as unknown as Record<string, CampoLike>;
+  // Snapshot dos filtros/busca de ORIGEM ao entrar no detalhe do pedido. Dentro
+  // do detalhe a pessoa mexe em busca/filtros à vontade (aplicados "por cima",
+  // reescopando os pedidos navegáveis); o botão Voltar (ou trocar de modo)
+  // restaura exatamente o que havia antes. É o que torna o detalhe uma lente
+  // temporária sobre a lista, sem perder a visão que a pessoa tinha construído.
+  const snapDetalheRef = useRef<{ busca: string; chips: Chip[]; niveis: Nivel[]; arvore: GrupoRegras | null; escopoCol: string | null } | null>(null);
+  function abrirDetalhe(row: T, idx: number) {
+    setDetalhe({ row, idx });
+  }
+  function fecharDetalhe() {
+    const s = snapDetalheRef.current;
+    if (s) {
+      setBusca(s.busca); setChips(s.chips); setNiveis(s.niveis); setArvore(s.arvore); setEscopoCol(s.escopoCol);
+      snapDetalheRef.current = null;
+    }
+    setDetalhe(null);
+  }
 
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 3000);
-    return () => clearTimeout(t);
-  }, [toast]);
+  const campoByLike = campoByKey as unknown as Record<string, CampoLike>;
 
   // Scroll chaining explícito: ao atingir o topo/fundo da lista, empurra o
   // scroller da página (que o browser às vezes não encadeia no mesmo gesto de
@@ -372,23 +388,37 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
     return todas.filter((c) => c.obrigatoria || vis.includes(c.key));
   }, [ordem, colunaByKey, vis, colunasCompacto]);
 
+  // Conjunto de colunas para BUSCA/FILTRO/ESCOPO. No kanban, no calendário e no
+  // detalhe do pedido a busca vale para QUALQUER coluna (essas views são
+  // independentes da seleção de colunas e do modo compacto da lista); na lista,
+  // segue as colunas exibidas. Só afeta busca/filtro, nunca o que a lista desenha.
+  const buscaLivre = !!detalhe || view !== "lista";
+  const colsBusca = useMemo(
+    () => (buscaLivre ? ordem.map((k) => colunaByKey[k]).filter(Boolean) : colsVisiveis),
+    [buscaLivre, ordem, colunaByKey, colsVisiveis],
+  );
+  // Views que no "Filtrar e agrupar" mostram SÓ os filtros (sem Agrupar por nem
+  // Favoritos): detalhe do pedido e calendário. Kanban mantém as três seções
+  // (Agrupar vira dimensão única; Favoritos são os do kanban).
+  const soFiltros = !!detalhe || view === "calendario";
+
   // ===== Escopo de busca por coluna =====
   // Coluna-alvo da busca. Só vale se ainda está EXIBIDA; se um modelo compacto a
   // esconder, o escopo é limpo (não dá pra buscar numa coluna fora da tela).
   const colEscopo = useMemo(
-    () => (escopoCol ? colsVisiveis.find((c) => c.key === escopoCol) ?? null : null),
-    [escopoCol, colsVisiveis],
+    () => (escopoCol ? colsBusca.find((c) => c.key === escopoCol) ?? null : null),
+    [escopoCol, colsBusca],
   );
   useEffect(() => {
-    if (escopoCol && !colsVisiveis.some((c) => c.key === escopoCol)) setEscopoCol(null);
-  }, [escopoCol, colsVisiveis]);
+    if (escopoCol && !colsBusca.some((c) => c.key === escopoCol)) setEscopoCol(null);
+  }, [escopoCol, colsBusca]);
 
   // Colunas oferecidas no seletor de escopo, filtradas pela mini-busca (sem acento).
   const colunasBuscaveis = useMemo(() => {
     const q = normalizarBusca(colPickerQ.trim());
-    if (!q) return colsVisiveis;
-    return colsVisiveis.filter((c) => normalizarBusca(c.label).includes(q));
-  }, [colsVisiveis, colPickerQ]);
+    if (!q) return colsBusca;
+    return colsBusca.filter((c) => normalizarBusca(c.label).includes(q));
+  }, [colsBusca, colPickerQ]);
 
   // Ao abrir o seletor: zera a mini-busca e foca o campo. Fecha por clique fora / Esc.
   useEffect(() => {
@@ -427,7 +457,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
       return out.slice(0, 40);
     }
     const out: Chip[] = [{ id: `s-txt-${q}`, campo: "texto", kind: "texto", valor: q, label: `Contém "${q}"` }];
-    colsVisiveis
+    colsBusca
       .filter((c) => (c.tipo === "texto" || c.tipo === "tagCor"))
       .forEach((col) => {
         [...new Set(base.map((r) => String(col.valor(r))).filter((v) => v && v !== "-"))]
@@ -436,7 +466,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
           .forEach((v) => out.push({ id: `s-${col.key}-${v}`, campo: col.key, kind: "col", valor: v, label: `${col.label}: ${v}` }));
       });
     return out.slice(0, 40);
-  }, [buscaDeferida, base, colsVisiveis, colEscopo]);
+  }, [buscaDeferida, base, colsBusca, colEscopo]);
 
   function matchFacet(c: Chip, row: T): boolean {
     if (c.kind === "regra") {
@@ -454,7 +484,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
       const col = colunaByKey[c.escopo];
       return col ? String(col.valor(row)).toLowerCase().includes((c.valor ?? "").toLowerCase()) : true;
     }
-    const hay = (colsVisiveis.map((x) => String(x.valor(row))).join(" ") + " " + (textoBusca?.(row) ?? "")).toLowerCase();
+    const hay = (colsBusca.map((x) => String(x.valor(row))).join(" ") + " " + (textoBusca?.(row) ?? "")).toLowerCase();
     return hay.includes((c.valor ?? "").toLowerCase());
   }
 
@@ -482,14 +512,14 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
     // Com escopo ativo, a busca livre varre só a coluna escolhida; senão, todas as exibidas.
     const hay = (row: T) => colEscopo
       ? String(colEscopo.valor(row)).toLowerCase()
-      : (colsVisiveis.map((c) => String(c.valor(row))).join(" ") + " " + (textoBusca?.(row) ?? "")).toLowerCase();
+      : (colsBusca.map((c) => String(c.valor(row))).join(" ") + " " + (textoBusca?.(row) ?? "")).toLowerCase();
     return base.filter((row) =>
       (!buscaAtiva || hay(row).includes(buscaAtiva)) &&
       grupoChips.every((cs) => cs.some((c) => matchFacet(c, row))) &&
       (!arvore || testaNo(row, arvore, campoByLike)),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [base, buscaAtiva, grupoChips, arvore, colsVisiveis, colEscopo]);
+  }, [base, buscaAtiva, grupoChips, arvore, colsBusca, colEscopo]);
 
   const listaOrdenada = useMemo(() => {
     if (sorts.length === 0) return lista;
@@ -507,6 +537,30 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
     });
     return arr;
   }, [lista, sorts, colunaByKey]);
+
+  // Ao ENTRAR no detalhe, congela a visão de origem (filtros/busca) uma vez. Lê
+  // o estado já commitado (origem intacta, pois abrir o detalhe não mexe em
+  // filtro), então nunca pega valor stale. Sai só via fecharDetalhe, que
+  // restaura e zera o ref.
+  useEffect(() => {
+    if (detalhe && !snapDetalheRef.current) {
+      snapDetalheRef.current = { busca, chips, niveis, arvore, escopoCol };
+    }
+  }, [detalhe, busca, chips, niveis, arvore, escopoCol]);
+
+  // No detalhe, quando busca/filtros mudam a lista, mantém o pedido em foco
+  // coerente: se ele ainda está no conjunto, reindexa; se saiu, pula para o
+  // primeiro do novo conjunto (a pessoa continua "no modo pedido", vendo o que
+  // filtrou). Lista vazia mantém a ficha atual (a navegação mostra 1 de 0).
+  useEffect(() => {
+    if (!detalhe) return;
+    const i = listaOrdenada.indexOf(detalhe.row);
+    if (i === -1) {
+      if (listaOrdenada.length) setDetalhe({ row: listaOrdenada[0], idx: 0 });
+    } else if (i !== detalhe.idx) {
+      setDetalhe({ row: detalhe.row, idx: i });
+    }
+  }, [listaOrdenada, detalhe]);
 
   const filtrosAtivos = chips.length + (arvore ? 1 : 0);
 
@@ -577,31 +631,71 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   );
 
   // Larguras redimensionáveis
-  const { larguras, setRef, medirFaltantes, iniciarResize, resetColuna, arrastandoRef } = useResizeColunas(`${storageKey}:larg`, scrollRef);
-  // Com um MODELO compacto ativo, a tabela roda em table-auto e as colunas de texto são capadas
-  // (via max-w + truncate) para o modo compacto ficar de fato compacto; sem modelo, respeita as
-  // larguras salvas (table-fixed).
-  // Larguras redimensionáveis: vale IGUAL no modo compacto e no normal , cada coluna com largura
-  // própria; se as colunas crescerem além da tela, a tabela rola na horizontal (é a experiência do
-  // usuário, não travamos). table-fixed assim que todas as colunas têm largura medida.
+  // DOIS conjuntos de largura, um por modo: NORMAL (persistido) e COMPACTO (efêmero, recalculado
+  // a cada ativação). Assim, mexer nas colunas no compacto NÃO afeta o tradicional, e ao sair do
+  // compacto as colunas voltam exatamente como o usuário deixou no tradicional. O resize/duplo-
+  // clique operam sobre o conjunto do modo ATIVO (R).
+  // "Modo compacto" é a DENSIDADE `compacto` (booleano) , vale pro "Todas as colunas" (sem modelo
+  // nomeado) e pra modelos salvos. NÃO usar `modeloCompacto` aqui (só existe com modelo nomeado).
+  const rN = useResizeColunas(`${storageKey}:larg`, scrollRef);
+  // Compacto: larguras EFÊMERAS (persistir=false) , nunca herda do localStorage; sempre recalcula
+  // a regra ao ativar/recarregar. Resize manual no compacto vale só na sessão (some ao sair/reload).
+  const rC = useResizeColunas(`${storageKey}:larg-compacto`, scrollRef, false);
+  const R = compacto ? rC : rN;
+  const { larguras, setRef, iniciarResize, resetColuna, arrastandoRef } = R;
+  // table-fixed (com largura explícita) torna o arraste barato e o encolhimento possível , resize
+  // e duplo-clique valem nos DOIS modos. Vira fixed assim que todas foram medidas.
   const colFixo = colsVisiveis.length > 0 && colsVisiveis.every((c) => larguras[c.key] != null);
-  useLayoutEffect(() => { medirFaltantes(colsVisiveis.map((c) => c.key)); }, [colsVisiveis, medirFaltantes]);
+  // NORMAL: mede a largura natural (sem cap) das colunas que ainda não têm largura.
+  useLayoutEffect(() => { if (!compacto) rN.medirFaltantes(colsVisiveis.map((c) => c.key)); }, [colsVisiveis, compacto, rN.medirFaltantes]);
+  // COMPACTO , medição da REGRA em 2 tempos (exato em 32 chars E com resize que revela caracteres):
+  // (1) liga `medindoCompacto` → as células renderizam o texto CORTADO em 32 chars; (2) medimos a
+  // largura real dessas células (padding de texto/tag exato) e gravamos; (3) desliga → a exibição
+  // volta ao conteúdo COMPLETO, que o CSS trunca na largura fixada. Assim, alargar a coluna revela
+  // mais caracteres e encolher traz as reticências de volta, mas o padrão fica exato em 32.
+  const [medindoCompacto, setMedindoCompacto] = useState(false);
+  // Colunas que o usuário redimensionou À MÃO no compacto: saem da truncagem por 32 chars e passam
+  // a exibir o conteúdo COMPLETO cortado por LARGURA (CSS), revelando/escondendo texto AO VIVO
+  // conforme arrasta. As demais ficam na regra (exatos 32 chars, por contagem).
+  const [colunasMexidasCompacto, setColunasMexidasCompacto] = useState<Set<string>>(new Set());
+  // Larguras-REGRA por coluna (compacto). Guardadas para o duplo-clique animar de volta pra regra
+  // sem remedir (evita o "engasga" da medição síncrona numa tabela larga).
+  const larguraRegraRef = useRef<Record<string, number>>({});
+  // (Re)ativou o compacto ou mudou modelo/colunas: volta TUDO pra regra (limpa as mexidas) e remede.
+  useLayoutEffect(() => { if (compacto) { setColunasMexidasCompacto(new Set()); setMedindoCompacto(true); } }, [compacto, compactoAtivo, colsVisiveis]);
+  // Mede a largura-regra com as células cortadas em 32 chars por contagem (largura fica EXATA para
+  // os 32) e grava. A exibição em repouso usa a MESMA contagem, então mostra exatamente 32 + "…".
+  useLayoutEffect(() => {
+    if (!medindoCompacto) return;
+    if (!compacto) { setMedindoCompacto(false); return; }
+    const regra = rC.medirTodas(colsVisiveis.map((c) => c.key));
+    larguraRegraRef.current = regra;
+    rC.aplicar(regra);
+    setMedindoCompacto(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [medindoCompacto, compacto]);
 
   // ===== Favoritos =====
+  // Escopo de um favorito (legado sem escopo = "lista"). Cada view só lista os seus.
+  const escopoDe = (f: Favorito): View => f.escopo ?? "lista";
+  const favoritosDaView = favoritos.filter((f) => escopoDe(f) === view);
   function salvarFavorito() {
     const nome = nomeFav.trim();
     if (!nome) return; // nome obrigatório: sem nome não salva
-    if (favoritos.some((f) => normalizarBusca(f.nome) === normalizarBusca(nome))) { setToast("Já existe um favorito com esse nome."); return; }
-    const fav: Favorito = { id: `f${favSeq++}`, nome, snap: { chips, niveis, busca, vis, ordem, sorts, arvore, compacto, mostrarVenda } };
+    if (favoritosDaView.some((f) => normalizarBusca(f.nome) === normalizarBusca(nome))) { toast.error("Já existe um favorito com esse nome."); return; }
+    // A visão salva carrega o escopo da view atual e a dimensão do kanban (usada só no kanban).
+    const fav: Favorito = { id: `f${favSeq++}`, nome, escopo: view, snap: { chips, niveis, busca, vis, ordem, sorts, arvore, compacto, mostrarVenda, kanbanDim } };
     setFavoritos((prev) => [...prev, fav]);
     setNomeFav(""); setSalvarOpen(false);
-    setToast(`Visão "${fav.nome}" salva.`);
+    // A notificação diz ONDE a visão foi salva (kanban tem favoritos próprios, separados da lista).
+    const onde = view === "kanban" ? "do Kanban" : "da lista";
+    toast.success(`Visão ${onde} "${fav.nome}" salva.`);
   }
   // Edita SOMENTE o nome de um favorito (não altera os filtros/config guardados).
   function salvarEdicaoFav() {
     const nome = nomeFav.trim();
     if (!nome || !favEditId) return;
-    if (favoritos.some((f) => f.id !== favEditId && normalizarBusca(f.nome) === normalizarBusca(nome))) { setToast("Já existe um favorito com esse nome."); return; }
+    if (favoritosDaView.some((f) => f.id !== favEditId && normalizarBusca(f.nome) === normalizarBusca(nome))) { toast.error("Já existe um favorito com esse nome."); return; }
     setFavoritos((prev) => prev.map((f) => (f.id === favEditId ? { ...f, nome } : f)));
     setFavEditId(null); setNomeFav("");
   }
@@ -614,6 +708,8 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
     setCompacto(f.snap.compacto ?? false);
     setMostrarVenda(f.snap.mostrarVenda ?? false);
     setCompactoAtivo(null); // favoritos não guardam modelo compacto: sai de qualquer modelo ativo.
+    // Kanban: a dimensão de agrupamento também faz parte da visão salva.
+    if (f.snap.kanbanDim) setKanbanDim(f.snap.kanbanDim);
   }
 
   // ===== Modo compacto (modelos nomeados) =====
@@ -631,7 +727,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   function salvarCompacto(nomeRaw: string, cols: string[]) {
     const nome = nomeRaw.trim();
     if (!nome || cols.length === 0) return; // nome obrigatório + ao menos 1 coluna
-    if (visoesCompactas.some((v) => v.id !== compEditId && normalizarBusca(v.nome) === normalizarBusca(nome))) { setToast("Já existe um modelo com esse nome."); return; }
+    if (visoesCompactas.some((v) => v.id !== compEditId && normalizarBusca(v.nome) === normalizarBusca(nome))) { toast.error("Já existe um modelo com esse nome."); return; }
     if (compEditId) {
       const id = compEditId;
       setVisoesCompactas((prev) => prev.map((v) => (v.id === id ? { ...v, nome, colunas: cols } : v)));
@@ -642,7 +738,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
       aplicarCompacto(id);
     }
     setCompEditId(null);
-    setToast(`Modo compacto "${nome}" salvo.`);
+    toast.success(`Modo compacto "${nome}" salvo.`);
   }
   function excluirCompacto(id: string) {
     setVisoesCompactas((prev) => prev.filter((v) => v.id !== id));
@@ -650,37 +746,46 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
     if (compEditId === id) setCompEditId(null);
   }
 
-  // ===== Exportar CSV (linhas filtradas/ordenadas, colunas visíveis) =====
-  function exportar() {
-    const heads = colsVisiveis.map((c) => c.label);
-    const linhasCsv = listaOrdenada.map((r) => colsVisiveis.map((c) => {
-      const v = c.valor(r);
+  // ===== Exportar CSV =====
+  /** Gera e baixa um CSV (escaping ;/"/quebra + BOM UTF-8). Reusado pelo export da
+   * lista e pelo export de um pedido (tela de detalhe). */
+  function baixarCsv(nome: string, heads: string[], linhas: (string | number)[][]) {
+    const esc = (v: string | number) => {
       const s = String(v ?? "").replace(/"/g, '""');
       return /[",;\n]/.test(s) ? `"${s}"` : s;
-    }).join(";"));
-    const csv = [heads.join(";"), ...linhasCsv].join("\n");
+    };
+    const csv = [heads.map(esc).join(";"), ...linhas.map((l) => l.map(esc).join(";"))].join("\n");
     try {
       const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${exportFilename}.csv`;
+      a.download = `${nome}.csv`;
       a.click();
       URL.revokeObjectURL(url);
-      setToast(`${listaOrdenada.length} linha(s) exportada(s).`);
-    } catch { setToast("Não foi possível exportar."); }
+      toast.success(`${linhas.length} linha(s) exportada(s).`);
+    } catch { toast.error("Não foi possível exportar."); }
+  }
+
+  // Export da lista: linhas filtradas/ordenadas, colunas visíveis.
+  function exportar() {
+    baixarCsv(exportFilename, colsVisiveis.map((c) => c.label), listaOrdenada.map((r) => colsVisiveis.map((c) => String(c.valor(r) ?? ""))));
   }
 
   const campoByUI = campoByKey as unknown as Record<string, CampoUI>;
-  // O seletor de campo do filtro avançado reflete as COLUNAS ATIVAS na ORDEM do
-  // usuário (e, no compacto, só as do modelo aplicado): deriva de colsVisiveis,
-  // mapeando cada coluna ao seu campo filtrável. Coluna sem campo correspondente sai.
+  // O seletor de campo do filtro avançado reflete as colunas de BUSCA (colsBusca):
+  // na lista, as colunas ativas na ordem do usuário (e, no compacto, as do modelo);
+  // no kanban/calendário/detalhe, TODAS as colunas (busca livre, sem trava).
   const camposUI = useMemo(
-    () => colsVisiveis.map((c) => campoByUI[c.key]).filter(Boolean) as CampoUI[],
-    [colsVisiveis, campoByUI],
+    () => colsBusca.map((c) => campoByUI[c.key]).filter(Boolean) as CampoUI[],
+    [colsBusca, campoByUI],
   );
   const campoPadrao = camposUI[0]?.key ?? campos[0]?.key ?? "";
   const colCount = colsVisiveis.length;
+  // Largura EXPLÍCITA da tabela = soma das larguras das colunas. É obrigatório: com table-fixed,
+  // usar `width:max-content` (w-max) faz o browser IGNORAR a largura dos <col> (dá pra ver o
+  // inline mudar sem a coluna mexer). Com largura explícita, o resize passa a valer de fato.
+  const larguraTotal = colFixo ? colsVisiveis.reduce((s, c) => s + (larguras[c.key] ?? 0), 0) : undefined;
 
   // Corpo da tabela memoizado: as linhas só são recriadas quando os DADOS mudam
   // (flat/colunas/expansão/etc.), NUNCA a cada tecla da busca. Como a lista deriva do
@@ -704,7 +809,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
       const aberto = expandRows.has(rk);
       return (
         <Fragment key={rk}>
-          <tr onClick={() => setDetalhe({ row: it.row, idx: listaOrdenada.indexOf(it.row) })} className={cn("cursor-pointer border-b border-border/60 transition-colors last:border-0 hover:bg-accent/40", aberto && "bg-accent/30")}>
+          <tr onClick={() => abrirDetalhe(it.row, listaOrdenada.indexOf(it.row))} className={cn("cursor-pointer border-b border-border/60 transition-colors last:border-0 hover:bg-accent/40", aberto && "bg-accent/30")}>
             {colsVisiveis.map((c, ci) => {
               const alinhar = c.align ?? (c.numeric ? "right" : "left");
               return (
@@ -714,10 +819,10 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                     <button type="button" aria-label={aberto ? "Recolher produtos" : "Ver produtos"} aria-expanded={aberto} onClick={(e) => { e.stopPropagation(); toggleExpandRow(rk); }} className="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
                       {aberto ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
                     </button>
-                    {celula(it.row, c.key)}
+                    {celula(it.row, c.key, medindoCompacto || (compacto && !colunasMexidasCompacto.has(c.key)))}
                   </div>
                 ) : (
-                  <div className={cn("truncate", alinhar === "right" && "text-right", alinhar === "center" && "text-center")}>{celula(it.row, c.key)}</div>
+                  <div className={cn("truncate", alinhar === "right" && "text-right", alinhar === "center" && "text-center")}>{celula(it.row, c.key, medindoCompacto || (compacto && !colunasMexidasCompacto.has(c.key)))}</div>
                 )}
               </td>
               );
@@ -733,16 +838,21 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
     })(),
   ),
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  [flat, colsVisiveis, expandRows, compacto, modeloCompacto, niveis, listaOrdenada, expandirRow, valorSoma, colCount]);
+  [flat, colsVisiveis, expandRows, compacto, medindoCompacto, colunasMexidasCompacto, modeloCompacto, niveis, listaOrdenada, expandirRow, valorSoma, colCount]);
 
   return (
     <OpcoesTabelaContext.Provider value={{ mostrarVenda }}>
     <div className="relative flex h-full min-h-0 flex-col">
       {/* Toolbar */}
       <div className="mb-3 flex shrink-0 flex-wrap items-center gap-2">
+        {/* Exportar: só na LISTA (CSV das colunas visíveis). No detalhe do pedido,
+            no kanban e no calendário não faz sentido (não é uma tabela tabular). */}
+        {!detalhe && view === "lista" && (
         <Btn variant="outline" onClick={exportar}><Download className="size-4" /> Exportar</Btn>
-        {/* Compacto: um menu simples. Vejo a LISTA (todas as colunas + modelos, cada um
-            clicável para aplicar/tirar) ou o EDITOR (ao criar/editar), nunca os dois juntos. */}
+        )}
+        {/* Compacto / Mostrar venda / Colunas só fazem sentido sobre a LISTA: somem
+            no detalhe do pedido (ficha), no kanban e no calendário (cards). */}
+        {!detalhe && view === "lista" && (
         <Popover
           align="left"
           width="w-80 max-w-[calc(100vw-2rem)]"
@@ -814,25 +924,19 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
             );
           }}
         </Popover>
+        )}
         {/* Toggle custo/venda: colunas de valor passam a mostrar custo + venda com ícones. */}
-        {permiteVenda && (
+        {!detalhe && view === "lista" && permiteVenda && (
           <Btn variant={mostrarVenda ? "soft" : "outline"} aria-pressed={mostrarVenda} onClick={() => setMostrarVenda((v) => !v)}>
             <Tag className="size-4" /> {mostrarVenda ? "Custo + venda" : "Mostrar venda"}
           </Btn>
         )}
         {/* Seletor de colunas: só no modo lista, na toolbar (não vaza ao rolar). */}
-        {view === "lista" && (
+        {!detalhe && view === "lista" && (
           <SeletorColunas rotulo="Colunas" colunas={colunas} ordem={ordem} visiveis={vis} onOrdemChange={setOrdem} onVisiveisChange={setVis} />
         )}
-        {/* Seletor da dimensão do Kanban (com busca). */}
-        {view === "kanban" && kanbanCampo && (
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-muted-foreground">Agrupar por</span>
-            <div className="w-44">
-              <Select value={kanbanDim} options={agrupamentos.map((a) => ({ value: a.campo, label: a.label }))} onChange={setKanbanDim} ariaLabel="Dimensão do Kanban" />
-            </div>
-          </div>
-        )}
+        {/* A dimensão do Kanban é escolhida no "Filtrar e agrupar" (seção Agrupar por),
+            como dimensão ÚNICA. O seletor inline foi removido para unificar o controle. */}
 
         {/* View switcher. "Pedido" (ficha) não é uma view: abre o overlay de
             detalhe no primeiro pedido da lista atual. Vem primeiro por ser a
@@ -846,14 +950,14 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
           {VIEWS.filter((v) => v.key === "lista" || (v.key === "kanban" && kanbanCampo) || (v.key === "calendario" && calendarioCampo)).map((v) => (
             <Fragment key={v.key}>
               <Tooltip label={v.label}>
-                <button type="button" onClick={() => { setView(v.key); setDetalhe(null); }} aria-label={v.label} aria-pressed={view === v.key && !detalhe}
+                <button type="button" onClick={() => { setView(v.key); fecharDetalhe(); if (v.key === "kanban") desligarCompacto(); }} aria-label={v.label} aria-pressed={view === v.key && !detalhe}
                   className={cn("flex size-8 cursor-pointer items-center justify-center rounded-md transition-colors", view === v.key && !detalhe ? "bg-violet-500/15 text-violet-600 dark:text-violet-300" : "text-muted-foreground hover:text-foreground")}>
                   <v.icon className="size-4" />
                 </button>
               </Tooltip>
               {v.key === "lista" && renderDetalhe && (
                 <Tooltip label="Pedido">
-                  <button type="button" onClick={() => { if (listaOrdenada.length) setDetalhe({ row: listaOrdenada[0], idx: 0 }); }}
+                  <button type="button" onClick={() => { if (listaOrdenada.length) abrirDetalhe(listaOrdenada[0], 0); }}
                     disabled={listaOrdenada.length === 0} aria-label="Pedido" aria-pressed={!!detalhe}
                     className={cn("flex size-8 items-center justify-center rounded-md transition-colors disabled:cursor-not-allowed disabled:opacity-40", detalhe ? "bg-violet-500/15 text-violet-600 dark:text-violet-300" : "cursor-pointer text-muted-foreground hover:text-foreground")}>
                     <IdCard className="size-4" />
@@ -930,6 +1034,20 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
               </div>
             )}
           </div>
+          {/* Kanban: a dimensão de agrupamento é SEMPRE a primeira tag (verde), antes de
+              escopo e filtros. Só há uma (o kanban agrupa por uma dimensão só) e ela é
+              obrigatória, então não tem X; muda ao trocar o "Agrupar por", mas nunca sai
+              da primeira posição. */}
+          {view === "kanban" && (() => {
+            const dim = agrupamentos.find((a) => a.campo === kanbanDim);
+            const label = dim?.label ?? kanbanDim;
+            if (!label) return null;
+            return (
+              <span className="inline-flex items-center gap-1 rounded-md bg-emerald-500/12 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-500/30 dark:text-emerald-300" title={`Kanban agrupado por ${label}`}>
+                <Layers className="size-3 shrink-0" aria-hidden /> {label}
+              </span>
+            );
+          })()}
           {/* Indicador do escopo ativo: qual coluna está sendo buscada (X remove). */}
           {colEscopo && (
             <span className="inline-flex items-center gap-1 rounded-md bg-violet-500/12 px-2 py-0.5 text-xs font-medium text-violet-700 ring-1 ring-violet-500/30 dark:text-violet-300">
@@ -943,7 +1061,9 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
               <button type="button" onClick={() => removeChip(c.id)} aria-label={`Remover ${c.label}`} className="cursor-pointer text-violet-500/70 hover:text-violet-600"><X className="size-3" /></button>
             </span>
           ))}
-          {niveis.map((n, i) => (
+          {/* Chips de agrupamento (com ordinal 1º/2º) são da LISTA. No kanban a
+              dimensão é única (sem ordinal); no calendário/detalhe não há agrupamento. */}
+          {!buscaLivre && niveis.map((n, i) => (
             <span key={n.campo} className="inline-flex items-center gap-1 rounded-md bg-emerald-500/12 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-500/30 dark:text-emerald-300">
               <Layers className="size-3 shrink-0" aria-hidden />
               <span className="inline-flex size-4 items-center justify-center rounded-full bg-emerald-500/20 text-[0.65rem] font-bold tabular-nums">{i + 1}</span>
@@ -1001,15 +1121,15 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
         {/* Caret → painel tri-coluna */}
         <Popover
           align="right"
-          width="w-[46rem] max-w-[calc(100vw-2rem)]"
+          width={soFiltros ? "w-72 max-w-[calc(100vw-2rem)]" : "w-[46rem] max-w-[calc(100vw-2rem)]"}
           trigger={({ toggle, open }) => (
-            <button type="button" onClick={toggle} aria-expanded={open} className={cn("inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border px-3 text-sm transition-colors", filtrosAtivos || niveis.length ? "border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300" : "border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground")}>
-              <SlidersHorizontal className="size-4" /> Filtrar e agrupar <ChevronDown className="size-3.5" />
+            <button type="button" onClick={toggle} aria-expanded={open} className={cn("inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border px-3 text-sm transition-colors", filtrosAtivos || niveis.length || view === "kanban" ? "border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300" : "border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground")}>
+              <SlidersHorizontal className="size-4" /> {soFiltros ? "Filtrar" : "Filtrar e agrupar"} <ChevronDown className="size-3.5" />
             </button>
           )}
         >
           {(close) => (
-            <div className="grid grid-cols-1 gap-3 p-1 sm:grid-cols-3">
+            <div className={cn("grid grid-cols-1 gap-3 p-1", !soFiltros && "sm:grid-cols-3")}>
               {/* Filtros */}
               <div>
                 <p className="mb-1.5 flex items-center gap-1.5 px-1 text-sm font-semibold uppercase tracking-wide text-violet-600 dark:text-violet-400"><Filter className="size-3.5" /> Filtros</p>
@@ -1031,28 +1151,50 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                   <Plus className="size-4" /> Filtro avançado
                 </button>
               </div>
-              {/* Agrupar */}
+              {/* Agrupar e Favoritos: no detalhe do pedido e no calendário some tudo,
+                  sobra só Filtros. Na lista e no kanban, aparecem (no kanban, Agrupar
+                  vira dimensão única e Favoritos são os do kanban). */}
+              {!soFiltros && (<>
+              {/* Agrupar. Na LISTA: níveis aninhados (1º, 2º...). No KANBAN: dimensão
+                  ÚNICA (uma escolha define as colunas do quadro), e só as dimensões
+                  cujas colunas o usuário habilitou na lista. */}
               <div>
                 <p className="mb-1.5 flex items-center gap-1.5 px-1 text-sm font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400"><Layers className="size-3.5" /> Agrupar por</p>
-                <div className="max-h-[22rem] space-y-0.5 overflow-y-auto pr-0.5">
-                  {agrupamentos.map((n) => {
-                    const idx = niveis.findIndex((x) => x.campo === n.campo);
-                    const ativo = idx >= 0;
-                    return (
-                      <button key={n.campo} type="button" onClick={() => toggleNivel(n)} className={cn("flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] transition-colors", ativo ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "text-foreground hover:bg-accent")}>
-                        <Layers className={cn("size-3 shrink-0", ativo ? "text-emerald-500" : "text-muted-foreground")} />
-                        <span className="flex-1">{n.label}</span>
-                        {ativo && <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">{idx + 1}º</span>}
-                      </button>
-                    );
-                  })}
-                </div>
+                {view === "kanban" ? (
+                  <div className="max-h-[22rem] space-y-0.5 overflow-y-auto pr-0.5">
+                    {agrupamentos.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">Nenhuma dimensão para agrupar.</p>}
+                    {agrupamentos.map((n) => {
+                      const ativo = kanbanDim === n.campo;
+                      return (
+                        <button key={n.campo} type="button" onClick={() => setKanbanDim(n.campo)} aria-pressed={ativo} className={cn("flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] transition-colors", ativo ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "text-foreground hover:bg-accent")}>
+                          <Layers className={cn("size-3 shrink-0", ativo ? "text-emerald-500" : "text-muted-foreground")} />
+                          <span className="flex-1">{n.label}</span>
+                          {ativo && <Check className="size-3.5 shrink-0 text-emerald-500" aria-hidden />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="max-h-[22rem] space-y-0.5 overflow-y-auto pr-0.5">
+                    {agrupamentos.map((n) => {
+                      const idx = niveis.findIndex((x) => x.campo === n.campo);
+                      const ativo = idx >= 0;
+                      return (
+                        <button key={n.campo} type="button" onClick={() => toggleNivel(n)} className={cn("flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] transition-colors", ativo ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "text-foreground hover:bg-accent")}>
+                          <Layers className={cn("size-3 shrink-0", ativo ? "text-emerald-500" : "text-muted-foreground")} />
+                          <span className="flex-1">{n.label}</span>
+                          {ativo && <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">{idx + 1}º</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
               {/* Favoritos */}
               <div>
                 <p className="mb-1.5 flex items-center gap-1.5 px-1 text-sm font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400"><Star className="size-3.5" /> Favoritos</p>
                 {salvarOpen ? (() => {
-                  const dup = nomeFav.trim().length > 0 && favoritos.some((f) => normalizarBusca(f.nome) === normalizarBusca(nomeFav));
+                  const dup = nomeFav.trim().length > 0 && favoritosDaView.some((f) => normalizarBusca(f.nome) === normalizarBusca(nomeFav));
                   return (
                     <div>
                       <div className="flex items-center gap-1.5 px-1">
@@ -1074,9 +1216,9 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                 <div className="mt-3 border-t border-border pt-2.5">
                   <p className="mb-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Meus favoritos</p>
                   <div className="max-h-[18rem] space-y-0.5 overflow-y-auto pr-0.5">
-                    {favoritos.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">Nenhuma visão salva ainda.</p>}
-                    {favoritos.map((f) => (favEditId === f.id ? (() => {
-                      const dup = nomeFav.trim().length > 0 && favoritos.some((x) => x.id !== f.id && normalizarBusca(x.nome) === normalizarBusca(nomeFav));
+                    {favoritosDaView.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">Nenhuma visão salva ainda.</p>}
+                    {favoritosDaView.map((f) => (favEditId === f.id ? (() => {
+                      const dup = nomeFav.trim().length > 0 && favoritosDaView.some((x) => x.id !== f.id && normalizarBusca(x.nome) === normalizarBusca(nomeFav));
                       return (
                         <div key={f.id} className="px-1 py-1">
                           <div className="flex items-center gap-1.5">
@@ -1103,12 +1245,17 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                   </div>
                 </div>
               </div>
+              </>)}
             </div>
           )}
         </Popover>
       </div>
 
-      {/* contador + remover ordenação */}
+      {/* contador + remover ordenação (só na lista). No detalhe o contador de
+          pedidos não faz sentido; fica só um respiro antes da ficha do pedido. */}
+      {detalhe ? (
+        <div className="mb-2 shrink-0" aria-hidden />
+      ) : (
       <div className="mb-3 flex shrink-0 flex-wrap items-center gap-1.5">
         {sorts.length > 0 && (
           <button type="button" onClick={() => setSorts([])} className="inline-flex cursor-pointer items-center gap-1 rounded-full px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
@@ -1117,12 +1264,13 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
         )}
         <span className="ml-auto text-xs text-muted-foreground">{lista.length} de {base.length} {labelRegistro}</span>
       </div>
+      )}
 
       {/* ===== VISÃO LISTA ===== */}
       {view === "lista" && (
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card">
+        <div className={cn("flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card", detalhe && "hidden")}>
           <div ref={scrollRef} className="min-h-0 flex-1 overflow-auto">
-            <table className={cn(colFixo ? "w-max" : "w-full min-w-[60rem]", compacto ? "text-xs" : "text-sm", colFixo ? "table-fixed" : "table-auto")}>
+            <table style={colFixo ? { width: larguraTotal } : undefined} className={cn(colFixo ? "table-fixed" : compacto ? "w-max table-auto" : "w-full min-w-[60rem] table-auto", compacto ? "text-xs" : "text-sm")}>
               {colFixo && (
                 <colgroup>
                   {colsVisiveis.map((c) => <col key={c.key} data-colkey={c.key} style={{ width: larguras[c.key] }} />)}
@@ -1159,7 +1307,18 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                             mouse está NESTA coluna ou na SEGUINTE (a borda direita desta é a borda
                             esquerda da próxima), então ao passar numa coluna as duas divisórias
                             vizinhas ficam visíveis, e ambas arrastam de verdade. */}
-                        <ResizeHandle onPointerDown={(e) => iniciarResize(e, c.key)} onReset={() => resetColuna(c.key)} realce={hoverCol === ci || hoverCol === ci + 1} />
+                        <ResizeHandle
+                          onPointerDown={(e) => iniciarResize(e, c.key, compacto ? () => setColunasMexidasCompacto((prev) => (prev.has(c.key) ? prev : new Set(prev).add(c.key))) : undefined)}
+                          onReset={() => {
+                            if (!compacto) { resetColuna(c.key); return; }
+                            // Compacto: volta pra REGRA , desmarca a coluna (volta ao corte de 32) e
+                            // anima até a largura-regra guardada (sem remedir, sem engasgo).
+                            setColunasMexidasCompacto((prev) => { if (!prev.has(c.key)) return prev; const n = new Set(prev); n.delete(c.key); return n; });
+                            if (larguraRegraRef.current[c.key] != null) resetColuna(c.key, larguraRegraRef.current[c.key]);
+                            else setMedindoCompacto(true);
+                          }}
+                          realce={hoverCol === ci || hoverCol === ci + 1}
+                        />
                       </th>
                     );
                   })}
@@ -1193,25 +1352,25 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
 
       {/* ===== KANBAN ===== */}
       {view === "kanban" && kanbanCampo && (
-        <div className="min-h-0 flex-1 overflow-auto">
-          <KanbanView lista={lista} campo={kanbanDim || kanbanCampo} campoByKey={campoByLike} tituloItem={tituloItem} subtituloItem={subtituloItem} valorItem={valorItem} onAbrir={(r) => setDetalhe({ row: r, idx: listaOrdenada.indexOf(r) })} />
+        <div className={cn("min-h-0 flex-1 overflow-auto", detalhe && "hidden")}>
+          <KanbanView lista={lista} campo={kanbanDim || kanbanCampo} campoByKey={campoByLike} tituloItem={tituloItem} subtituloItem={subtituloItem} valorItem={valorItem} onAbrir={(r) => abrirDetalhe(r, listaOrdenada.indexOf(r))} />
         </div>
       )}
 
       {/* ===== CALENDÁRIO ===== */}
       {view === "calendario" && calendarioCampo && (
-        <div className="min-h-0 flex-1 overflow-auto">
-          <CalendarioView lista={lista} campoData={calendarioCampo} colunaByKey={colunaByKey as unknown as Record<string, { valor: (r: T) => string | number }>} tituloItem={tituloItem} valorItem={valorItem} onAbrir={(r) => setDetalhe({ row: r, idx: listaOrdenada.indexOf(r) })} />
+        <div className={cn("min-h-0 flex-1 overflow-auto", detalhe && "hidden")}>
+          <CalendarioView lista={lista} campoData={calendarioCampo} colunaByKey={colunaByKey as unknown as Record<string, { valor: (r: T) => string | number }>} tituloItem={tituloItem} valorItem={valorItem} onAbrir={(r) => abrirDetalhe(r, listaOrdenada.indexOf(r))} />
         </div>
       )}
 
       {/* ===== DETALHE DO PEDIDO (todas as views) =====
-          Sobreposto como overlay ABSOLUTO em vez de substituir a view: assim a
-          lista/kanban/calendário continuam montados por baixo e o "Voltar"
-          devolve o usuário exatamente onde estava (mesma view, página e posição
-          de scroll), sem precisar salvar/restaurar nada manualmente. */}
+          A lista/kanban/calendário continuam MONTADOS (só escondidos com `hidden`)
+          logo acima: assim o "Voltar" devolve a mesma view, página e posição de
+          scroll. Os filtros/busca de origem são restaurados pelo snapshot
+          (fecharDetalhe), já que dentro do detalhe a pessoa pode reescopá-los. */}
       {detalhe && (
-        <div className="absolute inset-0 z-30 flex min-h-0 flex-col bg-background">
+        <div className="flex min-h-0 flex-1 flex-col">
           <DetalhePedido
             row={detalhe.row}
             idx={detalhe.idx}
@@ -1222,7 +1381,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
             tituloItem={tituloItem}
             subtituloItem={subtituloItem}
             renderDetalhe={renderDetalhe}
-            onVoltar={() => setDetalhe(null)}
+            onVoltar={fecharDetalhe}
             onNavegar={(delta) => {
               const ni = Math.min(Math.max(0, detalhe.idx + delta), listaOrdenada.length - 1);
               setDetalhe({ row: listaOrdenada[ni], idx: ni });
@@ -1239,13 +1398,6 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
         <FiltroAvancado open onClose={() => setAvancadoOpen(false)} base={base} inicial={arvore} onAplicar={(a) => setArvore(a)} campos={camposUI} campoBy={campoByUI} campoPadrao={campoPadrao} rotulos={Object.fromEntries(colunas.map((c) => [c.key, c.label]))} />
       )}
 
-      {toast && (
-        <div role="status" aria-live="polite" className="pointer-events-none fixed inset-x-0 bottom-6 z-50 flex justify-center px-4">
-          <div className="pointer-events-auto flex items-center gap-2.5 rounded-xl border border-border bg-popover px-4 py-3 text-sm text-foreground shadow-xl">
-            <Check className="size-4 shrink-0 text-emerald-500" /> <span>{toast}</span>
-          </div>
-        </div>
-      )}
     </div>
     </OpcoesTabelaContext.Provider>
   );
@@ -1269,7 +1421,7 @@ function DetalhePedido<T extends Record<string, unknown>>({
   total: number;
   todos: T[];
   colunas: ColunaDef<T>[];
-  celula: (row: T, key: string) => React.ReactNode;
+  celula: (row: T, key: string, truncar?: boolean) => React.ReactNode;
   tituloItem?: (row: T) => string;
   subtituloItem?: (row: T) => string;
   renderDetalhe?: (row: T) => React.ReactNode;
