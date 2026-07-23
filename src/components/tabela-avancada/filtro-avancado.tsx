@@ -167,8 +167,9 @@ function RegraLinha({ regra, campos, campoBy, onSet, onRemove }: { regra: Regra;
 
 /** Tag E/OU clicável posicionada ENTRE dois irmãos: um clique alterna o conector
  * daquele par (só aquela fronteira). Cada operador tem cor própria para não sugerir
- * hierarquia entre eles: E em azul, OU em laranja. À direita, uma linha fina que
- * "amarra" os dois irmãos. */
+ * hierarquia entre eles: E em azul claro (sky/anil), OU em laranja , ambos calibrados
+ * para contraste AA em tema claro e escuro. À direita, uma linha fina que "amarra"
+ * os dois irmãos. */
 function ConectorTag({ conector, onToggle }: { conector: "todas" | "qualquer"; onToggle: () => void }) {
   const label = LABEL_CONECTOR[conector];
   const destino = conector === "todas" ? "OU" : "E";
@@ -184,7 +185,7 @@ function ConectorTag({ conector, onToggle }: { conector: "todas" | "qualquer"; o
           "inline-flex h-6 min-w-[2.5rem] shrink-0 cursor-pointer items-center justify-center rounded-full border px-2.5 text-xs font-semibold uppercase tracking-wide transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           ou
             ? "border-orange-500/50 bg-orange-500/10 text-orange-600 hover:bg-orange-500/20 dark:text-orange-300"
-            : "border-blue-500/50 bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 dark:text-blue-300",
+            : "border-sky-500/50 bg-sky-500/10 text-sky-600 hover:bg-sky-500/20 dark:text-sky-300",
         )}
       >
         {label}
@@ -256,6 +257,7 @@ export function FiltroAvancado({
   campos,
   campoBy,
   campoPadrao,
+  rotulos,
 }: {
   open: boolean;
   onClose: () => void;
@@ -265,6 +267,9 @@ export function FiltroAvancado({
   campos: CampoUI[];
   campoBy: Record<string, CampoUI>;
   campoPadrao: string;
+  /** Rótulo EXATO a exibir por campo (key -> label), tipicamente o nome da COLUNA
+   * como aparece no cabeçalho da lista. Sobrepõe o label do próprio campo. */
+  rotulos?: Record<string, string>;
 }) {
   const [arvore, setArvore] = useState<GrupoRegras>(
     inicial
@@ -276,6 +281,13 @@ export function FiltroAvancado({
   useMemo(() => {
     campos.forEach((c) => { if (c.tipo === "opcao" && (!c.opcoes || c.opcoes.length === 0)) c.opcoes = opcoesDoCampoUI(c, base); });
   }, [base, campos]);
+
+  // Rótulo exibido = nome da COLUNA (via `rotulos`), preservando a grafia/maiúsculas
+  // do cabeçalho da lista. Só o label muda; tipo/get/opções seguem do campo.
+  const camposExibidos = useMemo(
+    () => (rotulos ? campos.map((c) => { const r = rotulos[c.key]; return r && r !== c.label ? { ...c, label: r } : c; }) : campos),
+    [campos, rotulos],
+  );
 
   const campoByLike = campoBy as unknown as Record<string, CampoLike>;
   const contagem = useMemo(() => base.filter((row) => testaNo(row, arvore, campoByLike)).length, [base, arvore, campoByLike]);
@@ -301,7 +313,7 @@ export function FiltroAvancado({
       {/* min-height: o modal já abre num tamanho confortável para montar o 1º filtro e cresce
           conforme as regras vão sendo adicionadas. */}
       <div className="min-h-[20rem]">
-        <GrupoBloco grupo={arvore} campos={campos} campoBy={campoBy} campoPadrao={campoPadrao} raiz onChange={setArvore} />
+        <GrupoBloco grupo={arvore} campos={camposExibidos} campoBy={campoBy} campoPadrao={campoPadrao} raiz onChange={setArvore} />
       </div>
     </Modal>
   );

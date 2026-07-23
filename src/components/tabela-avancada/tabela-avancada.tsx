@@ -1236,7 +1236,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
       {/* Montado só quando aberto: garante que "editar" carregue a árvore atual (o useState
           interno do FiltroAvancado só lê `inicial` na montagem). */}
       {avancadoOpen && (
-        <FiltroAvancado open onClose={() => setAvancadoOpen(false)} base={base} inicial={arvore} onAplicar={(a) => setArvore(a)} campos={camposUI} campoBy={campoByUI} campoPadrao={campoPadrao} />
+        <FiltroAvancado open onClose={() => setAvancadoOpen(false)} base={base} inicial={arvore} onAplicar={(a) => setArvore(a)} campos={camposUI} campoBy={campoByUI} campoPadrao={campoPadrao} rotulos={Object.fromEntries(colunas.map((c) => [c.key, c.label]))} />
       )}
 
       {toast && (
