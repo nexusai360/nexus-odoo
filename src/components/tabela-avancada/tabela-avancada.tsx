@@ -124,8 +124,9 @@ function acharScrollerVertical(start: HTMLElement): HTMLElement | null {
 /** Editor de um modelo compacto (nome + colunas). Guarda nome/colunas/busca em
  * estado LOCAL: assim a digitação não re-renderiza a tabela inteira (o que
  * deixava o campo lento). Inclui busca para filtrar a lista de colunas. */
-function EditorModeloCompacto({ colunas, inicialNome, inicialCols, editando, nomesUsados, onSalvar, onCancelar }: {
+function EditorModeloCompacto({ colunas, obrigatorias, inicialNome, inicialCols, editando, nomesUsados, onSalvar, onCancelar }: {
   colunas: { key: string; label: string }[];
+  obrigatorias: { key: string; label: string }[];
   inicialNome: string;
   inicialCols: string[];
   editando: boolean;
@@ -140,6 +141,10 @@ function EditorModeloCompacto({ colunas, inicialNome, inicialCols, editando, nom
     const t = busca.trim().toLowerCase();
     return t ? colunas.filter((c) => c.label.toLowerCase().includes(t)) : colunas;
   }, [busca, colunas]);
+  const obrigFiltradas = useMemo(() => {
+    const t = busca.trim().toLowerCase();
+    return t ? obrigatorias.filter((c) => c.label.toLowerCase().includes(t)) : obrigatorias;
+  }, [busca, obrigatorias]);
   const dupNome = nome.trim().length > 0 && nomesUsados.includes(normalizarBusca(nome));
   const podeSalvar = nome.trim().length > 0 && cols.length > 0 && !dupNome;
   function toggle(k: string) { setCols((p) => (p.includes(k) ? p.filter((x) => x !== k) : [...p, k])); }
@@ -152,10 +157,17 @@ function EditorModeloCompacto({ colunas, inicialNome, inicialCols, editando, nom
         <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
         <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar coluna" aria-label="Buscar coluna" className="h-8 w-full rounded-lg border border-border bg-card pl-8 pr-2 text-[0.8125rem] text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
       </div>
-      <p className="mb-1 px-1 text-xs text-muted-foreground">{cols.length} de {colunas.length} colunas</p>
+      <p className="mb-1 px-1 text-xs text-muted-foreground">{cols.length + obrigatorias.length} de {colunas.length + obrigatorias.length} colunas</p>
       <div className="max-h-[13rem] space-y-0.5 overflow-y-auto pr-0.5">
-        {colunas.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">Ative colunas no botão Colunas primeiro.</p>}
-        {colunas.length > 0 && filtradas.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">Nenhuma coluna encontrada.</p>}
+        {obrigFiltradas.map((c) => (
+          <div key={c.key} className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] text-muted-foreground" title="Coluna fixa, sempre visível">
+            <CheckboxView checked={true} />
+            <span className="min-w-0 flex-1 truncate">{c.label}</span>
+            <span className="shrink-0 text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground/70">fixa</span>
+          </div>
+        ))}
+        {colunas.length === 0 && obrigFiltradas.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">Ative colunas no botão Colunas primeiro.</p>}
+        {colunas.length > 0 && filtradas.length === 0 && obrigFiltradas.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">Nenhuma coluna encontrada.</p>}
         {filtradas.map((c) => (
           <button key={c.key} type="button" onClick={() => toggle(c.key)} className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] text-foreground transition-colors hover:bg-accent">
             <CheckboxView checked={cols.includes(c.key)} />
@@ -330,23 +342,45 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
     } catch { /* ignore */ }
   }, [hidratado, storageKey, ordem, vis, sorts, niveis, chips, view, busca, porPagina, compacto, mostrarVenda, arvore, favoritos, visoesCompactas, compactoAtivo]);
 
-  // ===== Busca inteligente (facets das colunas de texto visíveis) =====
+  // colunas exibidas (independe do checkbox de Colunas); só as obrigatórias entram sempre.
+  const modeloCompacto = useMemo(
+    () => (compactoAtivo ? visoesCompactas.find((v) => v.id === compactoAtivo) ?? null : null),
+    [compactoAtivo, visoesCompactas],
+  );
+  const colunasCompacto = useMemo(
+    () => (modeloCompacto ? new Set(modeloCompacto.colunas) : null),
+    [modeloCompacto],
+  );
+
+  // ===== Colunas visíveis (na ordem salva; obrigatórias sempre) =====
+  // Memoizado: referência estável evita reflow por render (o useLayoutEffect de medir larguras
+  // só roda quando as colunas realmente mudam, não a cada clique/hover/resize).
+  const colsVisiveis = useMemo(() => {
+    const todas = ordem.map((k) => colunaByKey[k]).filter(Boolean);
+    if (colunasCompacto) return todas.filter((c) => c.obrigatoria || colunasCompacto.has(c.key));
+    return todas.filter((c) => c.obrigatoria || vis.includes(c.key));
+  }, [ordem, colunaByKey, vis, colunasCompacto]);
+
+  // ===== Busca inteligente (facets das colunas de texto EXIBIDAS) =====
+  // Respeita o conjunto EFETIVO de colunas (colsVisiveis): com um modelo compacto
+  // ativo, sugere só nas colunas do modelo; sem ele, só nas colunas ativas do menu
+  // de Colunas. Nunca sugere/varre uma coluna que não está na tela. Gera até 40
+  // sugestões (4 por coluna) e o dropdown rola mostrando ~10 por vez.
   const sugestoes = useMemo(() => {
     const q = busca.trim();
     if (!q) return [] as Chip[];
     const ql = q.toLowerCase();
-    const visiveisCols = colunas.filter((c) => vis.includes(c.key));
     const out: Chip[] = [{ id: `s-txt-${q}`, campo: "texto", kind: "texto", valor: q, label: `Contém "${q}"` }];
-    visiveisCols
+    colsVisiveis
       .filter((c) => (c.tipo === "texto" || c.tipo === "tagCor"))
       .forEach((col) => {
         [...new Set(base.map((r) => String(col.valor(r))).filter((v) => v && v !== "-"))]
           .filter((v) => v.toLowerCase().includes(ql))
-          .slice(0, 2)
+          .slice(0, 4)
           .forEach((v) => out.push({ id: `s-${col.key}-${v}`, campo: col.key, kind: "col", valor: v, label: `${col.label}: ${v}` }));
       });
-    return out.slice(0, 8);
-  }, [busca, base, vis, colunas]);
+    return out.slice(0, 40);
+  }, [busca, base, colsVisiveis]);
 
   function matchFacet(c: Chip, row: T): boolean {
     if (c.kind === "regra") {
@@ -358,9 +392,8 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
       const col = colunaByKey[c.campo];
       return col ? String(col.valor(row)) === c.valor : true;
     }
-    // texto: varre colunas visíveis + texto extra (ex.: produtos do pedido)
-    const visiveisCols = colunas.filter((x) => vis.includes(x.key));
-    const hay = (visiveisCols.map((x) => String(x.valor(row))).join(" ") + " " + (textoBusca?.(row) ?? "")).toLowerCase();
+    // texto: varre só as colunas EXIBIDAS (respeita o modo compacto) + texto extra (ex.: produtos do pedido)
+    const hay = (colsVisiveis.map((x) => String(x.valor(row))).join(" ") + " " + (textoBusca?.(row) ?? "")).toLowerCase();
     return hay.includes((c.valor ?? "").toLowerCase());
   }
 
@@ -385,15 +418,14 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   const buscaAtiva = busca.trim().toLowerCase();
 
   const lista = useMemo(() => {
-    const visiveisCols = colunas.filter((c) => vis.includes(c.key));
-    const hay = (row: T) => (visiveisCols.map((c) => String(c.valor(row))).join(" ") + " " + (textoBusca?.(row) ?? "")).toLowerCase();
+    const hay = (row: T) => (colsVisiveis.map((c) => String(c.valor(row))).join(" ") + " " + (textoBusca?.(row) ?? "")).toLowerCase();
     return base.filter((row) =>
       (!buscaAtiva || hay(row).includes(buscaAtiva)) &&
       grupoChips.every((cs) => cs.some((c) => matchFacet(c, row))) &&
       (!arvore || testaNo(row, arvore, campoByLike)),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [base, buscaAtiva, grupoChips, arvore, vis, colunas]);
+  }, [base, buscaAtiva, grupoChips, arvore, colsVisiveis]);
 
   const listaOrdenada = useMemo(() => {
     if (sorts.length === 0) return lista;
@@ -471,25 +503,6 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   }
 
   // Modelo compacto ativo (subconjunto nomeado de colunas). Quando aplicado, ele MANDA nas
-  // colunas exibidas (independe do checkbox de Colunas); só as obrigatórias entram sempre.
-  const modeloCompacto = useMemo(
-    () => (compactoAtivo ? visoesCompactas.find((v) => v.id === compactoAtivo) ?? null : null),
-    [compactoAtivo, visoesCompactas],
-  );
-  const colunasCompacto = useMemo(
-    () => (modeloCompacto ? new Set(modeloCompacto.colunas) : null),
-    [modeloCompacto],
-  );
-
-  // ===== Colunas visíveis (na ordem salva; obrigatórias sempre) =====
-  // Memoizado: referência estável evita reflow por render (o useLayoutEffect de medir larguras
-  // só roda quando as colunas realmente mudam, não a cada clique/hover/resize).
-  const colsVisiveis = useMemo(() => {
-    const todas = ordem.map((k) => colunaByKey[k]).filter(Boolean);
-    if (colunasCompacto) return todas.filter((c) => c.obrigatoria || colunasCompacto.has(c.key));
-    return todas.filter((c) => c.obrigatoria || vis.includes(c.key));
-  }, [ordem, colunaByKey, vis, colunasCompacto]);
-
   // Totais do rodapé (Σ sobre TODAS as linhas filtradas). Memoizado para NÃO recomputar a cada
   // clique de botão, hover de cabeçalho ou frame de resize , só quando as linhas, as colunas ou
   // o toggle custo/venda mudam. Era o custo escondido que deixava a tabela "lenta".
@@ -617,11 +630,13 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
         >
           {() => {
             const colunasAtivas = ordem.map((k) => colunaByKey[k]).filter(Boolean).filter((c) => !c.obrigatoria && vis.includes(c.key));
+            const obrigatorias = colunas.filter((c) => c.obrigatoria);
             if (compEditId !== null) {
               return (
                 <EditorModeloCompacto
                   key={compEditId || "novo"}
                   colunas={colunasAtivas.map((c) => ({ key: c.key, label: c.label }))}
+                  obrigatorias={obrigatorias.map((c) => ({ key: c.key, label: c.label }))}
                   inicialNome={compNome}
                   inicialCols={compCols}
                   editando={!!compEditId}
@@ -649,7 +664,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                         <button type="button" onClick={() => (compactoAtivo === v.id ? desligarCompacto() : aplicarCompacto(v.id))} className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-[0.8125rem]">
                           <Rows3 className={cn("size-3.5 shrink-0", compactoAtivo === v.id ? "text-violet-500" : "text-muted-foreground")} />
                           <span className={cn("min-w-0 truncate", compactoAtivo === v.id ? "text-violet-700 dark:text-violet-300" : "text-foreground")}>{v.nome}</span>
-                          <span className={cn("shrink-0 rounded-full px-1.5 text-[0.7rem] font-medium tabular-nums", compactoAtivo === v.id ? "bg-violet-500/15 text-violet-600 dark:text-violet-300" : "bg-muted text-muted-foreground")} title={`${v.colunas.length} colunas`}>{v.colunas.length}</span>
+                          <span className={cn("shrink-0 rounded-full px-1.5 text-[0.7rem] font-medium tabular-nums", compactoAtivo === v.id ? "bg-violet-500/15 text-violet-600 dark:text-violet-300" : "bg-muted text-muted-foreground")} title={`${v.colunas.length + obrigatorias.length} colunas`}>{v.colunas.length + obrigatorias.length}</span>
                         </button>
                         <button type="button" onClick={() => editarCompacto(v)} aria-label={`Editar ${v.nome}`} className="shrink-0 cursor-pointer rounded p-1 text-muted-foreground/0 transition-colors group-hover:text-muted-foreground hover:text-violet-600"><Pencil className="size-3.5" /></button>
                         <button type="button" onClick={() => excluirCompacto(v.id)} aria-label={`Excluir ${v.nome}`} className="shrink-0 cursor-pointer rounded p-1 text-muted-foreground/0 transition-colors group-hover:text-muted-foreground hover:text-rose-500"><Trash2 className="size-3.5" /></button>
@@ -753,12 +768,26 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
             <button type="button" onClick={limparTudo} className="mr-1 shrink-0 cursor-pointer rounded px-1.5 py-0.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground">Limpar tudo</button>
           )}
           {sugOpen && sugestoes.length > 0 && (
-            <div className="absolute left-0 top-full z-40 mt-1 w-72 rounded-xl border border-border bg-popover p-1 shadow-xl">
-              {sugestoes.map((s) => (
-                <button key={s.id} type="button" onMouseDown={(e) => { e.preventDefault(); addChip(s); }} className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent">
-                  <Search className="size-3.5 text-muted-foreground" /> {s.label}
-                </button>
-              ))}
+            <div className="absolute left-0 right-0 top-full z-40 mt-1 max-h-[22rem] overflow-y-auto rounded-xl border border-border bg-popover p-1 shadow-xl">
+              {sugestoes.map((s) => {
+                // Quando a sugestão é de uma coluna, o nome da coluna vira uma TAG
+                // neutra translúcida (clara no dark, escura no light, via foreground/10)
+                // e o valor vem ao lado. "Contém ..." é texto livre: sem tag.
+                const colLabel = s.kind === "col" ? (colunaByKey[s.campo]?.label ?? null) : null;
+                return (
+                  <button key={s.id} type="button" onMouseDown={(e) => { e.preventDefault(); addChip(s); }} className="flex w-full cursor-pointer items-start gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent">
+                    <Search className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                    {colLabel ? (
+                      <span className="flex min-w-0 flex-wrap items-center gap-1.5">
+                        <span className="shrink-0 rounded-md bg-foreground/10 px-1.5 py-0.5 text-[0.7rem] font-medium text-foreground ring-1 ring-inset ring-foreground/15">{colLabel}</span>
+                        <span className="min-w-0 break-words">{s.valor}</span>
+                      </span>
+                    ) : (
+                      <span className="min-w-0 break-words">{s.label}</span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
@@ -852,7 +881,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                             <button type="button" onClick={salvarEdicaoFav} disabled={!nomeFav.trim() || dup} aria-label="Salvar nome" className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-amber-600 transition-colors hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-40 dark:text-amber-400"><Check className="size-3.5" /></button>
                             <button type="button" onClick={() => { setFavEditId(null); setNomeFav(""); }} aria-label="Cancelar" className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-rose-500/10 hover:text-rose-500"><X className="size-3.5" /></button>
                           </div>
-                          <p className="mt-1 px-1 text-xs">{dup ? <span className="text-rose-500">Já existe um favorito com esse nome.</span> : <span className="text-muted-foreground">Altera apenas o nome (mantém os filtros salvos).</span>}</p>
+                          <p className="mt-1 px-1 text-xs">{dup ? <span className="text-rose-500">Já existe um favorito com esse nome.</span> : <span className="text-muted-foreground">Muda só o nome; os filtros ficam.</span>}</p>
                         </div>
                       );
                     })() : (
