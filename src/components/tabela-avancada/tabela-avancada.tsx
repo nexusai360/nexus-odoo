@@ -717,7 +717,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                   <div className="max-h-[18rem] space-y-0.5 overflow-y-auto pr-0.5">
                     <button type="button" onClick={() => (compacto && !compactoAtivo ? desligarCompacto() : aplicarCompacto(null))} className={cn("flex w-full cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] transition-colors", compacto && !compactoAtivo ? "bg-violet-500/10 text-violet-700 dark:text-violet-300" : "text-foreground hover:bg-accent")}>
                       <Rows3 className={cn("size-3.5 shrink-0", compacto && !compactoAtivo ? "text-violet-500" : "text-muted-foreground")} />
-                      <span className="min-w-0 flex-1 truncate">Todas as colunas</span>
+                      <span className="min-w-0 truncate">Todas as colunas</span>
                       <span className={cn("shrink-0 rounded-full px-1.5 text-[0.7rem] font-medium tabular-nums", compacto && !compactoAtivo ? "bg-violet-500/15 text-violet-600 dark:text-violet-300" : "bg-muted text-muted-foreground")} title={`${totalVisiveis} colunas`}>{totalVisiveis}</span>
                     </button>
                     {visoesCompactas.map((v) => (
