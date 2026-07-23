@@ -59,6 +59,46 @@ describe("motor-filtro , testaNo", () => {
     const arvore = g("todas", r("uf", "igual", "SP"), g("qualquer", r("valor", "maior", "9999"), r("cliente", "contem", "smart")));
     expect(testaNo(row, arvore, campoBy)).toBe(true);
   });
+
+  // Conector POR PAR de irmãos (E/OU misto no mesmo nível), avaliação left-associative.
+  // `rc` = regra com `conectorAntes` explícito (o operador com o irmão anterior).
+  const rc = (
+    conectorAntes: "todas" | "qualquer",
+    campo: string,
+    op: string,
+    valor: string,
+    valor2?: string,
+  ): GrupoRegras["filhos"][number] => ({ ...r(campo, op, valor, valor2), conectorAntes });
+
+  it("conector por par: A E B OU C mistura no mesmo grupo", () => {
+    // ((SP[true] E valor<100[false]) OU cliente~smart[true]) = (false OU true) = true
+    const arvore = g(
+      "todas",
+      r("uf", "igual", "SP"),
+      rc("todas", "valor", "menor", "100"),
+      rc("qualquer", "cliente", "contem", "smart"),
+    );
+    expect(testaNo(row, arvore, campoBy)).toBe(true);
+  });
+
+  it("conector por par: avaliação é left-associative, não por precedência", () => {
+    // ((SP[true] OU valor<100[false]) E cliente~bike[false]) = (true E false) = false.
+    // Com precedência (E antes de OU) daria true; provamos que é left-associative.
+    const arvore = g(
+      "todas",
+      r("uf", "igual", "SP"),
+      rc("qualquer", "valor", "menor", "100"),
+      rc("todas", "cliente", "contem", "bike"),
+    );
+    expect(testaNo(row, arvore, campoBy)).toBe(false);
+  });
+
+  it("compat: filho sem conectorAntes cai no conector do grupo", () => {
+    // Sem conectorAntes em nenhum filho, um grupo "qualquer" ainda é OU de todos.
+    const cond = [r("uf", "igual", "SP"), r("valor", "menor", "100")] as GrupoRegras["filhos"];
+    expect(testaNo(row, g("qualquer", ...cond), campoBy)).toBe(true);
+    expect(testaNo(row, g("todas", ...cond), campoBy)).toBe(false);
+  });
   it("LABEL_CONECTOR mapeia para E/OU (decisão D1)", () => {
     expect(LABEL_CONECTOR.todas).toBe("E");
     expect(LABEL_CONECTOR.qualquer).toBe("OU");

@@ -61,6 +61,9 @@ export const LABEL_CONECTOR: Record<"todas" | "qualquer", string> = {
 export interface Regra {
   id: string;
   tipo: "regra";
+  /** Conector (E/OU) que liga esta regra ao irmão ANTERIOR do mesmo grupo. O
+   * primeiro filho ignora. Ausente = cai no `conector` do grupo (compat). */
+  conectorAntes?: "todas" | "qualquer";
   campo: string;
   op: string;
   valor: string;
@@ -70,7 +73,12 @@ export interface Regra {
 export interface GrupoRegras {
   id: string;
   tipo: "grupo";
+  /** Conector padrão do grupo: fallback usado quando um filho não define o seu
+   * próprio `conectorAntes` (mantém idênticas as árvores antigas de operador único). */
   conector: "todas" | "qualquer";
+  /** Conector (E/OU) que liga este grupo ao irmão ANTERIOR, quando ele é filho de
+   * outro grupo. O primeiro filho ignora. */
+  conectorAntes?: "todas" | "qualquer";
   filhos: (Regra | GrupoRegras)[];
 }
 
@@ -146,7 +154,15 @@ export function testaRegra(
   return true;
 }
 
-/** Avalia a árvore de regras contra uma linha. Grupo vazio = true (sem filtro). */
+/** Avalia a árvore de regras contra uma linha. Grupo vazio = true (sem filtro).
+ *
+ * Conector POR PAR de irmãos: cada filho, do 2º em diante, carrega em
+ * `conectorAntes` o operador (E/OU) que o liga ao irmão anterior; o 1º filho não
+ * tem conector. A avaliação é left-associative: `((A op1 B) op2 C) op3 D`, onde
+ * `opN` é o `conectorAntes` do filho N. Quando um filho não define `conectorAntes`,
+ * usa o `conector` do grupo , então uma árvore antiga (operador único por grupo)
+ * produz exatamente o mesmo resultado de antes (todos "todas" = E de todos; todos
+ * "qualquer" = OU de todos). Sem short-circuit: a lógica mista não permite. */
 export function testaNo(
   p: unknown,
   no: NoRegra,
@@ -154,9 +170,14 @@ export function testaNo(
 ): boolean {
   if (no.tipo === "regra") return testaRegra(p, no, campoBy);
   if (no.filhos.length === 0) return true;
-  return no.conector === "todas"
-    ? no.filhos.every((f) => testaNo(p, f, campoBy))
-    : no.filhos.some((f) => testaNo(p, f, campoBy));
+  let acc = testaNo(p, no.filhos[0], campoBy);
+  for (let i = 1; i < no.filhos.length; i += 1) {
+    const filho = no.filhos[i];
+    const conector = filho.conectorAntes ?? no.conector;
+    const val = testaNo(p, filho, campoBy);
+    acc = conector === "todas" ? acc && val : acc || val;
+  }
+  return acc;
 }
 
 let _seq = 0;

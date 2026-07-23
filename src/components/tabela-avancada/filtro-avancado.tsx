@@ -9,11 +9,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Plus, Trash2, CornerDownRight, Layers, Search } from "lucide-react";
+import { Plus, Trash2, CornerDownRight, Layers, Search, Folder } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Modal, Btn, Select } from "./ui";
 import {
-  OPERADORES, testaNo, novaRegraId,
+  OPERADORES, testaNo, novaRegraId, LABEL_CONECTOR,
   type Regra, type GrupoRegras, type NoRegra, type CampoTipo, type CampoLike,
 } from "./motor-filtro";
 
@@ -153,34 +153,87 @@ function RegraLinha({ regra, campos, campoBy, onSet, onRemove }: { regra: Regra;
   );
 }
 
+/** Tag E/OU clicável posicionada ENTRE dois irmãos: um clique alterna o conector
+ * daquele par (só aquela fronteira). OU (lógica mais frouxa) fica realçado em violeta;
+ * E fica neutro. À direita, uma linha fina que "amarra" os dois irmãos, no espírito da
+ * referência , sem copiá-la. */
+function ConectorTag({ conector, onToggle }: { conector: "todas" | "qualquer"; onToggle: () => void }) {
+  const label = LABEL_CONECTOR[conector];
+  const destino = conector === "todas" ? "OU" : "E";
+  const ou = conector === "qualquer";
+  return (
+    <div className="my-1 flex items-center gap-2 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-150">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-label={`Operador ${label} com a regra anterior. Clique para mudar para ${destino}`}
+        title="Alternar E / OU"
+        className={cn(
+          "inline-flex h-6 min-w-[2.5rem] shrink-0 cursor-pointer items-center justify-center rounded-full border px-2.5 text-xs font-semibold uppercase tracking-wide transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          ou
+            ? "border-violet-500/40 bg-violet-500/10 text-violet-700 hover:bg-violet-500/20 dark:text-violet-300"
+            : "border-border bg-card text-foreground hover:border-violet-500/40 hover:bg-violet-500/10 hover:text-violet-600 dark:hover:text-violet-300",
+        )}
+      >
+        {label}
+      </button>
+      <span aria-hidden="true" className="h-px flex-1 bg-border" />
+    </div>
+  );
+}
+
 function GrupoBloco({ grupo, campos, campoBy, campoPadrao, raiz, onChange, onRemove }: { grupo: GrupoRegras; campos: CampoUI[]; campoBy: Record<string, CampoUI>; campoPadrao: string; raiz?: boolean; onChange: (g: GrupoRegras) => void; onRemove?: () => void }) {
   const novaRegra = (): Regra => ({ id: novaRegraId(), tipo: "regra", campo: campoPadrao, op: OPERADORES[campoBy[campoPadrao]?.tipo ?? "texto"][0].op, valor: "" });
   function setNo(id: string, fn: (n: NoRegra) => NoRegra) { onChange(atualiza(grupo, id, fn) as GrupoRegras); }
+  // Conector padrão de um novo irmão: herda o do último par existente (para não
+  // "quebrar o clima" do grupo), ou o conector do grupo quando ainda não há par.
+  function conectorNovo(): "todas" | "qualquer" {
+    const ult = grupo.filhos[grupo.filhos.length - 1];
+    return ult?.conectorAntes ?? grupo.conector;
+  }
+  function addRegra() {
+    const nova = novaRegra();
+    if (grupo.filhos.length > 0) nova.conectorAntes = conectorNovo();
+    onChange({ ...grupo, filhos: [...grupo.filhos, nova] });
+  }
+  function addGrupo() {
+    const novo: GrupoRegras = { id: novaRegraId(), tipo: "grupo", conector: "todas", filhos: [novaRegra()] };
+    if (grupo.filhos.length > 0) novo.conectorAntes = conectorNovo();
+    onChange({ ...grupo, filhos: [...grupo.filhos, novo] });
+  }
+  function toggleConector(id: string) {
+    setNo(id, (n) => ({ ...n, conectorAntes: (n.conectorAntes ?? grupo.conector) === "todas" ? "qualquer" : "todas" }));
+  }
   return (
-    <div className={cn("rounded-xl border border-border p-3", raiz ? "bg-muted/20" : "bg-card")}>
-      <div className="mb-2.5 flex items-center gap-2 text-sm">
-        <span className="text-muted-foreground">Corresponder a</span>
-        <div className="w-32">
-          <Select value={grupo.conector} options={[{ value: "todas", label: "E" }, { value: "qualquer", label: "OU" }]} searchable={false} onChange={(v) => onChange({ ...grupo, conector: v as "todas" | "qualquer" })} ariaLabel="Conector do grupo" />
+    <div className={cn("rounded-xl border p-3", raiz ? "border-border bg-muted/20" : "border-violet-500/30 bg-violet-500/[0.04]")}>
+      {!raiz && (
+        <div className="mb-2 flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 text-[0.7rem] font-semibold uppercase tracking-wide text-violet-600 dark:text-violet-400">
+            <Folder className="size-3.5" aria-hidden="true" /> Grupo
+          </span>
+          {onRemove && (
+            <button type="button" onClick={onRemove} aria-label="Remover grupo" className="ml-auto flex size-7 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-rose-500/10 hover:text-rose-500"><Trash2 className="size-3.5" /></button>
+          )}
         </div>
-        <span className="text-muted-foreground">das condições:</span>
-        {!raiz && onRemove && (
-          <button type="button" onClick={onRemove} aria-label="Remover grupo" className="ml-auto flex size-7 cursor-pointer items-center justify-center rounded-lg text-muted-foreground hover:bg-rose-500/10 hover:text-rose-500"><Trash2 className="size-3.5" /></button>
-        )}
-      </div>
-      <div className="space-y-2 border-l-2 border-violet-500/30 pl-3">
-        {grupo.filhos.map((f) =>
-          f.tipo === "regra" ? (
-            <RegraLinha key={f.id} regra={f} campos={campos} campoBy={campoBy} onSet={(patch) => setNo(f.id, (n) => ({ ...(n as Regra), ...patch }))} onRemove={() => onChange(remove(grupo, f.id))} />
-          ) : (
-            <GrupoBloco key={f.id} grupo={f} campos={campos} campoBy={campoBy} campoPadrao={campoPadrao} onChange={(g) => setNo(f.id, () => g)} onRemove={() => onChange(remove(grupo, f.id))} />
-          ),
-        )}
+      )}
+      <div className={cn(!raiz && "border-l-2 border-violet-500/30 pl-3")}>
+        {grupo.filhos.map((f, i) => (
+          <div key={f.id}>
+            {i > 0 && <ConectorTag conector={f.conectorAntes ?? grupo.conector} onToggle={() => toggleConector(f.id)} />}
+            <div className="py-0.5">
+              {f.tipo === "regra" ? (
+                <RegraLinha regra={f} campos={campos} campoBy={campoBy} onSet={(patch) => setNo(f.id, (n) => ({ ...(n as Regra), ...patch }))} onRemove={() => onChange(remove(grupo, f.id))} />
+              ) : (
+                <GrupoBloco grupo={f} campos={campos} campoBy={campoBy} campoPadrao={campoPadrao} onChange={(g) => setNo(f.id, () => g)} onRemove={() => onChange(remove(grupo, f.id))} />
+              )}
+            </div>
+          </div>
+        ))}
         {grupo.filhos.length === 0 && <p className="py-1 text-sm text-muted-foreground">Sem condições ainda.</p>}
       </div>
       <div className="mt-2.5 flex gap-2">
-        <button type="button" onClick={() => onChange({ ...grupo, filhos: [...grupo.filhos, novaRegra()] })} className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-sm font-medium text-violet-600 hover:bg-violet-500/10 dark:text-violet-400"><Plus className="size-4" /> Nova regra</button>
-        <button type="button" onClick={() => onChange({ ...grupo, filhos: [...grupo.filhos, { id: novaRegraId(), tipo: "grupo", conector: "qualquer", filhos: [novaRegra()] } as GrupoRegras] })} className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground"><CornerDownRight className="size-4" /> Aninhar grupo</button>
+        <button type="button" onClick={addRegra} className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-sm font-medium text-violet-600 hover:bg-violet-500/10 dark:text-violet-400"><Plus className="size-4" /> Nova regra</button>
+        <button type="button" onClick={addGrupo} className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground"><CornerDownRight className="size-4" /> Aninhar grupo</button>
       </div>
     </div>
   );
@@ -220,7 +273,7 @@ export function FiltroAvancado({
       open={open}
       onClose={onClose}
       title="Filtro avançado"
-      subtitle="Combine regras com E (todas) ou OU (qualquer). Aninhe grupos para lógica composta."
+      subtitle="Clique na tag E/OU entre as regras para trocar o operador daquele par. Aninhe grupos para montar lógicas compostas."
       size="2xl"
       footer={
         <>
