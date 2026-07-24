@@ -30,10 +30,23 @@ era a recomputação dos fatos derivados.
 **Resultado:** custo do ciclo virou proporcional ao que mudou. De **110s fixos** para
 **tipicamente poucos segundos** (pior caso realista ~15-20s).
 
-**PENDENTE (decisão do dono):** (a) baixar o incremental de 10min→3min (já cabe com folga;
-config `app_settings.sync.incremental_interval_min`, a variável é do dono) OU (b) converter
-mais alvos a incremental (nota_fiscal 6s, financeiro_movimento 4s, pedido_item 4s , ganho
-menor). Recomendação: (a). Aguardando escolha.
+**3min ENTREGUE (2026-07-24):**
+- **Refresh 100% silencioso (9b195eb7):** pré-requisito do dono. router.refresh() do Next já
+  preserva TODO o estado de client (abas/modais/filtros/ordenação/larguras/scroll , auditado).
+  Removido o único ponto disruptivo: fade do <main> (data-atualizando) + badge "Atualizando…".
+  Agora os números trocam no lugar, badge passivo "Atualizado há Xs". Zero feedback de loading.
+- **Intervalo baixado para 3min:** `app_settings.sync.incremental_interval_min = 3`, worker
+  reagendou (confirmado no log). A variável é do dono; troca via tela de Configuração.
+- **F2 pedido_item incremental (588c8aa7):** raw quente (roda quase todo ciclo). Equivalência
+  provada (checksum idêntico, 19.191 linhas). + guard `algumPaiMaisNovo` (builder incremental
+  cai no full quando um pai mudou, senão perderia linhas afetadas pela mudança do pai).
+- **Fix furo do F1 (ee817a0f):** fato_nota_fiscal dependsOn fato_parceiro (classificaReceita
+  usa carregarParticipantesGrupo).
+- **ROI dos demais alvos (medido):** fin_movimento (0 mudanças/1h) e nota_fiscal (17/h) são
+  pulados pelo skip-gate na maioria dos ciclos , incremental não compensa. Deixados no full.
+
+**PRÓXIMO:** validar E2E o pedido_item incremental (rebuild em andamento) + confirmar no
+browser que o refresh de 3min é silencioso (teste de aceite do dono).
 
 ## Onde estivemos (2026-07-23, madrugada) , PERFORMANCE DO RESIZE DA TABELA B-09
 
