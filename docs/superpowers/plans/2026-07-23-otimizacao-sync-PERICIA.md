@@ -108,6 +108,34 @@ fato_financeiro_titulo (8,7k), fato_financeiro_movimento (34k), fato_financeiro_
 (16k), fato_produto (3,8k), fato_parceiro (7,4k), fato_serial (8,9k), fato_referencia (15 raws),
 fato_pedido_historico (16k), fato_dfe (14k).
 
+## RANKING ms por builder , medido (F0, ciclo incremental instrumentado 2026-07-23 22:1x)
+Total do ciclo incremental: **113.577ms (~114s)**.
+
+| ms | builder | linhas | % do ciclo |
+|---:|---|---:|---:|
+| **57.108** | **fato_nota_fiscal_item** | 232.761 | **~50%** |
+| 6.041 | fato_nota_fiscal | 14.307 | 5% |
+| 4.193 | fato_financeiro_movimento | 34.207 | 4% |
+| 4.064 | fato_pedido_item | 19.191 | 4% |
+| 2.896 | fato_financeiro_lancamento_item | 16.858 | 3% |
+| 2.676 | fato_financeiro_titulo | 8.759 | 2% |
+| 2.491 | fato_pedido | 2.785 | 2% |
+| 2.309 | fato_dfe | 14.788 | 2% |
+| 1.929 | fato_parceiro | 7.396 | |
+| 1.898 | fato_pedido_historico | 16.260 | |
+| 1.842 | fato_preco | 12.011 | |
+| 1.185 | fato_pedido_classificacao | 2.785 | |
+| 1.072 | fato_serial | 8.950 | |
+| 1.058 | fato_produto | 3.888 | |
+| 921 | fato_referencia | 22.290 | |
+| (demais < 700ms cada) | | | |
+(fato_estoque_* aparecem no ciclo snapshot, não no incremental.)
+
+**Conclusão data-driven:** volume e ms concordam no topo , `fato_nota_fiscal_item` é O alvo (#1
+absoluto). Ordem da Frente 2: nota_fiscal_item -> nota_fiscal -> financeiro_movimento -> pedido_item
+-> lancamento_item -> financeiro_titulo -> pedido/classificacao -> dfe. Skip-gate (F1) zera tudo em
+ciclo ocioso.
+
 ## Status da perícia
 - [x] Custo do ciclo (102s, 39 builders full) + orquestração + invariantes.
 - [x] Auditoria por builder (padrão + dependências + modelos bons).

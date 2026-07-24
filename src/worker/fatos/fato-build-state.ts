@@ -20,3 +20,26 @@ export async function markFatoBuilt(
     update: { ultimoBuildAt: now },
   });
 }
+
+/**
+ * Grava a métrica do build (duração + linhas) e marca o fato como VERIFICADO
+ * agora. Chamado por `runBuilders` FORA da transação do builder (o builder já
+ * commitou seu `markFatoBuilt`), por isso é um update separado. `updateMany`
+ * (não `update`) para não estourar se a linha não existir , ex.: builder que
+ * falhou antes de chamar `markFatoBuilt`. Best-effort: nunca derruba o ciclo.
+ */
+export async function registrarMetricaBuild(
+  client: FatoBuildStateClient,
+  fato: string,
+  ms: number,
+  linhas: number | null,
+): Promise<void> {
+  await client.fatoBuildState.updateMany({
+    where: { fato },
+    data: {
+      ultimoVerificadoAt: new Date(),
+      ultimoBuildMs: ms,
+      ultimasLinhas: linhas,
+    },
+  });
+}

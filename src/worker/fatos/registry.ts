@@ -1,6 +1,6 @@
 // src/worker/fatos/registry.ts
 import type { PrismaClient } from "../../generated/prisma/client";
-import { markFatoBuilt } from "./fato-build-state";
+import { markFatoBuilt, registrarMetricaBuild } from "./fato-build-state";
 import { rebuildFatoEstoqueSaldo } from "./fato-estoque-saldo";
 import { rebuildFatoEstoqueMovimento } from "./fato-estoque-movimento";
 import { rebuildFatoProdutoParado } from "./fato-produto-parado";
@@ -166,6 +166,11 @@ export async function runBuilders(
       const ms = Date.now() - inicio;
       console.log(`[worker] ${nome} reconstruído: ${n} linhas em ${ms}ms`);
       status.push({ nome, ok: true, linhas: n, ms });
+      // Métrica gravada FORA da tx do builder (ele já commitou o markFatoBuilt).
+      // Best-effort: uma falha aqui não pode derrubar o ciclo.
+      await registrarMetricaBuild(prisma, nome, ms, n).catch((err) =>
+        console.error(`[worker] falha ao gravar métrica de ${nome}:`, err),
+      );
     } catch (err) {
       const ms = Date.now() - inicio;
       console.error(`[worker] falha ao reconstruir ${nome} (${ms}ms):`, err);

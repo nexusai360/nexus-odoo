@@ -2338,6 +2338,15 @@ model FatoBuildState {
   fato          String   @id
   ultimoBuildAt DateTime @map("ultimo_build_at")
 
+  // Otimização de sync (2026-07-23): ultimoVerificadoAt avança mesmo quando o
+  // skip-gate PULA o rebuild (fato confirmado corrente sem reconstruir), e é o
+  // que o freshness da tela deve ler , senão pular congelaria "atualizado há Xs".
+  // ultimoBuildAt continua sendo o build REAL (âncora do delta incremental).
+  ultimoVerificadoAt DateTime? @map("ultimo_verificado_at")
+  ultimoBuildMs      Int?      @map("ultimo_build_ms")
+  ultimasLinhas      Int?      @map("ultimas_linhas")
+  codeVersion        String?   @map("code_version")
+
   @@map("fato_build_state")
 }
 
