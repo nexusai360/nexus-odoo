@@ -143,20 +143,36 @@ interface NotaMaeRow {
   finalidade_nfe: string | null;
 }
 
-export async function rebuildFatoNotaFiscalItem(prisma: PrismaClient): Promise<number> {
-  // 1. Construir notaInfoMap FORA da transação.
-  //
-  // A leitura EXTRAI AS COLUNAS do jsonb no próprio Postgres em vez de trazer o `data`
-  // inteiro para o heap. O `findMany` antigo carregava as notas com TODOS os campos: o
-  // comentário dizia "3743 linhas , trivial", mas a tabela cresceu para 9.595 notas e
-  // ~68 MB de JSON, que viram centenas de MB de objetos no heap do Node. Somado ao resto
-  // do ciclo, estourava o limite (~1 GB) e derrubava o worker de produção com
-  // "JavaScript heap out of memory" , sempre no MESMO ponto, logo depois de
-  // fato_nota_fiscal. Como fato_parceiro roda DEPOIS deste builder no registry, o ciclo
-  // morria antes de chegar nele e o cadastro nunca era reconstruído (o mapa por estado da
-  // Diretoria ficou congelado com dados velhos). O fato usa 7 campos da nota-mãe , é só
-  // isso que precisa sair do banco.
-  const rawNotas = await prisma.$queryRaw<NotaMaeRow[]>`
+/**
+ * Carrega o notaInfoMap (7 campos da nota-mãe) extraindo colunas do jsonb no Postgres,
+ * sem trazer o `data` inteiro para o heap (evita o OOM histórico). Se `notaIds` for
+ * passado, carrega SÓ essas notas (build incremental); senão, todas (full rebuild).
+ */
+async function carregarNotaInfoMap(
+  prisma: PrismaClient,
+  notaIds?: number[],
+): Promise<Map<number, NotaInfo>> {
+  // Full (sem notaIds): mantém o $queryRaw (template) original. Incremental (com notaIds):
+  // $queryRawUnsafe com a lista de ids inteiros (coeridos por Number(), sem injeção).
+  const rawNotas =
+    notaIds && notaIds.length
+      ? await prisma.$queryRawUnsafe<NotaMaeRow[]>(`
+    SELECT
+      odoo_id                                        AS id,
+      NULLIF(data->>'data_emissao', '')              AS data_emissao,
+      NULLIF(data->>'entrada_saida', '')             AS entrada_saida,
+      CASE WHEN jsonb_typeof(data->'empresa_id') = 'array'
+           THEN (data->'empresa_id'->>0)::int END    AS empresa_id,
+      NULLIF(data->>'situacao_nfe', '')              AS situacao_nfe,
+      CASE WHEN jsonb_typeof(data->'operacao_id') = 'array'
+           THEN (data->'operacao_id'->>0)::int END   AS operacao_id,
+      CASE WHEN jsonb_typeof(data->'operacao_id') = 'array'
+           THEN data->'operacao_id'->>1 END          AS operacao_nome,
+      NULLIF(data->>'finalidade_nfe', '')            AS finalidade_nfe
+    FROM raw_sped_documento
+    WHERE coalesce(raw_deleted, false) = false
+      AND odoo_id = ANY(ARRAY[${notaIds.map((n) => Number(n)).join(",")}]::bigint[])`)
+      : await prisma.$queryRaw<NotaMaeRow[]>`
     SELECT
       odoo_id                                        AS id,
       NULLIF(data->>'data_emissao', '')              AS data_emissao,
@@ -185,6 +201,13 @@ export async function rebuildFatoNotaFiscalItem(prisma: PrismaClient): Promise<n
       finalidadeNfe: r.finalidade_nfe,
     });
   }
+  return notaInfoMap;
+}
+
+export async function rebuildFatoNotaFiscalItem(prisma: PrismaClient): Promise<number> {
+  // 1. Construir notaInfoMap FORA da transação (todas as notas). Ver carregarNotaInfoMap
+  //    para o motivo de extrair colunas do jsonb (OOM histórico com o `data` inteiro).
+  const notaInfoMap = await carregarNotaInfoMap(prisma);
 
   // 2. Transação única: delete → streaming cursor → markFatoBuilt
   const totalInserted = await prisma.$transaction(
@@ -245,4 +268,92 @@ export async function rebuildFatoNotaFiscalItem(prisma: PrismaClient): Promise<n
   );
 
   return totalInserted;
+}
+
+/**
+ * Build INCREMENTAL de fato_nota_fiscal_item (otimização 2026-07-23): reprocessa só o
+ * DELTA em vez de refazer as 232k linhas. Resultado idêntico ao full para as linhas
+ * tocadas (delete+insert do subconjunto), validado por shadow-diff antes de virar padrão.
+ *
+ * Delta = 3 fontes (rawSources do gate = raw_sped_documento_item + raw_sped_documento):
+ *   (1) item alterado: raw_sped_documento_item.synced_at > ultimoBuildAt, raw_deleted=false.
+ *   (2) cascata da nota-mãe: item de nota cujo raw_sped_documento mudou (7 campos
+ *       desnormalizados) , senão a mudança da nota não refletiria nos itens.
+ *   (3) item deletado: raw_sped_documento_item.raw_deleted=true e synced_at > ultimoBuildAt.
+ *
+ * Escrita: delete dos ids (1∪2∪3) + insert de (1∪2). Cursor capturado ANTES das leituras;
+ * ultimoBuildAt = cursor (não now), para o próximo delta não perder escrita concorrente.
+ * Retorna o nº de itens re-inseridos.
+ */
+export async function rebuildFatoNotaFiscalItemIncremental(
+  prisma: PrismaClient,
+  ultimoBuildAt: Date,
+): Promise<number> {
+  const cursor = new Date(); // ANTES de qualquer leitura , âncora do delta
+
+  // Notas-mãe alteradas (para a cascata desnormalizada dos 7 campos).
+  const notasAlteradas = await prisma.$queryRawUnsafe<{ id: number }[]>(
+    `SELECT odoo_id AS id FROM raw_sped_documento WHERE synced_at > $1`,
+    ultimoBuildAt,
+  );
+  const notaIdsAlteradas = notasAlteradas.map((n) => Number(n.id));
+
+  // Cláusula "afetado" (item vivo alterado OU item de nota-mãe alterada). Sem params:
+  // a lista de notas é inteira (Number()) , sem espaço para injeção.
+  const filtroNotas = notaIdsAlteradas.length
+    ? ` OR (CASE WHEN jsonb_typeof(data->'documento_id') = 'array'
+              THEN (data->'documento_id'->>0)::bigint END)
+            = ANY(ARRAY[${notaIdsAlteradas.join(",")}]::bigint[])`
+    : "";
+  const CLAUSULA_AFETADO = `coalesce(raw_deleted, false) = false AND (synced_at > $1${filtroNotas})`;
+
+  // notaInfoMap COMPLETO (9.6k notas, colunas extraídas no Postgres , trivial e evita
+  // ARRAY gigante). O que NÃO pode ir pro heap é o `data` dos ITENS (232k), que é streamado.
+  const notaInfoMap = await carregarNotaInfoMap(prisma);
+
+  // IDs a remover do fato: afetados (versão nova entra depois) + deletados. Só ints, leve.
+  const idsRemoverRows = await prisma.$queryRawUnsafe<{ odoo_id: number }[]>(
+    `SELECT odoo_id FROM raw_sped_documento_item
+     WHERE (${CLAUSULA_AFETADO})
+        OR (coalesce(raw_deleted, false) = true AND synced_at > $1)`,
+    ultimoBuildAt,
+  );
+  const idsRemover = idsRemoverRows.map((r) => Number(r.odoo_id));
+
+  const inserted = await prisma.$transaction(
+    async (tx) => {
+      // 1. Remove do fato os afetados (para reinserir) e os deletados.
+      for (const lote of chunk(idsRemover, 10_000)) {
+        await tx.fatoNotaFiscalItem.deleteMany({ where: { odooId: { in: lote } } });
+      }
+
+      // 2. Reinsere os afetados por STREAMING (página de CHUNK_SIZE, memória constante).
+      let n = 0;
+      let ultimoId = 0;
+      for (;;) {
+        const page = await tx.$queryRawUnsafe<{ odoo_id: number; data: unknown }[]>(
+          `SELECT odoo_id, data FROM raw_sped_documento_item
+           WHERE (${CLAUSULA_AFETADO}) AND odoo_id > $2
+           ORDER BY odoo_id ASC LIMIT ${CHUNK_SIZE}`,
+          ultimoBuildAt,
+          ultimoId,
+        );
+        if (page.length === 0) break;
+        const mapped = page.map((p) =>
+          mapNotaFiscalItemRow(p.data as Record<string, unknown>, notaInfoMap),
+        );
+        await tx.fatoNotaFiscalItem.createMany({ data: mapped });
+        n += mapped.length;
+        ultimoId = Number(page[page.length - 1]!.odoo_id);
+        if (page.length < CHUNK_SIZE) break;
+      }
+
+      // ultimoBuildAt = cursor (capturado ANTES das leituras).
+      await markFatoBuilt(tx, "fato_nota_fiscal_item", cursor);
+      return n;
+    },
+    { timeout: 600_000, maxWait: 60_000 },
+  );
+
+  return inserted;
 }

@@ -152,4 +152,31 @@ describe("runBuilders", () => {
     expect(runFn).toHaveBeenCalledTimes(2);
     expect(st[0].pulado).toBeFalsy();
   });
+
+  it("F2: full no 1º ciclo (boot), runIncremental no 2º (delta, não-boot)", async () => {
+    const runFull = jest.fn().mockResolvedValue(100);
+    const runInc = jest.fn().mockResolvedValue(3);
+    const builders = [
+      {
+        nome: "fato_nota_fiscal_item",
+        cycle: "incremental" as const,
+        run: runFull,
+        runIncremental: runInc,
+      },
+    ];
+    // 1º ciclo (boot): FULL, nunca incremental.
+    findMany.mockResolvedValueOnce([]);
+    await runBuilders(prisma, "incremental", builders);
+    expect(runFull).toHaveBeenCalledTimes(1);
+    expect(runInc).not.toHaveBeenCalled();
+
+    // 2º ciclo (raw mudou, não-boot): INCREMENTAL com o ultimoBuildAt como âncora.
+    const build = new Date("2026-07-23T10:00:00Z");
+    findMany.mockResolvedValueOnce([{ fato: "fato_nota_fiscal_item", ultimoBuildAt: build }]);
+    queryRawUnsafe.mockResolvedValueOnce([{ sujo: true }]);
+    await runBuilders(prisma, "incremental", builders);
+    expect(runInc).toHaveBeenCalledTimes(1);
+    expect(runInc).toHaveBeenCalledWith(prisma, build);
+    expect(runFull).toHaveBeenCalledTimes(1); // full NÃO rodou de novo
+  });
 });

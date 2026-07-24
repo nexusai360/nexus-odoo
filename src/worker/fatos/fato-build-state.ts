@@ -8,16 +8,22 @@ import type { PrismaClient } from "../../generated/prisma/client";
  */
 export type FatoBuildStateClient = Pick<PrismaClient, "fatoBuildState">;
 
-/** Registra que o builder de um fato acabou de rodar. */
+/**
+ * Registra que o builder de um fato acabou de rodar.
+ * `at` opcional: nos builders INCREMENTAIS, passe o cursor capturado ANTES da leitura
+ * da raw (não `now()`), para o delta do próximo ciclo (`synced_at > ultimoBuildAt`) não
+ * perder linhas escritas durante o build. Full rebuild pode usar o default (now).
+ */
 export async function markFatoBuilt(
   client: FatoBuildStateClient,
   fato: string,
+  at?: Date,
 ): Promise<void> {
-  const now = new Date();
+  const quando = at ?? new Date();
   await client.fatoBuildState.upsert({
     where: { fato },
-    create: { fato, ultimoBuildAt: now },
-    update: { ultimoBuildAt: now },
+    create: { fato, ultimoBuildAt: quando },
+    update: { ultimoBuildAt: quando },
   });
 }
 

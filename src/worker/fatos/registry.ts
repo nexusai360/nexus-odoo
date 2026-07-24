@@ -11,7 +11,10 @@ import { rebuildFatoFinanceiroTitulo } from "./fato-financeiro-titulo";
 import { rebuildFatoPedido } from "./fato-pedido";
 import { rebuildFatoPedidoParcela } from "./fato-pedido-parcela";
 import { rebuildFatoNotaFiscal } from "./fato-nota-fiscal";
-import { rebuildFatoNotaFiscalItem } from "./fato-nota-fiscal-item";
+import {
+  rebuildFatoNotaFiscalItem,
+  rebuildFatoNotaFiscalItemIncremental,
+} from "./fato-nota-fiscal-item";
 import { rebuildFatoParceiro } from "./fato-parceiro";
 import { rebuildFatoContaContabil } from "./fato-conta-contabil";
 import { rebuildFatoPreco } from "./fato-preco";
@@ -53,6 +56,12 @@ export interface FatoBuilderEntry {
   nome: string;
   cycle: "snapshot" | "incremental";
   run: (prisma: PrismaClient) => Promise<number>;
+  /**
+   * Build INCREMENTAL por delta (otimização F2). Quando presente, runBuilders o usa
+   * em vez de `run` (full), EXCETO no 1º ciclo pós-boot e no full periódico de segurança
+   * (rede contra drift). Recebe o ultimoBuildAt do próprio fato como âncora do delta.
+   */
+  runIncremental?: (prisma: PrismaClient, ultimoBuildAt: Date) => Promise<number>;
 }
 
 export const FATO_BUILDERS: FatoBuilderEntry[] = [
@@ -73,7 +82,12 @@ export const FATO_BUILDERS: FatoBuilderEntry[] = [
   { nome: "fato_pedido", cycle: "incremental", run: rebuildFatoPedido },
   { nome: "fato_pedido_parcela", cycle: "incremental", run: rebuildFatoPedidoParcela },
   { nome: "fato_nota_fiscal", cycle: "incremental", run: rebuildFatoNotaFiscal },
-  { nome: "fato_nota_fiscal_item", cycle: "incremental", run: rebuildFatoNotaFiscalItem },
+  {
+    nome: "fato_nota_fiscal_item",
+    cycle: "incremental",
+    run: rebuildFatoNotaFiscalItem,
+    runIncremental: rebuildFatoNotaFiscalItemIncremental,
+  },
   // === GRUPO PEDIDO/CLASSIFICACAO , juntos e LOGO APOS suas dependencias ===
   // As bases (fato_pedido/fato_nota_fiscal[_item]) fazem truncate+insert e ZERAM as
   // colunas materializadas; a classificacao repopula. Se ela rodasse por ultimo (apos
@@ -162,9 +176,17 @@ export interface StatusBuilder {
  * (whitelists de etapa/grupo/CNPJ) que a raw não reflete. Ver review adversarial C1.
  */
 let ciclosJaForcados = new Set<string>();
-/** Reset do estado de boot , só para teste. */
+/**
+ * Contador de ciclos incrementais desde o boot. A cada FULL_SEGURANCA_A_CADA ciclos,
+ * os builders com `runIncremental` rodam o FULL (rede de segurança contra drift, já que
+ * eles não rodam no ciclo snapshot). ~24h a 10min/ciclo.
+ */
+let contadorCiclosIncrementais = 0;
+const FULL_SEGURANCA_A_CADA = 144;
+/** Reset do estado de boot/contador , só para teste. */
 export function __resetSkipGateBootParaTeste(): void {
   ciclosJaForcados = new Set<string>();
+  contadorCiclosIncrementais = 0;
 }
 
 export async function runBuilders(
@@ -176,6 +198,13 @@ export async function runBuilders(
   const forcarTudo = opts?.forcarTudo ?? !ciclosJaForcados.has(cycle);
   ciclosJaForcados.add(cycle);
 
+  // Full periódico de segurança dos builders incrementais (não rodam no snapshot).
+  let fullSeguranca = false;
+  if (cycle === "incremental") {
+    contadorCiclosIncrementais += 1;
+    fullSeguranca = contadorCiclosIncrementais % FULL_SEGURANCA_A_CADA === 0;
+  }
+
   // Estado de build (ultimoBuildAt por fato) para o skip-gate. Atualizado em
   // memória conforme os builders rodam, para que dependentes deste mesmo ciclo
   // vejam o pai como "mais novo".
@@ -185,14 +214,16 @@ export async function runBuilders(
   const mapaBuildAt = new Map<string, Date>(estados.map((e) => [e.fato, e.ultimoBuildAt]));
 
   const status: StatusBuilder[] = [];
-  for (const { nome, cycle: builderCycle, run } of builders) {
+  for (const { nome, cycle: builderCycle, run, runIncremental } of builders) {
     if (builderCycle !== cycle) continue;
+
+    const ultimoBuildAt = mapaBuildAt.get(nome) ?? null;
 
     // Erro no gate => roda (fail-safe): nunca pular por falta de informação.
     const deveRodar = await builderDeveRodar({
       client: prisma,
       nome,
-      ultimoBuildAt: mapaBuildAt.get(nome) ?? null,
+      ultimoBuildAt,
       mapaBuildAt,
       forcarTudo,
     }).catch(() => true);
@@ -208,10 +239,17 @@ export async function runBuilders(
 
     const inicio = Date.now();
     try {
-      const n = await run(prisma);
+      // Incremental por delta quando disponível; full no boot / full de segurança / 1º build.
+      const usarIncremental =
+        !!runIncremental && !forcarTudo && !fullSeguranca && ultimoBuildAt !== null;
+      const n = usarIncremental
+        ? await runIncremental!(prisma, ultimoBuildAt!)
+        : await run(prisma);
       const ms = Date.now() - inicio;
       mapaBuildAt.set(nome, new Date()); // dependentes deste ciclo veem o pai novo
-      console.log(`[worker] ${nome} reconstruído: ${n} linhas em ${ms}ms`);
+      console.log(
+        `[worker] ${nome} reconstruído (${usarIncremental ? "incremental" : "full"}): ${n} linhas em ${ms}ms`,
+      );
       status.push({ nome, ok: true, linhas: n, ms });
       // Métrica gravada FORA da tx do builder (ele já commitou o markFatoBuilt).
       // Best-effort: uma falha aqui não pode derrubar o ciclo.

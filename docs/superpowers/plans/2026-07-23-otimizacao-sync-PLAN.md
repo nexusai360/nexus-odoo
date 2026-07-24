@@ -133,6 +133,26 @@ Ataca os fatos que mudam quase todo ciclo (o gate não os pula). **Ordem = ranki
 
 ---
 
+### T2.1 , DESIGN concreto do incremental de fato_nota_fiscal_item (o de 57s)
+Estrutura atual (fato-nota-fiscal-item.ts): full DELETE+INSERT streaming por cursor de TODO
+raw_sped_documento_item (238k), desnormalizando 7 campos da nota-mãe (raw_sped_documento) via
+`notaInfoMap`. O mapper `mapNotaFiscalItemRow` JÁ é função pura (T2.a quase pronto).
+Incremental precisa cobrir 3 fontes de mudança (rawSources = [raw_sped_documento, raw_sped_documento_item]):
+1. **Item alterado**: raw_sped_documento_item com `synced_at > ultimoBuildAt` e `raw_deleted=false`
+   -> upsert por odoo_id no fato (via mapper).
+2. **Item deletado**: raw_sped_documento_item com `raw_deleted=true` e `synced_at > ultimoBuildAt`
+   -> delete por odoo_id no fato.
+3. **NOTA-MÃE alterada** (cascata): raw_sped_documento com `synced_at > ultimoBuildAt` -> recomputar
+   TODOS os itens daquelas notas (os 7 campos desnormalizados mudaram) -> buscar itens por
+   `documento_id IN (notas alteradas)` e upsertar. É a parte que o "delta só do item" esqueceria.
+- Cursor `agora` capturado ANTES das leituras; ultimoBuildAt gravado = agora só no fim.
+- notaInfoMap: para o caso 1/2 basta o subconjunto de notas dos itens alterados; para o caso 3,
+  as notas alteradas. Construir o mapa só das notas necessárias (não as 9.595).
+- Idempotente (upsert) cobre a sobreposição de 15min.
+- Shadow-diff: comparar fato incremental vs full (EXCEPT nos 2 sentidos) em N ciclos + 1 deleção
+  + 1 mudança de nota-mãe observadas; kill-switch por env. Full de segurança no ciclo de
+  reconciliação (T2.SAFETY).
+
 ## FRENTE 3 , Ganhos estruturais (após 1 e 2, se o ranking justificar)
 - **T3.1** Paralelizar builders independentes (hoje 100% sequencial), respeitando grupos colados e limite
   de memória (OOM histórico com concorrência 10). Ganho de wall-clock.
