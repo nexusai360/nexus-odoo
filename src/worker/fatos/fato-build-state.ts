@@ -43,3 +43,19 @@ export async function registrarMetricaBuild(
     },
   });
 }
+
+/**
+ * Marca o fato como VERIFICADO agora SEM reconstruí-lo (skip-gate). Só avança
+ * `ultimoVerificadoAt` , NÃO toca `ultimoBuildAt` (âncora do delta incremental).
+ * É isso que mantém o "atualizado há Xs" da tela fresco mesmo quando o ciclo pula
+ * o rebuild. `updateMany` para não estourar se a linha não existir.
+ */
+export async function marcarVerificado(
+  client: FatoBuildStateClient,
+  fato: string,
+): Promise<void> {
+  await client.fatoBuildState.updateMany({
+    where: { fato },
+    data: { ultimoVerificadoAt: new Date() },
+  });
+}

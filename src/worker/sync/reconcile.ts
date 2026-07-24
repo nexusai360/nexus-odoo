@@ -9,7 +9,8 @@ export interface ReconcileDelegate {
   }): Promise<{ odooId: number; rawDeleted: boolean }[]>;
   updateMany(args: {
     where: { odooId: { in: number[] } };
-    data: { rawDeleted: boolean };
+    // syncedAt opcional: bumpado ao marcar/ressuscitar para o skip-gate ver a mudança.
+    data: { rawDeleted: boolean; syncedAt?: Date };
   }): Promise<{ count: number }>;
   upsert(args: {
     where: { odooId: number };
@@ -68,7 +69,10 @@ export async function reconcileModel(
   if (sumidos.length) {
     const res = await raw.updateMany({
       where: { odooId: { in: sumidos } },
-      data: { rawDeleted: true },
+      // syncedAt=now para o skip-gate dos fatos ver a DELEÇÃO (raw_deleted flip não
+      // muda write_date; sem bumpar synced_at o gate pularia o rebuild e a linha
+      // deletada ficaria fantasma no fato até a próxima mudança). Ver skip-gate.ts.
+      data: { rawDeleted: true, syncedAt: new Date() },
     });
     marcadosDeletados = res.count;
   }
@@ -79,7 +83,8 @@ export async function reconcileModel(
   if (mortosVivos.length) {
     const res = await raw.updateMany({
       where: { odooId: { in: mortosVivos } },
-      data: { rawDeleted: false },
+      // syncedAt=now: ressuscitar é mudança de insumo -> o gate precisa reprocessar o fato.
+      data: { rawDeleted: false, syncedAt: new Date() },
     });
     ressuscitados = res.count || mortosVivos.length;
   }

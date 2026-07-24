@@ -26,7 +26,7 @@ describe("reconcileModel , o cache tem que convergir para o Odoo nos DOIS sentid
     const r = await reconcileModel(client, raw as never, "res.partner");
     expect(raw.updateMany).toHaveBeenCalledWith({
       where: { odooId: { in: [2] } },
-      data: { rawDeleted: true },
+      data: { rawDeleted: true, syncedAt: expect.any(Date) },
     });
     expect(r.marcadosDeletados).toBe(1);
   });
@@ -79,7 +79,7 @@ describe("reconcileModel , o cache tem que convergir para o Odoo nos DOIS sentid
 
     expect(raw.updateMany).toHaveBeenCalledWith({
       where: { odooId: { in: [2] } },
-      data: { rawDeleted: false },
+      data: { rawDeleted: false, syncedAt: expect.any(Date) },
     });
     expect(r.ressuscitados).toBe(1);
     expect(raw.upsert).not.toHaveBeenCalled(); // ja esta no cache, so estava escondida

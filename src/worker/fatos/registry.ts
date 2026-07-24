@@ -1,6 +1,7 @@
 // src/worker/fatos/registry.ts
 import type { PrismaClient } from "../../generated/prisma/client";
-import { markFatoBuilt, registrarMetricaBuild } from "./fato-build-state";
+import { markFatoBuilt, registrarMetricaBuild, marcarVerificado } from "./fato-build-state";
+import { builderDeveRodar } from "./skip-gate";
 import { rebuildFatoEstoqueSaldo } from "./fato-estoque-saldo";
 import { rebuildFatoEstoqueMovimento } from "./fato-estoque-movimento";
 import { rebuildFatoProdutoParado } from "./fato-produto-parado";
@@ -146,24 +147,70 @@ export interface StatusBuilder {
   linhas: number | null;
   /** Duração do build em ms (instrumentação da otimização de sync). */
   ms?: number;
+  /** Skip-gate: o builder foi PULADO por não ter insumo alterado. */
+  pulado?: boolean;
 }
 
 /**
  * Executa todos os builders do `cycle` dado. Isola falhas: um builder com erro
  * não impede os demais de rodar. Devolve o status por builder.
  */
+/**
+ * Ciclos (incremental/snapshot) que já rodaram um FULL incondicional desde o boot
+ * do worker. O 1º ciclo de cada tipo após restart ignora o skip-gate: todo deploy
+ * reinicia o container, então isso cobre QUALQUER mudança de lógica em código
+ * (whitelists de etapa/grupo/CNPJ) que a raw não reflete. Ver review adversarial C1.
+ */
+let ciclosJaForcados = new Set<string>();
+/** Reset do estado de boot , só para teste. */
+export function __resetSkipGateBootParaTeste(): void {
+  ciclosJaForcados = new Set<string>();
+}
+
 export async function runBuilders(
   prisma: PrismaClient,
   cycle: "snapshot" | "incremental",
   builders: FatoBuilderEntry[] = FATO_BUILDERS,
+  opts?: { forcarTudo?: boolean },
 ): Promise<StatusBuilder[]> {
+  const forcarTudo = opts?.forcarTudo ?? !ciclosJaForcados.has(cycle);
+  ciclosJaForcados.add(cycle);
+
+  // Estado de build (ultimoBuildAt por fato) para o skip-gate. Atualizado em
+  // memória conforme os builders rodam, para que dependentes deste mesmo ciclo
+  // vejam o pai como "mais novo".
+  const estados = await prisma.fatoBuildState.findMany({
+    select: { fato: true, ultimoBuildAt: true },
+  });
+  const mapaBuildAt = new Map<string, Date>(estados.map((e) => [e.fato, e.ultimoBuildAt]));
+
   const status: StatusBuilder[] = [];
   for (const { nome, cycle: builderCycle, run } of builders) {
     if (builderCycle !== cycle) continue;
+
+    // Erro no gate => roda (fail-safe): nunca pular por falta de informação.
+    const deveRodar = await builderDeveRodar({
+      client: prisma,
+      nome,
+      ultimoBuildAt: mapaBuildAt.get(nome) ?? null,
+      mapaBuildAt,
+      forcarTudo,
+    }).catch(() => true);
+
+    if (!deveRodar) {
+      await marcarVerificado(prisma, nome).catch((err) =>
+        console.error(`[worker] falha ao marcar ${nome} verificado:`, err),
+      );
+      console.log(`[worker] ${nome} pulado , sem mudança`);
+      status.push({ nome, ok: true, linhas: null, ms: 0, pulado: true });
+      continue;
+    }
+
     const inicio = Date.now();
     try {
       const n = await run(prisma);
       const ms = Date.now() - inicio;
+      mapaBuildAt.set(nome, new Date()); // dependentes deste ciclo veem o pai novo
       console.log(`[worker] ${nome} reconstruído: ${n} linhas em ${ms}ms`);
       status.push({ nome, ok: true, linhas: n, ms });
       // Métrica gravada FORA da tx do builder (ele já commitou o markFatoBuilt).

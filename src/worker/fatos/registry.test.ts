@@ -1,4 +1,9 @@
-import { runBuilders, FATO_BUILDERS, MARCADOR_CICLO } from "./registry";
+import {
+  runBuilders,
+  FATO_BUILDERS,
+  MARCADOR_CICLO,
+  __resetSkipGateBootParaTeste,
+} from "./registry";
 import type { PrismaClient } from "@/generated/prisma/client";
 
 describe("FATO_BUILDERS", () => {
@@ -14,10 +19,24 @@ describe("FATO_BUILDERS", () => {
 
 describe("runBuilders", () => {
   // O marcador de fim de ciclo e gravado em fato_build_state, entao o mock precisa dele.
+  // O skip-gate tambem le findMany (estado) e escreve updateMany (verificado/metrica);
+  // $queryRawUnsafe so e chamado para builders MAPEADOS (os de teste nao sao).
   const upsert = jest.fn().mockResolvedValue(undefined);
-  const prisma = { fatoBuildState: { upsert } } as unknown as PrismaClient;
+  const findMany = jest.fn().mockResolvedValue([]);
+  const updateMany = jest.fn().mockResolvedValue({ count: 0 });
+  const queryRawUnsafe = jest.fn().mockResolvedValue([{ sujo: true }]);
+  const prisma = {
+    fatoBuildState: { upsert, findMany, updateMany },
+    $queryRawUnsafe: queryRawUnsafe,
+  } as unknown as PrismaClient;
 
-  beforeEach(() => upsert.mockClear());
+  beforeEach(() => {
+    upsert.mockClear();
+    findMany.mockClear();
+    updateMany.mockClear();
+    queryRawUnsafe.mockClear();
+    __resetSkipGateBootParaTeste();
+  });
 
   it("grava o marcador de FIM DE CICLO depois de todos os builders", async () => {
     const ordem: string[] = [];
@@ -94,5 +113,43 @@ describe("runBuilders", () => {
     const st = await runBuilders(prisma, "incremental", builders);
     expect(st[0].ms).toBeGreaterThanOrEqual(0);
     expect(typeof st[0].ms).toBe("number");
+  });
+
+  it("skip-gate: força tudo no 1º ciclo (boot) e PULA builder mapeado sem mudança no 2º", async () => {
+    const runFn = jest.fn().mockResolvedValue(5);
+    const builders = [
+      { nome: "fato_nota_fiscal_item", cycle: "incremental" as const, run: runFn },
+    ];
+    // 1º ciclo (boot): força, roda incondicional.
+    findMany.mockResolvedValueOnce([]);
+    await runBuilders(prisma, "incremental", builders);
+    expect(runFn).toHaveBeenCalledTimes(1);
+
+    // 2º ciclo (não-boot): já tem ultimoBuildAt e a raw NÃO mudou (sujo=false) => pula.
+    findMany.mockResolvedValueOnce([
+      { fato: "fato_nota_fiscal_item", ultimoBuildAt: new Date("2026-07-23T10:00:00Z") },
+    ]);
+    queryRawUnsafe.mockResolvedValueOnce([{ sujo: false }]);
+    const st = await runBuilders(prisma, "incremental", builders);
+    expect(runFn).toHaveBeenCalledTimes(1); // NÃO rodou de novo
+    expect(st[0].pulado).toBe(true);
+    expect(st[0].ok).toBe(true);
+    expect(updateMany).toHaveBeenCalled(); // marcou verificado (freshness fresca)
+  });
+
+  it("skip-gate: builder mapeado roda no 2º ciclo se a raw mudou", async () => {
+    const runFn = jest.fn().mockResolvedValue(9);
+    const builders = [
+      { nome: "fato_nota_fiscal_item", cycle: "incremental" as const, run: runFn },
+    ];
+    findMany.mockResolvedValueOnce([]);
+    await runBuilders(prisma, "incremental", builders); // boot
+    findMany.mockResolvedValueOnce([
+      { fato: "fato_nota_fiscal_item", ultimoBuildAt: new Date("2026-07-23T10:00:00Z") },
+    ]);
+    queryRawUnsafe.mockResolvedValueOnce([{ sujo: true }]); // raw mudou
+    const st = await runBuilders(prisma, "incremental", builders);
+    expect(runFn).toHaveBeenCalledTimes(2);
+    expect(st[0].pulado).toBeFalsy();
   });
 });
