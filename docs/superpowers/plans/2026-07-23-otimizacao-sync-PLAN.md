@@ -175,6 +175,20 @@ nos quentes, um por vez com shadow-diff + safety net) -> medir -> F3 (estrutural
 Perícia obrigatória ao fim de cada frente. Rebuild do worker após cada frente que toca `src/worker/**`
 ou `prisma/schema.prisma` (schema => rebuild app+mcp+worker + prisma generate). Nada vai para main sem o dono.
 
+## RESULTADOS MEDIDOS (2026-07-24) , F0+F1+F2 concluídas
+- Baseline: ciclo incremental ~**110s** fixos (46 fatos full).
+- F0: ranking de ms , `fato_nota_fiscal_item` = 56s (50% do ciclo). Confirmado.
+- F1 (skip-gate): ciclo semi-ativo **110s → 15s** (35 builders pulados); freshness intacta
+  (`ultimo_verificado_at` avança ao pular). Gate decide PULA para os pesados quando a raw
+  não muda (spot-check contra dado real). Reconcile bumpa synced_at (deleção coberta).
+- F2 (`nota_fiscal_item` incremental): **full 56s vs incremental 0,8s (delta zero) / 5,4s
+  (20k itens) / 10s (24h)**. Equivalência ao full PROVADA byte-a-byte (checksum idêntico,
+  232.761 linhas). Rede: full no boot + a cada 144 ciclos. Bug de OOM (carga total em
+  memória) pego na validação e corrigido com streaming.
+- Efeito líquido: custo do ciclo passou de FIXO ~110s para PROPORCIONAL ao delta , poucos
+  segundos no típico, ~15-20s no pior caso realista. **Viabiliza 3min com folga.**
+- Pendente (decisão do dono): baixar 10min→3min (recomendado) e/ou converter mais alvos.
+
 ## Métricas de sucesso (objetivas)
 - F1: ciclo ocioso cai de ~102s para < ~10s; freshness na tela permanece fresca; contagem de cada fato
   pulado == full rebuild forçado.

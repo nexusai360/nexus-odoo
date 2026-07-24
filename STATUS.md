@@ -1,9 +1,41 @@
 # STATUS , ponto de retomada
 
 Branch ativa: **`feat/entregas-parciais-base-calculo`** (LOCAL, nada em produção).
-Dev local no ar em `localhost:3000` (containers `db`+`redis` up; Docker reiniciado/destravado em 2026-07-21).
+Dev local no ar em `localhost:3000` (Docker up: db+redis+mcp+app + **worker com código novo**).
 
-## Onde estamos (2026-07-23, madrugada) , PERFORMANCE DO RESIZE DA TABELA B-09
+## Onde estamos (2026-07-24, madrugada) , OTIMIZAÇÃO DO ECOSSISTEMA DE SYNC (F0+F1+F2)
+
+> Docs: `docs/superpowers/plans/2026-07-23-otimizacao-sync-{PERICIA,PLAN}.md`.
+> Perícia profunda (3 agentes) + plano v2 (pós-review adversarial) + implementação.
+
+**Problema:** todo ciclo incremental (10min) reconstruía as ~46 tabelas `fato_*` por
+inteiro (~110s fixos), mesmo sem mudança. A ingestão do Odoo já era incremental; o peso
+era a recomputação dos fatos derivados.
+
+**Entregue e commitado (LOCAL, nada em prod):**
+- **F0 (8c05e576, 48b5d929):** instrumentação de ms por builder + colunas em
+  `FatoBuildState` (`ultimoVerificadoAt`/`ultimoBuildMs`/`ultimasLinhas`/`codeVersion`).
+  Ranking medido: `fato_nota_fiscal_item` = 56s de 110s (50% do ciclo).
+- **F1 (551a5c5a) , SKIP-GATE:** cada ciclo só reconstrói fato cujo insumo mudou
+  (`synced_at > ultimoBuildAt` indexado + `dependsOn` entre fatos; mapa conferido 1:1 em
+  `skip-gate.ts`). Full incondicional no boot (cobre deploy de lógica). `ultimoVerificadoAt`
+  mantém o freshness fresco ao pular. reconcile bumpa synced_at (deleção). Índice
+  `(raw_deleted, synced_at)` em 125 raws. **E2E: ciclo caiu 110s→15s (35 builders pulados).**
+- **F2 (485cac65) , `fato_nota_fiscal_item` INCREMENTAL:** reprocessa só o delta (item
+  alterado + cascata da nota-mãe + deleção) por streaming. **Equivalência ao full PROVADA
+  byte-a-byte** (checksum idêntico, 232.761 linhas). Rede de segurança: full no boot + a
+  cada 144 ciclos. **Medido: full 56s vs incremental ~0,8s (delta pequeno) / ~5,4s (20k
+  itens) / ~10s (24h).** 302 testes verdes, tsc limpo.
+
+**Resultado:** custo do ciclo virou proporcional ao que mudou. De **110s fixos** para
+**tipicamente poucos segundos** (pior caso realista ~15-20s).
+
+**PENDENTE (decisão do dono):** (a) baixar o incremental de 10min→3min (já cabe com folga;
+config `app_settings.sync.incremental_interval_min`, a variável é do dono) OU (b) converter
+mais alvos a incremental (nota_fiscal 6s, financeiro_movimento 4s, pedido_item 4s , ganho
+menor). Recomendação: (a). Aguardando escolha.
+
+## Onde estivemos (2026-07-23, madrugada) , PERFORMANCE DO RESIZE DA TABELA B-09
 
 > **Multi-agente ativo na MESMA branch.** Outras sessões mexeram/mexem em `tabela-avancada.tsx`
 > (memoização de linhas, coluna fixa/cadeado, editor de modelo compacto, favoritos, botão "x") e
