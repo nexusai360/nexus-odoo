@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Clock, RefreshCw } from "lucide-react";
+import { Clock } from "lucide-react";
 
 /** De quanto em quanto tempo se pergunta ao servidor se o ciclo terminou. */
 const INTERVALO_CHECAGEM_MS = 20_000;
@@ -23,17 +23,23 @@ function tempoRelativo(iso: string, agora: number): string {
  *
  * O endpoint de freshness devolve o carimbo do último ciclo CONCLUÍDO (ingestão mais
  * reconstrução dos fatos, ver lib/diretoria/freshness.ts). Quando esse carimbo muda, a tela
- * pede os dados novos ao servidor num soft-refresh: as abas e o estado do cliente ficam de
- * pé, e o conteúdo só esmaece de leve enquanto o servidor responde (`data-atualizando` no
- * <html>, estilizado no globals.css). Em um piscar de olhos os números trocam.
+ * pede os dados novos ao servidor num soft-refresh COMPLETAMENTE SILENCIOSO: nada pisca, nada
+ * esmaece, nenhum spinner. O `router.refresh()` do Next só re-renderiza os Server Components e
+ * reconcilia , NÃO desmonta os client components, então abas, modais, filtros, ordenação,
+ * larguras de coluna, scroll e qualquer análise em andamento ficam INTACTOS. Os números só
+ * trocam de valor no lugar, sem interferir no que o usuário está fazendo (decisão do dono
+ * 2026-07-24: atualização de bastidores, zero feedback de carregamento).
  *
  * O usuário nunca vê tela zerada: a troca do cache no worker é atômica (cada fato é
  * reconstruído dentro de uma transação), então até o commit a leitura enxerga o dado antigo.
+ * O startTransition mantém a página interativa durante o recálculo (refresh não-bloqueante).
  */
 export function FreshnessBadge({ iso }: { iso: string | null }) {
   const router = useRouter();
   const [agora, setAgora] = useState<number | null>(null);
-  const [atualizando, startTransition] = useTransition();
+  // startTransition => refresh não-bloqueante (a página segue interativa); o isPending é
+  // deliberadamente IGNORADO na UI para não haver feedback visual algum.
+  const [, startTransition] = useTransition();
   // O carimbo que já disparou refresh, para não pedir a mesma atualização duas vezes.
   const jaAtualizado = useRef<string | null>(null);
 
@@ -43,16 +49,6 @@ export function FreshnessBadge({ iso }: { iso: string | null }) {
     const t = setInterval(() => setAgora(Date.now()), 30000);
     return () => clearInterval(t);
   }, []);
-
-  // Marca o <html> enquanto o servidor recalcula, para o conteúdo esmaecer (globals.css).
-  useEffect(() => {
-    const raiz = document.documentElement;
-    if (atualizando) raiz.dataset.atualizando = "1";
-    else delete raiz.dataset.atualizando;
-    return () => {
-      delete raiz.dataset.atualizando;
-    };
-  }, [atualizando]);
 
   // Polling do ciclo do worker: refresh só quando um ciclo NOVO terminou.
   useEffect(() => {
@@ -81,18 +77,7 @@ export function FreshnessBadge({ iso }: { iso: string | null }) {
   if (!iso) return null;
   const titulo = new Date(iso).toLocaleString("pt-BR");
 
-  if (atualizando) {
-    return (
-      <span
-        className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"
-        aria-live="polite"
-      >
-        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-        Atualizando…
-      </span>
-    );
-  }
-
+  // Sempre o mesmo badge passivo (nunca "Atualizando…"): a atualização é de bastidores.
   return (
     <span
       className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"

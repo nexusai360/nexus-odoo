@@ -333,19 +333,7 @@ input[type="search"]::-webkit-search-decoration {
   .nex-bubble-grow { transition: none; }
 }
 
-/* Troca de dados em "piscar de olhos" (FreshnessBadge). O worker termina o ciclo, a tela
-   pede o dado novo ao servidor e, enquanto ele nao chega, o conteudo esmaece de leve, sem
-   sumir e sem mexer no layout. Quando volta, ja e o numero novo , o usuario percebe uma
-   atualizacao, nunca um vazio. O dado antigo continua na tela o tempo todo (a troca do
-   cache e atomica no worker), entao nao existe estado "zerado" para ver. */
-[data-atualizando="1"] main {
-  opacity: 0.55;
-  transition: opacity 180ms ease-out;
-}
-main {
-  transition: opacity 220ms ease-in;
-}
-@media (prefers-reduced-motion: reduce) {
-  [data-atualizando="1"] main,
-  main { transition: none; opacity: 1; }
-}
+/* Atualização de dados da Diretoria é SILENCIOSA (FreshnessBadge + router.refresh): sem fade,
+   sem spinner, sem mexer no layout. O worker troca o cache de forma atômica, então a leitura
+   sempre vê dado íntegro e os números só trocam de valor no lugar, sem interferir no que o
+   usuário está fazendo. (Fade `data-atualizando` removido a pedido do dono, 2026-07-24.) */
