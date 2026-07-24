@@ -54,7 +54,10 @@ export const INSUMOS_BUILDER: Record<string, InsumosBuilder> = {
     dependsOn: ["fato_parceiro"],
   },
   fato_pedido_parcela: { rawSources: ["raw_pedido_parcela"] },
-  fato_nota_fiscal: { rawSources: ["raw_sped_documento"] },
+  // dependsOn fato_parceiro: classificaReceita usa carregarParticipantesGrupo (lê
+  // fato_parceiro) para decidir is_venda_externa , se um parceiro muda de/para intragrupo,
+  // a classificação da nota muda sem a raw da nota mudar. Ver fato-nota-fiscal.ts:146.
+  fato_nota_fiscal: { rawSources: ["raw_sped_documento"], dependsOn: ["fato_parceiro"] },
   fato_nota_fiscal_item: { rawSources: ["raw_sped_documento", "raw_sped_documento_item"] },
   fato_produto: { rawSources: ["raw_sped_produto"] },
   fato_pedido_item: { rawSources: ["raw_sped_documento_item"], dependsOn: ["fato_produto"] },
