@@ -144,6 +144,8 @@ export interface StatusBuilder {
   nome: string;
   ok: boolean;
   linhas: number | null;
+  /** Duração do build em ms (instrumentação da otimização de sync). */
+  ms?: number;
 }
 
 /**
@@ -158,13 +160,16 @@ export async function runBuilders(
   const status: StatusBuilder[] = [];
   for (const { nome, cycle: builderCycle, run } of builders) {
     if (builderCycle !== cycle) continue;
+    const inicio = Date.now();
     try {
       const n = await run(prisma);
-      console.log(`[worker] ${nome} reconstruído: ${n} linhas`);
-      status.push({ nome, ok: true, linhas: n });
+      const ms = Date.now() - inicio;
+      console.log(`[worker] ${nome} reconstruído: ${n} linhas em ${ms}ms`);
+      status.push({ nome, ok: true, linhas: n, ms });
     } catch (err) {
-      console.error(`[worker] falha ao reconstruir ${nome}:`, err);
-      status.push({ nome, ok: false, linhas: null });
+      const ms = Date.now() - inicio;
+      console.error(`[worker] falha ao reconstruir ${nome} (${ms}ms):`, err);
+      status.push({ nome, ok: false, linhas: null, ms });
     }
   }
   // Só agora o ciclo terminou: a partir daqui a tela pode se atualizar com segurança.

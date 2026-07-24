@@ -82,8 +82,17 @@ describe("runBuilders", () => {
     ];
     const st = await runBuilders(prisma, "incremental", builders);
     expect(st).toEqual([
-      { nome: "fato_a", ok: true, linhas: 3 },
-      { nome: "fato_b", ok: false, linhas: null },
+      { nome: "fato_a", ok: true, linhas: 3, ms: expect.any(Number) },
+      { nome: "fato_b", ok: false, linhas: null, ms: expect.any(Number) },
     ]);
+  });
+
+  it("mede a duração (ms) de cada builder no status", async () => {
+    const builders = [
+      { nome: "fato_a", cycle: "incremental" as const, run: async () => 1 },
+    ];
+    const st = await runBuilders(prisma, "incremental", builders);
+    expect(st[0].ms).toBeGreaterThanOrEqual(0);
+    expect(typeof st[0].ms).toBe("number");
   });
 });
