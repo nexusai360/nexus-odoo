@@ -270,7 +270,7 @@ function GrupoBloco({ grupo, campos, campoBy, campoPadrao, raiz, onChange, onRem
       </div>
       <div className="mt-2.5 flex gap-2">
         <button type="button" onClick={addRegra} className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-sm font-medium text-violet-600 hover:bg-violet-500/10 dark:text-violet-400"><Plus className="size-4" /> Nova regra</button>
-        <button type="button" onClick={addGrupo} className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground"><CornerDownRight className="size-4" /> Aninhar grupo</button>
+        <button type="button" onClick={addGrupo} className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground"><CornerDownRight className="size-4" /> Novo grupo</button>
       </div>
     </div>
   );
@@ -323,7 +323,7 @@ export function FiltroAvancado({
       open={open}
       onClose={onClose}
       title="Filtro avançado"
-      subtitle="Clique na tag E/OU entre as regras para trocar o operador daquele par. Aninhe grupos para montar lógicas compostas."
+      subtitle="Clique na tag E/OU entre as regras para trocar o operador daquele par. Crie grupos para montar lógicas compostas."
       size="2xl"
       footer={
         <>
@@ -333,7 +333,7 @@ export function FiltroAvancado({
               <span className="font-medium text-foreground">{contagem}</span> resultado{contagem === 1 ? "" : "s"} correspondente{contagem === 1 ? "" : "s"}
             </span>
           ) : (
-            <span className="mr-auto inline-flex items-center gap-1.5 text-sm font-medium text-amber-600 dark:text-amber-400">
+            <span className="mr-auto inline-flex items-center gap-1.5 text-sm font-medium text-foreground">
               <AlertCircle className="size-4" /> Preencha os valores em destaque (ou use &quot;está vazio&quot;)
             </span>
           )}
