@@ -41,8 +41,8 @@ const totNum = (sel: (i: ItemEntrega) => number) => (rows: ItemEntrega[]): React
 
 /** Valor custo/venda: segue o toggle "Mostrar venda" (mesma leitura da tela de pedidos). */
 function ValorCV({ custo, venda }: { custo: number; venda: number }) {
-  const { mostrarVenda } = useContext(OpcoesTabelaContext);
-  if (!mostrarVenda) return <span className="whitespace-nowrap tabular-nums">{formatBRL(custo)}</span>;
+  const { mostrarCusto } = useContext(OpcoesTabelaContext);
+  if (!mostrarCusto) return <span className="whitespace-nowrap tabular-nums">{formatBRL(venda)}</span>;
   return (
     <span className="inline-flex flex-col items-end gap-0.5 leading-tight">
       <span className="inline-flex items-center gap-1 whitespace-nowrap text-xs tabular-nums text-amber-500" title="Custo"><Coins className="size-3 shrink-0" aria-hidden />{formatBRL(custo)}</span>

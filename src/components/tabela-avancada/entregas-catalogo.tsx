@@ -11,7 +11,7 @@
  */
 
 import { useContext, useState } from "react";
-import { CircleCheck, CircleX, Package, MapPin, FileText, ClipboardList, Coins, Tag, Copy, Check } from "lucide-react";
+import { CircleCheck, CircleX, Package, MapPin, FileText, ClipboardList, Coins, Tag, Copy, Check, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { corEtapaValida, derivarCorTag } from "@/lib/diretoria/etapa-cor";
 import { formatarNomeEtapa } from "@/lib/diretoria/etapa-formato";
@@ -239,8 +239,8 @@ function rodapeEntrega(rows: LinhaEntrega[]): React.ReactNode {
 
 /** Total de valor com custo/venda: segue o toggle "Mostrar venda" (mesma leitura da célula). */
 function TotalValorCV({ custo, venda }: { custo: number; venda: number }) {
-  const { mostrarVenda } = useContext(OpcoesTabelaContext);
-  if (!mostrarVenda) return <span className="whitespace-nowrap tabular-nums">{formatBRL(custo)}</span>;
+  const { mostrarCusto } = useContext(OpcoesTabelaContext);
+  if (!mostrarCusto) return <span className="whitespace-nowrap tabular-nums">{formatBRL(venda)}</span>;
   return (
     <span className="inline-flex flex-col items-end gap-0.5 leading-tight">
       <span className="inline-flex items-center gap-1 whitespace-nowrap text-xs tabular-nums text-amber-500" title="Custo"><Coins className="size-3 shrink-0" aria-hidden />{formatBRL(custo)}</span>
@@ -298,15 +298,15 @@ export const COLUNAS: ColunaDef<LinhaEntrega>[] = [
   // --- Valores da entrega: custo por padrão; com o toggle "Mostrar venda", a
   // célula mostra custo (ícone moeda) em cima e venda (ícone tag) embaixo.
   // `valor` = custo (usado no sort/agrupamento/CSV). ---
-  { key: "valorAtendido", label: "Valor Atendido", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.valorAtendidoCusto,
+  { key: "valorAtendido", label: "Valor Atendido", tipo: "moeda", sortable: true, numeric: true, padrao: false, valor: (l) => l.valorAtendidoVenda,
     rodape: (rows) => <TotalValorCV custo={somaDe(rows, (l) => l.valorAtendidoCusto)} venda={somaDe(rows, (l) => l.valorAtendidoVenda)} /> },
-  { key: "valorAtender", label: "Valor A Atender", tipo: "moeda", sortable: true, numeric: true, padrao: true, valor: (l) => l.vlrCusto,
+  { key: "valorAtender", label: "Valor A Atender", tipo: "moeda", sortable: true, numeric: true, padrao: true, valor: (l) => l.vlrVenda,
     rodape: (rows) => <TotalValorCV custo={somaDe(rows, (l) => l.vlrCusto)} venda={somaDe(rows, (l) => l.vlrVenda)} /> },
   // Desconto do pedido (R$, do Odoo). Visível por padrão a pedido do dono.
   { key: "desconto", label: "Desconto", tipo: "moeda", sortable: true, numeric: true, padrao: true, valor: (l) => l.descontoValor, rodape: totMoeda((l) => l.descontoValor) },
   // Valor Produto = CUSTO total dos produtos = Σ (quantidade × preço de custo unitário) por
   // item (= Valor Atendido + Valor A Atender, a custo). NÃO é o preço de venda.
-  { key: "valorProduto", label: "Valor Produto", tipo: "moeda", sortable: true, numeric: true, padrao: true, valor: (l) => l.valorTotalCusto,
+  { key: "valorProduto", label: "Valor Produto", tipo: "moeda", sortable: true, numeric: true, padrao: true, valor: (l) => l.valorCheio,
     rodape: (rows) => <TotalValorCV custo={somaDe(rows, (l) => l.valorTotalCusto)} venda={somaDe(rows, (l) => l.valorCheio)} /> },
   // Subtotal Pedido = "Subtotal" do cabeçalho do Odoo (mesmo vr_produtos). Cor cinza (como Desconto).
   { key: "subtotalPedido", label: "Subtotal Pedido", tipo: "moeda", sortable: true, numeric: true, padrao: true, valor: (l) => l.valorProduto, rodape: totMoeda((l) => l.valorProduto) },
@@ -445,7 +445,7 @@ export const AGRUPAMENTOS: { campo: string; label: string }[] = [
   { campo: "forma", label: "Forma de pagamento" },
   { campo: "condicao", label: "Condição de pagamento" },
   { campo: "emitente", label: "Emitente" },
-  { campo: "prevista", label: "Mês previsto" },
+  { campo: "prevista", label: "Mês da entrega" },
   { campo: "orcamento", label: "Mês do orçamento" },
 ];
 
@@ -472,6 +472,8 @@ export function TagPedido({ numero, pedidoId, grande }: { numero: string; pedido
       className={cn(base, "cursor-pointer hover:bg-foreground/20 hover:ring-foreground/25")}
     >
       <span className="tabular-nums">{numero}</span>
+      {/* Afordância de "abre no Odoo" (nova aba): o ícone indica que a tag é um link clicável. */}
+      <ExternalLink className={cn("shrink-0 opacity-60", grande ? "size-4" : "size-3")} aria-hidden />
     </a>
   );
 }
@@ -520,8 +522,8 @@ function StatusFinanceiro({ status, comRotulo }: { status: string; comRotulo?: b
 /** Valor com custo por padrão; com o toggle "Mostrar venda" ligado, exibe custo
  * (ícone moeda, âmbar) em cima e venda (ícone tag, verde) embaixo, na mesma linha. */
 function CelulaValorCV({ custo, venda }: { custo: number; venda: number }) {
-  const { mostrarVenda } = useContext(OpcoesTabelaContext);
-  if (!mostrarVenda) return <span className="whitespace-nowrap tabular-nums">{formatBRL(custo)}</span>;
+  const { mostrarCusto } = useContext(OpcoesTabelaContext);
+  if (!mostrarCusto) return <span className="whitespace-nowrap tabular-nums">{formatBRL(venda)}</span>;
   return (
     <span className="inline-flex flex-col items-end gap-0.5 leading-tight">
       <span className="inline-flex items-center gap-1 whitespace-nowrap text-xs tabular-nums text-amber-500" title="Custo">
@@ -773,12 +775,12 @@ function BotaoCopiar({ texto, ariaLabel }: { texto: string; ariaLabel: string })
 /** Coluna do resumo do pedido: legenda em cima e o número (custo) centralizado
  * embaixo; opcionalmente o valor de venda equivalente em menor, logo abaixo. As
  * colunas ficam lado a lado separadas por um divisor fino (o "pipe"). */
-function ColResumo({ titulo, valor, venda, destaque, className }: { titulo: string; valor: string; venda?: string; destaque?: boolean; className?: string }) {
+function ColResumo({ titulo, valor, secundario, destaque, className }: { titulo: string; valor: string; secundario?: string; destaque?: boolean; className?: string }) {
   return (
     <div className={cn("min-w-0 text-center", className)}>
       <p className="truncate text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground">{titulo}</p>
       <p className={cn("mt-1 truncate tabular-nums", destaque ? "text-lg font-bold text-foreground" : "text-base font-semibold text-foreground")}>{valor}</p>
-      {venda !== undefined && <p className="mt-0.5 truncate text-xs tabular-nums text-muted-foreground">{venda}</p>}
+      {secundario !== undefined && <p className="mt-0.5 truncate text-xs tabular-nums text-muted-foreground">{secundario}</p>}
     </div>
   );
 }
@@ -788,7 +790,7 @@ export function DetalheEntrega({ l }: { l: LinhaEntrega }) {
   const temObs = (l.observacoes && l.observacoes !== "-") || (l.obsEntrega && l.obsEntrega !== "-");
   // Toggle local (não persiste; some ao recarregar): revela o valor de venda
   // equivalente, pequeno, embaixo de cada valor de custo do resumo.
-  const [mostrarVenda, setMostrarVenda] = useState(false);
+  const [mostrarCusto, setMostrarCusto] = useState(false);
   return (
     <div className="space-y-6 p-4 sm:p-6">
       {/* Cabeçalho: número em evidência + etapa + financeiro, cliente abaixo */}
@@ -812,9 +814,9 @@ export function DetalheEntrega({ l }: { l: LinhaEntrega }) {
           card), o valor de venda aparece pequeno abaixo de cada valor de custo. */}
       <div className="space-y-2">
         <div className="flex justify-end">
-          <button type="button" onClick={() => setMostrarVenda((v) => !v)} aria-pressed={mostrarVenda}
-            className={cn("shrink-0 cursor-pointer rounded-md border px-2.5 py-1 text-xs font-medium transition-colors", mostrarVenda ? "border-violet-500/40 bg-violet-500/10 text-violet-600 dark:text-violet-300" : "border-border bg-card text-muted-foreground hover:text-foreground")}>
-            {mostrarVenda ? "Ocultar venda" : "Mostrar venda"}
+          <button type="button" onClick={() => setMostrarCusto((v) => !v)} aria-pressed={mostrarCusto}
+            className={cn("shrink-0 cursor-pointer rounded-md border px-2.5 py-1 text-xs font-medium transition-colors", mostrarCusto ? "border-violet-500/40 bg-violet-500/10 text-violet-600 dark:text-violet-300" : "border-border bg-card text-muted-foreground hover:text-foreground")}>
+            {mostrarCusto ? "Ocultar custo" : "Mostrar custo"}
           </button>
         </div>
         <div className="rounded-xl border border-border/60 bg-background/40 p-4">
@@ -826,9 +828,9 @@ export function DetalheEntrega({ l }: { l: LinhaEntrega }) {
             </div>
             <div className="mx-3 hidden w-px self-stretch bg-border/60 sm:block" />
             <div className="flex flex-1 divide-x divide-border/50">
-              <ColResumo className="flex-1 px-3 first:pl-0" titulo="Valor Produto" valor={formatBRL(l.valorTotalCusto)} venda={mostrarVenda ? formatBRL(l.valorCheio) : undefined} />
-              <ColResumo className="flex-1 px-3" titulo="Valor Atendido" valor={formatBRL(l.valorAtendidoCusto)} venda={mostrarVenda ? formatBRL(l.valorAtendidoVenda) : undefined} />
-              <ColResumo className="flex-1 px-3" titulo="Valor A Atender" valor={formatBRL(l.vlrCusto)} venda={mostrarVenda ? formatBRL(l.vlrVenda) : undefined} destaque />
+              <ColResumo className="flex-1 px-3 first:pl-0" titulo="Valor Produto" valor={formatBRL(l.valorCheio)} secundario={mostrarCusto ? formatBRL(l.valorTotalCusto) : undefined} />
+              <ColResumo className="flex-1 px-3" titulo="Valor Atendido" valor={formatBRL(l.valorAtendidoVenda)} secundario={mostrarCusto ? formatBRL(l.valorAtendidoCusto) : undefined} />
+              <ColResumo className="flex-1 px-3" titulo="Valor A Atender" valor={formatBRL(l.vlrVenda)} secundario={mostrarCusto ? formatBRL(l.vlrCusto) : undefined} destaque />
             </div>
           </div>
         </div>

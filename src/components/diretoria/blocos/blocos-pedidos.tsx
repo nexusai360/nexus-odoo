@@ -161,16 +161,19 @@ function nomeVendedor(raw: string | null): string {
 }
 const PRESETS_ENTREGA: PresetFiltro[] = [
   // Prazo de entrega (usa o campo calculado entregaStatus; mesma régua da bolinha da coluna).
-  { id: "entrega-vencida", label: "Entrega vencida", campo: "entregaStatus", kind: "regra", op: "igual", valor: "Atrasada" },
-  { id: "entrega-7d", label: "Entrega em até 7 dias", campo: "entregaStatus", kind: "regra", op: "igual", valor: "Vence em até 7 dias" },
-  // Tipo de cliente (documento).
-  { id: "doc-cnpj", label: "Somente CNPJ", campo: "tipoDoc", kind: "regra", op: "igual", valor: "CNPJ" },
-  { id: "doc-cpf", label: "Somente CPF", campo: "tipoDoc", kind: "regra", op: "igual", valor: "CPF" },
+  // `col`: coluna que o usuário reconhece como "a coluna do filtro" (para a validação dinâmica).
+  // O `campo` é o campo auxiliar do motor de filtro; o `col` é a coluna visível equivalente.
+  { id: "entrega-vencida", label: "Entrega vencida", campo: "entregaStatus", kind: "regra", op: "igual", valor: "Atrasada", col: "prevista" },
+  { id: "entrega-7d", label: "Entrega em até 7 dias", campo: "entregaStatus", kind: "regra", op: "igual", valor: "Vence em até 7 dias", col: "prevista" },
+  // Tipo de cliente (documento) , representado pela coluna Cliente.
+  { id: "doc-cnpj", label: "Somente CNPJ", campo: "tipoDoc", kind: "regra", op: "igual", valor: "CNPJ", col: "cliente" },
+  { id: "doc-cpf", label: "Somente CPF", campo: "tipoDoc", kind: "regra", op: "igual", valor: "CPF", col: "cliente" },
   // Financeiro / comercial.
   { id: "fin-bloq", label: "Bloqueado financeiramente", campo: "status", valor: "Bloqueado" },
   { id: "com-desconto", label: "Com desconto", campo: "desconto", kind: "regra", op: "maior", valor: "0" },
-  { id: "margem-neg", label: "Margem negativa", campo: "margem", kind: "regra", op: "menor", valor: "0" },
+  { id: "margem-neg", label: "Margem negativa", campo: "margem", kind: "regra", op: "menor", valor: "0", col: "margemPct" },
   { id: "frete-fob", label: "Frete por conta do cliente (FOB)", campo: "modalidade", valor: "FOB (destinatario)" },
+  { id: "frete-cif", label: "Frete por conta do remetente (CIF)", campo: "modalidade", valor: "CIF (remetente)" },
 ];
 
 function TabelaEntregasParciais({ d }: { d: PedidosData }) {
@@ -305,7 +308,7 @@ function TabelaEntregasParciais({ d }: { d: PedidosData }) {
       agrupamentos={AGRUPAMENTOS_ENTREGA}
       celula={celulaEntrega}
       rowKey={(l) => String(l.pedidoId || l.numero)}
-      valorSoma={(l) => l.vlrCusto}
+      valorSoma={(l) => l.vlrVenda}
       colunaSoma="valorAtender"
       storageKey="entregas-parciais-tabela-v6"
       exportFilename="entregas-parciais"
