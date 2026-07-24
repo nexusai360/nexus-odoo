@@ -1,7 +1,7 @@
 // src/worker/fatos/registry.ts
 import type { PrismaClient } from "../../generated/prisma/client";
 import { markFatoBuilt, registrarMetricaBuild, marcarVerificado } from "./fato-build-state";
-import { builderDeveRodar } from "./skip-gate";
+import { builderDeveRodar, algumPaiMaisNovo } from "./skip-gate";
 import { rebuildFatoEstoqueSaldo } from "./fato-estoque-saldo";
 import { rebuildFatoEstoqueMovimento } from "./fato-estoque-movimento";
 import { rebuildFatoProdutoParado } from "./fato-produto-parado";
@@ -46,7 +46,10 @@ import { rebuildFatoCrmPipeline } from "./fato-crm-pipeline";
 import { rebuildFatoAuditoriaRegra } from "./fato-auditoria-regra";
 import { rebuildFatoSerial } from "./fato-serial";
 import { rebuildFatoCompra } from "./fato-compra";
-import { rebuildFatoPedidoItem } from "./fato-pedido-item";
+import {
+  rebuildFatoPedidoItem,
+  rebuildFatoPedidoItemIncremental,
+} from "./fato-pedido-item";
 import { rebuildFatoPedidoClassificacao } from "./fato-pedido-classificacao";
 import { rebuildFatoEstoqueLocal } from "./fato-estoque-local";
 import { rebuildFatoSerialSaldo } from "./fato-serial-saldo";
@@ -95,7 +98,12 @@ export const FATO_BUILDERS: FatoBuilderEntry[] = [
   // NULL (a demanda aparecia 0). Manter este grupo colado as bases minimiza a janela
   // ao estritamente necessario (produto -> itens -> classificacao). NAO afastar.
   { nome: "fato_produto", cycle: "incremental", run: rebuildFatoProduto },
-  { nome: "fato_pedido_item", cycle: "incremental", run: rebuildFatoPedidoItem },
+  {
+    nome: "fato_pedido_item",
+    cycle: "incremental",
+    run: rebuildFatoPedidoItem,
+    runIncremental: rebuildFatoPedidoItemIncremental,
+  },
   { nome: "fato_pedido_classificacao", cycle: "incremental", run: rebuildFatoPedidoClassificacao },
   // === demais dimensoes/catalogos (independentes do grupo acima) ===
   { nome: "fato_parceiro", cycle: "incremental", run: rebuildFatoParceiro },
@@ -240,8 +248,14 @@ export async function runBuilders(
     const inicio = Date.now();
     try {
       // Incremental por delta quando disponível; full no boot / full de segurança / 1º build.
+      // Se um PAI (dependsOn) mudou, o delta da raw própria não captura as linhas afetadas
+      // pela mudança do pai (ex.: produto renomeado) => cai no FULL por correção.
       const usarIncremental =
-        !!runIncremental && !forcarTudo && !fullSeguranca && ultimoBuildAt !== null;
+        !!runIncremental &&
+        !forcarTudo &&
+        !fullSeguranca &&
+        ultimoBuildAt !== null &&
+        !algumPaiMaisNovo(nome, ultimoBuildAt, mapaBuildAt);
       const n = usarIncremental
         ? await runIncremental!(prisma, ultimoBuildAt!)
         : await run(prisma);

@@ -59,6 +59,82 @@ export const SQL_REBUILD_PEDIDO_ITEM = `
       AND COALESCE((i.data->>'quantidade')::numeric, 0) > 0
   `;
 
+/** Colunas + SELECT do rebuild, sem o INSERT/WHERE , reusado pelo incremental. */
+const SELECT_PEDIDO_ITEM = `
+    SELECT
+      i.odoo_id,
+      CASE WHEN (i.data->'pedido_id'->>0) ~ '^[0-9]+$' THEN (i.data->'pedido_id'->>0)::int END,
+      CASE WHEN (i.data->'produto_id'->>0) ~ '^[0-9]+$' THEN (i.data->'produto_id'->>0)::int END,
+      CASE WHEN jsonb_typeof(i.data->'produto_id') = 'array' THEN i.data->'produto_id'->>1 END,
+      p.familia_nome,
+      p.marca_nome,
+      COALESCE((i.data->>'quantidade')::numeric, 0),
+      CASE WHEN (i.data->'cfop_id'->>0) ~ '^[0-9]+$' THEN (i.data->'cfop_id'->>0)::int END,
+      CASE WHEN (i.data->'local_reserva_livre_id'->>0) ~ '^[0-9]+$' THEN (i.data->'local_reserva_livre_id'->>0)::int END,
+      COALESCE((i.data->>'vr_produtos')::numeric, 0),
+      COALESCE((i.data->>'vr_custo_estoque')::numeric, 0),
+      CASE WHEN (i.data->>'quantidade_a_atender_pedido') ~ '^-?[0-9]+([.][0-9]+)?$'
+           THEN (i.data->>'quantidade_a_atender_pedido')::numeric END,
+      CASE WHEN (i.data->>'quantidade_atendida_pedido') ~ '^-?[0-9]+([.][0-9]+)?$'
+           THEN (i.data->>'quantidade_atendida_pedido')::numeric END,
+      now()
+    FROM raw_sped_documento_item i
+    LEFT JOIN fato_produto p
+      ON p.odoo_id = CASE WHEN (i.data->'produto_id'->>0) ~ '^[0-9]+$'
+                          THEN (i.data->'produto_id'->>0)::int END
+    WHERE i.raw_deleted = false
+      AND (i.data->'pedido_id'->>0) ~ '^[0-9]+$'
+      AND COALESCE((i.data->>'quantidade')::numeric, 0) > 0`;
+
+const COLUNAS_PEDIDO_ITEM = `
+    odoo_id, pedido_id, produto_id, produto_nome, familia_nome, marca_nome,
+    quantidade, cfop_id, local_reserva_id, vr_produtos, vr_custo,
+    quantidade_a_atender, quantidade_atendida, atualizado_em`;
+
+/**
+ * Build INCREMENTAL de fato_pedido_item (otimização F2): reprocessa só o delta em vez de
+ * refazer as ~19k linhas. Só é usado quando NENHUM pai (fato_produto) mudou no ciclo , se
+ * o produto muda, o runBuilders cai no full (algumPaiMaisNovo), pois familia_nome/marca_nome
+ * dos itens daquele produto mudariam sem a raw do item mudar. Tudo em SQL (join no Postgres).
+ *
+ * Delta = raw_sped_documento_item com synced_at > ultimoBuildAt (inclui item alterado,
+ * item que o atendimento revisitou, e item recém-marcado raw_deleted). DELETE dos ids do
+ * delta (remove versão antiga + os que viraram raw_deleted/qtd=0) + INSERT..SELECT só dos
+ * vivos válidos do delta. Cursor capturado ANTES da leitura; ultimoBuildAt = cursor.
+ */
+export async function rebuildFatoPedidoItemIncremental(
+  prisma: PrismaClient,
+  ultimoBuildAt: Date,
+): Promise<number> {
+  const cursor = new Date(); // ANTES da leitura , âncora do próximo delta
+  const n = await prisma.$transaction(
+    async (tx) => {
+      // Remove do fato TODOS os ids tocados no delta (reinsere só os válidos abaixo).
+      await tx.$executeRawUnsafe(
+        `DELETE FROM fato_pedido_item WHERE odoo_id IN (
+           SELECT odoo_id FROM raw_sped_documento_item WHERE synced_at > $1)`,
+        ultimoBuildAt,
+      );
+      await tx.$executeRawUnsafe(
+        `INSERT INTO fato_pedido_item (${COLUNAS_PEDIDO_ITEM})${SELECT_PEDIDO_ITEM}
+           AND i.synced_at > $1`,
+        ultimoBuildAt,
+      );
+      const [{ n }] = await tx.$queryRawUnsafe<{ n: bigint }[]>(
+        `SELECT count(*)::bigint AS n FROM raw_sped_documento_item
+           WHERE synced_at > $1 AND raw_deleted = false
+             AND (data->'pedido_id'->>0) ~ '^[0-9]+$'
+             AND COALESCE((data->>'quantidade')::numeric, 0) > 0`,
+        ultimoBuildAt,
+      );
+      await markFatoBuilt(tx, "fato_pedido_item", cursor);
+      return Number(n);
+    },
+    { timeout: 180_000, maxWait: 15_000 },
+  );
+  return n;
+}
+
 export async function rebuildFatoPedidoItem(prisma: PrismaClient): Promise<number> {
   // Troca atomica: DELETE + INSERT na MESMA transacao. Antes era um TRUNCATE solto, que
   // commita sozinho e deixava a tabela VAZIA por alguns segundos , quem abrisse a tela nesse

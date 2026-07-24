@@ -140,6 +140,29 @@ export async function algumInsumoMudou(
   return Boolean(rows[0]?.sujo);
 }
 
+/**
+ * Algum pai (dependsOn) foi buildado mais recentemente que este fato? Se sim, uma mudança
+ * do pai pode afetar linhas cuja raw PRÓPRIA não mudou (ex.: produto renomeado muda
+ * familia_nome dos itens daquele produto). Nesse caso o build INCREMENTAL por delta da raw
+ * própria perderia essas linhas , o runBuilders deve cair no FULL. Retorna true se não há
+ * como decidir com segurança (pai ausente do mapa => trate como "mudou").
+ */
+export function algumPaiMaisNovo(
+  nome: string,
+  ultimoBuildAt: Date | null,
+  mapaBuildAt: Map<string, Date>,
+): boolean {
+  const insumo = INSUMOS_BUILDER[nome];
+  if (!insumo?.dependsOn?.length) return false;
+  if (!ultimoBuildAt) return true;
+  for (const pai of insumo.dependsOn) {
+    const paiBuildAt = mapaBuildAt.get(pai);
+    if (!paiBuildAt) return true;
+    if (paiBuildAt > ultimoBuildAt) return true;
+  }
+  return false;
+}
+
 export interface DecisaoGateArgs {
   client: SkipGateClient;
   nome: string;

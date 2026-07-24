@@ -1,5 +1,6 @@
 import {
   algumInsumoMudou,
+  algumPaiMaisNovo,
   builderDeveRodar,
   INSUMOS_BUILDER,
   type SkipGateClient,
@@ -109,6 +110,37 @@ describe("builderDeveRodar", () => {
       ...base, client, nome: "fato_nota_fiscal_item", ultimoBuildAt: new Date("2026-07-23T00:00:00Z"),
     });
     expect(r).toBe(true);
+  });
+});
+
+describe("algumPaiMaisNovo (força full quando o pai mudou)", () => {
+  const build = new Date("2026-07-23T10:00:00Z");
+
+  it("sem dependsOn => false (nota_fiscal_item não tem pai)", () => {
+    expect(algumPaiMaisNovo("fato_nota_fiscal_item", build, new Map())).toBe(false);
+  });
+
+  it("pai mais novo que o filho => true (força full)", () => {
+    const mapa = new Map([["fato_produto", new Date("2026-07-23T10:05:00Z")]]);
+    expect(algumPaiMaisNovo("fato_pedido_item", build, mapa)).toBe(true);
+  });
+
+  it("pai mais velho => false (pode incremental)", () => {
+    const mapa = new Map([["fato_produto", new Date("2026-07-23T09:00:00Z")]]);
+    expect(algumPaiMaisNovo("fato_pedido_item", build, mapa)).toBe(false);
+  });
+
+  it("pai ausente do mapa => true (segurança)", () => {
+    expect(algumPaiMaisNovo("fato_pedido_item", build, new Map())).toBe(true);
+  });
+
+  it("ultimoBuildAt null com dependsOn => true", () => {
+    expect(algumPaiMaisNovo("fato_pedido_item", null, new Map())).toBe(true);
+  });
+
+  it("fato_nota_fiscal depende de fato_parceiro (furo corrigido)", () => {
+    const mapa = new Map([["fato_parceiro", new Date("2026-07-23T10:05:00Z")]]);
+    expect(algumPaiMaisNovo("fato_nota_fiscal", build, mapa)).toBe(true);
   });
 });
 
