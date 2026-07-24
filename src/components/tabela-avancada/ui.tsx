@@ -681,7 +681,7 @@ export function SeletorColunas({
               <button type="button" onClick={limpar} className="cursor-pointer rounded px-1.5 py-0.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground">Limpar</button>
             </div>
           </div>
-          {!buscando && <p className="mb-1 px-1 text-[0.7rem] text-muted-foreground/70">Arraste pela alça para reordenar.</p>}
+          {!buscando && <p className="mb-1 px-1 text-[0.7rem] text-muted-foreground/70">Arraste para ordenar.</p>}
           <div ref={listaRef} className={cn("max-h-72 space-y-0.5 overflow-y-auto", drag && "select-none")}>
             {filtradas.map((k, i) => {
               const c = byKey[k];
@@ -725,6 +725,185 @@ export function SeletorColunas({
         document.body,
       )}
     </>
+  );
+}
+
+/**
+ * ListaColunasArrastavel , lista de colunas com REORDENAÇÃO por arraste (pointer events, ao vivo,
+ * com auto-scroll nas bordas e "assentamento" suave ao soltar) + VISIBILIDADE por checkbox.
+ * Obrigatórias ficam travadas no topo. É o MESMO mecanismo do menu "Colunas", isolado aqui para
+ * ser reusado também no editor de modelo compacto (mesma experiência nos dois). Quando `buscando`,
+ * o arraste é desligado (a lista está filtrada; reordenar sob filtro não faria sentido).
+ */
+export function ListaColunasArrastavel({ ordemFull, byKey, visiveis, filtradas, buscando, onOrdemChange, onToggle, alturaMax = "max-h-72" }: {
+  /** Ordem COMPLETA das colunas (obrigatórias primeiro). O reorder devolve esta lista reordenada. */
+  ordemFull: string[];
+  byKey: Record<string, ColunaOpc>;
+  /** Keys marcadas (visíveis / dentro do modelo). Obrigatórias contam como sempre marcadas. */
+  visiveis: string[];
+  /** Subconjunto exibido (quando há busca, é `ordemFull` filtrada; senão é `ordemFull`). */
+  filtradas: string[];
+  buscando: boolean;
+  onOrdemChange: (next: string[]) => void;
+  onToggle: (k: string) => void;
+  alturaMax?: string;
+}) {
+  const [drag, setDrag] = useState<{ key: string; from: number; startY: number; dy: number; h: number; startScroll: number; scroll: number; to: number; pitch: number; top0: number; settling?: boolean; settleGo?: boolean } | null>(null);
+  const listaRef = useRef<HTMLDivElement>(null);
+  const pointerYRef = useRef(0);
+  const [noAnim, setNoAnim] = useState(false);
+  const nObg = ordemFull.filter((k) => byKey[k]?.obrigatoria).length;
+
+  function deslocDe(d: { dy: number; startScroll: number; scroll: number }) {
+    return d.dy + (d.scroll - d.startScroll);
+  }
+  function calcTo(d: { from: number; pitch: number; top0: number }, pointerY: number): number {
+    const el = listaRef.current;
+    if (!el) return d.from;
+    const rect = el.getBoundingClientRect();
+    const rel = pointerY - rect.top + el.scrollTop;
+    const linha = Math.round((rel - d.top0) / d.pitch);
+    return Math.min(Math.max(linha, nObg), ordemFull.length - 1);
+  }
+  function iniciarDrag(e: React.PointerEvent, key: string, from: number) {
+    if (byKey[key]?.obrigatoria || buscando) return;
+    const row = (e.currentTarget as HTMLElement).parentElement;
+    const h = row?.getBoundingClientRect().height || 34;
+    const el = listaRef.current;
+    const sc = el?.scrollTop ?? 0;
+    let pitch = h, top0 = 0;
+    if (el) {
+      const linhasEl = el.querySelectorAll<HTMLElement>("[data-row-idx]");
+      const lr = el.getBoundingClientRect();
+      if (linhasEl.length >= 2) {
+        const r0 = linhasEl[0].getBoundingClientRect();
+        const r1 = linhasEl[1].getBoundingClientRect();
+        pitch = (r1.top - r0.top) || h;
+        top0 = r0.top - lr.top + el.scrollTop;
+      } else if (linhasEl.length === 1) {
+        const r0 = linhasEl[0].getBoundingClientRect();
+        top0 = r0.top - lr.top + el.scrollTop;
+      }
+    }
+    pointerYRef.current = e.clientY;
+    setDrag({ key, from, startY: e.clientY, dy: 0, h, startScroll: sc, scroll: sc, to: from, pitch, top0 });
+  }
+  useEffect(() => {
+    if (!drag) return;
+    if (drag.settling) return;
+    let raf = 0;
+    const mover = (e: PointerEvent) => {
+      pointerYRef.current = e.clientY;
+      const to = calcTo(drag, e.clientY);
+      setDrag((d) => (d ? { ...d, dy: e.clientY - d.startY, to } : d));
+    };
+    const tick = () => {
+      const el = listaRef.current;
+      if (el) {
+        const r = el.getBoundingClientRect();
+        const EDGE = 56;
+        const MAX = 18;
+        const y = pointerYRef.current;
+        const ease = (t: number) => t * t;
+        let delta = 0;
+        if (y < r.top + EDGE) delta = -Math.ceil(MAX * ease(Math.min(1, (r.top + EDGE - y) / EDGE)));
+        else if (y > r.bottom - EDGE) delta = Math.ceil(MAX * ease(Math.min(1, (y - (r.bottom - EDGE)) / EDGE)));
+        if (delta) {
+          const max = el.scrollHeight - el.clientHeight;
+          const next = Math.max(0, Math.min(max, el.scrollTop + delta));
+          if (next !== el.scrollTop) {
+            el.scrollTop = next;
+            const to = calcTo(drag, pointerYRef.current);
+            setDrag((d) => (d ? { ...d, scroll: next, to } : d));
+          }
+        }
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    const soltar = () => {
+      if (drag.to !== drag.from) {
+        const arr = [...ordemFull];
+        const [movido] = arr.splice(drag.from, 1);
+        arr.splice(drag.to, 0, movido);
+        setDrag((d) => (d ? { ...d, settling: true } : d));
+        requestAnimationFrame(() => {
+          setDrag((d) => (d ? { ...d, settling: true, settleGo: true } : d));
+          window.setTimeout(() => {
+            setNoAnim(true);
+            onOrdemChange(arr);
+            setDrag(null);
+            requestAnimationFrame(() => setNoAnim(false));
+          }, 180);
+        });
+      } else {
+        setDrag(null);
+      }
+    };
+    window.addEventListener("pointermove", mover);
+    window.addEventListener("pointerup", soltar);
+    window.addEventListener("pointercancel", soltar);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("pointermove", mover);
+      window.removeEventListener("pointerup", soltar);
+      window.removeEventListener("pointercancel", soltar);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drag, ordemFull, nObg]);
+
+  function transformDe(i: number): string | undefined {
+    if (!drag) return undefined;
+    if (filtradas[i] === drag.key) {
+      const y = drag.settleGo ? (drag.to - drag.from) * drag.pitch : deslocDe(drag);
+      return `translateY(${y}px)`;
+    }
+    const to = drag.to;
+    if (drag.from < to && i > drag.from && i <= to) return `translateY(${-drag.pitch}px)`;
+    if (to < drag.from && i >= to && i < drag.from) return `translateY(${drag.pitch}px)`;
+    return "translateY(0px)";
+  }
+
+  return (
+    <div ref={listaRef} className={cn(alturaMax, "space-y-0.5 overflow-y-auto", drag && "select-none")}>
+      {filtradas.map((k, i) => {
+        const c = byKey[k];
+        if (!c) return null;
+        const on = !!c.obrigatoria || visiveis.includes(k);
+        const arrastavel = !c.obrigatoria && !buscando;
+        const arrastado = drag?.key === k;
+        return (
+          <div
+            key={k}
+            data-row-idx={i}
+            style={{ transform: transformDe(i), transition: noAnim || (arrastado && !drag?.settling) ? "none" : "transform 160ms cubic-bezier(0.2,0,0,1)" }}
+            className={cn(
+              "relative flex items-center gap-2 rounded-lg px-1.5 py-1.5",
+              arrastado ? "z-10 bg-popover shadow-lg ring-1 ring-violet-500/50" : drag ? "" : "transition-colors hover:bg-accent",
+            )}
+          >
+            {arrastavel ? (
+              <span
+                onPointerDown={(e) => iniciarDrag(e, k, i)}
+                role="button"
+                aria-label={`Reordenar ${c.label}`}
+                className={cn("flex shrink-0 touch-none items-center text-muted-foreground/50 hover:text-muted-foreground", arrastado ? "cursor-grabbing" : "cursor-grab")}
+              >
+                <GripVertical className="size-3.5" />
+              </span>
+            ) : (
+              <span className="size-3.5 shrink-0" aria-hidden="true" />
+            )}
+            <button type="button" onClick={() => onToggle(k)} disabled={c.obrigatoria} className={cn("flex min-w-0 flex-1 items-center gap-2 text-left text-sm", c.obrigatoria ? "cursor-not-allowed text-muted-foreground" : "cursor-pointer text-foreground")}>
+              <CheckboxView checked={on} />
+              <span className="min-w-0 flex-1 truncate">{c.label}</span>
+              {c.obrigatoria && <Lock className="size-3 shrink-0 text-muted-foreground/60" />}
+            </button>
+          </div>
+        );
+      })}
+      {filtradas.length === 0 && <p className="px-2 py-3 text-center text-sm text-muted-foreground">Nenhuma coluna encontrada.</p>}
+    </div>
   );
 }
 
@@ -785,7 +964,7 @@ export function useResizeColunas(storageKey: string, containerRef?: React.RefObj
     return { MIN, MAX: Math.max(MIN + 40, Math.round(visivel * 0.85)) };
   };
 
-  const iniciarResize = useCallback((e: React.PointerEvent, key: string, aoTerminar?: () => void) => {
+  const iniciarResize = useCallback((e: React.PointerEvent, key: string, aoIniciarArraste?: () => void) => {
     // NÃO usamos preventDefault aqui: isso suprimia o `dblclick` e fazia o duplo-clique falhar
     // ("parece que não cliquei"). O arraste só começa DEPOIS de mover além do limiar (drag
     // threshold); um clique puro (ou os dois cliques de um duplo-clique) não vira arraste, não
@@ -812,6 +991,13 @@ export function useResizeColunas(storageKey: string, containerRef?: React.RefObj
       alca?.setAttribute("data-rz-ativo", "");
       document.body.style.cursor = "col-resize";
       document.body.style.userSelect = "none";
+      // No INÍCIO do arraste (não no fim): no compacto isso marca a coluna como "mexida", trocando
+      // a exibição para o conteúdo COMPLETO cortado por largura (CSS). Assim os caracteres extras
+      // vão aparecendo em tempo real conforme a coluna cresce, já neste primeiro arraste (antes só
+      // apareciam ao soltar). O re-render disparado aqui NÃO reseta a largura imperativa do <col>:
+      // o React só reaplica `style.width` se o valor no JSX (larguras[key]) mudar, e ele só muda no
+      // soltar , então o valor imperativo em curso sobrevive ao re-render.
+      aoIniciarArraste?.();
     };
     // rAF-throttle: por mais rápido que o pointermove dispare, escrevemos a largura no <col> no
     // MÁXIMO uma vez por frame , 1 reflow por frame, sem fila de eventos atrasando o arraste.
@@ -843,12 +1029,9 @@ export function useResizeColunas(storageKey: string, containerRef?: React.RefObj
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
       // Comita ao estado UMA única vez (persiste + sincroniza o React); o <col> já está na
-      // largura final, então esse re-render não muda nada visível (não pisca).
+      // largura final, então esse re-render não muda nada visível (não pisca). A marcação de coluna
+      // "mexida" (compacto) já aconteceu no INÍCIO do arraste (ver `comecar`), não aqui.
       setLarguras((prev) => ({ ...prev, [key]: lastW }));
-      // Avisa no FIM do arraste (não no meio, pra não re-renderizar durante o drag): no compacto
-      // isso marca a coluna como "mexida", trocando a exibição para conteúdo completo cortado por
-      // largura (CSS) , os caracteres extras aparecem na largura final.
-      aoTerminar?.();
     };
     window.addEventListener("pointermove", mover);
     window.addEventListener("pointerup", soltar);
@@ -898,6 +1081,21 @@ export function useResizeColunas(storageKey: string, containerRef?: React.RefObj
       setLarguras((prev) => ({ ...prev, [key]: alvo }));
       return;
     }
+    // COMPENSAÇÃO DE SCROLL (o que causava a "estilingada" no tradicional): animar a largura
+    // empurra/puxa tudo que está à direita da coluna. Se a coluna resetada começa ANTES da área
+    // visível (tabela larga e rolada, típico do modo tradicional), o container rolável "salta" na
+    // horizontal , era a estilingada "pra direita/esquerda dependendo de onde a coluna sai". Aqui
+    // deslocamos o scrollLeft pelo MESMO delta a cada frame, então o conteúdo na tela fica PARADO
+    // enquanto a coluna anima suave. No compacto quase não há scroll horizontal, por isso lá sempre
+    // foi liso , e o reflow em si é barato (medido ~0.8ms/frame), então a animação volta sem travar.
+    const containerEl = containerRef?.current ?? null;
+    let compensaScroll = false;
+    if (containerEl) {
+      const cr = containerEl.getBoundingClientRect();
+      const tr = th.getBoundingClientRect();
+      compensaScroll = tr.left < cr.left - 0.5; // a coluna começa antes da borda esquerda visível
+    }
+    const scroll0 = containerEl?.scrollLeft ?? 0;
     if (animRef.current[key]) cancelAnimationFrame(animRef.current[key]);
     const DUR = 180;
     const t0 = performance.now();
@@ -907,6 +1105,7 @@ export function useResizeColunas(storageKey: string, containerRef?: React.RefObj
       const cw = Math.round(startW + (alvo - startW) * easeOut(p));
       colEl.style.width = `${cw}px`;
       table.style.width = `${tableStartW + (cw - startW)}px`;
+      if (compensaScroll && containerEl) containerEl.scrollLeft = scroll0 + (cw - startW);
       if (p < 1) {
         animRef.current[key] = requestAnimationFrame(tick);
       } else {
@@ -950,9 +1149,10 @@ export function useResizeColunas(storageKey: string, containerRef?: React.RefObj
 
 /** Alça de redimensionamento na divisória direita do cabeçalho (cursor col-resize).
  * Duplo-clique restaura a largura original da coluna. */
-export function ResizeHandle({ onPointerDown, onReset, realce }: { onPointerDown: (e: React.PointerEvent) => void; onReset?: () => void; realce?: boolean }) {
+export function ResizeHandle({ onPointerDown, onReset }: { onPointerDown: (e: React.PointerEvent) => void; onReset?: () => void }) {
   return (
     <span
+      data-rz
       onPointerDown={onPointerDown}
       onClick={(e) => e.stopPropagation()}
       onDoubleClick={(e) => { e.stopPropagation(); onReset?.(); }}
@@ -962,9 +1162,16 @@ export function ResizeHandle({ onPointerDown, onReset, realce }: { onPointerDown
       title="Arraste para redimensionar · duplo-clique para restaurar"
       className="group/rz absolute right-0 top-0 z-20 flex h-full w-3 -translate-x-0.5 cursor-col-resize touch-none select-none items-center justify-center"
     >
-      {/* Estado ATIVO (arrastando) via atributo `data-rz-ativo` setado no DOM pelo hook , sem
-          re-render. `realce` (JS) acende quando o mouse está numa das duas colunas vizinhas. */}
-      <span className={cn("w-0.5 rounded-full transition-all group-data-[rz-ativo]/rz:h-2/3 group-data-[rz-ativo]/rz:bg-violet-500", realce ? "h-2/3 bg-violet-400/70" : "h-1/2 bg-transparent group-hover/rz:h-2/3 group-hover/rz:bg-violet-400/90")} />
+      {/* Realce/estado via ATRIBUTOS no DOM, SEM re-render: `data-rz-ativo` (arrastando, setado pelo
+          hook) e `data-rz-realce` (mouse numa das duas colunas vizinhas, setado imperativamente pelo
+          onMouseEnter/Leave do cabeçalho). Antes o realce era um state (`hoverCol`) que re-renderizava
+          a TABELA INTEIRA a cada movimento do mouse entre colunas , caro numa tabela grande. */}
+      <span className={cn(
+        "h-1/2 w-0.5 rounded-full bg-transparent transition-all",
+        "group-hover/rz:h-2/3 group-hover/rz:bg-violet-400/90",
+        "group-data-[rz-realce]/rz:h-2/3 group-data-[rz-realce]/rz:bg-violet-400/70",
+        "group-data-[rz-ativo]/rz:h-2/3 group-data-[rz-ativo]/rz:bg-violet-500",
+      )} />
     </span>
   );
 }

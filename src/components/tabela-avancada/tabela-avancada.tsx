@@ -15,7 +15,7 @@ import { Fragment, createContext, useMemo, useRef, useState, useEffect, useLayou
 import {
   Download, SlidersHorizontal, Layers, Star, Search, X, ChevronDown,
   ChevronRight, ChevronLeft, ArrowLeft, List, Columns3, Columns2, CalendarDays,
-  Trash2, Check, ArrowUp, ArrowDown, ArrowUpDown, Rows3, Tag, Filter, Plus, IdCard, Pencil, Lock,
+  Trash2, Check, ArrowUp, ArrowDown, ArrowUpDown, Rows3, Tag, Filter, Plus, IdCard, Pencil,
 } from "lucide-react";
 
 /** Conta as regras (folhas) de uma árvore de filtro personalizado, para o rótulo do chip. */
@@ -26,12 +26,12 @@ function contarRegras(g: GrupoRegras | null): number {
 
 /** Opções da tabela que as células precisam ler (ex.: mostrar preço de venda
  * junto do custo nas colunas de valor). Provido pela TabelaAvancada. */
-export const OpcoesTabelaContext = createContext<{ mostrarVenda: boolean }>({ mostrarVenda: false });
+export const OpcoesTabelaContext = createContext<{ mostrarCusto: boolean }>({ mostrarCusto: false });
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
-  Popover, Tooltip, Btn, SeletorColunas, Paginacao, CheckboxView,
-  useResizeColunas, ResizeHandle,
+  Popover, Tooltip, Btn, SeletorColunas, Paginacao,
+  useResizeColunas, ResizeHandle, ListaColunasArrastavel, type ColunaOpc,
 } from "./ui";
 import { Tooltip as TooltipUI, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { FiltroAvancado, type CampoUI } from "./filtro-avancado";
@@ -55,11 +55,16 @@ interface Favorito {
   // Escopo da visão salva. Favorito da LISTA e do KANBAN são separados: cada
   // view só enxerga os seus. Legado (sem escopo) conta como "lista".
   escopo?: View;
-  snap: { chips: Chip[]; niveis: Nivel[]; busca: string; vis: string[]; ordem: string[]; sorts: Sort[]; arvore: GrupoRegras | null; compacto?: boolean; mostrarVenda?: boolean; kanbanDim?: string };
+  snap: { chips: Chip[]; niveis: Nivel[]; busca: string; vis: string[]; ordem: string[]; sorts: Sort[]; arvore: GrupoRegras | null; compacto?: boolean; mostrarCusto?: boolean; kanbanDim?: string };
 }
 /** Filtro rápido pré-setado. Por padrão é igualdade (`kind: "col"`); com `kind: "regra"` +
  * `op` vira um predicado com operador (ex.: desconto "maior" que "0"), avaliado pelo motor. */
-export interface PresetFiltro { id: string; label: string; campo: string; valor: string; kind?: string; op?: string; valor2?: string }
+export interface PresetFiltro { id: string; label: string; campo: string; valor: string; kind?: string; op?: string; valor2?: string;
+  /** Coluna que HABILITA o preset no painel (validação dinâmica). Por padrão é o próprio `campo`,
+   * mas alguns filtros usam um campo auxiliar (ex.: "entregaStatus") enquanto representam, para o
+   * usuário, uma coluna visível diferente (ex.: "prevista" = Entrega). Aqui aponta para essa coluna
+   * semântica, para o filtro aparecer quando a coluna que o usuário reconhece está ativa. */
+  col?: string }
 
 export interface TabelaAvancadaProps<T extends Record<string, unknown>> {
   base: T[];
@@ -140,19 +145,51 @@ function EditorModeloCompacto({ colunas, obrigatorias, inicialNome, inicialCols,
   onCancelar: () => void;
 }) {
   const [nome, setNome] = useState(inicialNome);
-  const [cols, setCols] = useState<string[]>(inicialCols);
   const [busca, setBusca] = useState("");
+  // SELEÇÃO (quais colunas entram no modelo) + ORDEM de exibição. A ordem inicia com as colunas já
+  // do modelo (na ordem salva) e depois as demais colunas ativas; o usuário reordena por arraste
+  // (mesma alça do menu Colunas) e marca/desmarca no checkbox. Ao salvar, as MARCADAS são gravadas
+  // NA ORDEM em que aparecem , e é essa ordem que o modelo usa ao ser aplicado. O modo tradicional
+  // (compacto desligado) não é tocado: ele continua seguindo a ordem/visibilidade próprias.
+  const [selecionadas, setSelecionadas] = useState<Set<string>>(() => new Set(inicialCols));
+  const [ordemLocal, setOrdemLocal] = useState<string[]>(() => {
+    const doModelo = inicialCols.filter((k) => colunas.some((c) => c.key === k));
+    const resto = colunas.map((c) => c.key).filter((k) => !doModelo.includes(k));
+    return [...doModelo, ...resto];
+  });
+  // Catálogo por chave (obrigatórias travadas + colunas ativas), consumido pela lista arrastável.
+  const byKey = useMemo(() => {
+    const m: Record<string, ColunaOpc> = {};
+    obrigatorias.forEach((c) => { m[c.key] = { key: c.key, label: c.label, obrigatoria: true }; });
+    colunas.forEach((c) => { m[c.key] = { key: c.key, label: c.label }; });
+    return m;
+  }, [obrigatorias, colunas]);
+  // Ordem completa da lista: obrigatórias no topo (travadas) + a ordem escolhida das demais.
+  const ordemFull = useMemo(() => [...obrigatorias.map((c) => c.key), ...ordemLocal], [obrigatorias, ordemLocal]);
+  // Marcadas (checkbox): obrigatórias sempre + as selecionadas.
+  const visiveis = useMemo(() => [...obrigatorias.map((c) => c.key), ...ordemLocal.filter((k) => selecionadas.has(k))], [obrigatorias, ordemLocal, selecionadas]);
+  const buscando = busca.trim().length > 0;
   const filtradas = useMemo(() => {
     const t = busca.trim().toLowerCase();
-    return t ? colunas.filter((c) => c.label.toLowerCase().includes(t)) : colunas;
-  }, [busca, colunas]);
-  const obrigFiltradas = useMemo(() => {
-    const t = busca.trim().toLowerCase();
-    return t ? obrigatorias.filter((c) => c.label.toLowerCase().includes(t)) : obrigatorias;
-  }, [busca, obrigatorias]);
+    return t ? ordemFull.filter((k) => byKey[k]?.label.toLowerCase().includes(t)) : ordemFull;
+  }, [busca, ordemFull, byKey]);
+
   const dupNome = nome.trim().length > 0 && nomesUsados.includes(normalizarBusca(nome));
-  const podeSalvar = nome.trim().length > 0 && cols.length > 0 && !dupNome;
-  function toggle(k: string) { setCols((p) => (p.includes(k) ? p.filter((x) => x !== k) : [...p, k])); }
+  const nSel = ordemLocal.filter((k) => selecionadas.has(k)).length;
+  const podeSalvar = nome.trim().length > 0 && nSel > 0 && !dupNome;
+
+  function toggle(k: string) {
+    if (byKey[k]?.obrigatoria) return;
+    setSelecionadas((p) => { const n = new Set(p); if (n.has(k)) n.delete(k); else n.add(k); return n; });
+  }
+  function selecionarTudo() { setSelecionadas(new Set(colunas.map((c) => c.key))); }
+  function limpar() { setSelecionadas(new Set()); }
+  function reordenar(nextFull: string[]) {
+    const obg = new Set(obrigatorias.map((c) => c.key));
+    setOrdemLocal(nextFull.filter((k) => !obg.has(k)));
+  }
+  function salvar() { onSalvar(nome, ordemLocal.filter((k) => selecionadas.has(k))); }
+
   return (
     <div className="p-1">
       <p className="mb-2 px-1 text-sm font-semibold text-foreground">{editando ? "Editar modelo" : "Novo modelo"}</p>
@@ -164,27 +201,33 @@ function EditorModeloCompacto({ colunas, obrigatorias, inicialNome, inicialCols,
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
           <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar coluna" aria-label="Buscar coluna" className="h-8 w-full rounded-lg border border-border bg-card pl-8 pr-2 text-[0.8125rem] text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />
         </div>
-        <p className="mb-1 px-1 text-xs text-muted-foreground">{cols.length + obrigatorias.length} de {colunas.length + obrigatorias.length} colunas</p>
-        <div className="max-h-[13rem] space-y-0.5 overflow-y-auto pr-0.5">
-          {obrigFiltradas.map((c) => (
-            <div key={c.key} className="flex w-full cursor-not-allowed items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] text-muted-foreground" title="Coluna fixa, sempre visível">
-              <CheckboxView checked={true} />
-              <span className="min-w-0 flex-1 truncate">{c.label}</span>
-              <Lock className="size-3 shrink-0 text-muted-foreground/60" />
-            </div>
-          ))}
-          {colunas.length === 0 && obrigFiltradas.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">Ative colunas no botão Colunas primeiro.</p>}
-          {colunas.length > 0 && filtradas.length === 0 && obrigFiltradas.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">Nenhuma coluna encontrada.</p>}
-          {filtradas.map((c) => (
-            <button key={c.key} type="button" onClick={() => toggle(c.key)} className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[0.8125rem] text-foreground transition-colors hover:bg-accent">
-              <CheckboxView checked={cols.includes(c.key)} />
-              <span className="truncate">{c.label}</span>
-            </button>
-          ))}
+        <div className="mb-1.5 flex items-center gap-0.5 px-1">
+          <button type="button" onClick={selecionarTudo} className="cursor-pointer rounded px-1.5 py-0.5 text-xs font-medium text-violet-600 hover:bg-accent dark:text-violet-400">Selecionar tudo</button>
+          <button type="button" onClick={limpar} className="cursor-pointer rounded px-1.5 py-0.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground">Limpar</button>
         </div>
+        {colunas.length === 0 ? (
+          <p className="px-2 py-1.5 text-xs text-muted-foreground">Ative colunas no botão Colunas primeiro.</p>
+        ) : (
+          <>
+            <div className="mb-1 flex items-center justify-between gap-2 px-1">
+              <span className="text-[0.7rem] text-muted-foreground/70">{buscando ? " " : "Arraste para ordenar."}</span>
+              <span className="shrink-0 text-xs text-muted-foreground">{nSel + obrigatorias.length} de {colunas.length + obrigatorias.length} colunas</span>
+            </div>
+            <ListaColunasArrastavel
+              ordemFull={ordemFull}
+              byKey={byKey}
+              visiveis={visiveis}
+              filtradas={filtradas}
+              buscando={buscando}
+              onOrdemChange={reordenar}
+              onToggle={toggle}
+              alturaMax="max-h-[13rem]"
+            />
+          </>
+        )}
       </div>
       <div className="mt-2 flex items-center gap-3 px-1">
-        <button type="button" onClick={() => onSalvar(nome, cols)} disabled={!podeSalvar} className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-[0.8125rem] font-medium text-violet-600 transition-colors hover:bg-violet-500/10 disabled:cursor-not-allowed disabled:opacity-50 dark:text-violet-400">
+        <button type="button" onClick={salvar} disabled={!podeSalvar} className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-[0.8125rem] font-medium text-violet-600 transition-colors hover:bg-violet-500/10 disabled:cursor-not-allowed disabled:opacity-50 dark:text-violet-400">
           <Check className="size-4" /> Salvar
         </button>
         <button type="button" onClick={onCancelar} className="cursor-pointer text-[0.8125rem] font-medium text-muted-foreground transition-colors hover:text-foreground">Cancelar</button>
@@ -229,7 +272,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   const [pagina, setPagina] = useState(1);
   const [porPagina, setPorPagina] = useState(50);
   const [compacto, setCompacto] = useState(compactoInicial ?? false);
-  const [mostrarVenda, setMostrarVenda] = useState(false);
+  const [mostrarCusto, setMostrarCusto] = useState(false);
   // Modo compacto por MODELOS: subconjuntos nomeados das colunas ativas (persistidos).
   const [visoesCompactas, setVisoesCompactas] = useState<VisaoCompacta[]>([]);
   const [compactoAtivo, setCompactoAtivo] = useState<string | null>(null); // id do modelo aplicado
@@ -258,7 +301,6 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   const [nomeFav, setNomeFav] = useState("");
   const [sugOpen, setSugOpen] = useState(false);
   // Coluna sob o mouse no cabeçalho: acende as DUAS divisórias vizinhas (esquerda e direita).
-  const [hoverCol, setHoverCol] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Snapshot dos filtros/busca de ORIGEM ao entrar no detalhe do pedido. Dentro
@@ -338,7 +380,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
         if (typeof s.busca === "string") setBusca(s.busca);
         if (typeof s.porPagina === "number") setPorPagina(s.porPagina);
         if (typeof s.compacto === "boolean") setCompacto(s.compacto);
-        if (typeof s.mostrarVenda === "boolean") setMostrarVenda(s.mostrarVenda);
+        if (typeof s.mostrarCusto === "boolean") setMostrarCusto(s.mostrarCusto);
         if (s.arvore) setArvore(s.arvore);
         // Dedup por id + avança o contador além do maior id salvo: `favSeq`/`vcSeq`
         // são module-level e zeram no reload, então sem isto um "novo" reusaria um
@@ -365,28 +407,30 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   useEffect(() => {
     if (!hidratado) return;
     try {
-      window.localStorage.setItem(storageKey, JSON.stringify({ ordem, vis, sorts, niveis, chips, view, busca, porPagina, compacto, mostrarVenda, arvore, favoritos, visoesCompactas, compactoAtivo }));
+      window.localStorage.setItem(storageKey, JSON.stringify({ ordem, vis, sorts, niveis, chips, view, busca, porPagina, compacto, mostrarCusto, arvore, favoritos, visoesCompactas, compactoAtivo }));
     } catch { /* ignore */ }
-  }, [hidratado, storageKey, ordem, vis, sorts, niveis, chips, view, busca, porPagina, compacto, mostrarVenda, arvore, favoritos, visoesCompactas, compactoAtivo]);
+  }, [hidratado, storageKey, ordem, vis, sorts, niveis, chips, view, busca, porPagina, compacto, mostrarCusto, arvore, favoritos, visoesCompactas, compactoAtivo]);
 
   // colunas exibidas (independe do checkbox de Colunas); só as obrigatórias entram sempre.
   const modeloCompacto = useMemo(
     () => (compactoAtivo ? visoesCompactas.find((v) => v.id === compactoAtivo) ?? null : null),
     [compactoAtivo, visoesCompactas],
   );
-  const colunasCompacto = useMemo(
-    () => (modeloCompacto ? new Set(modeloCompacto.colunas) : null),
-    [modeloCompacto],
-  );
-
   // ===== Colunas visíveis (na ordem salva; obrigatórias sempre) =====
   // Memoizado: referência estável evita reflow por render (o useLayoutEffect de medir larguras
   // só roda quando as colunas realmente mudam, não a cada clique/hover/resize).
   const colsVisiveis = useMemo(() => {
     const todas = ordem.map((k) => colunaByKey[k]).filter(Boolean);
-    if (colunasCompacto) return todas.filter((c) => c.obrigatoria || colunasCompacto.has(c.key));
+    if (modeloCompacto) {
+      // Modelo compacto tem ORDEM PRÓPRIA: obrigatórias primeiro (na ordem tradicional) e depois as
+      // colunas do modelo NA ORDEM salva no editor. NÃO deriva de `ordem`, então reordenar o compacto
+      // não altera o modo tradicional , que continua seguindo `ordem` + `vis` (bloco `else` abaixo).
+      const obrig = todas.filter((c) => c.obrigatoria);
+      const escolhidas = modeloCompacto.colunas.map((k) => colunaByKey[k]).filter((c) => c && !c.obrigatoria);
+      return [...obrig, ...escolhidas];
+    }
     return todas.filter((c) => c.obrigatoria || vis.includes(c.key));
-  }, [ordem, colunaByKey, vis, colunasCompacto]);
+  }, [ordem, colunaByKey, vis, modeloCompacto]);
 
   // Conjunto de colunas para BUSCA/FILTRO/ESCOPO. No kanban, no calendário e no
   // detalhe do pedido a busca vale para QUALQUER coluna (essas views são
@@ -627,7 +671,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   const rodapeValores = useMemo(
     () => colsVisiveis.map((c) => (c.rodape ? c.rodape(lista) : null)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [colsVisiveis, lista, mostrarVenda],
+    [colsVisiveis, lista, mostrarCusto],
   );
 
   // Larguras redimensionáveis
@@ -684,7 +728,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
     if (!nome) return; // nome obrigatório: sem nome não salva
     if (favoritosDaView.some((f) => normalizarBusca(f.nome) === normalizarBusca(nome))) { toast.error("Já existe um favorito com esse nome."); return; }
     // A visão salva carrega o escopo da view atual e a dimensão do kanban (usada só no kanban).
-    const fav: Favorito = { id: `f${favSeq++}`, nome, escopo: view, snap: { chips, niveis, busca, vis, ordem, sorts, arvore, compacto, mostrarVenda, kanbanDim } };
+    const fav: Favorito = { id: `f${favSeq++}`, nome, escopo: view, snap: { chips, niveis, busca, vis, ordem, sorts, arvore, compacto, mostrarCusto, kanbanDim } };
     setFavoritos((prev) => [...prev, fav]);
     setNomeFav(""); setSalvarOpen(false);
     // A notificação diz ONDE a visão foi salva (kanban tem favoritos próprios, separados da lista).
@@ -706,7 +750,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
     if (f.snap.ordem) setOrdem(f.snap.ordem);
     // Compacto e "Mostrar venda" também fazem parte da visão salva (default false p/ favoritos antigos).
     setCompacto(f.snap.compacto ?? false);
-    setMostrarVenda(f.snap.mostrarVenda ?? false);
+    setMostrarCusto(f.snap.mostrarCusto ?? false);
     setCompactoAtivo(null); // favoritos não guardam modelo compacto: sai de qualquer modelo ativo.
     // Kanban: a dimensão de agrupamento também faz parte da visão salva.
     if (f.snap.kanbanDim) setKanbanDim(f.snap.kanbanDim);
@@ -782,6 +826,23 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   );
   const campoPadrao = camposUI[0]?.key ?? campos[0]?.key ?? "";
   const colCount = colsVisiveis.length;
+  // VALIDAÇÃO DINÂMICA (só na LISTA): os filtros rápidos e os agrupamentos oferecidos no painel
+  // seguem as COLUNAS EFETIVAS. `colsVisiveis` já reflete as colunas ativas na lista e, no modo
+  // compacto, só as do modelo , então desativar uma coluna (ou entrar num modelo compacto) some com
+  // o preset/agrupamento daquela coluna, e reativá-la o traz de volta, tudo dinâmico. Cada campo de
+  // preset/agrupamento casa 1:1 com a `key` de uma coluna. Fora da lista (kanban/calendário/detalhe)
+  // cada modo tem sua própria regra, então NÃO filtramos aqui (comportamento intocado). Filtros e
+  // agrupamentos já APLICADOS continuam como chips removíveis acima da busca, então nada fica preso.
+  const naLista = view === "lista" && !detalhe;
+  const colsAtivasSet = useMemo(() => new Set(colsVisiveis.map((c) => c.key)), [colsVisiveis]);
+  const presetsVis = useMemo(
+    () => (naLista ? presets.filter((p) => colsAtivasSet.has(p.col ?? p.campo)) : presets),
+    [naLista, presets, colsAtivasSet],
+  );
+  const agrupamentosVis = useMemo(
+    () => (naLista ? agrupamentos.filter((a) => colsAtivasSet.has(a.campo)) : agrupamentos),
+    [naLista, agrupamentos, colsAtivasSet],
+  );
   // Largura EXPLÍCITA da tabela = soma das larguras das colunas. É obrigatório: com table-fixed,
   // usar `width:max-content` (w-max) faz o browser IGNORAR a largura dos <col> (dá pra ver o
   // inline mudar sem a coluna mexer). Com largura explícita, o resize passa a valer de fato.
@@ -813,7 +874,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
             {colsVisiveis.map((c, ci) => {
               const alinhar = c.align ?? (c.numeric ? "right" : "left");
               return (
-              <td key={c.key} className={cn("overflow-hidden", ci === 0 ? "pl-4 pr-4" : "px-4", compacto ? "py-1" : "py-1.5", modeloCompacto && !c.numeric && "max-w-[15rem]", alinhar === "right" && "text-right", alinhar === "center" && "text-center")} style={niveis.length && c.key === colsVisiveis[0].key ? { paddingLeft: `${1 + it.level * 1.25}rem` } : undefined}>
+              <td key={c.key} className={cn("overflow-hidden", ci === 0 ? "pl-4 pr-4" : "px-4", compacto ? "py-1" : "py-1.5", modeloCompacto && !c.numeric && !medindoCompacto && "max-w-[15rem]", alinhar === "right" && "text-right", alinhar === "center" && "text-center")} style={niveis.length && c.key === colsVisiveis[0].key ? { paddingLeft: `${1 + it.level * 1.25}rem` } : undefined}>
                 {ci === 0 && expandirRow ? (
                   <div className="flex items-center gap-1">
                     <button type="button" aria-label={aberto ? "Recolher produtos" : "Ver produtos"} aria-expanded={aberto} onClick={(e) => { e.stopPropagation(); toggleExpandRow(rk); }} className="flex size-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
@@ -841,7 +902,7 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
   [flat, colsVisiveis, expandRows, compacto, medindoCompacto, colunasMexidasCompacto, modeloCompacto, niveis, listaOrdenada, expandirRow, valorSoma, colCount]);
 
   return (
-    <OpcoesTabelaContext.Provider value={{ mostrarVenda }}>
+    <OpcoesTabelaContext.Provider value={{ mostrarCusto }}>
     <div className="relative flex h-full min-h-0 flex-col">
       {/* Toolbar */}
       <div className="mb-3 flex shrink-0 flex-wrap items-center gap-2">
@@ -927,8 +988,8 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
         )}
         {/* Toggle custo/venda: colunas de valor passam a mostrar custo + venda com ícones. */}
         {!detalhe && view === "lista" && permiteVenda && (
-          <Btn variant={mostrarVenda ? "soft" : "outline"} aria-pressed={mostrarVenda} onClick={() => setMostrarVenda((v) => !v)}>
-            <Tag className="size-4" /> {mostrarVenda ? "Custo + venda" : "Mostrar venda"}
+          <Btn variant={mostrarCusto ? "soft" : "outline"} aria-pressed={mostrarCusto} onClick={() => setMostrarCusto((v) => !v)}>
+            <Tag className="size-4" /> {mostrarCusto ? "Venda + Custo" : "Mostrar custo"}
           </Btn>
         )}
         {/* Seletor de colunas: só no modo lista, na toolbar (não vaza ao rolar). */}
@@ -1131,11 +1192,11 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
           {(close) => (
             <div className={cn("grid grid-cols-1 gap-3 p-1", !soFiltros && "sm:grid-cols-3")}>
               {/* Filtros */}
-              <div>
+              <div className="flex min-h-0 flex-col">
                 <p className="mb-1.5 flex items-center gap-1.5 px-1 text-sm font-semibold uppercase tracking-wide text-violet-600 dark:text-violet-400"><Filter className="size-3.5" /> Filtros</p>
-                <div className="max-h-[20rem] space-y-0.5 overflow-y-auto pr-0.5">
-                  {presets.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">Sem filtros rápidos.</p>}
-                  {presets.map((q) => {
+                <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto pr-0.5">
+                  {presetsVis.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">{presets.length === 0 ? "Sem filtros rápidos." : "Nenhum filtro para as colunas ativas."}</p>}
+                  {presetsVis.map((q) => {
                     const chipId = `preset-${q.id}`;
                     const ativo = chips.some((c) => c.id === chipId);
                     const chip: Chip = { id: chipId, campo: q.campo, kind: q.kind ?? "col", valor: q.valor, label: q.label, ...(q.op ? { op: q.op } : {}), ...(q.valor2 != null ? { valor2: q.valor2 } : {}) };
@@ -1147,9 +1208,13 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                     );
                   })}
                 </div>
-                <button type="button" onClick={() => { setAvancadoOpen(true); close(); }} className="mt-2 inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-sm font-semibold text-violet-600 transition-colors hover:bg-violet-500/10 dark:text-violet-400">
-                  <Plus className="size-4" /> Filtro avançado
-                </button>
+                {/* Filtro avançado TRAVADO no rodapé da coluna (linha separa da lista rolável acima):
+                    fica sempre no mesmo lugar, por mais presets que a lista tenha no futuro. */}
+                <div className="mt-2 shrink-0 border-t border-border pt-2">
+                  <button type="button" onClick={() => { setAvancadoOpen(true); close(); }} className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-sm font-semibold text-violet-600 transition-colors hover:bg-violet-500/10 dark:text-violet-400">
+                    <Plus className="size-4" /> Filtro avançado
+                  </button>
+                </div>
               </div>
               {/* Agrupar e Favoritos: no detalhe do pedido e no calendário some tudo,
                   sobra só Filtros. Na lista e no kanban, aparecem (no kanban, Agrupar
@@ -1176,7 +1241,8 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                   </div>
                 ) : (
                   <div className="max-h-[22rem] space-y-0.5 overflow-y-auto pr-0.5">
-                    {agrupamentos.map((n) => {
+                    {agrupamentosVis.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">Nenhum agrupamento para as colunas ativas.</p>}
+                    {agrupamentosVis.map((n) => {
                       const idx = niveis.findIndex((x) => x.campo === n.campo);
                       const ativo = idx >= 0;
                       return (
@@ -1283,8 +1349,14 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                     const primeira = ci === 0;
                     // Alinhamento: default numérica -> direita, senão esquerda; `align` sobrepõe.
                     const alinhar = c.align ?? (c.numeric ? "right" : "left");
+                    // Realce das divisórias vizinhas por MANIPULAÇÃO DIRETA do DOM (sem state, sem
+                    // re-render): acende a divisória desta coluna e a da anterior. Antes era
+                    // `setHoverCol`, que re-renderizava a tabela inteira a cada movimento do mouse.
                     return (
-                      <th key={c.key} ref={setRef(c.key)} onMouseEnter={() => { if (!arrastandoRef.current) setHoverCol(ci); }} onMouseLeave={() => { if (!arrastandoRef.current) setHoverCol((h) => (h === ci ? null : h)); }} className={cn("group/th relative overflow-hidden text-left font-medium", primeira ? (expandirRow ? "pl-8 pr-4" : "pl-4 pr-4") : "px-4", compacto ? "py-1.5" : "py-2", alinhar === "right" && "text-right", alinhar === "center" && "text-center")}>
+                      <th key={c.key} ref={setRef(c.key)}
+                        onMouseEnter={(e) => { if (arrastandoRef.current) return; const th = e.currentTarget; th.querySelector("[data-rz]")?.setAttribute("data-rz-realce", ""); (th.previousElementSibling as HTMLElement | null)?.querySelector("[data-rz]")?.setAttribute("data-rz-realce", ""); }}
+                        onMouseLeave={(e) => { const th = e.currentTarget; th.querySelector("[data-rz]")?.removeAttribute("data-rz-realce"); (th.previousElementSibling as HTMLElement | null)?.querySelector("[data-rz]")?.removeAttribute("data-rz-realce"); }}
+                        className={cn("group/th relative overflow-hidden text-left font-medium", primeira ? (expandirRow ? "pl-8 pr-4" : "pl-4 pr-4") : "px-4", compacto ? "py-1.5" : "py-2", alinhar === "right" && "text-right", alinhar === "center" && "text-center")}>
                         <button type="button" onClick={() => ordenarPor(c.key)} className={cn("flex min-w-0 max-w-full items-center gap-1.5", alinhar === "right" && "ml-auto justify-end", alinhar === "center" && "mx-auto justify-center", c.sortable ? "cursor-pointer hover:text-foreground" : "cursor-default")}>
                           {c.tooltipHeader ? (
                             <TooltipUI>
@@ -1317,7 +1389,6 @@ export function TabelaAvancada<T extends Record<string, unknown>>({
                             if (larguraRegraRef.current[c.key] != null) resetColuna(c.key, larguraRegraRef.current[c.key]);
                             else setMedindoCompacto(true);
                           }}
-                          realce={hoverCol === ci || hoverCol === ci + 1}
                         />
                       </th>
                     );
