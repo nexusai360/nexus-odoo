@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const add = jest.fn().mockResolvedValue({ id: "ondemand:vendas" });
+const add = jest.fn().mockResolvedValue({ id: "ondemand-vendas" });
 
 jest.mock("@/lib/auth", () => ({ getCurrentUser: jest.fn() }));
 jest.mock("@/lib/diretoria/access", () => ({ canDiretoria: jest.fn() }));
@@ -54,7 +54,7 @@ describe("forcarSyncDiretoria", () => {
     const [jobName, payload, opts] = add.mock.calls[0];
     expect(jobName).toBe("ondemand");
     expect(payload.models).toContain("pedido.documento");
-    expect(opts.jobId).toBe("ondemand:vendas");
+    expect(opts.jobId).toBe("ondemand-vendas");
   });
 
   it("área sem modelos Odoo (agenda) não enfileira", async () => {

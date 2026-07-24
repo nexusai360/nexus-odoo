@@ -52,7 +52,9 @@ export async function forcarSyncDiretoria(
     JOB_ONDEMAND,
     { models },
     {
-      jobId: `ondemand:${area}`,
+      // BullMQ nao aceita ":" em custom jobId ("Custom Id cannot contain :"),
+      // por isso "-" e nao ":". Continua deterministico por area (dedupe nativo).
+      jobId: `ondemand-${area}`,
       removeOnComplete: true,
       removeOnFail: true,
     },
